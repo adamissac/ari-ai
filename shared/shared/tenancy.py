@@ -112,4 +112,5 @@ class Repository(StrictModel):
     default_branch: ShortText = "main"
     installation_id: int | None = Field(default=None, ge=1)
     disconnected_at: UtcDatetime | None = None
+    disconnected: bool = False
     created_at: UtcDatetime

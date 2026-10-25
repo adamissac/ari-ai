@@ -6436,7 +6436,7 @@
     },
     "FirstResponderInvocationView": {
       "additionalProperties": false,
-      "description": "One invocation plus its queue state and optional execution record.",
+      "description": "One invocation plus its queue state and optional execution record.\n\n``effective_state`` is the canonical combined state: a terminal invocation\nstatus is authoritative; while the invocation is non-terminal the joined\njob row \u2014 which records what actually ran \u2014 wins, so a timed-out,\nrecovery-required, waiting or cancelled job is never shown as in-progress.",
       "properties": {
         "effective_state": {
           "default": "eligible",
@@ -12083,6 +12083,11 @@
           "title": "Default Branch",
           "type": "string"
         },
+        "disconnected": {
+          "default": false,
+          "title": "Disconnected",
+          "type": "boolean"
+        },
         "disconnected_at": {
           "anyOf": [
             {
@@ -12138,6 +12143,7 @@
         "default_branch",
         "installation_id",
         "disconnected_at",
+        "disconnected",
         "created_at"
       ],
       "title": "Repository",
@@ -14484,7 +14490,7 @@
     },
     "WaitingJobView": {
       "additionalProperties": false,
-      "description": "A queued first-responder job still waiting on its backoff window.",
+      "description": "A first-responder job still waiting: queued on its backoff window or\nparked on a prerequisite (``waiting``, execution-reliability).",
       "properties": {
         "attempts": {
           "default": 0,

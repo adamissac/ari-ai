@@ -749,17 +749,6 @@ def build() -> dict[str, BaseModel]:
             reason="AuthorizedScope is not active",
             capability_class=live_defense.AgentCapabilityClass.disruptive_scoped,
         ),
-        "ProviderAttempt": live_defense.ProviderAttempt(
-            id="att_fixture_1",
-            idempotency_key="fr-provider:fri_fixture:1",
-            status=live_defense.ProviderAttemptState.settled,
-            reserved_at=T0,
-            sent_at=T0,
-            settled_at=T0,
-            model_id="claude-haiku-5-5",
-            cost_usd=0.01,
-            effect_key="provider:att_fixture_1",
-        ),
         "AgentExecutionRecord": live_defense.AgentExecutionRecord(
             provider_mode="fake",
             model_id="claude-haiku-5-5",
@@ -772,6 +761,15 @@ def build() -> dict[str, BaseModel]:
             typed_output=True,
             hypothesis_count=1,
             execution_integrity=live_defense.ExecutionIntegrity.checked,
+        ),
+        "ProviderAttempt": live_defense.ProviderAttempt(
+            id="att_fixture_1",
+            idempotency_key="fr-provider:fri_fixture:1",
+            status=live_defense.ProviderAttemptState.settled,
+            reserved_at=T0,
+            sent_at=T0,
+            settled_at=T0,
+            effect_key="provider:att_fixture_1",
         ),
         "FirstResponderDecision": live_defense.FirstResponderDecision(
             id=FRD,

@@ -339,6 +339,7 @@ def _repo(r: Any) -> Repository:
         installation_id=r["installation_id"],
         automatic_assessments=r["automatic_assessments"],
         disconnected_at=r["disconnected_at"],
+        disconnected=r["disconnected_at"] is not None,
         created_at=r["created_at"],
     )
 
@@ -489,9 +490,10 @@ def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
     with transaction() as conn:
         user = _user(conn, request)
         repo = _owner_repo(conn, user, repo_id)
-        # Lock the repo row for the whole disconnect so concurrent per-operation
-        # and final-persist revocation checks (which read/lock the same row)
-        # serialize against this transaction instead of racing it.
+        # Canonical revocation-protocol lock order: repositories first, then
+        # deploy_commit_mappings — finalizing callers lock in the same order via
+        # services.repository_revocation_locked, so disconnect and a mid-flight
+        # persist serialize deterministically and cannot deadlock (same order).
         conn.execute(
             sa.select(repositories.c.id).where(repositories.c.id == repo_id).with_for_update()
         )
@@ -590,13 +592,22 @@ def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
 @router.post("/repositories/{repo_id}/reconnect")
 def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
     """Re-enable a disconnected repository — only after renewed authorization.
-    App-connected rows require the owner to still hold access through the recorded
-    installation (re-verified, fresh). Reconnect does NOT restore
-    ``automatic_assessments`` or revoked deploy mappings: the owner opts back in
-    explicitly."""
+
+    App-connected rows require the owner to still hold access through the
+    recorded installation, verified with GitHub *fresh*: a revoked installation
+    or a GitHub outage denies the request rather than trusting the stale
+    sign-in snapshot. The personal-installation refresh runs in strict mode to
+    refresh the cache and fail fast on GitHub errors; the *target* installation
+    is then always verified directly — a healthy unrelated personal install can
+    never stand in for the recorded grant. Reconnect does NOT restore
+    ``automatic_assessments`` or revoked deploy mappings: the owner opts back
+    in explicitly.
+    """
+    from backend.db import users
+
     with transaction() as conn:
         user = _user(conn, request)
-        repo = _owner_repo(conn, user, repo_id)
+        repo = _repo_access(conn, user, repo_id, MemberRole.owner)
         if repo["installation_id"] is not None:
             from backend.api.github_repos import (
                 _refresh_personal_installation_repositories,
@@ -618,7 +629,7 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
                     "you no longer have access to this repository through its installation",
                     403,
                 )
-        if repo["disconnected_at"] is not None:
+        if "disconnected_at" in repo and repo["disconnected_at"] is not None:
             conn.execute(
                 sa.update(repositories)
                 .where(repositories.c.id == repo_id)
@@ -1092,7 +1103,6 @@ def start_assessment(
         replay = idempotent_lookup(conn, user.id, idempotency_key, retry_request)
         if replay:
             return JSONResponse(replay["body"], status_code=replay["status"])
-        limiter.check(f"asm:{user.id}", get_settings().assessment_starts_per_hour, 3600)
         commit_sha = body.commit_sha
         if commit_sha is None and body.snapshot_id is None:
             repo = (

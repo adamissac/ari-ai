@@ -26,6 +26,11 @@
       "title": "Default Branch",
       "type": "string"
     },
+    "disconnected": {
+      "default": false,
+      "title": "Disconnected",
+      "type": "boolean"
+    },
     "disconnected_at": {
       "anyOf": [
         {

@@ -1062,7 +1062,12 @@ export interface FirstResponderInvocation {
   created_at: string;
 }
 
-/** One invocation plus its queue state and optional execution record. */
+/** One invocation plus its queue state and optional execution record.
+ * 
+ * ``effective_state`` is the canonical combined state: a terminal invocation
+ * status is authoritative; while the invocation is non-terminal the joined
+ * job row — which records what actually ran — wins, so a timed-out,
+ * recovery-required, waiting or cancelled job is never shown as in-progress. */
 export interface FirstResponderInvocationView {
   invocation: FirstResponderInvocation;
   job: InvocationJobView | null;
@@ -1954,6 +1959,7 @@ export interface Repository {
   default_branch: string;
   installation_id: number | null;
   disconnected_at: string | null;
+  disconnected: boolean;
   created_at: string;
 }
 
@@ -2377,7 +2383,8 @@ export interface VerifiedRegression {
   created_at: string;
 }
 
-/** A queued first-responder job still waiting on its backoff window. */
+/** A first-responder job still waiting: queued on its backoff window or
+ * parked on a prerequisite (``waiting``, execution-reliability). */
 export interface WaitingJobView {
   job_id: string;
   kind: string;

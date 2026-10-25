@@ -204,6 +204,8 @@ def _status(
         ),
     ]
 
+    # A disconnected (parked) repository still counts for the repository step —
+    # the row exists and stays readable — but drops out of every connected step.
     repo_done = bool(all_repos)
     installed = [r for r in repos if r["installation_id"] is not None]
     steps.append(

@@ -25,6 +25,10 @@ _NEW_STATUSES = (
 def upgrade() -> None:
     op.add_column("jobs", sa.Column("project_id", sa.String(length=80), nullable=True))
     op.add_column("jobs", sa.Column("depends_on", sa.String(length=80), nullable=True))
+    op.add_column(
+        "jobs",
+        sa.Column("defer_count", sa.Integer(), nullable=False, server_default="0"),
+    )
     op.add_column("jobs", sa.Column("deadline_at", sa.DateTime(timezone=True), nullable=True))
     op.add_column("jobs", sa.Column("started_at", sa.DateTime(timezone=True), nullable=True))
     op.add_column("jobs", sa.Column("first_started_at", sa.DateTime(timezone=True), nullable=True))
@@ -33,10 +37,6 @@ def upgrade() -> None:
     op.add_column("jobs", sa.Column("effect_key", sa.String(length=200), nullable=True))
     op.add_column("jobs", sa.Column("error_category", sa.String(length=40), nullable=True))
     op.add_column("jobs", sa.Column("recovery", JSONB(), nullable=True))
-    op.add_column(
-        "jobs",
-        sa.Column("defer_count", sa.Integer(), nullable=False, server_default="0"),
-    )
     op.drop_constraint(op.f("ck_jobs_status"), "jobs", type_="check")
     op.create_check_constraint(op.f("ck_jobs_status"), "jobs", _NEW_STATUSES)
     op.create_check_constraint(
@@ -123,7 +123,6 @@ def downgrade() -> None:
     op.drop_constraint(op.f("ck_jobs_status"), "jobs", type_="check")
     op.create_check_constraint(op.f("ck_jobs_status"), "jobs", _OLD_STATUSES)
     for col in (
-        "defer_count",
         "recovery",
         "error_category",
         "effect_key",
@@ -132,6 +131,7 @@ def downgrade() -> None:
         "first_started_at",
         "started_at",
         "deadline_at",
+        "defer_count",
         "depends_on",
         "project_id",
     ):

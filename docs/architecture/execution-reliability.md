@@ -149,45 +149,18 @@ inside the reservation transaction — both rows commit or neither does.
 * Fairness: claim order is `priority`, then the project with the fewest running
   jobs, then age. A project with 1,000 queued jobs cannot starve another project
   at the same priority. Jobs without a project are not limited.
-* `JOB_MAX_RUNNING_EMERGENCY` (default 2): reserved claim capacity for the
-  emergency/cleanup kinds `live_defense_emergency_stop`, `live_defense_rollback`
-  and `live_defense_expire`. These bypass `JOB_MAX_RUNNING_PER_PROJECT` and
-  `JOB_MAX_RUNNING_GLOBAL` so emergency-stop/rollback/expiry remain claimable
-  under ordinary saturation, while staying bounded by their own limit and not
-  consuming ordinary slots. New apply operations (`live_defense_execute`) and
-  `live_defense_verify` deliberately do NOT get this exemption. Setting it to 0
-  folds emergency kinds back under the ordinary limits (not recommended).
 * `JOB_MAX_PENDING_PER_PROJECT` (default 1000): `enqueue` raises
   `QueueBackpressure` (HTTP 429 with `Retry-After`). Dedupe hits and
   `CONTROL_JOB_KINDS` (including emergency stop) are exempt. Soft limit: concurrent
   enqueues can overshoot by the number of concurrent writers.
-* Deadlines: `enqueue(..., deadline_s=)` bounds the whole execution, or
-  `deadline_at=` to propagate an existing absolute deadline across follow-on
-  enqueues (never extended by redelivery). Expired jobs are not claimed;
-  heartbeats surface the deadline to the handler (`JobDeadlineExceeded`); a retry
-  whose backoff would land past the deadline ends `timed_out`.
+* Deadlines: `enqueue(..., deadline_s=)` bounds the whole execution. Expired jobs
+  are not claimed; heartbeats surface the deadline to the handler
+  (`JobDeadlineExceeded`); a retry whose backoff would land past the deadline ends
+  `timed_out`.
 * Retry budgets: `max_attempts` plus per-kind `RetryPolicy` (exponential, capped,
   positive jitter; default reproduces the original `min(300, 2**n)` curve).
-  Deferrals (`defer_count`) do not consume the budget — the effective attempt
-  count is `attempts - defer_count` in `claim`, `fail` and reconciliation.
-* Deferral: `jobs.defer(conn, job_id, owner, delay_s=|depends_on=)` returns a
-  claimed job to `queued` (or `waiting` onto a durable prerequisite) through the
-  validated transition path with a `job_events` record. It refuses after an
-  uncertain effect (`effect_state` set — never replay an unknown outcome), and
-  cancellation/deadline take precedence (`cancelled`/`timed_out`). This is the
-  supported contract for handlers that must re-emit themselves (e.g. Diagnose
-  scheduling in PR #458).
 * Resource release: the lease is always released by `complete`/`fail`; the
   heartbeat thread is stopped in `finally`; worker rows are deregistered on exit.
-
-## Completion fencing
-
-Ordinary `complete()` and `fail()` require the caller's lease to still be valid
-(`lease_expires_at > now()` on the database clock) — a worker whose lease
-expired, even before reconciliation notices, cannot report success or record
-failure outcomes; the lease-expiry path owns that recovery. The single audited
-exception is the original owner's late completion of a `recovery_required` job
-(its settled uncertain effect, still attributed to that owner).
 
 ## Observability
 
@@ -222,10 +195,7 @@ Stuck reasons: `recovery_required`, `lease_expired`, `deadline_exceeded`,
 
 No new execution capability. Recovery never runs handlers; `retry` goes through the
 handler's own gates; OFF-mode cancellation (`modes.cancel_first_responder_jobs`)
-covers `queued`, `waiting` and `running` first-responder jobs and flags
-`recovery_required` ones `cancel_requested` without erasing their effect
-evidence (operator `retry` is then refused); control authorization re-checks are
-untouched; control jobs are exempt from
+and control authorization re-checks are untouched; control jobs are exempt from
 backpressure so emergency stop cannot be refused. Project-scoped endpoints use
 `require_project`; non-members get 404.
 
@@ -250,9 +220,93 @@ replay could re-apply it — keep effect-adjacent handlers idempotent anyway.
 * `live_defense_agent_step` / first-responder handlers (PR #458 territory) are not
   yet wrapped with `ctx.effect`; see "Integration after PR #458".
 
-## Integration after PR #458 (F1/F7 contract with Grok)
+## Integration after PR #458
 
 PR #458 owns Scout/Diagnose execution in `live_defense/first_responder.py`. This
+work does not edit that file. Once #458 merges, wrap any provider or adapter call it
+adds in `ctx.effect("agent:<invocation_id>:<agent>")` and pass `deadline_s` when it
+enqueues `live_defense_agent_step`. `FirstResponderInvocation.job_id` already links
+invocations to `jobs`, so `/jobs/{id}/history` and the project execution figures
+cover them without schema changes.
+
+## Evidence (measured on this branch)
+
+* Starvation: 200 queued jobs from one project, then 5 from another, 4 workers.
+  Before (FIFO ordering, no project limit) the quiet project's jobs were claimed at
+  positions 201–205; after (fair ordering, limit 4) at 2, 4, 6, 8, 10.
+* Cancel after worker death: before, a cancel-requested job with an expired lease
+  stayed `running` indefinitely; after, the first reconcile marks it `cancelled`
+  (`test_reconcile_never_runs_handlers_or_bypasses_cancellation`).
+* Crash during control `apply`: before, the next claim re-ran the adapter call;
+  after, the job is `recovery_required` and never re-claimed
+  (`test_worker_death_during_effect_is_never_reclaimed_automatically`).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+* `JOB_MAX_RUNNING_EMERGENCY` (default 2): reserved claim capacity for the
+  emergency/cleanup kinds `live_defense_emergency_stop`, `live_defense_rollback`
+  and `live_defense_expire`. These bypass `JOB_MAX_RUNNING_PER_PROJECT` and
+  `JOB_MAX_RUNNING_GLOBAL` so emergency-stop/rollback/expiry remain claimable
+  under ordinary saturation, while staying bounded by their own limit and not
+  consuming ordinary slots. New apply operations (`live_defense_execute`) and
+  `live_defense_verify` deliberately do NOT get this exemption. Setting it to 0
+  folds emergency kinds back under the ordinary limits (not recommended).
+* Deadlines: `enqueue(..., deadline_s=)` bounds the whole execution, or
+  `deadline_at=` to propagate an existing absolute deadline across follow-on
+  enqueues (never extended by redelivery). Expired jobs are not claimed;
+  heartbeats surface the deadline to the handler (`JobDeadlineExceeded`); a retry
+  whose backoff would land past the deadline ends `timed_out`.
+  Deferrals (`defer_count`) do not consume the budget — the effective attempt
+  count is `attempts - defer_count` in `claim`, `fail` and reconciliation.
+* Deferral: `jobs.defer(conn, job_id, owner, delay_s=|depends_on=)` returns a
+  claimed job to `queued` (or `waiting` onto a durable prerequisite) through the
+  validated transition path with a `job_events` record. It refuses after an
+  uncertain effect (`effect_state` set — never replay an unknown outcome), and
+  cancellation/deadline take precedence (`cancelled`/`timed_out`). This is the
+  supported contract for handlers that must re-emit themselves (e.g. Diagnose
+  scheduling in PR #458).
+
+## Completion fencing
+
+Ordinary `complete()` and `fail()` require the caller's lease to still be valid
+(`lease_expires_at > now()` on the database clock) — a worker whose lease
+expired, even before reconciliation notices, cannot report success or record
+failure outcomes; the lease-expiry path owns that recovery. The single audited
+exception is the original owner's late completion of a `recovery_required` job
+(its settled uncertain effect, still attributed to that owner).
+
+
+
+
+
+
+
+
+covers `queued`, `waiting` and `running` first-responder jobs and flags
+`recovery_required` ones `cancel_requested` without erasing their effect
+evidence (operator `retry` is then refused); control authorization re-checks are
+untouched; control jobs are exempt from
+
+
+
+
+
+## Integration after PR #458 (F1/F7 contract with Grok)
+
 work does not edit that file. The agreed interface for the F1/F7 findings:
 
 * **Effect reservations (F1):** every billable provider request runs inside
@@ -279,14 +333,4 @@ work does not edit that file. The agreed interface for the F1/F7 findings:
   `/jobs/{id}/history` and the project execution figures cover them without
   schema changes.
 
-## Evidence (measured on this branch)
 
-* Starvation: 200 queued jobs from one project, then 5 from another, 4 workers.
-  Before (FIFO ordering, no project limit) the quiet project's jobs were claimed at
-  positions 201–205; after (fair ordering, limit 4) at 2, 4, 6, 8, 10.
-* Cancel after worker death: before, a cancel-requested job with an expired lease
-  stayed `running` indefinitely; after, the first reconcile marks it `cancelled`
-  (`test_reconcile_never_runs_handlers_or_bypasses_cancellation`).
-* Crash during control `apply`: before, the next claim re-ran the adapter call;
-  after, the job is `recovery_required` and never re-claimed
-  (`test_worker_death_during_effect_is_never_reclaimed_automatically`).

@@ -941,6 +941,31 @@ class ExecutionIntegrity(StrEnum):
     failed = "failed"
 
 
+class AgentExecutionRecord(StrictModel):
+    """Genuine agent-loop outcome for future RL research. Not a confirmed threat."""
+
+    provider_mode: Literal["fake", "live", "none"] = "none"
+    model_id: ShortText | None = None
+    cost_usd: float | None = Field(default=None, ge=0)
+    latency_ms: int | None = Field(default=None, ge=0)
+    llm_turns: int | None = Field(default=None, ge=0)
+    tool_call_count: int | None = Field(default=None, ge=0)
+    started_at: UtcDatetime | None = None
+    ended_at: UtcDatetime | None = None
+    transcript_artifact_id: ArtifactId | None = None
+    output_artifact_id: ArtifactId | None = None
+    error_code: ShortText | None = None
+    typed_output: bool = False
+    hypothesis_count: int | None = Field(default=None, ge=0)
+    execution_integrity: ExecutionIntegrity = ExecutionIntegrity.not_run
+    independent_verification_id: ShortText | None = None
+    evidence_verified: Literal[False] = False
+    confirmation: Literal["unverified"] = "unverified"
+    predicted_probability: None = None
+    provider_attempts: list[ProviderAttempt] = Field(default_factory=list)
+    uncertain_provider_outcome: bool = False
+
+
 class ProviderAttemptState(StrEnum):
     """Durable billable-request ledger. Unknown outcomes are never auto-replayed."""
 
@@ -968,31 +993,6 @@ class ProviderAttempt(StrictModel):
     response_id: ShortText | None = None
     error_code: ShortText | None = None
     effect_key: ShortText | None = None
-
-
-class AgentExecutionRecord(StrictModel):
-    """Genuine agent-loop outcome for future RL research. Not a confirmed threat."""
-
-    provider_mode: Literal["fake", "live", "none"] = "none"
-    model_id: ShortText | None = None
-    cost_usd: float | None = Field(default=None, ge=0)
-    latency_ms: int | None = Field(default=None, ge=0)
-    llm_turns: int | None = Field(default=None, ge=0)
-    tool_call_count: int | None = Field(default=None, ge=0)
-    started_at: UtcDatetime | None = None
-    ended_at: UtcDatetime | None = None
-    transcript_artifact_id: ArtifactId | None = None
-    output_artifact_id: ArtifactId | None = None
-    error_code: ShortText | None = None
-    typed_output: bool = False
-    hypothesis_count: int | None = Field(default=None, ge=0)
-    execution_integrity: ExecutionIntegrity = ExecutionIntegrity.not_run
-    independent_verification_id: ShortText | None = None
-    evidence_verified: Literal[False] = False
-    confirmation: Literal["unverified"] = "unverified"
-    predicted_probability: None = None
-    provider_attempts: list[ProviderAttempt] = Field(default_factory=list)
-    uncertain_provider_outcome: bool = False
 
 
 class AnalystHandoffState(StrEnum):
@@ -1304,7 +1304,13 @@ class InvocationJobView(StrictModel):
 
 
 class FirstResponderInvocationView(StrictModel):
-    """One invocation plus its queue state and optional execution record."""
+    """One invocation plus its queue state and optional execution record.
+
+    ``effective_state`` is the canonical combined state: a terminal invocation
+    status is authoritative; while the invocation is non-terminal the joined
+    job row — which records what actually ran — wins, so a timed-out,
+    recovery-required, waiting or cancelled job is never shown as in-progress.
+    """
 
     invocation: FirstResponderInvocation
     job: InvocationJobView | None = None
@@ -1365,6 +1371,8 @@ class InvestigationSummary(StrictModel):
     invocations_skipped: int = Field(default=0, ge=0)
     invocations_cancelled: int = Field(default=0, ge=0)
     handoff_state: ShortText | None = None
+    # Persisted queue-state rollup for this decision's jobs (e.g. timed_out,
+    # recovery_required) so stopped/recovery work is visible in the list.
     job_statuses: dict[str, int] = Field(default_factory=dict)
 
 
@@ -1390,7 +1398,8 @@ class JobLatencyStats(StrictModel):
 
 
 class WaitingJobView(StrictModel):
-    """A queued first-responder job still waiting on its backoff window."""
+    """A first-responder job still waiting: queued on its backoff window or
+    parked on a prerequisite (``waiting``, execution-reliability)."""
 
     job_id: JobId
     kind: ShortText

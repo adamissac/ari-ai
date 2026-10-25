@@ -365,6 +365,7 @@ def execute_control(
     """``effect_guard`` (``JobContext.effect`` from the worker) durably records the adapter
     call before it is made, so a crash mid-call is never replayed automatically."""
     from backend.live_defense.pilot_guard import SHADOW_ONLY_REASON, application_is_gated
+
     control = load_control(conn, control_id, for_update=True)
     app_row = (
         conn.execute(
