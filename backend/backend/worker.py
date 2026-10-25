@@ -137,9 +137,12 @@ def _heartbeat_loop(ctx: JobContext, lease_s: int, stop: threading.Event) -> Non
             with transaction() as conn:
                 state = jobs.heartbeat_state(conn, ctx.job.id, ctx.owner, lease_s)
                 execution.worker_seen(conn, ctx.owner, "busy", ctx.job.id)
+                # Keeps the worker liveness row fresh across a long job: the main loop
+                # only beats while polling, so without this /readyz would see the worker
+                # go stale mid-assessment.
+                jobs.worker_heartbeat(conn, ctx.owner, job_id=ctx.job.id)
             if state == "lost":
                 ctx._lease_lost.set()
-                ctx._cancelled.set()
             elif state == "cancelled":
                 ctx._cancelled.set()
             elif state == "deadline":
@@ -223,6 +226,7 @@ def run_one(owner: str, kinds: list[str] | None = None) -> str | None:
     settings = get_settings()
     with transaction() as conn:
         job = jobs.claim(conn, owner, settings.worker_lease_s, kinds)
+        jobs.worker_heartbeat(conn, owner, job_id=job.id if job else None, poll=True)
     if job is None:
         return None
     _BUSY.set()
@@ -349,6 +353,11 @@ def main(argv: list[str] | None = None) -> int:
             os._exit(0)  # a claim interrupted here rolls back with the connection
 
     signal.signal(signal.SIGTERM, on_term)
+    try:
+        with transaction() as conn:
+            jobs.prune_worker_heartbeats(conn)
+    except Exception:  # pragma: no cover - best-effort janitor
+        log.exception("worker heartbeat prune failed")
     # Startup reconciliation recovers jobs orphaned by a crash or restart of the fleet.
     reconcile_safely()
     last_reconcile = last_seen = time.monotonic()
@@ -367,6 +376,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with transaction() as conn:
             execution.worker_gone(conn, owner)
+            jobs.worker_stopped(conn, owner)
     except Exception:  # pragma: no cover - the stale row ages out of the active count
         log.warning("could not deregister worker %s", owner, exc_info=True)
     log.info("worker %s stopped after finishing its job", owner)

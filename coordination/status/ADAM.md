@@ -2,8 +2,8 @@
 
 Owner: Adam
 Branch: all work merged to `main` (last: PR #13 shared contracts, PR #18 recipe check)
-Current task: RL training improvements (worker branch `feat/adam/rl-training-v1`, merging to main every round)
-Last remote sync: 2026-10-17 — origin/main at `945afc9`; no other branches, PRs or issues yet
+Current task: pilot readiness — rehearsal verified end-to-end (2 independent runs); merge wave monitored; hosted staging leg gated on Adam GitHub actions
+Last remote sync: 2026-10-24 — fleet merge order per `coordination/messages/20261024T231500Z-adam-to-all-pilot-merge-order-and-gitleaks-unblock.md`
 API/contract dependencies: `DefenseRecommendation`, `PlatformFacts`, `RLCheckpointRef`, `RLEvaluation` proposed to Srihith in `coordination/messages/20261017T001311Z-adam-to-srihith-rl-recommendation-contract.md`; local adapter in `rl-defense/rl_defense/contracts.py` until `shared/` V0 merges
 Verified tests: `cd rl-defense && .venv/bin/python -m pytest -q` → 52 passed (CPU, macOS arm64, Python 3.12, torch 2.14.1, gymnasium 1.4.0); ruff check + format clean
 Recent PR/commit: PR #1 https://github.com/adamissac/hackatl-agentic-security/pull/1 (code `1182773`); contract issue #2
@@ -12,6 +12,65 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 
 ## Session entries
 
+### 2026-10-25 — independent rehearsal reproduction + e2e false-alarm resolution
+
+- **Rehearsal independently reproduced** (this session, separate boot of `make dev`):
+  a second end-to-end two-org run on embedded pg + real `SECURITY_SANDBOX=vercel` +
+  real Anthropic. Assessment `asm_01M5R6R5W5WVH46MMNMXHJFSNK` completed with all 4
+  planted flaws found (CWE-639/CWE-862×2/CWE-259); honest outcomes include
+  `refuted` (SQLi hypothesis) + `inconclusive` — validating the pipeline produces
+  non-rubber-stamped results, corroborating #556's 13/13 PASS. Sandbox lifecycle
+  verified in worker logs (sbx create/cmd/stop/delete all 200s; base snapshot reused).
+- **Vercel creds resolved read-only:** `VERCEL_PROJECT_ID`/`VERCEL_TEAM_ID` fetched via
+  `GET /v9/projects` (`accountId` is a `team_*` id even on personal accounts) — no Adam
+  action needed; the missing-ids blocker in the earlier entry is cleared.
+- **Driver-defect fixes applied and superseded:** found + fixed the same API-contract
+  drift #556 fixed (request bodies, `assessment.state` polling, repo full_name global
+  uniqueness 409 -> reuse, project reuse by name, sandbox.pip must not duplicate
+  ari-base pins — pip conflict kills baseline run). Discarded locally once #556 merged;
+  canonical driver on main covers it.
+- **e2e "Deterministic × 1" scare resolved — NOT a main regression:** #536/#540 e2e
+  failures were stale-head runs. Reproduced `journey.spec.ts` locally on current main
+  (`ceb2a709`): 3/3 pass incl. the `Test provider (scripted) x 9, Deterministic (no
+  model call) x 1` assertion. #540 went 10/10 green after its main merge; fleet
+  self-heals via `Merge origin/main`.
+- **Fleet state:** #528/#529/#546/#556 merged; open wave per #549 order: #531 (7/8,
+  test pending) -> #530 -> #527 -> #533 -> #536/#537/#538/#540/#496 -> #532; plus new
+  #558 (postgres retention) + #546 (merged). #458/#412 still held for human review.
+- **Still owner-gated (unchanged):** `gh repo create adamissac/ari-pilot-rehearsal
+  --private` + install GitHub App on it + OAuth-login once for the live hosted leg.
+
+### 2026-10-24 — Defense Lab audit shipped + pilot rehearsal executed (13/13)
+
+- **Defense Lab audit** (PR #532, open): capability matrix + eval report + 37-test safety
+  suite + quarantine credential-value fix. Verdict: GO recommendation-only + owned-test
+  loop; NO-GO production enforcement. §11 demo verified on real stack by testing agent.
+- **Gitleaks repo-wide unblock** (PR #544, merged): allowlisted font-manifest sha256 +
+  rehearsal demo tokens that failed EVERY open PR (workflow scans all refs).
+- **Rehearsal executed** (PR #556, open): driver rewritten to real API shapes; target app
+  gained factory+seed+build_recipe. 13/13 PASS with real Anthropic + real Vercel sandbox
+  on `make dev`: two real orgs, scope create+self-approve (sandbox-only), assessment
+  completed with genuine findings (planted delete_book + cross-owner read found),
+  org-B isolation 404s. Needs VERCEL_TOKEN/PROJECT_ID/TEAM_ID + ANTHROPIC_API_KEY +
+  REPOSITORY_BINDINGS_FILE. Evidence in scripts/rehearsal/evidence/.
+- **Held:** #458 stays OPEN pending independent re-review of F1/F7/F8 (Alan); #412 waits.
+- **Still needed from Adam (only GitHub-account actions):** create private repo
+  `adamissac/ari-pilot-rehearsal`, install the GitHub App on it, OAuth-login once for the
+  live leg.
+
+### 2026-10-24 — pilot readiness: merge-order coordination + rehearsal verification
+- **gitleaks root cause found:** not my diff — `Bearer tok-alice` in commit `839737fc` reachable via `rehearsal/ledgerlite-v2` + font fingerprints via #536; CI's `fetch-depth: 0` scans every ref. Fixed repo-wide by #544 (path+line allowlists); verified locally 0 leaks across 1920 commits incl. all 529 PR refs.
+- **Rehearsal target verification (executed):** rendered `access_control.ownership@1` against `rehearsal/build_recipe.json` (ledgerlite) and ran it on the app — owner 200, non-owner leaked 200 → planted CWE-639 detected. Rehearsal step 3's mechanism proven.
+- **Flagged on #550 (ledgerlite PR):** stale branch deletes #535 files (migration 0016, privacy.py, adversarial tests, TENANT_DATA_PROTECTION.md) + `python.test_command` is a string/ignored (runner needs a list per `orchestrator.py:766`) + no `tests/` dir (fallback `-q tests` exits 5). Comment posted.
+- **Fleet merge order** (per #549 record): #535 + #531 → #530 → #527/#528/#529 → #533 (migration renumber to 0017) → #536/#537/#538/#540/#496 → #532/#541. #537 (inventory-lite fixture, well-formed recipe) + #549 already merged.
+- **Parked:** local `rehearsal-ticketdesk` fixture (planted IDOR + mass-assignment, suite green) — redundant now that inventory-lite (#537) and ledgerlite (#550) exist; kept on box only.
+- **Outstanding:** #528 awaits its merge wave + Alan review per Adam's gate; rehearsal live-leg needs owner's `gh repo create` + App install (per #549).
+### 2026-10-24 — seven-agent workflow: live run + inspection evidence
+- Audited every AgentSpec/allowlist/contract/state transition and the registry enforcement chain.
+- Live run: `RUN_LIVE_LLM_EVAL=1 LIVE_SEVEN_MAX_USD=8 pytest -q -m live tests/test_live_provider.py -s` → 4 passed, assessment `asm_01M5QXE06VSZYP7297NN5SN1EH` completed; CWE-639 confirmed→patched→independently verified→hardened; $0.0354 / 267k tokens / `claude-haiku-5-5`.
+- Offline suite: 582 passed / 24 skipped (covers timeouts, cancel, kill switch, schema repair, provider outage, resume-after-restart, worktree/check refusals, specialist cannot-override).
+- Evidence: `security-agents/tests/artifacts/live/20261024T213713Z-MANIFEST.md` + report/tool-trace artifacts + recording JSONL.
+- Blockers: none. Next: PR review; keep `tests/artifacts/live/` naming convention.
 ### 2026-10-17 (cloud) — simulated demo + Lab command center + events-log cursor
 - `feat/adam/event-log-cursor-follow`: phase views follow `next_cursor` (cap 10,000 events).
 - `feat/adam/simulated-demo`: `/demo` labelled simulated walkthrough (ADR-0013), `DefenseMap`, Lab command center from the real bundle.
@@ -207,7 +266,6 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 - Fixed all four #360 serving findings on `fix/adam/live-v3-review`, with targeted regression coverage (10 passed) and clean ruff checks. Full results in PR.
 - No promotion, paid training or deployment. #359 has separate evidence/lineage findings; its original checkpoint and experience bytes are not in Git.
 
-
 ## Landing redesign
 - Branch `feat/adam/landing-redesign`: owner-requested hero/footer redesign and readable process interactions. No API/shared contract changes. Desktop/mobile previews captured through Playwright; tests and design study linked in PR.
 
@@ -225,7 +283,6 @@ Keep organization/repository/commit navigation scoped to the selected repository
 
 Review follow-up: retain accepted starts while history refreshes to prevent duplicate paid runs; lift newly connected repository IDs into the commit workspace; correct replay indexing; bound project lookup concurrency and tolerate unrelated project errors. Added regression coverage for these cases.
 
-
 ## Automatic commit assessments — 2026-10-21
 
 IMPLEMENTED in [PR #377](https://github.com/adamissac/ari-ai/pull/377), pending merge/deployment verification: signed pushes fan out into durable per-commit jobs; GitHub API author allowlist, exact SHA, duplicate protection, no docs-only skip/coalescing loss, scope-approval resume. Railway defaults to `adamissac`; configurable for other accounts. Full runs use the normal project assessment budget (operator-capped), not the deliberately cheaper legacy monitoring budget. Shared contracts unchanged. Full-chain fixture tests use scripted model responses, not live provider evidence. Validation: 181 local backend/monitoring/security tests passed (7 optional/dependency skips); 12 final focused scheduling tests passed. Full-chain fixture covers reviewer and all seven roles with required repair approvals. All GitHub checks passed on cbc0782; checks rerun after integrating newer main documentation/RL changes. Production readiness is reachable; authenticated production worker/run verification remains outstanding.
@@ -233,11 +290,9 @@ IMPLEMENTED in [PR #377](https://github.com/adamissac/ari-ai/pull/377), pending 
 
 Polish the shared ARI interface using Kairo’s restrained grids and technical typography in ARI’s warm charcoal/ember palette. Add consistent workspace headers, numbered organization cards, clearer repository rows, quieter panels and a precise replay frame. Preserve the original hero and scroll choreography; keep Projects highlighted throughout the organization/repository/commit flow. Branch `feat/adam/ui-polish`; validation and screenshots recorded in PR.
 
-
 ### Automatic/manual mode and Haiku-only follow-up (#377 / #380)
 
 Implemented per-repository persisted ON/OFF, owner-only API, migration 0009 and proposed additive schema 0.15.0; manual Run shown when OFF. Added signed-sender gate and per-project start quotas that defer every excess commit durably. Production/staging gateway, Railway startup and quick-read enforce Haiku 5.5. Historical evidence labels preserved. Contract review requested from Alan; full test/CI and deployment verification remain pending.
-
 
 ### 2026-10-21 — automatic commit review fixes (#377)
 
@@ -347,3 +402,21 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - Synced origin/main (466df4b7). No new messages addressed to Adam. Since run 19 main gained only eval scoring/serialization and an access_control.role check template (other owners); nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
 - Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 598 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
 - No code changes. Open: none.
+
+### 2026-10-25 — scheduled cloud health run (21)
+- Synced origin/main (3af0fa72). No new messages addressed to Adam (newest: devin-integration-lead coordination-system notice, informational). Since run 20 main gained examples/inventory-lite (rehearsal fixture), a .gitleaks.toml addition, scripts/rehearsal and the coordination board (other agents); nothing changed in rl-defense/. `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; inventory-lite target 8 passed, label_checks 10 passed (informational, not Adam's); scripts/check_links.py 612 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-24 — code-review eval lane (session 0068155b, PR #529)
+- Done: executed functional-reviewer eval report (`code-review/eval/REVIEWER_EVAL_2026-10-24.md`); offline suite 90 passed/4 skipped; corpus labels 10/10 proven; PR #516 serialization defect reproduced + locked with `security-agents/tests/test_eval_score_api.py` (5 tests); coordination notes filed for findings `paths` contract and #531/#535 privacy-chain coherence.
+- Outstanding dependency: PR #530 (release gate) must merge first — it edits the same `score_api.py` region (keeps `_finding_paths` nested; #529 hoists it). Rebase plan documented on #529: keep module-level `_finding_paths` + all 5 tests + #530's `scored`/`unscored_reason` fields.
+- Sent to release-gate agent: `last_error` sanitization spec (raw exception text `f"{type(exc).__name__}: {exc}"[:500]` persists + reaches project members via `GET /projects/{id}/jobs`; reuse `backend/redaction.py`; member-safe `{code, category}`; secret regression tests) + NULL-safe `score.py` paths/metrics nits.
+- Next action: on #530 merge → rebase #529, run suite, verify scoring across security/functional/unscored/missing-paths cases, confirm 8/8 CI.
+
+
+
+### 2026-10-25 — code-review eval lane (session 0068155b, PR #529 MERGED)
+- #529 merged as `586370b0` (squash): eval report + scorer path-fallback regression tests + coordination notes are on main. CI was 8/8 green at merge.
+- Merge order flipped: `score_api.py`'s `_finding_paths` is now MODULE-level on main. #530 (feat/adam/release-gate) owns the now-inverted conflict — resolution sent directly to the release-gate session (keep module-level fn, drop their nested copy, keep all scored/unscored_reason additions).
+- Lane complete pending #530's rebase + my final verification of combined scoring (security/functional/unscored/missing-paths).
