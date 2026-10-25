@@ -30,5 +30,6 @@
 
 # Independent review policy is a trust boundary.
 /.github/ari-review/ @m-alan08 @adamissac
-/.github/workflows/ari-*.yml @m-alan08 @adamissac
+/.github/workflows/ @m-alan08 @adamissac
+/.github/CODEOWNERS @m-alan08 @adamissac
 /scripts/ari_review/ @m-alan08 @adamissac

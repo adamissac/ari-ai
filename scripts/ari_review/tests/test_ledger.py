@@ -109,3 +109,25 @@ def test_summary_text_cannot_be_changed_to_go_with_copied_signature():
     )
     assert valid_summary(body, POLICY)
     assert not valid_summary(body.replace("\nNO-GO", "\nGO"), POLICY)
+
+
+def test_same_sha_cannot_retry_on_another_day(monkeypatch):
+    monkeypatch.setenv("ARI_REVIEW_LEDGER_GENESIS", "a" * 40)
+    data = state()
+    data["reviews"] = [{"candidate_sha": "a" * 40, "day": "2026-10-24", "reserved_usd": "5.00"}]
+    with pytest.raises(ValueError, match="already reserved"):
+        Ledger(API(signed_payload(PREFIX, data, POLICY)), POLICY).reserve(
+            "reviews", {"candidate_sha": "a" * 40, "day": "2026-10-25", "reserved_usd": "5.00"}
+        )
+
+
+def test_daily_cap_is_enforced_by_protected_ledger(monkeypatch):
+    monkeypatch.setenv("ARI_REVIEW_LEDGER_GENESIS", "a" * 40)
+    data = state()
+    data["reviews"] = [
+        {"candidate_sha": c * 40, "day": "2026-10-25", "reserved_usd": "5.00"} for c in "cde"
+    ]
+    with pytest.raises(ValueError, match="daily candidate cap"):
+        Ledger(API(signed_payload(PREFIX, data, POLICY)), POLICY).reserve(
+            "reviews", {"candidate_sha": "a" * 40, "day": "2026-10-25", "reserved_usd": "5.00"}
+        )

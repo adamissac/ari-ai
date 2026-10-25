@@ -9,7 +9,6 @@ import os
 import re
 import urllib.request
 from datetime import UTC, datetime
-from decimal import Decimal
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -109,23 +108,6 @@ def journal(rows: list, prefix: str, policy: dict) -> list[dict]:
             except (ValueError, TypeError):
                 continue
     return out
-
-
-def reservation_allowed(rows: list, pin: dict, policy: dict, today: str) -> tuple[bool, str]:
-    records = journal(rows, "<!-- ari-review-reservation-v1\n", policy)
-    if any(r.get("candidate_sha") == pin["candidate_sha"] for r in records):
-        return False, "already reserved: never automatically retry a paid SHA"
-    used = sum(r.get("day") == today for r in records)
-    cost = sum(
-        Decimal(str(r.get("reserved_usd", policy["max_usd_per_review"])))
-        for r in records
-        if r.get("day") == today
-    )
-    if cost + Decimal(policy["max_usd_per_review"]) > Decimal(policy["max_usd_per_day"]):
-        return False, "daily reserved USD limit reached"
-    if used >= policy["max_reviews_per_day"]:
-        return False, "daily review/cost limit reached"
-    return True, "reserved"
 
 
 def collect_ci(api: GitHub, pin: dict, policy: dict) -> dict:

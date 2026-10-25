@@ -289,6 +289,25 @@ def context(policy: dict, directory: Path, candidate: Path) -> None:
     (directory / "prompt.md").write_text(text)
 
 
+def transfer_drift(api: GitHub, pin: dict, policy: dict) -> bool:
+    if set(pin.get("transfers", {})) != set(policy["transfer_branches"]):
+        return True
+    for owner, branch in policy["transfer_branches"].items():
+        ref = urllib.parse.quote(branch, safe="")
+        current = api.call(f"/repos/{policy['integration_repository']}/branches/{ref}")["commit"][
+            "sha"
+        ]
+        if current != pin["transfers"][owner]:
+            return True
+    for number, expected in pin.get("pr_heads", {}).items():
+        if (
+            api.call(f"/repos/{policy['canonical_repository']}/pulls/{number}")["head"]["sha"]
+            != expected
+        ):
+            return True
+    return False
+
+
 def valid_summary(body: str, policy: dict) -> bool:
     marker = "<!-- ari-summary-auth-v1\n"
     if "\n" + marker not in body:
@@ -359,6 +378,8 @@ def report(policy: dict, directory: Path, refresh: bool = False) -> dict:
     current = pull(api, policy)["head"]["sha"]
     native = native_findings(api, pin, policy)
     decision, blockers = verdict(pin, review, ci, receipt, merge, current, upstream(api, policy))
+    if transfer_drift(api, pin, policy):
+        blockers.append("proposed transfer/prerequisite heads changed: merge evidence is stale")
     if pin.get("policy_digest") != policy_digest():
         blockers.append("trusted review policy changed: fresh review required")
     if not completeness:

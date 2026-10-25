@@ -44,8 +44,20 @@ def test_command(
         "--user=10001:10001",
         "--tmpfs",
         "/tmp:rw,nosuid,size=2g,uid=10001,gid=10001",
-        "--tmpfs",
-        "/work:rw,nosuid,size=4g,uid=10001,gid=10001",
+        "--mount",
+        f"type=bind,src={candidate.resolve()},dst=/work,readonly",
+        "--mount",
+        f"type=bind,src={suite.resolve()}/backend/tests,dst=/work/backend/tests,readonly",
+        "--mount",
+        f"type=bind,src={suite.resolve()}/security-agents/tests,dst=/work/security-agents/tests,readonly",
+        "--mount",
+        f"type=bind,src={evidence.resolve()},dst=/suite/backend/test-results",
+        "-e",
+        "GIT_CONFIG_COUNT=1",
+        "-e",
+        "GIT_CONFIG_KEY_0=safe.directory",
+        "-e",
+        "GIT_CONFIG_VALUE_0=/work",
         "--mount",
         f"type=bind,src={candidate.resolve()},dst=/src,readonly",
         "--mount",
@@ -69,7 +81,7 @@ def test_command(
         "ari-review-tests",
         "sh",
         "-ec",
-        "cp -r /src/. /work/; cd /work; "
+        "cd /work; "
         '/app/.venv/bin/python -c "import backend, security_agents; '
         "assert backend.__file__.startswith('/work/'); "
         "assert security_agents.__file__.startswith('/work/')\"; "
@@ -194,6 +206,21 @@ def run(candidate: Path, directory: Path, policy: dict) -> int:
     raw_directory.chmod(0o777)
     dependency_source = (directory.parent / "trusted-dependency-source").resolve()
     git("worktree", "add", "--detach", str(dependency_source), pin["upstream_sha"], cwd=candidate)
+    # Fixed fixture mounts cannot be replaced by candidate helpers. Only results
+    # are writable; all production bytes remain the checked-out immutable SHA.
+    (suite / "backend/test-results").mkdir(exist_ok=True)
+    for rel in ("backend/tests", "security-agents/tests"):
+        (candidate / rel).mkdir(parents=True, exist_ok=True)
+    for root in (candidate, suite):
+        for parent, dirs, files in os.walk(root):
+            for name in dirs:
+                path = Path(parent) / name
+                if not path.is_symlink():
+                    path.chmod(path.stat().st_mode | 0o555)
+            for name in files:
+                path = Path(parent) / name
+                if not path.is_symlink():
+                    path.chmod(path.stat().st_mode | 0o444)
     docker = Docker()
     network = "ari-audit-" + os.environ.get("GITHUB_RUN_ID", str(os.getpid()))
     code = 1

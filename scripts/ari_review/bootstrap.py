@@ -67,6 +67,48 @@ def protect(api: Admin, repo: str, branch: str, ledger=False, apply=False) -> No
                 "require_code_owner_reviews"
             ):
                 raise ValueError("trusted controller branch needs owner-reviewed PRs")
+        if not ledger:
+            restrictions = current.get("restrictions") or {}
+            owner = repo.split("/")[0]
+            users = {u["login"] for u in restrictions.get("users", [])}
+            if users != {owner} or restrictions.get("apps") or restrictions.get("teams"):
+                if not apply:
+                    print("MISSING owner-only controller push restriction:", branch)
+                    return
+                if current.get("required_status_checks") is not None:
+                    raise ValueError(
+                        "custom existing checks require an owner-reviewed restriction migration"
+                    )
+                # Tighten only our new, otherwise unrestricted controller rule.
+                # Do not silently rewrite custom existing branch protections.
+                api.call(
+                    path,
+                    "PUT",
+                    {
+                        "required_status_checks": None,
+                        "enforce_admins": current.get("enforce_admins", {}).get("enabled", False),
+                        "required_pull_request_reviews": {
+                            k: v
+                            for k, v in review.items()
+                            if k
+                            in {
+                                "dismiss_stale_reviews",
+                                "require_code_owner_reviews",
+                                "required_approving_review_count",
+                                "require_last_push_approval",
+                            }
+                        },
+                        "restrictions": {"users": [owner], "teams": [], "apps": []},
+                        "required_linear_history": current.get("required_linear_history", {}).get(
+                            "enabled", False
+                        ),
+                        "required_conversation_resolution": current.get(
+                            "required_conversation_resolution", {}
+                        ).get("enabled", False),
+                        "allow_force_pushes": False,
+                        "allow_deletions": False,
+                    },
+                )
         return
     if not apply:
         print("MISSING protected branch:", branch)
@@ -85,7 +127,9 @@ def protect(api: Admin, repo: str, branch: str, ledger=False, apply=False) -> No
                 "required_approving_review_count": 1,
                 "require_last_push_approval": True,
             },
-            "restrictions": None,
+            "restrictions": None
+            if ledger
+            else {"users": [repo.split("/")[0]], "teams": [], "apps": []},
             "required_linear_history": ledger,
             "allow_force_pushes": False,
             "allow_deletions": False,

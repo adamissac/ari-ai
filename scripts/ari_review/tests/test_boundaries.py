@@ -65,6 +65,9 @@ def test_candidate_mounts_do_not_include_keys_or_trusted_receipts(tmp_path):
     assert "dst=/src,readonly" in joined and "dst=/suite,readonly" in joined
     assert f"src={raw},dst=/evidence" in joined
     assert "docker.sock" not in joined
+    assert "dst=/work/backend/tests,readonly" in joined
+    assert "dst=/work/security-agents/tests,readonly" in joined
+    assert "cp -r /src" not in joined
 
 
 def test_stable_known_finding_does_not_create_issue_per_wording():

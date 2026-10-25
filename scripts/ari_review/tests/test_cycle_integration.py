@@ -47,6 +47,8 @@ class API:
                     "repo": {"full_name": POLICY["integration_repository"]},
                 },
             }
+        if method == "GET" and "/branches/" in path:
+            return {"commit": {"sha": "c" * 40}}
         if method == "GET" and path.endswith("/commits/main"):
             return {"sha": "b" * 40}
         if "/statuses/" in path:
@@ -85,6 +87,7 @@ def test_full_authenticated_publish_and_ci_refresh_route_real_workstream(tmp_pat
         "policy_digest": cycle.policy_digest(),
         "run_id": "123",
         "regression_sha": POLICY["trusted_regression_sha"],
+        "transfers": {k: "c" * 40 for k in POLICY["transfer_branches"]},
     }
     (tmp_path / "pin.json").write_text(json.dumps(pin))
     (tmp_path / "receipt.json").write_text(

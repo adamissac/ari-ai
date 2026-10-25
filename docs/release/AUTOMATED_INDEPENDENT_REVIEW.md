@@ -41,7 +41,8 @@ Native silence, a thumbs-up, missing evidence or pending CI cannot produce GO.
    refresh; fork `ci/upstream-main` for PR #8's pull_request_target controller.
    Do not merge the integration release as part of this setup.
 2. A fork administrator runs `python3 -m scripts.ari_review.bootstrap --apply`.
-   This creates restricted CI credential environments, protects trusted branches,
+   This creates restricted CI credential environments, restricts controller-branch
+   pushes/merges to the fork owner, protects trusted branches,
    creates a signed fast-forward-only budget ledger and generates an internal
    state-signing key. It never creates OpenAI/Devin credentials or enables paid
    calls. Existing protection/ledger/key material is not weakened or reset.

@@ -11,8 +11,8 @@ from scripts.ari_review.budget_proxy import Budget
 from scripts.ari_review.common import (
     IDS,
     collect_ci,
+    journal,
     native_findings,
-    reservation_allowed,
     sha,
     state_body,
     validate_review,
@@ -129,17 +129,10 @@ def reservation(day="2026-10-25", candidate="a" * 40, author="github-actions[bot
     }
 
 
-def test_same_sha_is_not_retried_even_next_day():
-    assert not reservation_allowed([reservation()], PIN, POLICY, "2026-10-26")[0]
-
-
-def test_three_daily_reservations_stop_new_paid_work():
-    rows = [reservation(candidate=c * 40) for c in "cde"]
-    assert not reservation_allowed(rows, PIN, POLICY, "2026-10-25")[0]
-
-
 def test_untrusted_comment_cannot_forge_budget_state():
-    assert reservation_allowed([reservation(author="attacker")], PIN, POLICY, "2026-10-25")[0]
+    assert (
+        journal([reservation(author="attacker")], "<!-- ari-review-reservation-v1\n", POLICY) == []
+    )
 
 
 class FakeAPI:
