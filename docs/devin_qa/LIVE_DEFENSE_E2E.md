@@ -47,34 +47,33 @@ CI: `.github/workflows/live-defense-e2e.yml`. Machine-readable results land in
 ## Workstream 1 (execution reliability) compatibility
 
 `test_exec_reliability_compat.py` runs **live against the reliability queue**
-— this branch is rebased on the composition of the corrected heads
-`5417990f` (Phase 7C, provider ledger) + `f2d911d7` (execution reliability,
-emergency claim capacity), so the contract tests execute for real, never
+— this branch is rebased on `integration/2026-11-02-release` (`dd530ae3`,
+PR #8), which composes the corrected heads `5417990f` (Phase 7C, provider
+ledger) + `f2d911d7` (execution reliability, emergency claim capacity) plus
+the integration fixes — so the contract tests execute for real, never
 skipped. They pin `depends_on`/`deadline_s`/`project_id` on `enqueue`, fair
 project-limited `claim`, `begin_effect`/`recovery_required`,
 `execution.reconcile`, and deadline timestamps expressed on the **database
 clock** (`sa.func.now() - interval`), never Python `utcnow()` — review
 finding F10.
 
-F1 and F8 are **fixed on the corrected Phase 7C head** (`5417990f`) and are
-now real passing regressions, not xfails:
+All three review-confirmed defects (F1, F7, F8) are **fixed on the
+integrated head** and run as strict passing assertions — no xfails remain:
 
-- **F1** — `test_crash_after_send_never_replays_billable_call`: after a
+- **F1** — `test_crash_after_send_requires_recovery_before_replay`: after a
   crash between the billable send and the recorded response, forced
   redelivery never sends a second physical provider call — the ledger's
   in-flight attempt makes the step defer (`JobDeferred`) or commit the
   invocation `UNCERTAIN_PROVIDER_OUTCOME`. The job may be re-claimed; the
   billable call is never replayed.
+- **F7** — `test_agent_step_jobs_have_durable_deadline`: `deadline_at` now
+  reaches the `jobs.deadline_at` column on `live_defense_agent_step`
+  enqueues (integrated head passes `decision.deadline_at` into
+  `jobq.enqueue`), verified as a strict assertion through the real enqueue
+  path — the queue itself can time the job out.
 - **F8** — `test_off_during_final_submit_stays_cancelled`: OFF flipped
   while the final submit response is in flight wins over the late
   completion — the invocation stays cancelled, never upgraded to `executed`.
-
-One defect remains pinned as `xfail(strict=True)` — an XPASS fails the
-suite until the marker is dropped:
-
-- **F7** — `deadline_at` is propagated on the decision, invocation and
-  agent-step payload, but the `jobs.deadline_at` column is still `NULL`, so
-  the queue itself cannot time the job out.
 
 Passing coverage on the same file: dependency ordering, per-project claim
 fairness, deadline `timed_out` on the DB clock, uncertain effect →
