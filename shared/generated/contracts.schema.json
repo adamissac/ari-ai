@@ -6119,6 +6119,12 @@
           "title": "Jobs Queued",
           "type": "integer"
         },
+        "jobs_recovery_required": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Jobs Recovery Required",
+          "type": "integer"
+        },
         "jobs_running": {
           "minimum": 0,
           "title": "Jobs Running",
@@ -6132,6 +6138,18 @@
         "jobs_succeeded": {
           "minimum": 0,
           "title": "Jobs Succeeded",
+          "type": "integer"
+        },
+        "jobs_timed_out": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Jobs Timed Out",
+          "type": "integer"
+        },
+        "jobs_waiting": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Jobs Waiting",
           "type": "integer"
         },
         "missing_prerequisites": {
@@ -6172,12 +6190,15 @@
         "failures_by_agent",
         "missing_prerequisites",
         "jobs_queued",
+        "jobs_waiting",
         "jobs_running",
         "jobs_stalled",
         "jobs_succeeded",
         "jobs_failed",
         "jobs_cancelled",
         "jobs_dead",
+        "jobs_timed_out",
+        "jobs_recovery_required",
         "waiting_jobs",
         "recent_errors",
         "agent_step_latency",
@@ -6417,6 +6438,12 @@
       "additionalProperties": false,
       "description": "One invocation plus its queue state and optional execution record.",
       "properties": {
+        "effective_state": {
+          "default": "eligible",
+          "maxLength": 500,
+          "title": "Effective State",
+          "type": "string"
+        },
         "execution": {
           "anyOf": [
             {
@@ -6465,6 +6492,7 @@
         "job",
         "execution",
         "execution_recorded",
+        "effective_state",
         "token_usage_available",
         "token_usage_note"
       ],
@@ -8517,6 +8545,13 @@
           "title": "Invocations Total",
           "type": "integer"
         },
+        "job_statuses": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Job Statuses",
+          "type": "object"
+        },
         "simulated": {
           "default": false,
           "title": "Simulated",
@@ -8545,7 +8580,8 @@
         "invocations_failed",
         "invocations_skipped",
         "invocations_cancelled",
-        "handoff_state"
+        "handoff_state",
+        "job_statuses"
       ],
       "title": "InvestigationSummary",
       "type": "object"
@@ -14245,11 +14281,18 @@
           ],
           "default": null,
           "title": "Run After"
+        },
+        "status": {
+          "default": "queued",
+          "maxLength": 500,
+          "title": "Status",
+          "type": "string"
         }
       },
       "required": [
         "job_id",
         "kind",
+        "status",
         "run_after",
         "enqueued_at",
         "attempts"

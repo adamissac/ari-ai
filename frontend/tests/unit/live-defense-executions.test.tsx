@@ -62,6 +62,7 @@ function invocation(overrides: Partial<FirstResponderInvocationView> & { status?
       created_at: '2026-10-24T10:00:01Z',
     },
     job: null, execution: null, execution_recorded: false,
+    effective_state: status,
     token_usage_available: false, token_usage_note: 'Per-invocation token usage is not persisted yet',
     ...rest,
   } as FirstResponderInvocationView;
@@ -91,8 +92,8 @@ const DIAGNOSTICS: FirstResponderDiagnostics = {
   failures_by_agent: { scout: 1 },
   missing_prerequisites: { skipped_no_snapshot: 1 },
   jobs_queued: 2, jobs_running: 0, jobs_stalled: 1, jobs_succeeded: 3, jobs_failed: 1,
-  jobs_cancelled: 1, jobs_dead: 0,
-  waiting_jobs: [{ job_id: 'job_aaaaaaaaaaaaaaaa', kind: 'live_defense_agent_step', run_after: null, enqueued_at: null, attempts: 1 }],
+  jobs_cancelled: 1, jobs_dead: 0, jobs_waiting: 1, jobs_timed_out: 1, jobs_recovery_required: 1,
+  waiting_jobs: [{ job_id: 'job_aaaaaaaaaaaaaaaa', kind: 'live_defense_agent_step', status: 'waiting', run_after: null, enqueued_at: null, attempts: 1 }],
   recent_errors: [{ job_id: 'job_bbbbbbbbbbbbbbbb', kind: 'live_defense_agent_step', decision_id: DECISION.id, invocation_id: null, agent: 'scout', code: 'TIMEOUT', message: 'worker timed out', at: '2026-10-24T10:04:00Z' }],
   agent_step_latency: { samples: 4, avg_ms: 1200, max_ms: 4000 },
   cost_usd_total: null,
@@ -106,6 +107,7 @@ const SUMMARY: InvestigationSummary = {
   simulated: false, cancelled: false, trigger_event_count: 1, invocations_total: 2,
   invocations_queued_or_running: 0, invocations_completed: 0, invocations_failed: 1,
   invocations_skipped: 1, invocations_cancelled: 0, handoff_state: null,
+  job_statuses: {},
 };
 
 beforeEach(() => {
@@ -187,6 +189,53 @@ describe('Executions observability UI', () => {
     fireEvent.click(screen.getByTestId('ld-inv-row-frd_cccccccccccccccc'));
     expect(screen.getByTestId('ld-tl-final').textContent).toContain('cancelled');
     expect(screen.getByTestId('ld-tl-final').textContent).toContain('mode_off');
+  });
+
+  it('renders effective_state over raw invocation status for stopped jobs', () => {
+    const stopped = invocation({
+      status: 'queued',
+      effective_state: 'timed_out',
+      job: {
+        job_id: 'job_cccccccccccccccc', kind: 'live_defense_agent_step', status: 'timed_out',
+        attempts: 1, max_attempts: 3, run_after: null, heartbeat_at: null,
+        cancel_requested: false, error_code: 'TIMEOUT', error_message: 'deadline passed',
+        enqueued_at: '2026-10-24T10:00:01Z', updated_at: '2026-10-24T10:05:00Z',
+        stalled: false, wall_time_ms: 299000,
+      },
+    });
+    resources.timeline = { status: 'ready', data: { ...TIMELINE, invocations: [stopped], final_state: 'timed_out' }, error: undefined, reload: vi.fn() };
+    resources.list = { status: 'ready', data: { items: [{ ...SUMMARY, job_statuses: { timed_out: 1 } }], next_cursor: null }, error: undefined, reload: vi.fn() };
+    render(<Executions mode="live" projectId="prj_1" diagnostics={resources.diagnostics} />);
+    expect(screen.getByTestId('ld-inv-row-' + DECISION.id).textContent).toContain('timed out');
+    fireEvent.click(screen.getByTestId(`ld-inv-row-${DECISION.id}`));
+    const detail = screen.getByTestId('ld-inv-detail-fri_aaaaaaaaaaaaaaaa');
+    expect(detail.textContent).toContain('timed_out');
+    expect(detail.textContent).toContain('invocation: queued');
+    expect(detail.textContent).toContain('deadline passed');
+    expect(detail.textContent).not.toContain('in_progress');
+    expect(screen.getByTestId('ld-tl-final').textContent).toContain('timed_out');
+  });
+
+  it('renders recovery_required as an unresolved operator state, never success', () => {
+    const recovery = invocation({
+      status: 'queued',
+      effective_state: 'recovery_required',
+      job: {
+        job_id: 'job_dddddddddddddddd', kind: 'live_defense_agent_step', status: 'recovery_required',
+        attempts: 1, max_attempts: 3, run_after: null, heartbeat_at: null,
+        cancel_requested: false, error_code: 'UNCERTAIN_EFFECT', error_message: 'effect unknown',
+        enqueued_at: '2026-10-24T10:00:01Z', updated_at: '2026-10-24T10:03:00Z',
+        stalled: false, wall_time_ms: 178000,
+      },
+    });
+    resources.timeline = { status: 'ready', data: { ...TIMELINE, invocations: [recovery], final_state: 'recovery_required' }, error: undefined, reload: vi.fn() };
+    resources.list = { status: 'ready', data: { items: [{ ...SUMMARY, job_statuses: { recovery_required: 1 } }], next_cursor: null }, error: undefined, reload: vi.fn() };
+    render(<Executions mode="live" projectId="prj_1" diagnostics={resources.diagnostics} />);
+    fireEvent.click(screen.getByTestId(`ld-inv-row-${DECISION.id}`));
+    const detail = screen.getByTestId('ld-inv-detail-fri_aaaaaaaaaaaaaaaa');
+    expect(detail.textContent).toContain('recovery_required');
+    expect(detail.textContent).toContain('operator must decide');
+    expect(detail.textContent).not.toContain('succeeded');
   });
 
   it('shows the error state and keeps the empty prompt when the timeline fails', () => {

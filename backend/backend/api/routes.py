@@ -53,6 +53,7 @@ from backend.db import (
 from backend.github import GitHubApp, GitHubNotConfigured
 from backend.integrations import load_factory
 from backend.quota import check_project_quota, rate_limit_message
+from backend.redaction import redact
 from backend.services import (
     DomainError,
     budget_over_cap,
@@ -1694,7 +1695,11 @@ def audit_log(
         page = rows[:limit]
         ok, n = audit.verify_chain(conn, org_id)
         return {
-            "items": [AuditEvent.model_validate(r.doc).model_dump(mode="json") for r in page],
+            # Read-side redaction: stored docs (and any previously persisted
+            # sensitive strings) must not surface infrastructure credentials.
+            "items": [
+                redact(AuditEvent.model_validate(r.doc).model_dump(mode="json")) for r in page
+            ],
             "chain_verified": ok,
             "chain_events_checked": n,
             "next_cursor": str(page[-1].seq) if len(rows) > limit and page else None,

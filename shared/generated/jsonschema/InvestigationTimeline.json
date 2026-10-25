@@ -1461,6 +1461,12 @@
       "additionalProperties": false,
       "description": "One invocation plus its queue state and optional execution record.",
       "properties": {
+        "effective_state": {
+          "default": "eligible",
+          "maxLength": 500,
+          "title": "Effective State",
+          "type": "string"
+        },
         "execution": {
           "anyOf": [
             {

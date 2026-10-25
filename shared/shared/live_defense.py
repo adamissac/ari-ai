@@ -1310,6 +1310,7 @@ class FirstResponderInvocationView(StrictModel):
     job: InvocationJobView | None = None
     execution: AgentExecutionView | None = None
     execution_recorded: bool = False
+    effective_state: ShortText = "eligible"
     token_usage_available: Literal[False] = False
     token_usage_note: ShortText = (
         "Per-invocation token usage is not persisted yet; shown as unavailable, not estimated."
@@ -1364,6 +1365,7 @@ class InvestigationSummary(StrictModel):
     invocations_skipped: int = Field(default=0, ge=0)
     invocations_cancelled: int = Field(default=0, ge=0)
     handoff_state: ShortText | None = None
+    job_statuses: dict[str, int] = Field(default_factory=dict)
 
 
 class InvestigationJobError(StrictModel):
@@ -1392,6 +1394,7 @@ class WaitingJobView(StrictModel):
 
     job_id: JobId
     kind: ShortText
+    status: ShortText = "queued"
     run_after: UtcDatetime | None = None
     enqueued_at: UtcDatetime | None = None
     attempts: int = Field(default=0, ge=0)
@@ -1411,12 +1414,15 @@ class FirstResponderDiagnostics(StrictModel):
     failures_by_agent: dict[str, int] = Field(default_factory=dict)
     missing_prerequisites: dict[str, int] = Field(default_factory=dict)
     jobs_queued: int = Field(ge=0)
+    jobs_waiting: int = Field(default=0, ge=0)
     jobs_running: int = Field(ge=0)
     jobs_stalled: int = Field(ge=0)
     jobs_succeeded: int = Field(ge=0)
     jobs_failed: int = Field(ge=0)
     jobs_cancelled: int = Field(ge=0)
     jobs_dead: int = Field(ge=0)
+    jobs_timed_out: int = Field(default=0, ge=0)
+    jobs_recovery_required: int = Field(default=0, ge=0)
     waiting_jobs: list[WaitingJobView] = Field(default_factory=list)
     recent_errors: list[InvestigationJobError] = Field(default_factory=list)
     agent_step_latency: JobLatencyStats | None = None

@@ -94,6 +94,13 @@
       "title": "Invocations Total",
       "type": "integer"
     },
+    "job_statuses": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Job Statuses",
+      "type": "object"
+    },
     "simulated": {
       "default": false,
       "title": "Simulated",

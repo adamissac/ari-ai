@@ -43,6 +43,12 @@
       ],
       "default": null,
       "title": "Run After"
+    },
+    "status": {
+      "default": "queued",
+      "maxLength": 500,
+      "title": "Status",
+      "type": "string"
     }
   },
   "required": [
