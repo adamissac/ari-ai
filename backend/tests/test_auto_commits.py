@@ -20,6 +20,8 @@ from shared.assessment import AssessmentTrigger
 def automatic(client_factory, settings_override, monkeypatch):
     settings_override(
         github_auto_commit_authors="adamissac",
+        automatic_assessments_per_hour="100",
+        automatic_assessments_per_day="100",
     )
     alice, bob = client_factory("alice"), client_factory("bob")
     ids = setup_project(alice, bob, approve=False)

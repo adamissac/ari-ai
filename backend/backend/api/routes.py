@@ -1088,6 +1088,7 @@ def start_assessment(
         replay = idempotent_lookup(conn, user.id, idempotency_key, retry_request)
         if replay:
             return JSONResponse(replay["body"], status_code=replay["status"])
+        limiter.check(f"asm:{user.id}", get_settings().assessment_starts_per_hour, 3600)
         commit_sha = body.commit_sha
         if commit_sha is None and body.snapshot_id is None:
             repo = (
