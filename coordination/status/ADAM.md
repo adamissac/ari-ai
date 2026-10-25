@@ -1,5 +1,13 @@
 # Adam — implementation status
 
+## 2026-10-25 — correction: empty auto-commit allowlist behavior
+- Branch: `fix/adam/manual-only-auto-assess-default`; prior commit `163e6247` set the empty allowlist default.
+- Corrected the deployment and storage docs: an empty `GITHUB_AUTO_COMMIT_AUTHORS` disables per-commit full runs, but pushes from repositories with `automatic_assessments` ON fall back to the legacy impact-gated, coalesced monitoring policy.
+- Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.
+- Operational observation: after the owner set an empty allowlist plus the 5/hour and 20/day limits at about 02:03Z, the deferred queue drained 386 → 0 and one new assessment completed in the following ~10 minutes.
+- Verification: shell syntax and diff checks; no tests or Python files changed.
+- Adam will open the PR; CI follow-up will be handled separately.
+
 Owner: Adam
 Branch: `feat/adam/release-gate` → PR #530 (open, awaiting human merge approval)
 Last sync: 2026-10-24 ~23:45Z — origin/main at `586370b0` (#528/#529 landed; #535 earlier); branch synced.
