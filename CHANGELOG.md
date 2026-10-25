@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Verified-patch delivery skips fixes already present on the default branch and annotates stale-base pull requests.
 - Expired scopes no longer appear active or qualify for assessment selection.
 - Storage report probes use savepoints so a denied optional metric does not abort later checks.
 - Verify permits genuinely new recipe-declared tests while rejecting protected-test and runner-configuration tampering; its project suite now runs with the pinned test roots so patch-added tests cannot alter protected tests.
