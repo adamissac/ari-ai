@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from helpers import HEAD, setup_project
 
 
@@ -133,6 +134,109 @@ def test_assessment_requires_active_scope_and_is_idempotent(client_factory) -> N
         == asm["id"]
     )
     assert alice.post(url, json={**body, "commit_sha": "abc"}).status_code == 422
+
+
+def test_blank_commit_resolves_default_branch_head(client_factory, monkeypatch) -> None:
+    import sqlalchemy as sa
+
+    from backend.db import repositories, transaction
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    with transaction() as conn:
+        conn.execute(
+            sa.update(repositories)
+            .where(repositories.c.id == ids["repo"])
+            .values(installation_id=42)
+        )
+
+    class GitHub:
+        def recent_commits(self, installation_id, full_name, branch, limit):
+            assert (installation_id, full_name, branch, limit) == (
+                42,
+                "acme/payments-lite",
+                "main",
+                1,
+            )
+            return [{"sha": HEAD}]
+
+    monkeypatch.setattr("backend.api.routes.GitHubApp", GitHub)
+    response = alice.post(
+        f"/api/v1/projects/{ids['project']}/assessments",
+        json={"scope_id": ids["scope"], "repo_id": ids["repo"]},
+    )
+    assert response.status_code == 202, response.text
+    assert response.json()["assessment"]["commit_sha"] == HEAD
+
+
+def test_blank_commit_without_installation_requires_explicit_sha(client_factory) -> None:
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    response = alice.post(
+        f"/api/v1/projects/{ids['project']}/assessments",
+        json={"scope_id": ids["scope"], "repo_id": ids["repo"]},
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_FAILED"
+    assert response.json()["error"]["message"] == (
+        "enter a commit SHA: this repository is not connected through the GitHub App"
+    )
+
+
+@pytest.mark.parametrize("failure", ["not_configured", "http_error", "empty"])
+def test_blank_commit_github_failure_returns_unavailable(
+    client_factory, monkeypatch, failure: str
+) -> None:
+    import httpx
+    import sqlalchemy as sa
+
+    from backend.db import repositories, transaction
+    from backend.github import GitHubNotConfigured
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+
+    with transaction() as conn:
+        conn.execute(
+            sa.update(repositories)
+            .where(repositories.c.id == ids["repo"])
+            .values(installation_id=42)
+        )
+
+    class GitHub:
+        def recent_commits(self, installation_id, full_name, branch, limit):
+            if failure == "not_configured":
+                raise GitHubNotConfigured("not configured")
+            if failure == "http_error":
+                raise httpx.ConnectError("offline")
+            return []
+
+    monkeypatch.setattr("backend.api.routes.GitHubApp", GitHub)
+    response = alice.post(
+        f"/api/v1/projects/{ids['project']}/assessments",
+        json={"scope_id": ids["scope"], "repo_id": ids["repo"]},
+    )
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "SUBSYSTEM_UNAVAILABLE"
+    assert response.json()["error"]["message"] == "could not read the latest commit from GitHub"
+
+
+def test_explicit_commit_sha_is_used_without_github_lookup(client_factory, monkeypatch) -> None:
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+
+    class NoGitHub:
+        def __init__(self):
+            raise AssertionError("explicit commit SHA must not query GitHub")
+
+    monkeypatch.setattr("backend.api.routes.GitHubApp", NoGitHub)
+    expected_sha = "c" * 40
+    response = alice.post(
+        f"/api/v1/projects/{ids['project']}/assessments",
+        json={"scope_id": ids["scope"], "repo_id": ids["repo"], "commit_sha": expected_sha},
+    )
+    assert response.status_code == 202, response.text
+    assert response.json()["assessment"]["commit_sha"] == expected_sha
 
 
 def test_cancel_before_start_and_revoke_stops_assessments(client_factory) -> None:
