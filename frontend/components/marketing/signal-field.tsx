@@ -64,7 +64,9 @@ export function SignalField() {
       timer = window.setTimeout(() => { step = (step + 1) % STAGES.length; if (step === 0) el.dataset.s = ''; tick(); }, HOLD[step]);
     };
     el.dataset.s = '';
-    const io = new IntersectionObserver(([entry]) => {
+    const io = new IntersectionObserver(entries => {
+      const entry = entries[0];
+      if (!entry) return;
       if (entry.isIntersecting && !visible) { visible = true; timer = window.setTimeout(tick, 400); }
       else if (!entry.isIntersecting && visible) { visible = false; window.clearTimeout(timer); }
     });
