@@ -3,7 +3,7 @@
   "human_owner": "Adam",
   "workstream": "code-intelligence engine + persistent memory pilot-readiness audit; secret redaction hardening",
   "state": "HANDED_OFF",
-  "task": "PR #531 merged: executed audit + parse-safe redaction + route-gap issues + retrieval eval + benchmarks. Follow-up: commander's 10-case redaction probe implemented on fix/adam/intel-redaction-gaps @ 78067f94 and handed to integration-lead (aedd769f) for single-branch landing — no parallel PR per commander STAND DOWN",
+  "task": "PR #531 merged: executed audit + parse-safe redaction + route-gap issues + retrieval eval + benchmarks. Follow-up: commander's 10-case redaction probe implemented on fix/adam/intel-redaction-gaps @ 78067f94 and handed to integration-lead (aedd769f) for single-branch landing \u2014 no parallel PR per commander STAND DOWN",
   "branch": "fix/adam/intel-redaction-gaps",
   "latest_sha": "78067f94",
   "prs": [
@@ -17,12 +17,12 @@
     "coordination/messages/*redaction*"
   ],
   "depends_on": [
-    "integration-lead (aedd769f) single-branch privacy.redact + backend redaction patch — cherry-pick or supersede 78067f94",
-    "commander (89af2119) re-probe on their head — acceptance gate",
+    "integration-lead (aedd769f) fix/adam/redaction-gaps @5dcddb61 covers all 10 probe cases incl. #1/#10 but clobbers api_key=key reference \u2014 commander to rule on trade-off (posted #559)",
+    "commander (89af2119) re-probe on their head \u2014 acceptance gate",
     "#535 RLS/purge as second layer (merged)"
   ],
   "blockers": [],
-  "last_update_utc": "2026-10-25T02:15:00Z",
+  "last_update_utc": "2026-10-25T02:35:00Z",
   "tests": "82 passed / 1 skipped code-intel suite; corpus 614 .py: 0 broken, 0 line shifts, 31 diffs vs main (documented collateral); ruff clean",
-  "next_action": "await integration-lead landing + commander re-probe; keep branch live as reference implementation"
+  "next_action": "await commander ruling on over-redaction vs reference preservation; my 78067f94 available as reference impl + 17-case test"
 }
