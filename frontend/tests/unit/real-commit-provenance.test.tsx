@@ -4,7 +4,12 @@ import RealCommitPage from '@/app/(console)/connect/[org]/[repo]/commit/[sha]/pa
 
 vi.mock('next/navigation', () => ({ useParams: () => ({ org: 'test-team', repo: 'test-app', sha: 'c'.repeat(40) }) }));
 vi.mock('@/lib/real-repo', () => ({ useAccessibleRepo: () => ({ status: 'ready', data: { connected_repo_id: 'repo_test', full_name: 'test-team/test-app', default_branch: 'main', private: false } }) }));
-vi.mock('@/lib/api', () => ({ api: () => ({ repositoryCommits: async () => ({ items: [{ sha: 'c'.repeat(40), message: 'Selected change', author: 'test-author', committed_at: null, html_url: 'https://git.example/team/app/commit/selected' }], available: true, reason: null }) }) }));
+vi.mock('@/lib/api', () => ({ api: () => ({ repositoryCommits: async () => ({ items: [
+  { sha: 'a'.repeat(40), message: 'Latest change', author: 'test-author', committed_at: null, html_url: 'https://git.example/team/app/commit/latest' },
+  { sha: 'b'.repeat(40), message: 'Second change', author: 'test-author', committed_at: null, html_url: 'https://git.example/team/app/commit/second' },
+  { sha: 'd'.repeat(40), message: 'Third change', author: 'test-author', committed_at: null, html_url: 'https://git.example/team/app/commit/third' },
+  { sha: 'c'.repeat(40), message: 'Selected change', author: 'test-author', committed_at: null, html_url: 'https://git.example/team/app/commit/selected' },
+], available: true, reason: null }) }) }));
 vi.mock('@/components/demo/commit-analysis', () => ({ CommitAnalysis: () => null }));
 vi.mock('@/components/project-review-cta', () => ({ ProjectReviewCta: ({ repoId }: { repoId: string | null }) => repoId ? <span data-testid="review-cta-repo">{repoId}</span> : null }));
 vi.mock('@/components/real-assessment-panel', () => ({ RealAssessmentPanel: () => null }));
@@ -23,4 +28,13 @@ it('uses the configured provider commit URL rather than assuming GitHub.com', as
   render(<RealCommitPage />);
   expect(screen.getByTestId('review-cta-repo').textContent).toBe('repo_test');
   expect((await screen.findByRole('link', { name: /View on GitHub/ })).getAttribute('href')).toBe('https://git.example/team/app/commit/selected');
+});
+
+it('warns when the selected commit is behind the default branch', async () => {
+  render(<RealCommitPage />);
+  const notice = await screen.findByTestId('commit-behind-default');
+  expect(notice.textContent).toContain('This commit is 3 commits behind main.');
+  expect(notice.textContent).toContain('Ari reviews and fixes this exact commit');
+  expect(screen.getByRole('link', { name: 'Review the latest commit →' }).getAttribute('href'))
+    .toBe(`/connect/test-team/test-app/commit/${'a'.repeat(40)}`);
 });
