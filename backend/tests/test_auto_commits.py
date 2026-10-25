@@ -2,7 +2,7 @@
 
 import pytest
 import sqlalchemy as sa
-from helpers import HEAD, post_webhook, push_payload, setup_project
+from helpers import BASE, HEAD, post_webhook, push_payload, setup_project
 
 from backend import worker
 from backend.db import (
@@ -92,6 +92,23 @@ def manual_start(alice, ids, sha):
         f"/api/v1/projects/{ids['project']}/assessments",
         json={"repo_id": ids["repo"], "scope_id": ids["scope"], "commit_sha": sha},
     )
+
+
+def reviewer_webhook(alice, ids, *, settings=None, payload=None, event="push"):
+    if settings:
+        project_settings = alice.get(f"/api/v1/projects/{ids['project']}").json()["settings"]
+        project_settings["review"].update(settings)
+        response = alice.patch(
+            f"/api/v1/projects/{ids['project']}", json={"settings": project_settings}
+        )
+        assert response.status_code == 200, response.text
+    if payload is None:
+        payload = push_payload(["app.py"])
+        payload["sender"] = {"login": "adamissac"}
+        payload["commits"][0]["id"] = HEAD
+    response = post_webhook(alice, payload, event=event)
+    assert response.status_code == 202, response.text
+    worker.drain(kinds=["process_github_delivery"])
 
 
 def test_each_commit_runs_even_docs_only_active_and_duplicate_delivery(automatic):
@@ -507,6 +524,7 @@ def test_pull_request_commit_still_uses_authenticated_automatic_path(automatic):
         "pull_request": {
             "head": {"sha": HEAD, "ref": "feature"},
             "base": {"sha": "a" * 40},
+            "user": {"login": "adamissac"},
             "updated_at": "2026-10-17T01:02:03Z",
         },
     }
@@ -643,10 +661,7 @@ def test_legacy_deferred_job_is_skipped_under_quota_without_new_job(automatic):
     assert len(records()) == 10
 
 
-def test_legacy_monitoring_pipeline_obeys_shared_quota(automatic, settings_override, monkeypatch):
-    from monitoring.api import Action, Decision
-    from shared.monitoring import ReassessmentScope
-
+def test_reviewer_pipeline_obeys_shared_quota(automatic, settings_override):
     alice, bob, ids, _ = automatic
     settings_override(github_auto_commit_authors="")
     assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
@@ -655,17 +670,6 @@ def test_legacy_monitoring_pipeline_obeys_shared_quota(automatic, settings_overr
         ids,
         [AssessmentTrigger.manual] * 6 + [AssessmentTrigger.monitoring] * 4,
     )
-    monkeypatch.setattr(
-        "backend.pipeline._impact_provider",
-        lambda: (None, "test impact provider"),
-    )
-    monkeypatch.setattr(
-        "backend.pipeline.decide",
-        lambda *args, **kwargs: Decision(
-            Action.assess, "test assessment", scope=ReassessmentScope.full
-        ),
-    )
-
     pushed_sha = "d" * 40
     push(alice, pushed_sha)
 
@@ -678,6 +682,369 @@ def test_legacy_monitoring_pipeline_obeys_shared_quota(automatic, settings_overr
     assert rrq["status"] == "skipped"
     assert rrq["reason"] == "skipped: project review limit reached (10/hour)"
     assert len(records()) == 10
+
+
+@pytest.mark.parametrize(
+    ("settings", "author", "branch", "event", "draft", "reason"),
+    [
+        ({"review_pushes": False}, "adamissac", "main", "push", False, "push reviews disabled"),
+        (
+            {"review_pull_requests": False},
+            "adamissac",
+            "main",
+            "pull_request",
+            False,
+            "pull request reviews disabled",
+        ),
+        (
+            {"review_draft_prs": False},
+            "adamissac",
+            "main",
+            "pull_request",
+            True,
+            "draft pull requests disabled",
+        ),
+        (
+            {"include_branches": ["release/*"]},
+            "adamissac",
+            "main",
+            "push",
+            False,
+            "branch excluded",
+        ),
+        ({"exclude_branches": ["m*"]}, "adamissac", "main", "push", False, "branch excluded"),
+        (
+            {"include_authors": ["teammate*"]},
+            "adamissac",
+            "main",
+            "push",
+            False,
+            "author is outside",
+        ),
+        ({}, "adamissac[bot]", "main", "push", False, "author excluded"),
+    ],
+)
+def test_reviewer_filters_record_ignored_reason(
+    automatic, settings, author, branch, event, draft, reason
+):
+    alice, _, ids, _ = automatic
+    if event == "pull_request":
+        payload = {
+            "repository": {"full_name": "acme/payments-lite"},
+            "installation": {"id": 99},
+            "sender": {"login": author},
+            "action": "synchronize",
+            "number": 7,
+            "pull_request": {
+                "head": {"sha": HEAD, "ref": "feature"},
+                "base": {"sha": BASE, "ref": branch},
+                "user": {"login": author},
+                "updated_at": "2026-10-17T01:02:03Z",
+                "draft": draft,
+            },
+        }
+    else:
+        payload = push_payload(["app.py"])
+        payload["ref"] = f"refs/heads/{branch}"
+        payload["sender"] = {"login": author}
+        payload["commits"][0]["id"] = HEAD
+    reviewer_webhook(alice, ids, settings=settings, payload=payload, event=event)
+    with transaction() as conn:
+        event_doc = conn.execute(sa.select(monitoring_events.c.doc)).scalar_one()
+    assert event_doc["status"] == "ignored"
+    assert reason in event_doc["status_reason"]
+
+
+@pytest.mark.parametrize(
+    ("settings", "author", "branch", "event", "draft"),
+    [
+        ({}, "adamissac", "main", "push", False),
+        ({"include_branches": ["MA*"]}, "adamissac", "main", "push", False),
+        ({"exclude_branches": ["release/*"]}, "adamissac", "main", "push", False),
+        ({"include_authors": ["ADA*"]}, "adamissac", "main", "push", False),
+        ({}, "adamissac", "main", "pull_request", False),
+        ({"review_draft_prs": True}, "adamissac", "main", "pull_request", True),
+    ],
+)
+def test_reviewer_filters_allow_matching_events(automatic, settings, author, branch, event, draft):
+    alice, _, ids, _ = automatic
+    if event == "pull_request":
+        payload = {
+            "repository": {"full_name": "acme/payments-lite"},
+            "installation": {"id": 99},
+            "sender": {"login": author},
+            "action": "synchronize",
+            "number": 7,
+            "pull_request": {
+                "head": {"sha": HEAD, "ref": "feature"},
+                "base": {"sha": BASE, "ref": branch},
+                "user": {"login": author},
+                "updated_at": "2026-10-17T01:02:03Z",
+                "draft": draft,
+            },
+        }
+    else:
+        payload = push_payload(["app.py"])
+        payload["ref"] = f"refs/heads/{branch}"
+        payload["sender"] = {"login": author}
+        payload["commits"][0]["id"] = HEAD
+    reviewer_webhook(alice, ids, settings=settings, payload=payload, event=event)
+    with transaction() as conn:
+        job = conn.execute(
+            sa.select(jobs.c.id).where(jobs.c.kind == "assess_github_commit")
+        ).scalar_one()
+    assert job
+
+
+@pytest.mark.parametrize("allowlist", ["", "*", "adamissac,teammate"])
+def test_empty_star_and_comma_global_author_allowlist_semantics(
+    automatic, settings_override, allowlist
+):
+    alice, _, ids, _ = automatic
+    settings_override(github_auto_commit_authors=allowlist)
+    reviewer_webhook(alice, ids)
+    with transaction() as conn:
+        assert conn.execute(
+            sa.select(jobs.c.id).where(jobs.c.kind == "assess_github_commit")
+        ).scalar_one()
+
+
+def test_comma_global_allowlist_rejects_unlisted_sender(automatic, settings_override):
+    alice, _, ids, _ = automatic
+    settings_override(github_auto_commit_authors="teammate,other")
+    reviewer_webhook(alice, ids)
+    with transaction() as conn:
+        event_doc = conn.execute(sa.select(monitoring_events.c.doc)).scalar_one()
+    assert event_doc["status"] == "ignored"
+    assert "global automatic-review allowlist" in event_doc["status_reason"]
+
+
+def test_project_hourly_review_limit_only_lowers_server_cap(automatic, settings_override):
+    from backend.quota import check_project_quota
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(project_assessments_per_hour="10")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    project_settings = alice.get(f"/api/v1/projects/{ids['project']}").json()["settings"]
+    project_settings["review"]["max_reviews_per_hour"] = 2
+    assert (
+        alice.patch(
+            f"/api/v1/projects/{ids['project']}", json={"settings": project_settings}
+        ).status_code
+        == 200
+    )
+    seed_assessments(alice, ids, [AssessmentTrigger.manual] * 2)
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], utcnow())
+    assert decision is not None and decision.reason == "hour" and decision.limit == 2
+
+    project_settings["review"]["max_reviews_per_hour"] = 20
+    assert (
+        alice.patch(
+            f"/api/v1/projects/{ids['project']}", json={"settings": project_settings}
+        ).status_code
+        == 200
+    )
+    seed_assessments(alice, ids, [AssessmentTrigger.manual] * 8)
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], utcnow())
+    assert decision is not None and decision.reason == "hour" and decision.limit == 10
+
+
+def test_pr_review_body_filters_strictness_and_redacts_secrets():
+    from backend.auto_commits import _pr_review_body
+
+    token = "ghp_" + "x" * 36
+    body, count = _pr_review_body(
+        "asm_test",
+        "prj_test",
+        [
+            {
+                "title": f"Sensitive {token}",
+                "severity": {"level": "high"},
+                "status": "verified",
+                "evidence": [
+                    {"path": "src/auth.py", "span": {"start_line": 17}, "content": "do not include"}
+                ],
+            },
+            {
+                "title": "Low severity",
+                "severity": {"level": "low"},
+                "status": "open",
+                "evidence": [{"path": "src/other.py", "span": {"start_line": 2}}],
+            },
+        ],
+        2,
+    )
+    assert count == 1
+    assert "Ari security review" in body
+    assert "Sensitive [REDACTED" in body and token not in body
+    assert "src/auth.py:17" in body
+    assert "Low severity" not in body and "do not include" not in body
+    assert "No findings at this strictness." not in body
+
+
+def test_pr_review_body_reports_empty_strictness_match():
+    from backend.auto_commits import _pr_review_body
+
+    body, count = _pr_review_body(
+        "asm_test",
+        "prj_test",
+        [{"title": "Low", "severity": {"level": "low"}, "evidence": []}],
+        3,
+    )
+    assert count == 0
+    assert "No findings at this strictness." in body
+
+
+def seed_pr_assessment(ids, bob):
+    from shared.base import utcnow
+    from shared.ids import IdPrefix, new_id
+    from shared.monitoring import (
+        CommitRange,
+        EventSource,
+        EventStatus,
+        EventType,
+        MonitoringEvent,
+        ReassessmentRequest,
+        ReassessmentScope,
+        ReassessmentStatus,
+    )
+
+    now = utcnow()
+    event_id = new_id(IdPrefix.evt)
+    request_id = new_id(IdPrefix.rrq)
+    event = MonitoringEvent(
+        id=event_id,
+        project_id=ids["project"],
+        repo_id=ids["repo"],
+        source=EventSource.github,
+        type=EventType.pull_request,
+        occurred_at=now,
+        received_at=now,
+        dedupe_key=f"test:pr:{event_id}",
+        payload_artifact_id=None,
+        commit_range=CommitRange(base_sha=BASE, head_sha=HEAD),
+        pr_number=7,
+        status=EventStatus.processed,
+    )
+    request = ReassessmentRequest(
+        id=request_id,
+        project_id=ids["project"],
+        repo_id=ids["repo"],
+        event_ids=[event_id],
+        scope=ReassessmentScope.full,
+        head_sha=HEAD,
+        status=ReassessmentStatus.started,
+        reason="test PR review",
+        created_at=now,
+    )
+    from backend.services import create_assessment
+
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    with transaction() as conn:
+        conn.execute(
+            sa.insert(monitoring_events).values(
+                id=event.id,
+                project_id=event.project_id,
+                repo_id=event.repo_id,
+                dedupe_key=event.dedupe_key,
+                status=event.status.value,
+                doc=event.model_dump(mode="json"),
+            )
+        )
+        assessment, _ = create_assessment(
+            conn,
+            project_id=ids["project"],
+            repo_id=ids["repo"],
+            scope_id=ids["scope"],
+            commit_sha=HEAD,
+            trigger=AssessmentTrigger.monitoring,
+            budget=None,
+            created_by=None,
+            reassessment_request_id=request_id,
+        )
+        assessment_doc = conn.execute(
+            sa.select(assessments.c.doc).where(assessments.c.id == assessment.id)
+        ).scalar_one()
+        assessment_doc["state"] = "COMPLETED"
+        conn.execute(
+            sa.update(assessments)
+            .where(assessments.c.id == assessment.id)
+            .values(state="COMPLETED", doc=assessment_doc)
+        )
+        request = request.model_copy(update={"assessment_id": assessment.id})
+        conn.execute(
+            sa.insert(reassessment_requests).values(
+                id=request.id,
+                project_id=request.project_id,
+                repo_id=request.repo_id,
+                status=request.status.value,
+                doc=request.model_dump(mode="json"),
+            )
+        )
+        from backend.host import _enqueue_pr_review
+        from shared.assessment import Assessment
+
+        completed = Assessment.model_validate(assessment_doc)
+        _enqueue_pr_review(conn, completed)
+        _enqueue_pr_review(conn, completed)
+    return assessment.id
+
+
+def test_pr_review_job_is_deduped_and_4xx_is_permanent(automatic, monkeypatch):
+    import httpx
+
+    from backend.db import audit_events
+
+    alice, _, ids, _ = automatic
+    assessment_id = seed_pr_assessment(ids, automatic[1])
+    calls = []
+
+    class GitHub:
+        def post_pull_request_review(self, *args):
+            calls.append(args)
+            request = httpx.Request("POST", "https://api.github.com/review")
+            response = httpx.Response(422, request=request)
+            raise httpx.HTTPStatusError("unprocessable", request=request, response=response)
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+    worker.drain(kinds=["post_pr_review"])
+    with transaction() as conn:
+        job = conn.execute(sa.select(jobs).where(jobs.c.kind == "post_pr_review")).mappings().one()
+        failures = [
+            doc
+            for doc in conn.execute(sa.select(audit_events.c.doc)).scalars()
+            if doc["action"] == "monitoring.pr_review_failed"
+        ]
+    assert len(calls) == 1
+    assert job["payload"]["assessment_id"] == assessment_id
+    assert job["attempts"] == 1
+    assert job["status"] != "queued"
+    assert failures
+
+
+def test_pr_review_job_noops_when_comments_are_disabled(automatic, monkeypatch):
+    alice, _, ids, _ = automatic
+    seed_pr_assessment(ids, automatic[1])
+    project = alice.get(f"/api/v1/projects/{ids['project']}").json()
+    project["settings"]["review"]["comment_on_pull_requests"] = False
+    assert (
+        alice.patch(
+            f"/api/v1/projects/{ids['project']}", json={"settings": project["settings"]}
+        ).status_code
+        == 200
+    )
+    calls = []
+
+    class GitHub:
+        def post_pull_request_review(self, *args):
+            calls.append(args)
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+    worker.drain(kinds=["post_pr_review"])
+    assert calls == []
 
 
 def test_wildcard_runs_any_pusher_and_unlinked_author(automatic, settings_override):

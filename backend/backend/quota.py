@@ -10,6 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.engine import Connection
 
 from backend.db import assessments
+from backend.services import project_settings
 from backend.settings import get_settings
 
 QuotaReason = Literal["hour", "day", "spend"]
@@ -36,11 +37,17 @@ def check_project_quota(conn: Connection, project_id: str, now: datetime) -> Quo
             assessments.c.created_at <= now,
         )
     ).one()
-    if hour_count >= settings.project_assessments_per_hour and hour_oldest is not None:
+    project_hour_cap = project_settings(conn, project_id).review.max_reviews_per_hour
+    hour_limit = (
+        min(settings.project_assessments_per_hour, project_hour_cap)
+        if project_hour_cap is not None
+        else settings.project_assessments_per_hour
+    )
+    if hour_count >= hour_limit and hour_oldest is not None:
         return QuotaDecision(
             "hour",
             hour_oldest + hour_window,
-            settings.project_assessments_per_hour,
+            hour_limit,
         )
 
     day_count, day_oldest = conn.execute(
