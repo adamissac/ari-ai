@@ -3,13 +3,19 @@
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
 Branch: `feat/alan/live-defense-phase7c-agent-execution`
 Current task: Phase 7C live authorized first-responder agent execution (not Codex Phase 7B; no RL training; no AUTO-EXECUTE)
-Last remote sync: 2026-10-24, `origin/main` `ad282cf4` merged into this branch so GitHub Actions can queue (PR was DIRTY on `96ac5cfb`); #412 still OPEN; do not merge #458
-API/contract dependencies: `shared` 0.22.0 first-responder execution records (0.21.0 is merged 7A; 0.20.0 reserved for open #412); inherits main Alembic 0016 tenant RLS (no competing 7C migration); seven AgentSpecs
+Last remote sync: 2026-10-25, `origin/main` `f8ab19e7` merged; 7C schema **0.23.0**; Codex P1 R2 disconnect checks; #412 still OPEN; do not merge #458
+API/contract dependencies: `shared` 0.23.0 first-responder execution records (main 0.22.0 is ops-readiness; 0.20.0 reserved for open #412); inherits main Alembic 0017; Devin Hardening owns repository disconnect column/endpoint
 Recent PR/commit: https://github.com/adamissac/ari-ai/pull/458 on `feat/alan/live-defense-phase7c-agent-execution` (leave open for security review of execution trust boundary)
 Blockers: live Anthropic Scout/Diagnose (issue #10, key optional); human/security approval of the Phase 7C PR (do not merge from this agent); Probe still needs AuthorizedScope and is not expanded
-Next action: wait for required GitHub checks including `backend / test`; leave PR open; do not merge; do not train RL; do not expand Probe/Patch; do not merge Devin Reliability into #458
+Next action: independent re-review of F1/F7/F8 + R2 on #458; leave PR open; do not merge; do not train RL; do not expand Probe/Patch; do not merge Devin Hardening into #458
 
 ## Session entries
+
+### 2026-10-25 (Codex P1 R2 repository disconnect; do not merge #458)
+
+- First-responder checks mapping revocation and optional `repositories.disconnected_at` before each provider `complete()` and before persist. `apply_repository_disconnect_to_investigations` is the 7C hook for Devin Hardening. Did **not** add the disconnect HTTP route or Alembic column. Schema **0.23.0**. Probe/Patch not expanded.
+- Executed: `make check` pass (157 files, 0.23.0); focused 7A+7C **80 passed** / 1 skipped; Codex `test_repository_disconnect_stops_next_provider_turn` **passed**; `uv run pytest -q` **952 passed** / 16 skipped. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Merge NO-GO.
 
 ### 2026-10-24 (merge origin/main so Actions can run; do not merge #458)
 

@@ -58,6 +58,7 @@ from shared.audit import ActorType
 from shared.base import utcnow
 from shared.ids import IdPrefix, new_id
 from shared.live_defense import (
+    FIRST_RESPONDER_JOB_KINDS,
     ORCHESTRATOR_VERSION,
     AgentCapabilityClass,
     AgentExecutionRecord,
@@ -191,6 +192,115 @@ def _mapping_by_id(conn: Connection, mapping_id: str | None) -> dict[str, Any] |
         .first()
     )
     return dict(row) if row else None
+
+
+def _repository_disconnected_at(conn: Connection, repo_id: str) -> Any:
+    """Read ``repositories.disconnected_at`` when Devin Hardening's column exists.
+
+    This branch does not add that column or ``POST /repositories/{id}/disconnect``.
+    """
+    present = conn.execute(
+        sa.text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = current_schema() "
+            "AND table_name = 'repositories' AND column_name = 'disconnected_at'"
+        )
+    ).scalar()
+    if not present:
+        return None
+    return conn.execute(
+        sa.text("SELECT disconnected_at FROM repositories WHERE id = :id"),
+        {"id": repo_id},
+    ).scalar()
+
+
+def investigation_source_revoked(
+    conn: Connection,
+    *,
+    mapping_id: str | None = None,
+    repo_id: str | None = None,
+) -> str | None:
+    """Reason the mapped repository or deploy mapping no longer authorizes provider work.
+
+    Devin Hardening owns the disconnect endpoint and ``repositories.disconnected_at``.
+    7C re-checks mapping revocation and that column (when present) before each
+    provider ``complete()`` and before accepting final agent output.
+    """
+    resolved_repo = repo_id
+    if mapping_id:
+        row = (
+            conn.execute(
+                sa.select(deploy_commit_mappings).where(deploy_commit_mappings.c.id == mapping_id)
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            return "deploy mapping is missing"
+        if row["revoked_at"] is not None:
+            return "deploy mapping was revoked"
+        resolved_repo = resolved_repo or str(row["repo_id"])
+    if resolved_repo and _repository_disconnected_at(conn, resolved_repo) is not None:
+        return "repository is disconnected"
+    return None
+
+
+def apply_repository_disconnect_to_investigations(conn: Connection, repo_id: str) -> int:
+    """7C half of repository disconnect: revoke mappings and cancel running investigations.
+
+    Devin Hardening should call this after setting ``repositories.disconnected_at``.
+    This function does not implement the disconnect HTTP route or the Alembic column.
+    """
+    conn.execute(
+        sa.update(deploy_commit_mappings)
+        .where(
+            deploy_commit_mappings.c.repo_id == repo_id,
+            deploy_commit_mappings.c.revoked_at.is_(None),
+        )
+        .values(revoked_at=sa.func.now())
+    )
+    mapping_ids = set(
+        conn.execute(
+            sa.select(deploy_commit_mappings.c.id).where(
+                deploy_commit_mappings.c.repo_id == repo_id
+            )
+        ).scalars()
+    )
+    cancelled = 0
+    rows = (
+        conn.execute(
+            sa.select(jobs_t.c.id, jobs_t.c.payload).where(
+                jobs_t.c.kind.in_(FIRST_RESPONDER_JOB_KINDS),
+                jobs_t.c.status.in_(("queued", "running")),
+            )
+        )
+        .mappings()
+        .all()
+    )
+    for row in rows:
+        payload = row["payload"] or {}
+        bound = payload.get("repo_id") == repo_id
+        decision_id = payload.get("decision_id")
+        if not bound and decision_id:
+            doc = conn.execute(
+                sa.select(first_responder_decisions.c.doc).where(
+                    first_responder_decisions.c.id == decision_id
+                )
+            ).scalar()
+            mapping = (doc or {}).get("correlation") or {}
+            bound = mapping.get("mapping_id") in mapping_ids or mapping.get("repo_id") == repo_id
+        if not bound:
+            continue
+        jobq.request_cancel(conn, row["id"])
+        cancelled += 1
+        invocation_id = payload.get("invocation_id")
+        if invocation_id:
+            _mark_invocation_cancelled(
+                conn,
+                invocation_id,
+                "repository disconnected; running investigation cancelled",
+            )
+    return cancelled
 
 
 def _independent_verification(conn: Connection, project_id: str) -> str | None:
@@ -923,6 +1033,7 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
     agent = AgentName(payload["agent"])
     run_live = False
     repo_id: str | None = None
+    mapping_id: str | None = None
     commit_sha: str | None = None
     snapshot_id: str | None = None
     scout_output: dict[str, Any] | None = None
@@ -1011,7 +1122,8 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
                 "Scout hypotheses are not a verified fix."
             )
         elif agent in {AgentName.scout, AgentName.diagnose} and decision is not None:
-            mapping = _mapping_by_id(conn, decision.correlation.mapping_id)
+            mapping_id = decision.correlation.mapping_id
+            mapping = _mapping_by_id(conn, mapping_id)
             repo_id = mapping["repo_id"] if mapping else None
             commit_sha = mapping["commit_sha"] if mapping else None
             snapshot_id = _snapshot_id(conn, repo_id, commit_sha)
@@ -1094,6 +1206,8 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
                 return True
             if jobq.is_cancel_requested(check, ctx.job.id):
                 return True
+            if investigation_source_revoked(check, mapping_id=mapping_id, repo_id=repo_id):
+                return True
         return False
 
     assert decision is not None and repo_id and commit_sha and snapshot_id
@@ -1165,6 +1279,10 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
         if load_intent(conn, payload["project_id"]).intent is FirstResponderIntent.off:
             status = AgentInvocationStatus.cancelled
             reason = "first-responder OFF is effective; late output is not executed"
+        revoked = investigation_source_revoked(conn, mapping_id=mapping_id, repo_id=repo_id)
+        if revoked:
+            status = AgentInvocationStatus.cancelled
+            reason = f"{revoked}; late output is not executed"
         updated = inv.model_copy(
             update={
                 "status": status,
