@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Setup now shows the actual expiry of the sandbox scope being approved; landing copy states the default and maximum authorization durations.
 - Refined the console account menu, mobile project navigation, status marks, assessment headers, and commit-to-assessment links.
 - Added opt-in bounded exact-SHA release review automation with isolated strict
   regressions, signed evidence, existing-owner routing and a protected cost ledger.
