@@ -144,3 +144,21 @@
   .workspace-org-card:is(:hover, :focus-visible) .workspace-arrow { transform: none; }
   .footer-links a:hover { translate: none; }
 }
+
+/* Floating background geometry (components/backdrop-shapes.tsx). */
+.backdrop-host { position: relative; isolation: isolate; }
+.backdrop-shapes { position: absolute; inset: -2rem 0 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.backdrop-shapes .shape { position: absolute; display: block; opacity: .55; animation: shape-drift 18s ease-in-out infinite alternate; }
+.shape-ring { border: 2px solid color-mix(in srgb, var(--brand) 35%, transparent); border-radius: 9999px; }
+.shape-orb { border-radius: 9999px; background: radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--brand) 28%, transparent), transparent 70%); }
+.shape-square { border-radius: 18px; border: 2px solid color-mix(in srgb, var(--brand) 22%, transparent); background: color-mix(in srgb, var(--brand) 5%, transparent); }
+.shape-tri { width: 0; height: 0; border-left: 34px solid transparent; border-right: 34px solid transparent; border-bottom: 58px solid color-mix(in srgb, var(--brand) 14%, transparent); }
+.s1 { width: 220px; height: 220px; top: 2%; right: -60px; }
+.s2 { width: 340px; height: 340px; top: 30%; left: -140px; animation-duration: 24s; }
+.s3 { width: 90px; height: 90px; top: 12%; left: 8%; transform: rotate(18deg); animation-duration: 15s; }
+.s4 { width: 120px; height: 120px; bottom: 12%; right: 10%; animation-duration: 21s; }
+.s5 { top: 58%; right: 4%; animation-duration: 17s; }
+.s6 { width: 260px; height: 260px; bottom: -80px; right: 30%; animation-duration: 27s; }
+.s7 { width: 54px; height: 54px; bottom: 26%; left: 12%; transform: rotate(-12deg); animation-duration: 13s; }
+@keyframes shape-drift { from { translate: 0 0; rotate: 0deg; } to { translate: 18px -26px; rotate: 14deg; } }
+@media (prefers-reduced-motion: reduce) { .backdrop-shapes .shape { animation: none; } }
