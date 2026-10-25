@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({ items: [] as unknown[] }));
@@ -32,5 +32,5 @@ it('shows other finding counts and opens the fixed tab when Open is empty', () =
   expect(screen.getByText('No open findings. Counts: 0 open, 0 hypotheses, 1 fixed, 0 refuted or closed.')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'View fixed findings' }));
   expect(screen.getByRole('tab', { name: 'Fixed (independently verified)' }).getAttribute('aria-selected')).toBe('true');
-  expect(screen.getByRole('link', { name: 'Verified fix' })).toBeTruthy();
+  expect(within(screen.getByTestId('findings-mobile-list')).getByRole('link', { name: 'Verified fix' })).toBeTruthy();
 });
