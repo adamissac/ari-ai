@@ -11,6 +11,8 @@ All notable changes are documented here. Format follows
   resolves the caller's own GitHub App installation (403 when the repo is not reachable
   through it). Project Settings now shows the Save/Discard action row at the top of the
   form as well as the bottom, so budget edits are savable without scrolling.
+- Starting an assessment with no commit SHA now reviews the latest commit on the repository's
+  default branch when connected through the GitHub App.
 - Verify now honors repository-declared `protected_tests` from `build_recipe.json` in its no-tampering check.
 - Added independent 70/80/90% storage alerts and Prometheus gauges for the app data volume mounted at `/data`.
 - Quota reset timestamps now reflect when an over-limit rolling hour or day window actually falls below its limit.
