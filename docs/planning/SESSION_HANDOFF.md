@@ -2105,6 +2105,10 @@ remains OFF pending manual installation and protected credential/session setup.
 - Recaptured setup steps 3 and 7 at 1440×900 and 390×844 in
   `~/research/onboarding/shots/`. The existing `:3101` development server remained available.
 
+### Independent RC4 review — 2026-10-25
+
+Pinned product 6a72949efa7c0a2d3233eb6884bb7a23dfe71ced; upstream e41c9dc22e6536463cdab9be6a2a4cd76302c866. Original F1–F10/N1–N7 probes pass. New P2 N8: quoted dictionary/typed password literals survive redacted diff storage and actual project-viewer download; unrelated user remains denied. Independent Docker run 40202085130: 182 passed, 5 failed, 0 skipped (four N8 checks plus newer VerifyEvidence constructor incompatibility); fail-closed runner cleanup error retained. Eight-step stack matches RC4 exactly in production on eea084bc; conflicts at S1 on latest main. Original candidate CI 21 success/1 optional live skip verified. No production edits/merge/deploy/approval. Report: docs/reviews/rc4-independent/REPORT.md. Overall/customer/merge NO-GO; known-finding-only GO on pinned product.
+
 ### Repeat RC4/N8 independent review — 2026-10-25
 
 Pin 4fdcf10c vs main e41c9dc2; tip 0098f1d5 report-only. Original F1–F10/N1–N8 pass; upstream composition and VerifyEvidence blockers closed. New N9/P2: annotation regex crosses semicolon into another statement and corrupts non-secret source/stored diff. Final isolated run 40210138609: 187 pass, 3 fail, zero skip (two N9 checks and retained stale legacy GET/write-limit test); independent split-limit control passes. Collector cleanup error retained. Product CI succeeds; missing paid Codex audit is not a product finding. NO-GO pending N9 and final gates. No production edits/merge/deploy/approval. Report: docs/reviews/rc4-n8-independent/REPORT.md.
