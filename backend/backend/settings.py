@@ -98,6 +98,47 @@ class Settings(BaseSettings):
     rate_limit_per_minute: int = 60
     assessment_starts_per_hour: int = 5
 
+    # Ops surface + storage maintenance (docs/deploy/POSTGRES_STORAGE.md)
+    # Bearer token for /api/v1/ops/*; unset disables those endpoints entirely.
+    ops_api_token: SecretStr | None = None
+    # Generic HTTPS webhook posted when storage crosses a threshold (e.g. a Slack
+    # incoming webhook or any alert receiver that accepts a JSON POST).
+    ops_alert_webhook_url: str | None = None
+    # Provisioned size of the PostgreSQL volume in bytes (from the Railway dashboard).
+    # 0 = unknown: the report still emits absolute usage but skips percentage alerts.
+    postgres_volume_bytes: int = Field(default=0, ge=0)
+    maintenance_enabled: bool = True
+    maintenance_interval_s: int = Field(default=3600, ge=60)
+    # True by default: the loop reports what it WOULD delete without deleting until an
+    # operator reviews a report and sets RETENTION_DRY_RUN=false (or runs --apply).
+    retention_dry_run: bool = True
+    retention_batch_limit: int = Field(default=5000, ge=1, le=200_000)
+    retention_jobs_days: int = Field(default=30, ge=1)
+    retention_webhook_deliveries_days: int = Field(default=90, ge=1)
+    retention_monitoring_events_days: int = Field(default=180, ge=1)
+    retention_reassessment_requests_days: int = Field(default=180, ge=1)
+    retention_runtime_windows_days: int = Field(default=30, ge=1)
+    retention_idempotency_days: int = Field(default=7, ge=1)
+    # Ready code-intelligence snapshots kept per repository (payload bytes are the bulk
+    # of Postgres growth). Older snapshots beyond this count lose their payloads and
+    # index_snapshots rows; the snapshots metadata row stays as history.
+    retention_snapshots_per_repo: int = Field(default=5, ge=1)
+    # Payloads for a ready snapshot are never pruned younger than this, and never while
+    # a non-terminal assessment still references the snapshot.
+    retention_snapshot_grace_days: int = Field(default=7, ge=1)
+    # Payloads written but never marked ready (failed/abandoned indexing) are pruned
+    # after this many hours.
+    retention_orphan_grace_hours: int = Field(default=24, ge=1)
+    # 0 = disabled: assessment_events/agent_runs transcript rows are kept forever.
+    # Set a day count only if transcript retention is acceptable; pilot evidence
+    # protection keeps this off by default.
+    retention_assessment_detail_days: int = Field(default=0, ge=0)
+    # refs/ari/* refs kept per bare clone under SECURITY_WORKDIR/repos. Each fetched
+    # commit leaves a ref behind; unbounded refs pin unbounded objects.
+    retention_checkout_refs_keep: int = Field(default=50, ge=5)
+    # Orphaned artifact files (on disk, no artifacts row) are removed after this age.
+    retention_orphan_artifact_hours: int = Field(default=24, ge=1)
+
     @field_validator(
         "anthropic_api_key",
         "anthropic_model_fast",
@@ -113,6 +154,8 @@ class Settings(BaseSettings):
         "rl_checkpoint_sha256",
         "repository_bindings_file",
         "security_workdir",
+        "ops_api_token",
+        "ops_alert_webhook_url",
         mode="before",
     )
     @classmethod
