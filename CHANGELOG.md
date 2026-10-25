@@ -6,6 +6,13 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Rebuild the connect → organization → repository → commit flow: the commit page now loads
+  the code review (headline, comments, real per-file diffs, patch, tests) on arrival instead
+  of hiding it behind an optional button, and the "7 agents" tab replays a recorded run on the
+  sector map — each saved tool call pinned to the part of the app it touched — or a labelled
+  preview of the quick read when no run exists. Failed runs are marked on the agent rail; the
+  organization page's repository rows are fully clickable.
+
 - Postgres storage controls for the Railway deployment: `python -m backend.maintenance` (`report`/`apply`/`loop`) plus a bearer-token ops surface (`GET /api/v1/ops/storage`, `/ops/storage/prometheus`, `POST /api/v1/ops/maintenance`) reporting DB/WAL/table/file-store usage with fixed 70/80/90% volume alerts to `OPS_ALERT_WEBHOOK_URL`. Bounded retention (`RETENTION_DRY_RUN=true` by default — report-only until flipped) deletes expired sessions, old idempotency keys, terminal job rows, webhook deliveries, monitoring events, settled reassessment requests, runtime windows, orphaned and superseded index payload sets (keeping the newest 5 ready snapshots per repo), orphaned artifact objects, and stale `refs/ari/*` clone refs; audit events, findings, approvals, scopes, assessments, and any snapshot referenced by a live assessment are never deleted. Hourly maintenance sidecar in `deploy/railway/start.sh`. Runbook: `docs/deploy/POSTGRES_STORAGE.md`.
 
 - Pilot infra limitation documented: `docs/pilot/BRANCH_PROTECTION_LIMITATION.md` — branch-protection rulesets can't be enforced on a personal-account private repo; the release gate stays advisory/procedural, with a step-by-step org-migration plan to enforced protection.
@@ -33,6 +40,7 @@ All notable changes are documented here. Format follows
 - Assessment UI: agents the orchestrator skipped now stay visible as 'Not needed' with the recorded reason (e.g. 'no confirmed findings'); on failed/cancelled runs they show 'Not reached'. Replaces the ambiguous 'not run' label on the relay and team list.
 
 - Fix the periodic stale-sandbox sweep to delete the orphaned stop-snapshots of leaked `ari-sbx-*` run boxes, freeing the Vercel Sandbox snapshot quota that caused HTTP 402 assessment failures; the shared base snapshot is unaffected.
+
 - Add Live Defense Phase 7A deterministic first-responder orchestration: server-enforced OFF / MONITOR|SHADOW / ASSISTED RESPONSE (no AUTO-EXECUTE), seven-agent capability registry from real AgentSpecs, runtime↔code correlation only with an owner-attested deploy mapping, analyst handoff that is not delivered without provider confirmation, and versioned decision records for future RL. Patch stays worktree-only; Probe still requires AuthorizedScope; independently authorized controls keep their own expiry/rollback/kill-switch when first-responder is switched OFF. Contract schema 0.21.0 (0.20.0 left for open PR #412). Evidence is never `verified` from Verify eligibility; deploy mappings are resolved against the telemetry window; OFF serializes with dispatch and cancels in-flight first-responder steps. Eval: `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`.
 
 - Add fixture-only first-responder research observations, proposal masks, source
