@@ -553,7 +553,10 @@ class PatchApplier:
                     header_paths = []
                 for token in header_paths:
                     if token.startswith(("a/", "b/")):
-                        section_paths.add(safe_rel_path(token[2:]))
+                        try:
+                            section_paths.add(safe_rel_path(token[2:]))
+                        except PlatformError:
+                            continue
                 continue
 
             if in_hunk:

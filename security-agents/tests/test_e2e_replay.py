@@ -582,6 +582,24 @@ index 1234567..89abcde 100644
     assert PatchApplier._tampered_tests(diff, ["tests/test_api.py"]) == ["tests/test_api.py"]
 
 
+def test_tampered_tests_skips_traversal_header_and_flags_later_protected_section() -> None:
+    from security_agents.tools import PatchApplier
+
+    diff = """diff --git a/../x b/../x
+@@ -1 +1 @@
+-before
++after
+diff --git a/tests/test_api.py b/tests/test_api.py
+index 1234567..89abcde 100644
+--- a/tests/test_api.py
++++ b/tests/test_api.py
+@@ -1,1 +1,2 @@
+ existing
++def test_bypass(): pass
+"""
+    assert PatchApplier._tampered_tests(diff, ["tests/test_api.py"]) == ["tests/test_api.py"]
+
+
 def test_tampered_tests_flags_plain_unified_diff_and_apply_diff_accepts_it(
     tmp_path: Path,
 ) -> None:
