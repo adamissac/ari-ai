@@ -25,6 +25,19 @@ _HIGH_CONFIDENCE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
         ),
         r"\1://[REDACTED:dsn_credentials]@",
     ),
+    # Credentials embedded in free text, e.g. driver URLs in connector errors
+    # (``postgresql://svc:secret@db.internal/app``) or ``key=value`` fragments.
+    (
+        re.compile(r"(?i)([a-z][a-z0-9+.\-]*://[^/\s:@]+):[^@\s/]+@"),
+        r"\1:[REDACTED:uri_password]@",
+    ),
+    (
+        re.compile(
+            r"(?i)\b(password|passwd|pwd|secret|api[_-]?key|access[_-]?token|"
+            r"client[_-]?secret)=([^\s&'\"]+)"
+        ),
+        r"\1=[REDACTED]",
+    ),
 ]
 _KV_KEY = r"\w*(?:password|passwd|pwd|api_key|apikey|secret|token)\w*"
 _KV_PATTERN = re.compile(r"(?i)\b" + _KV_KEY + r"\s*[=:]\s*(?:'[^'\n]*'|\"[^\"\n]*\"|[^\s'\"]+)")
