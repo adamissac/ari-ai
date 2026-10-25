@@ -1183,7 +1183,14 @@ def live_defense_agent_step(ctx: JobContext) -> dict[str, Any]:
             status = AgentInvocationStatus.cancelled
             reason = "first-responder OFF is effective; late output is not executed"
         if (
-            repository_revocation_locked(
+            repository_revocation(
+                conn,
+                repo_id=repo_id,
+                application_id=decision.application_id if decision else None,
+                mapping_id=decision.correlation.mapping_id if decision else None,
+            )
+            is not None
+            or repository_revocation_locked(
                 conn,
                 repo_id=repo_id,
                 application_id=decision.application_id if decision else None,
