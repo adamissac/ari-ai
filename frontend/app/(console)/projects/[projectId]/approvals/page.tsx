@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useProject } from '@/components/project';
 import { useSession } from '@/components/session';
-import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Time } from '@/components/ui';
+import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, PageTitle, Panel, Time } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
 import { APPROVAL_STATUS } from '@/lib/status';
@@ -21,7 +21,9 @@ export default function ApprovalsPage() {
   const { project } = useProject();
   const approvals = useResource(`approvals:${project.id}`, s => api().approvals(project.id, { signal: s }), 5000);
   return (
-    <Panel title="Approval inbox" actions={<span className="text-xs text-muted">Owners may approve their own sandbox scopes. Other approvals require a different requester and approver.</span>}>
+    <>
+      <PageTitle eyebrow="Review" title="Approvals" subtitle="Decisions that let agents proceed — scoped to this project." />
+      <Panel title="Approval inbox" actions={<span className="text-xs text-muted">Owners may approve their own sandbox scopes. Other approvals require a different requester and approver.</span>}>
       <Async resource={approvals} label="approvals">
         {page => {
           const items = [...page.items].sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending') || b.requested_at.localeCompare(a.requested_at));
@@ -31,6 +33,7 @@ export default function ApprovalsPage() {
         }}
       </Async>
     </Panel>
+    </>
   );
 }
 
