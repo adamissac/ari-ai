@@ -19,13 +19,18 @@ _PATTERNS: list[tuple[re.Pattern[str], str]] = [
     # credentials inside connection strings: scheme://user:pass@host -> scheme://[REDACTED]@host
     (
         re.compile(
-            r"(?i)\b(postgres(?:ql)?|mysql(?:\+\w+)?|mongodb(?:\+srv)?|redis|amqp)://[^\s:/@]+:[^\s@]+@"
+            r"(?i)\b((?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|rediss|amqps?)(?:\+\w+)?)://[^\s:/@]+:[^\s@]+@"
         ),
         r"\1://[REDACTED:dsn_credentials]@",
     ),
-    # generic secret key=value / key: value pairs (password=hunter2, token: xyz, ...)
+    # generic secret key=value / key: value pairs — key may be a suffix of a
+    # larger identifier (access_token=, DB_PASSWORD=, client_secret: ...); the
+    # lookbehind keeps `monkey=` / `tokenizer=` from firing mid-word, `\b` alone
+    # would miss the `_`-joined forms since `_` is a word char.
     (
-        re.compile(r"(?i)\b(password|passwd|pwd|api_key|apikey|secret|token)\s*[=:]\s*[^\s'\"]+"),
+        re.compile(
+            r"(?i)(?<![A-Za-z0-9])([\w-]*(?:password|passwd|pwd|api_?key|secret|token))\s*[=:]\s*[^\s'\",}]+"
+        ),
         r"\1=[REDACTED:kv]",
     ),
 ]

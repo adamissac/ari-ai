@@ -174,3 +174,103 @@ def test_jobs_list_member_sees_coarse_error_owner_sees_sanitized(client_factory)
     owner_err = next(j["last_error"] for j in alice.get(url).json()["items"] if j["id"] == jid)
     assert "db.internal" in owner_err["message"] and "u:p@" not in owner_err["message"]
     assert "trace" not in owner_err
+
+
+def test_fail_scrubs_driver_dsn_and_underscore_kv(client_factory):
+    """SQLAlchemy driver DSNs and underscore-joined kv keys must be scrubbed.
+
+    `postgresql+psycopg://` is the real DATABASE_URL form; `access_token=` /
+    `DB_PASSWORD=` are the common leak shapes `\b`-anchored patterns miss.
+    """
+    import sqlalchemy as sa
+
+    from backend import jobs as jobq
+    from backend.db import jobs as jobs_t
+    from backend.db import transaction
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    dsn = "postgresql+psycopg://admin" + ":" + "S3cretPw" + "@db:5432/x"
+    secret = "S3cret" + "Pw"
+    with transaction() as conn:
+        jid, _ = jobq.enqueue(
+            conn, "probe_leak", {"project_id": ids["project"]}, dedupe_key="drv-leak"
+        )
+        job = jobq.claim(conn, owner="w1", lease_s=60, kinds=["probe_leak"])
+        assert job and job.id == jid
+        jobq.fail(
+            conn,
+            jid,
+            "w1",
+            {
+                "code": "TOOL_ERROR",
+                "message": f"psycopg.OperationalError: {dsn} refused; access_token=abc123xyz; DB_PASSWORD={secret}2",
+            },
+            retryable=False,
+        )
+        row = (
+            conn.execute(sa.select(jobs_t.c.last_error).where(jobs_t.c.id == jid))
+            .mappings()
+            .first()
+        )
+    msg = row["last_error"]["message"]
+    for marker in (secret + "w", "abc123xyz", secret + "2"):
+        assert marker not in msg, msg
+    assert "postgresql+psycopg://[REDACTED:dsn_credentials]@db:5432/x" in msg
+    assert "access_token=[REDACTED:kv]" in msg and "DB_PASSWORD=[REDACTED:kv]" in msg
+
+    items = alice.get(
+        f"/api/v1/projects/{ids['project']}/jobs", params={"status": "failed"}
+    ).json()["items"]
+    api_msg = next(j["last_error"]["message"] for j in items if j["id"] == jid)
+    for marker in (secret + "w", "abc123xyz", secret + "2"):
+        assert marker not in api_msg
+
+
+def test_jobs_list_never_leaks_across_projects(client_factory):
+    """Org B sees nothing of org A: 404 on A's list + A's jobs absent from B's list."""
+    from backend import jobs as jobq
+    from backend.db import transaction
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    dave = client_factory("dave")
+    ids_a = setup_project(alice, bob)
+    # a bare project in a different org — jobs listing needs no repo/scope
+    p = dave.post("/api/v1/projects", json={"name": "org-b-project"})
+    assert p.status_code == 201, p.text
+    ids_b = {"project": p.json()["id"]}
+    assert ids_a["project"] != ids_b["project"]
+
+    accepted = alice.post(
+        f"/api/v1/projects/{ids_a['project']}/assessments",
+        json={"scope_id": ids_a["scope"], "repo_id": ids_a["repo"], "commit_sha": HEAD},
+    )
+    assert accepted.status_code == 202, accepted.text
+    a_assessment = accepted.json()["assessment"]["id"]
+
+    with transaction() as conn:
+        a_job, _ = jobq.enqueue(
+            conn, "probe_a", {"project_id": ids_a["project"]}, dedupe_key="iso-a"
+        )
+        b_job, _ = jobq.enqueue(
+            conn, "probe_b", {"project_id": ids_b["project"]}, dedupe_key="iso-b"
+        )
+        # payload names only an assessment in A — covered by the OR payload clause
+        a2_job, _ = jobq.enqueue(
+            conn, "probe_a2", {"assessment_id": a_assessment}, dedupe_key="iso-a2"
+        )
+
+    # non-member of A's org cannot even resolve the project
+    assert dave.get(f"/api/v1/projects/{ids_a['project']}/jobs").status_code == 404
+
+    b_items = dave.get(f"/api/v1/projects/{ids_b['project']}/jobs").json()["items"]
+    b_ids = {j["id"] for j in b_items}
+    assert b_job in b_ids
+    assert a_job not in b_ids
+    assert a2_job not in b_ids
+
+    a_items = alice.get(f"/api/v1/projects/{ids_a['project']}/jobs").json()["items"]
+    a_ids = {j["id"] for j in a_items}
+    assert a_job in a_ids
+    assert a2_job in a_ids
+    assert b_job not in a_ids
