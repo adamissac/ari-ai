@@ -122,13 +122,19 @@ sandbox environment is scrubbed and transcripts pass through the redactor.
   `[pytest]` section of `tox.ini`; changes to `[tool:pytest]` or
   `[options.entry_points].pytest11` in `setup.cfg`; and changes to
   `tool.pytest`, `project.entry-points.pytest11`, or
-  `tool.poetry.plugins.pytest11` in `pyproject.toml`. Dependency-only
+  `tool.poetry.plugins.pytest11` in `pyproject.toml`, including nested
+  `pytest.ini`, `.pytest.ini`, `tox.ini`, and `setup.cfg` files. Plugin modules
+  are resolved from the repository root and pinned `pythonpath` entries; `-p`
+  options in the pinned recipe test command are included. Dependency-only
   `pyproject.toml` edits and unrelated `tox.ini` / `setup.cfg` changes are
   allowed. Verify reads the test command from the pinned snapshot's
   `build_recipe.json`, not the patched copy. Top-level pytest, pluggy, py,
   sitecustomize, and usercustomize shadow paths, root `.pth` files, and modules
-  named by pinned literal `pytest_plugins`, `-p` addopts, or pytest11 entry
-  points are also protected. `setup.py` changes are not inspected and remain
+  named by pinned literal `pytest_plugins` declarations in conftests and test
+  modules, `-p` addopts, or pytest11 entry points are also protected. Changed
+  non-test-root Python files are checked for new or modified pytest hook
+  definitions, hookimpl decorators, `_pytest` / pluggy imports, and
+  `pytest_plugins` assignments. `setup.py` changes are not inspected and remain
   subject to plan scope.
 - **Known limitation:** a pre-existing path under a recipe test root longer
   than 400 characters is rejected by `safe_rel_path`; Verify fails closed and
@@ -139,11 +145,11 @@ sandbox environment is scrubbed and transcripts pass through the redactor.
 - **Residual risk:** Verify's project suite runs with the test roots restored to
   the pinned snapshot, so patch-added test files cannot affect protected tests.
   Dynamic or nonliteral `pytest_plugins` declarations are recorded but are not
-  statically expanded to arbitrary Python files; edits to dynamically loaded
-  plugin modules outside test roots may remain undetected. Patched application
-  code still runs in the suite, so Verify does not protect against arbitrary
-  hostile code in the patch. Unsupported diff path prefixes fail closed before
-  patch application.
+  statically expanded to arbitrary Python files. Obfuscated or dynamic hook
+  registration that does not change one of the scanned constructs falls under
+  the broader risk that patched application code executes in the suite;
+  Verify does not protect against arbitrary hostile code in the patch.
+  Unsupported or quoted diff path headers fail closed before patch application.
 - **Model output carries no authority.** No output schema has a field that
   approves, verifies or widens scope (asserted by a test).
 - **Citations are validated.** A hypothesis, cause span or recommendation citing

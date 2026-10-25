@@ -1508,6 +1508,230 @@ def test_apply_fresh_rejects_diff_headers_with_unsupported_prefix(
     assert not called
 
 
+def _runner_config_tampering_for_test(
+    tmp_path: Path,
+    *,
+    config_files: dict[str, str],
+    changed_path: str,
+    patched_text: str,
+    test_command: list[str] | None = None,
+    pinned_text: str = "VALUE = 1\n",
+) -> list[str]:
+    from security_agents.sandbox.workspace import unified_diff
+    from security_agents.tools import PatchApplier
+
+    snapshot_root = tmp_path / "snapshot"
+    snapshot_root.mkdir()
+    (snapshot_root / "build_recipe.json").write_text(
+        json.dumps(
+            {
+                "test_roots": ["tests"],
+                "test_command": test_command or ["-q", "tests"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    for path, content in config_files.items():
+        config = snapshot_root / path
+        config.parent.mkdir(parents=True, exist_ok=True)
+        config.write_text(content, encoding="utf-8")
+    plugin_file = snapshot_root / changed_path
+    plugin_file.parent.mkdir(parents=True, exist_ok=True)
+    plugin_file.write_text(pinned_text, encoding="utf-8")
+
+    patched_root = tmp_path / "patched"
+    shutil.copytree(snapshot_root, patched_root)
+    (patched_root / changed_path).write_text(patched_text, encoding="utf-8")
+    diff = unified_diff(snapshot_root, patched_root, [changed_path])
+    return PatchApplier._tampered_runner_config(diff, snapshot_root, patched_root)
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    ("config_files", "test_command", "changed_path", "patched_text"),
+    [
+        pytest.param(
+            {
+                "pytest.ini": "[pytest]\npythonpath = src\n",
+                "conftest.py": 'pytest_plugins = ["mypkg.plug"]\n',
+            },
+            ["-q", "tests"],
+            "src/mypkg/plug.py",
+            "VALUE = 2\n\ndef pytest_collection_modifyitems(items):\n    items.clear()\n",
+            id="pythonpath-src-and-conftest-plugin",
+        ),
+        pytest.param(
+            {},
+            ["-q", "-p", "pkg.plug", "tests"],
+            "pkg/plug.py",
+            "VALUE = 2\n",
+            id="recipe-test-command-plugin",
+        ),
+        pytest.param(
+            {"tests/pytest.ini": "[pytest]\naddopts = -p pkg.plug\n"},
+            ["-q", "tests"],
+            "pkg/plug.py",
+            "VALUE = 2\n",
+            id="nested-pytest-ini-plugin",
+        ),
+        pytest.param(
+            {"tests/test_loader.py": 'pytest_plugins = ["pkg.plug"]\n'},
+            ["-q", "tests"],
+            "pkg/plug.py",
+            "VALUE = 2\n",
+            id="test-module-plugin-declaration",
+        ),
+    ],
+)
+def test_pinned_plugin_discovery_covers_additional_sources(
+    config_files: dict[str, str],
+    test_command: list[str],
+    changed_path: str,
+    patched_text: str,
+    tmp_path: Path,
+) -> None:
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files=config_files,
+        changed_path=changed_path,
+        patched_text=patched_text,
+        test_command=test_command,
+    )
+
+    assert changed_path in tampered
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    ("construct",),
+    [
+        ("def pytest_collection_modifyitems(items):\n    items.clear()\n",),
+        ("async def pytest_report_header(config):\n    return 'patched'\n",),
+        ("@pytest.hookimpl\ndef setup_plugin():\n    return None\n",),
+        ("@hookimpl\ndef setup_plugin():\n    return None\n",),
+        ("import _pytest\n",),
+        ("from _pytest import hookspec\n",),
+        ("import pluggy\n",),
+        ("from pluggy import HookimplMarker\n",),
+        ('pytest_plugins = ["pkg.plug"]\n',),
+    ],
+)
+def test_new_pytest_hook_constructs_in_app_modules_are_flagged(
+    construct: str,
+    tmp_path: Path,
+) -> None:
+    path = "pkg/app.py"
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path=path,
+        patched_text=f"VALUE = 1\n\n{construct}",
+    )
+
+    assert path in tampered
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    ("pinned_text", "patched_text"),
+    [
+        ("VALUE = 1\n", "VALUE = 2\n"),
+        (
+            "def pytest_collection_modifyitems(items):\n    return None\n\nVALUE = 1\n",
+            "def pytest_collection_modifyitems(items):\n    return None\n\nVALUE = 2\n",
+        ),
+    ],
+    ids=["ordinary-app-edit", "unchanged-existing-hook"],
+)
+def test_generic_hook_scan_allows_unrelated_app_edits(
+    pinned_text: str,
+    patched_text: str,
+    tmp_path: Path,
+) -> None:
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path="pkg/app.py",
+        pinned_text=pinned_text,
+        patched_text=patched_text,
+    )
+
+    assert tampered == []
+
+
+@pytest.mark.boundary
+def test_generic_hook_scan_falls_back_to_added_lines_for_invalid_python(
+    tmp_path: Path,
+) -> None:
+    path = "pkg/app.py"
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path=path,
+        patched_text="VALUE = 2\n\ndef pytest_collection_modifyitems(:\n",
+    )
+
+    assert path in tampered
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    "header",
+    [
+        'diff --git "a/conftest.py" b/conftest.py',
+        'diff --git a/conftest.py "b/conftest.py"',
+        '--- "a/conftest.py"',
+        '+++ "b/conftest.py"',
+        'rename from "a/conftest.py"',
+        'rename to "b/conftest.py"',
+        'copy from "a/conftest.py"',
+        'copy to "b/conftest.py"',
+    ],
+)
+def test_supported_diff_path_prefixes_reject_quoted_headers(header: str) -> None:
+    from security_agents.tools.services import _supported_diff_path_prefixes
+
+    if header.startswith("diff --git "):
+        diff = f"{header}\nnew file mode 100644\n"
+    else:
+        diff = f"diff --git a/conftest.py b/conftest.py\n{header}\n"
+
+    assert not _supported_diff_path_prefixes(diff)
+
+
+@pytest.mark.boundary
+def test_apply_fresh_rejects_quoted_headers_adding_root_conftest(
+    intel: LocalIntel,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from security_agents.sandbox import workspace
+
+    called = False
+
+    def apply_quoted_diff(root: Path, _diff: str) -> tuple[bool, str]:
+        nonlocal called
+        called = True
+        (root / "conftest.py").write_text("pytest_plugins = []\n", encoding="utf-8")
+        return True, ""
+
+    monkeypatch.setattr(workspace, "apply_diff", apply_quoted_diff)
+    diff = (
+        'diff --git "a/conftest.py" "b/conftest.py"\n'
+        "new file mode 100644\n"
+        "--- /dev/null\n"
+        '+++ "b/conftest.py"\n'
+        "@@ -0,0 +1 @@\n"
+        "+pytest_plugins = []\n"
+    )
+
+    facts, _ = _apply_fresh_diff(intel, tmp_path, diff, plan_files=["conftest.py"])
+
+    assert not facts["applied"]
+    assert facts["apply_error"] == "unsupported diff path prefix"
+    assert not called
+
+
 @pytest.mark.boundary
 def test_candidate_switch_cannot_reuse_a_later_patched_workspace(
     driver: LocalProcessDriver,

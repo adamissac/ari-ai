@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import ast
 import configparser
+import contextlib
 import json
 import os
 import re
@@ -21,6 +22,7 @@ import shlex
 import shutil
 import tempfile
 import tomllib
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -86,6 +88,8 @@ def _supported_diff_path_prefixes(diff_text: str) -> bool:
     for line in diff_text.splitlines():
         if line.startswith("diff --git "):
             in_hunk = False
+            if '"' in line:
+                return False
             try:
                 paths = shlex.split(line)[2:4]
             except ValueError:
@@ -97,13 +101,118 @@ def _supported_diff_path_prefixes(diff_text: str) -> bool:
         elif line.startswith(("--- ", "+++ ")):
             if in_hunk:
                 continue
+            raw_path = line[4:].split("\t", 1)[0].strip()
+            if raw_path.startswith('"'):
+                return False
             try:
-                paths = shlex.split(line[4:].split("\t", 1)[0].strip())
+                paths = shlex.split(raw_path)
             except ValueError:
                 return False
             if len(paths) != 1 or not supported(paths[0]):
                 return False
+        elif line.startswith(("rename from ", "rename to ", "copy from ", "copy to ")):
+            if line.split(" ", 2)[2].lstrip().startswith('"'):
+                return False
     return True
+
+
+def _added_lines_by_diff_path(diff_text: str) -> dict[str, list[str]]:
+    added: dict[str, list[str]] = {}
+    current_path: str | None = None
+    in_hunk = False
+    for line in diff_text.splitlines():
+        if line.startswith("diff --git "):
+            in_hunk = False
+            try:
+                paths = shlex.split(line)[2:4]
+            except ValueError:
+                current_path = None
+                continue
+            target = next((path for path in paths if path.startswith("b/")), None)
+            try:
+                current_path = safe_rel_path(target[2:]) if target is not None else None
+            except PlatformError:
+                current_path = None
+            continue
+        if line.startswith("+++ ") and not in_hunk:
+            raw_path = line[4:].split("\t", 1)[0].strip()
+            if raw_path == "/dev/null":
+                current_path = None
+            elif raw_path.startswith("b/"):
+                try:
+                    current_path = safe_rel_path(raw_path[2:])
+                except PlatformError:
+                    current_path = None
+            continue
+        if line.startswith("@@ "):
+            in_hunk = True
+            continue
+        if in_hunk and current_path is not None and line.startswith("+") and not line.startswith("+++ "):
+            added.setdefault(current_path, []).append(line[1:])
+    return added
+
+
+def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
+    tree = ast.parse(source)
+    constructs: Counter[tuple[str, str, str]] = Counter()
+
+    def record(kind: str, name: str, node: ast.AST) -> None:
+        segment = ast.get_source_segment(source, node) or ast.dump(node, include_attributes=False)
+        constructs[(kind, name, segment)] += 1
+
+    def assigns_pytest_plugins(targets: list[ast.expr]) -> bool:
+        return any(
+            isinstance(child, ast.Name) and child.id == "pytest_plugins"
+            for target in targets
+            for child in ast.walk(target)
+        )
+
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("pytest_"):
+            record("hook", node.name, node)
+
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for decorator in node.decorator_list:
+                expression = decorator.func if isinstance(decorator, ast.Call) else decorator
+                is_pytest_hookimpl = (
+                    isinstance(expression, ast.Attribute)
+                    and expression.attr == "hookimpl"
+                    and isinstance(expression.value, ast.Name)
+                    and expression.value.id == "pytest"
+                )
+                is_hookimpl = isinstance(expression, ast.Name) and expression.id == "hookimpl"
+                if is_pytest_hookimpl or is_hookimpl:
+                    name = ast.unparse(expression)
+                    record("hookimpl", name, node)
+
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if (
+                    alias.name == "_pytest"
+                    or alias.name.startswith("_pytest.")
+                    or alias.name == "pluggy"
+                    or alias.name.startswith("pluggy.")
+                ):
+                    record("runner-import", alias.name, node)
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if (
+                module == "_pytest"
+                or module.startswith("_pytest.")
+                or module == "pluggy"
+                or module.startswith("pluggy.")
+            ):
+                record("runner-import", module, node)
+
+        targets: list[ast.expr] = []
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+        elif isinstance(node, (ast.AnnAssign, ast.AugAssign, ast.NamedExpr)):
+            targets = [node.target]
+        if targets and assigns_pytest_plugins(targets):
+            record("pytest-plugins", "pytest_plugins", node)
+
+    return constructs
 
 
 def _result_summary(res: SandboxResult) -> dict[str, Any]:
@@ -805,13 +914,50 @@ class PatchApplier:
                 index += 1
 
         plugin_names: set[str] = set()
-        nonliteral_plugin_conftests: set[str] = set()
-        for path, section in (
-            ("pytest.ini", "pytest"),
-            (".pytest.ini", "pytest"),
-            ("tox.ini", "pytest"),
-            ("setup.cfg", "tool:pytest"),
-        ):
+        pythonpath_entries: set[str] = {""}
+        plugin_discovery_residuals: set[str] = set()
+        ini_config_names = {"pytest.ini", ".pytest.ini", "tox.ini", "setup.cfg"}
+        toml_config_names = {"pyproject.toml", "pytest.toml", ".pytest.toml"}
+        ignored_config_dirs = {
+            ".git",
+            ".mypy_cache",
+            ".pytest_cache",
+            ".ruff_cache",
+            ".venv",
+            "__pycache__",
+            "node_modules",
+        }
+        ini_config_paths: list[str] = []
+        toml_config_paths: list[str] = []
+        for current, directories, files in os.walk(snapshot_root, followlinks=False):
+            current_path = Path(current)
+            directories[:] = [
+                name
+                for name in directories
+                if name not in ignored_config_dirs and not (current_path / name).is_symlink()
+            ]
+            for name in files:
+                if name not in ini_config_names | toml_config_names:
+                    continue
+                rel = (current_path / name).relative_to(snapshot_root).as_posix()
+                if name in ini_config_names:
+                    ini_config_paths.append(rel)
+                else:
+                    toml_config_paths.append(rel)
+
+        def add_pythonpath(value: Any) -> None:
+            values = value if isinstance(value, list) else [value]
+            for item in values:
+                if not isinstance(item, str):
+                    continue
+                try:
+                    pythonpath_entries.update(shlex.split(item))
+                except ValueError:
+                    continue
+
+        for path in ini_config_paths:
+            name = path.rsplit("/", 1)[-1]
+            section = "tool:pytest" if name == "setup.cfg" else "pytest"
             try:
                 raw = read_config(snapshot_root, path)
                 present, items = ini_table(raw, section)
@@ -820,23 +966,28 @@ class PatchApplier:
             if present:
                 addopts = next((value for key, value in items.items() if key.casefold() == "addopts"), None)
                 add_addopts(plugin_names, addopts)
+                pythonpath = next(
+                    (value for key, value in items.items() if key.casefold() == "pythonpath"),
+                    None,
+                )
+                add_pythonpath(pythonpath)
+            if name == "setup.cfg":
+                try:
+                    setup_raw = read_config(snapshot_root, path)
+                    _, entry_points = ini_table(setup_raw, "options.entry_points")
+                    pytest11 = next(
+                        (value for key, value in entry_points.items() if key.casefold() == "pytest11"),
+                        None,
+                    )
+                    for line in (pytest11 or "").splitlines():
+                        if "=" in line:
+                            value = line.split("=", 1)[1].strip().split("#", 1)[0].strip()
+                            if value:
+                                add_plugin_name(plugin_names, value.split()[0])
+                except (OSError, PlatformError, UnicodeDecodeError, configparser.Error):
+                    continue
 
-        try:
-            setup_raw = read_config(snapshot_root, "setup.cfg")
-            _, entry_points = ini_table(setup_raw, "options.entry_points")
-            pytest11 = next(
-                (value for key, value in entry_points.items() if key.casefold() == "pytest11"),
-                None,
-            )
-            for line in (pytest11 or "").splitlines():
-                if "=" in line:
-                    value = line.split("=", 1)[1].strip().split("#", 1)[0].strip()
-                    if value:
-                        add_plugin_name(plugin_names, value.split()[0])
-        except (OSError, PlatformError, UnicodeDecodeError, configparser.Error):
-            pass
-
-        for path in ("pyproject.toml", "pytest.toml", ".pytest.toml"):
+        for path in toml_config_paths:
             try:
                 raw = read_config(snapshot_root, path)
                 parsed = tomllib.loads((raw or b"").decode("utf-8"))
@@ -845,10 +996,12 @@ class PatchApplier:
             ini_options = nested_table(parsed, "tool", "pytest", "ini_options")
             if isinstance(ini_options, dict):
                 add_addopts(plugin_names, ini_options.get("addopts"))
-            if path != "pyproject.toml":
+                add_pythonpath(ini_options.get("pythonpath"))
+            if path.rsplit("/", 1)[-1] in {"pytest.toml", ".pytest.toml"}:
                 pytest_table = nested_table(parsed, "pytest")
                 if isinstance(pytest_table, dict):
                     add_addopts(plugin_names, pytest_table.get("addopts"))
+                    add_pythonpath(pytest_table.get("pythonpath"))
             for table in (
                 nested_table(parsed, "project", "entry-points", "pytest11"),
                 nested_table(parsed, "tool", "poetry", "plugins", "pytest11"),
@@ -857,13 +1010,28 @@ class PatchApplier:
                     for value in table.values():
                         add_plugin_name(plugin_names, value)
 
-        for conftest in snapshot_root.rglob("conftest.py"):
-            rel = conftest.relative_to(snapshot_root).as_posix()
+        try:
+            recipe_raw = read_config(snapshot_root, "build_recipe.json")
+            recipe = json.loads((recipe_raw or b"{}").decode("utf-8"))
+            add_addopts(plugin_names, recipe.get("test_command"))
+        except (OSError, PlatformError, UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+            pass
+
+        roots = recipe_test_roots(snapshot_root)
+        plugin_source_paths = {
+            path.relative_to(snapshot_root).as_posix()
+            for path in snapshot_root.rglob("conftest.py")
+            if path.is_file()
+        }
+        plugin_source_paths.update(
+            path for path in test_root_files(snapshot_root, roots) if path.endswith(".py")
+        )
+        for rel in sorted(plugin_source_paths):
             try:
                 source = resolve_under(snapshot_root, rel).read_text(encoding="utf-8")
                 tree = ast.parse(source)
             except (OSError, PlatformError, UnicodeDecodeError, SyntaxError):
-                nonliteral_plugin_conftests.add(rel)
+                plugin_discovery_residuals.add(rel)
                 continue
             for node in ast.walk(tree):
                 if isinstance(node, ast.Assign):
@@ -872,13 +1040,15 @@ class PatchApplier:
                 elif isinstance(node, ast.AnnAssign):
                     targets = [node.target]
                     value = node.value
-                elif isinstance(node, ast.AugAssign):
+                elif isinstance(node, (ast.AugAssign, ast.NamedExpr)):
                     targets = [node.target]
                     value = None
                 else:
                     continue
                 if not any(
-                    isinstance(target, ast.Name) and target.id == "pytest_plugins" for target in targets
+                    isinstance(child, ast.Name) and child.id == "pytest_plugins"
+                    for target in targets
+                    for child in ast.walk(target)
                 ):
                     continue
                 try:
@@ -891,7 +1061,7 @@ class PatchApplier:
                     for item in literal:
                         add_plugin_name(plugin_names, item)
                 else:
-                    nonliteral_plugin_conftests.add(rel)
+                    plugin_discovery_residuals.add(rel)
 
         pinned_plugin_paths: set[str] = set()
         for name in plugin_names:
@@ -899,11 +1069,24 @@ class PatchApplier:
             if not parts or not all(part.isidentifier() for part in parts):
                 continue
             module_path = "/".join(parts)
-            pinned_plugin_paths.add(f"{module_path}.py")
-            if (snapshot_root / module_path).is_dir():
-                pinned_plugin_paths.update(test_root_files(snapshot_root, (f"{module_path}/",)))
+            for entry in pythonpath_entries:
+                try:
+                    prefix = "" if entry in {"", ".", "./"} else safe_rel_path(entry)
+                    module_rel = f"{prefix}/{module_path}".strip("/")
+                    module_file = resolve_under(snapshot_root, f"{module_rel}.py")
+                    if module_file.is_file():
+                        pinned_plugin_paths.add(f"{module_rel}.py")
+                        with contextlib.suppress(ValueError):
+                            pinned_plugin_paths.add(
+                                module_file.relative_to(snapshot_root.resolve()).as_posix()
+                            )
+                    package_dir = resolve_under(snapshot_root, module_rel)
+                    if package_dir.is_dir():
+                        pinned_plugin_paths.update(test_root_files(snapshot_root, (f"{module_rel}/",)))
+                except (OSError, PlatformError, RuntimeError):
+                    continue
         if residuals is not None:
-            residuals.extend(sorted(nonliteral_plugin_conftests))
+            residuals.extend(sorted(plugin_discovery_residuals))
 
         runner_shadowing_roots = {
             "pytest.py",
@@ -916,7 +1099,16 @@ class PatchApplier:
             "sitecustomize.py",
             "usercustomize.py",
         }
-        for path in diff_paths(diff_text):
+        paths = diff_paths(diff_text)
+        added_lines = _added_lines_by_diff_path(diff_text)
+        roots = recipe_test_roots(snapshot_root)
+        sensitive_addition = re.compile(
+            r"^\s*(?:async\s+)?def\s+pytest_[A-Za-z_]\w*\s*\("
+            r"|^\s*@\s*(?:pytest\s*\.\s*)?hookimpl\b"
+            r"|^\s*(?:import|from)\s+(?:_pytest|pluggy)(?:\.|\s|$)"
+            r"|^\s*pytest_plugins\s*(?::[^=]+)?(?:\+=|=)"
+        )
+        for path in paths:
             first_component = path.split("/", 1)[0]
             if (
                 first_component in runner_shadowing_roots
@@ -929,6 +1121,36 @@ class PatchApplier:
             if name == "conftest.py":
                 tampered.add(path)
                 continue
+            if path.endswith(".py") and not under_test_roots(path, roots):
+                try:
+                    original_source = (
+                        resolve_under(snapshot_root, path).read_text(encoding="utf-8")
+                        if os.path.lexists(snapshot_root / path)
+                        else None
+                    )
+                    patched_source = (
+                        resolve_under(patched_root, path).read_text(encoding="utf-8")
+                        if os.path.lexists(patched_root / path)
+                        else None
+                    )
+                    original_constructs = (
+                        _pytest_sensitive_constructs(original_source)
+                        if original_source is not None
+                        else Counter()
+                    )
+                    patched_constructs = (
+                        _pytest_sensitive_constructs(patched_source)
+                        if patched_source is not None
+                        else Counter()
+                    )
+                except (OSError, PlatformError, UnicodeDecodeError, SyntaxError):
+                    additions = added_lines.get(path, [])
+                    has_sensitive_addition = any(sensitive_addition.search(line) for line in additions)
+                    if has_sensitive_addition or additions or os.path.lexists(patched_root / path):
+                        tampered.add(path)
+                    continue
+                if original_constructs != patched_constructs:
+                    tampered.add(path)
             if name not in {
                 "pytest.ini",
                 ".pytest.ini",
