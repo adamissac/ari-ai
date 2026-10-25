@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Readiness/diagnostics split infra liveness from assessment capability: `/readyz` now reports `status=ready|degraded|not_ready` (503 unless ready) with per-capability booleans for live model, GitHub App (configured; `GET /app`-verified), Vercel Sandbox env, artifact-store writability and worker heartbeats; new `/diagnostics` (org-owner auth required — worker ids, env-var names, queue counts, migration state are internal metadata) adds verified GitHub check, migration drift, queue counts and worker rows; `/healthz` gains `git_sha` + `schema_version`. Contract schema 0.22.0. Frontend adds `/api/frontend-version` + `deploy/verify_pair.sh` to detect Vercel/Railway schema skew before it breaks users. Worker liveness is heartbeat-backed (`worker_heartbeats`, migration 0017; `READYZ_REQUIRE_WORKERS` requires ≥1 in staging/production) and `last_poll_at` ensures a stopped claim loop cannot report as a healthy worker.
 - Rebuild the connect → organization → repository → commit flow: the commit page now loads
   the code review (headline, comments, real per-file diffs, patch, tests) on arrival instead
   of hiding it behind an optional button, and the "7 agents" tab replays a recorded run on the
@@ -15,6 +16,7 @@ All notable changes are documented here. Format follows
 
 - Postgres storage controls for the Railway deployment: `python -m backend.maintenance` (`report`/`apply`/`loop`) plus a bearer-token ops surface (`GET /api/v1/ops/storage`, `/ops/storage/prometheus`, `POST /api/v1/ops/maintenance`) reporting DB/WAL/table/file-store usage with fixed 70/80/90% volume alerts to `OPS_ALERT_WEBHOOK_URL`. Bounded retention (`RETENTION_DRY_RUN=true` by default — report-only until flipped) deletes expired sessions, old idempotency keys, terminal job rows, webhook deliveries, monitoring events, settled reassessment requests, runtime windows, orphaned and superseded index payload sets (keeping the newest 5 ready snapshots per repo), orphaned artifact objects, and stale `refs/ari/*` clone refs; audit events, findings, approvals, scopes, assessments, and any snapshot referenced by a live assessment are never deleted. Hourly maintenance sidecar in `deploy/railway/start.sh`. Runbook: `docs/deploy/POSTGRES_STORAGE.md`.
 
+=======
 - Pilot infra limitation documented: `docs/pilot/BRANCH_PROTECTION_LIMITATION.md` — branch-protection rulesets can't be enforced on a personal-account private repo; the release gate stays advisory/procedural, with a step-by-step org-migration plan to enforced protection.
 - fix(pilot): two-org rehearsal runs end-to-end — real API shapes (repo connect + file binding, scope targets/approve, real commit_sha), target app gets factory + seed + build_recipe; 13/13 steps pass against real Anthropic + Vercel sandbox with genuine findings and proven org isolation.
 
