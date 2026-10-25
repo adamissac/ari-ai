@@ -9158,7 +9158,7 @@
         },
         "delivery_mode": {
           "$ref": "#/$defs/DeliveryMode",
-          "default": "auto"
+          "default": "pull_request"
         },
         "languages": {
           "items": {

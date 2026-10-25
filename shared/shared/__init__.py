@@ -38,7 +38,7 @@ SCHEMA_VERSION = (
     #      Phase 5 (#395) both merged; later delivery-mode work is 0.19.0.
     # 0.18.1 automation opt-in: Repository.automatic_assessments and TriggerPolicy.enabled
     #      default to false (owner must explicitly enable; PR #385).
-    # 0.19 ProjectSettings.delivery_mode (auto | pull_request | manual, default auto) and
+    # 0.19 ProjectSettings.delivery_mode (auto | pull_request | manual, pilot default pull_request) and
     #      server-set delivery_authorized_by (additive, ADR-0021).
     # 0.20 reserved by open PR #412 (Phase 6.5 RL-gated pilot). This branch does
     #      not claim 0.20.0 so both PRs can land independently.
