@@ -91,7 +91,7 @@ export function ProblemScene() {
 
         <p className="label-mono mt-10 text-faint">Illustration · not measured</p>
         <div className="relative mt-10" aria-hidden="true">
-          <span className="label-mono absolute -top-8 left-0 rounded-md bg-ink px-2 py-1 text-white" data-testid="problem-count">
+          <span className="label-mono absolute -top-8 left-0 rounded-md bg-bg px-2 py-1 text-white" data-testid="problem-count">
             {count} of {TICKS} changes checked
           </span>
           <span className="label-mono absolute -top-8 right-0 text-faint">Today</span>
