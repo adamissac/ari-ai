@@ -161,7 +161,7 @@ export default function HomePage() {
                   <div><dt>Contents<small>Read and write</small></dt><dd>Read the commit under review; push fix branches for pull requests.</dd></div>
                   <div><dt>Pull requests<small>Read and write</small></dt><dd>Comment on reviews you enabled and open fix pull requests.</dd></div>
                   <div><dt>Metadata<small>Read</small></dt><dd>List the repositories you installed Ari on.</dd></div>
-                  <div><dt>Security checks</dt><dd>Run only against a copy Ari builds itself, never your live site, under an authorization a human approves. Every authorization expires: setup requests {SCOPE_DURATION_DAYS} days, and none can exceed {MAX_SCOPE_DURATION_DAYS}.</dd></div>
+                  <div><dt>Security checks</dt><dd>Run only against a copy Ari builds itself, never your live site, under an authorization a human approves. Every authorization expires: setup requests {SCOPE_DURATION_DAYS} days, and none can exceed {MAX_SCOPE_DURATION_DAYS} days.</dd></div>
                   <div><dt>Revoking access</dt><dd>Uninstall the Ari app from GitHub settings at any time; Ari loses access immediately.</dd></div>
                 </dl>
               </div>
