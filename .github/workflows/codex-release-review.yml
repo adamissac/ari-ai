@@ -250,9 +250,10 @@ jobs:
           AUDIT_FILE: codex-audit.json
           CI_SUMMARY_FILE: ci-summary/ci-summary.txt
           ARI_FIX_WEBHOOKS: ${{ secrets.ARI_FIX_WEBHOOKS }}
-          REPORT_FILE: coordination/messages/$(date -u +%Y-%m-%d)-codex-audit-${{ env.CANDIDATE_SHA }}.md
+
         run: |
           set -uo pipefail
+          export REPORT_FILE="coordination/messages/$(date -u +%Y-%m-%d)-codex-audit-$CANDIDATE_SHA.md"
           if [ ! -s "$AUDIT_FILE" ]; then
             printf '{\n "verdict": "NO-GO",\n "reviewed_sha": "%s",\n "summary": "Codex audit unavailable (OPENAI_API_KEY not configured or job skipped); CI and strict regressions executed — audit REQUIRED before release.",\n "findings": []}\n' "$CANDIDATE_SHA" > "$AUDIT_FILE"
           fi
@@ -262,9 +263,7 @@ jobs:
           set -e
           git config user.name "Alan Mozhoor"
           git config user.email "alanmozhoor@gmail.com"
-          git add "$(basename "$(dirname "$REPORT_FILE")")" 2>/dev/null || true
-          git add "coordination/messages/*codex-audit*-$CANDIDATE_SHA.md" 2>/dev/null || true
-          git add coordination/messages || true
+          git add "$REPORT_FILE" 
           if ! git diff --cached --quiet; then
             git commit -m "[release-review report] codex audit $CANDIDATE_SHA" \
               -m "Report-only commit; does not trigger a re-audit."
