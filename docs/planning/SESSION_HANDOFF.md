@@ -16,6 +16,15 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-25 — Devin (agent, Adam) — project page limits
+- Did: separated authenticated GET/HEAD requests into a 600/minute per-user bucket; writes retain 60/minute. Manual project quotas now count manual-trigger assessments only, while automatic checks still count all triggers; the global $50/day spend query remains unchanged.
+- State of the code: implemented on `fix/adam/project-page-limits`; no production systems or the manual stack were touched. The branch is one unrelated frontend E2E commit behind `origin/main` (`511add9f`), which was not merged.
+- Commands run and results: `uv run pytest -q backend/tests/test_rate_limits.py backend/tests/test_auto_delivery.py backend/tests/test_auto_commits*.py` — 77 passed; Ruff check passed and format check reported 5 files already formatted; `make check` passed with 217 files formatted and 155 contract files unchanged.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: commit and push; do not watch post-push CI until re-briefed.
+- Warnings for the next session: PR #593 changes the hourly-cap logic in `backend/backend/quota.py`; this branch's manual filtering also edits `check_project_quota`, so preserve both when integrating.
+
 ### 2026-10-25 — Devin (agent, Adam) — app data-volume storage alerts
 - Did: added independent 70/80/90% reporting, webhook alerts, and Prometheus gauges for the app data volume; documented `DATA_VOLUME_BYTES` / `DATA_VOLUME_PATH` and Railway's decimal `sizeMB` conversion.
 - State of the code: data-volume sizing defaults to disabled (`DATA_VOLUME_BYTES=0`) while usage is reported if the configured path exists; the path defaults to `/data`.

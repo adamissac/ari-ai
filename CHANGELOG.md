@@ -13,7 +13,7 @@ All notable changes are documented here. Format follows
 - Added independent 70/80/90% storage alerts and Prometheus gauges for the app data volume mounted at `/data`.
 - Quota reset timestamps now reflect when an over-limit rolling hour or day window actually falls below its limit.
 - Railway now defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, disabling per-commit full runs while enabled repositories fall back to the legacy impact-gated, coalesced monitoring policy; `*` or a comma-separated GitHub login list opts into per-commit full runs. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.
-- Shared assessment quotas now apply per project across every trigger (10 per rolling hour, 50 per rolling day), with a global $50 rolling-day spend cap. Manual starts receive a 429 with the quota reset time; automatic requests over quota are recorded as skipped and are not requeued.
+- Authenticated GET/HEAD requests now have a separate 600/minute per-user limit; mutations retain 60/minute. Automatic assessment quotas count all project triggers (10 per rolling hour, 50 per rolling day), while manual starts count only manual-trigger assessments. All starts remain subject to the global $50 rolling-day spend cap; manual quota blocks return 429 with a reset time, and automatic over-quota requests are skipped without requeueing.
 - Allow migrations to use an optional database URL separate from the app role.
 
 - Verify-tested diffs are also stored as sealed, delivery-only artifacts. Delivery checks their

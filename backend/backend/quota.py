@@ -11,6 +11,7 @@ from sqlalchemy.engine import Connection
 
 from backend.db import assessments
 from backend.settings import get_settings
+from shared.assessment import AssessmentTrigger
 
 QuotaReason = Literal["hour", "day", "spend"]
 
@@ -29,14 +30,19 @@ def _quota_resets_at(
     window: timedelta,
     count: int,
     limit: int,
+    *,
+    manual: bool = False,
 ) -> datetime:
+    filters = [
+        assessments.c.project_id == project_id,
+        assessments.c.created_at > now - window,
+        assessments.c.created_at <= now,
+    ]
+    if manual:
+        filters.append(assessments.c.trigger == AssessmentTrigger.manual.value)
     next_expiring = conn.execute(
         sa.select(assessments.c.created_at)
-        .where(
-            assessments.c.project_id == project_id,
-            assessments.c.created_at > now - window,
-            assessments.c.created_at <= now,
-        )
+        .where(*filters)
         .order_by(assessments.c.created_at.asc())
         .offset(count - limit)
         .limit(1)
@@ -44,19 +50,24 @@ def _quota_resets_at(
     return next_expiring + window
 
 
-def check_project_quota(conn: Connection, project_id: str, now: datetime) -> QuotaDecision | None:
-    """Check every project's assessment start and the global rolling spend ceilings."""
+def check_project_quota(
+    conn: Connection, project_id: str, now: datetime, *, manual: bool = False
+) -> QuotaDecision | None:
+    """Apply all-trigger automatic or manual-only project quotas and the shared spend cap."""
     # This is check-then-insert, so concurrent starts can overshoot the limit.
     settings = get_settings()
     hour_window = timedelta(hours=1)
     day_window = timedelta(days=1)
 
+    hour_filters = [
+        assessments.c.project_id == project_id,
+        assessments.c.created_at > now - hour_window,
+        assessments.c.created_at <= now,
+    ]
+    if manual:
+        hour_filters.append(assessments.c.trigger == AssessmentTrigger.manual.value)
     hour_count, hour_oldest = conn.execute(
-        sa.select(sa.func.count(), sa.func.min(assessments.c.created_at)).where(
-            assessments.c.project_id == project_id,
-            assessments.c.created_at > now - hour_window,
-            assessments.c.created_at <= now,
-        )
+        sa.select(sa.func.count(), sa.func.min(assessments.c.created_at)).where(*hour_filters)
     ).one()
     if hour_count >= settings.project_assessments_per_hour and hour_oldest is not None:
         return QuotaDecision(
@@ -68,16 +79,20 @@ def check_project_quota(conn: Connection, project_id: str, now: datetime) -> Quo
                 hour_window,
                 hour_count,
                 settings.project_assessments_per_hour,
+                manual=manual,
             ),
             settings.project_assessments_per_hour,
         )
 
+    day_filters = [
+        assessments.c.project_id == project_id,
+        assessments.c.created_at > now - day_window,
+        assessments.c.created_at <= now,
+    ]
+    if manual:
+        day_filters.append(assessments.c.trigger == AssessmentTrigger.manual.value)
     day_count, day_oldest = conn.execute(
-        sa.select(sa.func.count(), sa.func.min(assessments.c.created_at)).where(
-            assessments.c.project_id == project_id,
-            assessments.c.created_at > now - day_window,
-            assessments.c.created_at <= now,
-        )
+        sa.select(sa.func.count(), sa.func.min(assessments.c.created_at)).where(*day_filters)
     ).one()
     if day_count >= settings.project_assessments_per_day and day_oldest is not None:
         return QuotaDecision(
@@ -89,6 +104,7 @@ def check_project_quota(conn: Connection, project_id: str, now: datetime) -> Quo
                 day_window,
                 day_count,
                 settings.project_assessments_per_day,
+                manual=manual,
             ),
             settings.project_assessments_per_day,
         )
