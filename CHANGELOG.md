@@ -30,6 +30,7 @@ All notable changes are documented here. Format follows
 - New projects default to owner-authorized pull-request delivery; the 7 Agents switch now toggles between automatically opened fix PRs and manual approval.
 - Verified patch pages now show delivery progress and outcomes, including actionable failure reasons.
 - N7 separates free-text credential key=value scrubbing from code-aware redaction, preserving non-secret source expressions while redacting secret literals.
+- N8 extends code-aware redaction to quoted mapping keys/subscripts and annotated assignments; N9 bounds the annotation match to the statement's syntactic span so it never crosses `;`/`#` into an unrelated statement. Sealed-diff bytes and `redacted=` labeling unchanged.
 
 - Execution reliability: job lifecycle with validated transitions and `job_events` history; new `waiting`, `timed_out` and `recovery_required` statuses; `ctx.effect` guard so an external effect with an uncertain outcome (incl. live control adapter `apply`) is never replayed automatically; startup/periodic reconciliation (orphaned leases, confirmed cancellations, deadlines, prerequisites); fair claims with per-project running limits, pending-queue backpressure (429), deadlines and per-kind retry policies; database-failure retries when finalizing jobs; worker registry; `GET /projects/{id}/execution`, `GET /jobs/{id}/history`, owner-only `POST /jobs/{id}/recovery`, and `python -m backend.execution`. Migration `0016`. See docs/architecture/execution-reliability.md.
 
