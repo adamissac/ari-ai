@@ -106,12 +106,12 @@ def main():
         if component not in routing:
             component = "integration"
             owner = routing[component]
-        line = f"{f.get('id','?')} [{sev}] {f.get('title','')} → {component}"
+        line = f"{f.get('id', '?')} [{sev}] {f.get('title', '')} → {component}"
         if sev in ACTIONABLE and owner.get("owner_pr"):
             body = (
                 f"<!-- {MARKER} {sha} {f.get('id')} -->\n"
                 f"**Assigned finding {f.get('id')} ({sev})** on candidate `{sha}`\n\n"
-                f"**{f.get('title','')}**\n\n{f.get('detail','')}\n\n"
+                f"**{f.get('title', '')}**\n\n{f.get('detail', '')}\n\n"
                 f"Files: {', '.join(f.get('paths') or []) or 'n/a'}\n"
                 f"Run: {os.environ['RUN_URL']}\n\n"
                 f"Owner: please fix on your workstream branch and report the fix SHA + tests. "
@@ -126,7 +126,7 @@ def main():
             line += " — informational, no owner routing"
         routed.append(line)
 
-    unresolved = [l for l in routed if "actionable but no owner PR" in l]
+    unresolved = [entry for entry in routed if "actionable but no owner PR" in entry]
     report = [
         f"<!-- {MARKER} {sha} -->",
         f"## Release review — `{sha}`",
@@ -135,7 +135,7 @@ def main():
         f"",
         f"- Base: `{os.environ['BASE_SHA']}`",
         f"- Run: {os.environ['RUN_URL']}",
-        f"- Summary: {audit.get('summary','')}",
+        f"- Summary: {audit.get('summary', '')}",
         f"",
         f"### CI",
         "```",
