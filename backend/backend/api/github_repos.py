@@ -9,6 +9,7 @@ the sign-in snapshot so GitHub can enforce user-to-server visibility.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import httpx
@@ -26,6 +27,9 @@ from shared.errors import ErrorCode
 log = logging.getLogger(__name__)
 
 router = APIRouter(tags=["github"])
+
+_REPO_NAME = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+_COMMIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
 def store_repo_access(conn: Connection, user_id: str, repos: list[dict[str, Any]]) -> None:
@@ -253,3 +257,119 @@ def recent_commits(repo_id: str, request: Request) -> dict[str, Any]:
             ErrorCode.SUBSYSTEM_UNAVAILABLE, "GitHub did not return commits", 503
         ) from exc
     return {"items": items, "next_cursor": None, "available": True, "reason": None}
+
+
+@router.get("/github/commit")
+def read_commit(repo: str, sha: str, request: Request) -> dict[str, Any]:
+    """Read a commit through the GitHub App, limited to the signed-in user's installations."""
+    sha = sha.lower()
+    if not _REPO_NAME.fullmatch(repo) or not _COMMIT_SHA.fullmatch(sha):
+        raise ApiError(
+            ErrorCode.VALIDATION_FAILED,
+            'repo must be "owner/name" and sha must be a 40-character commit SHA',
+            400,
+        )
+
+    with transaction() as conn:
+        user = require_user(conn, request)
+        access = (
+            conn.execute(
+                sa.select(github_repo_access).where(
+                    github_repo_access.c.user_id == user.id,
+                    sa.func.lower(github_repo_access.c.full_name) == repo.lower(),
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
+    if access is None:
+        raise ApiError(
+            ErrorCode.FORBIDDEN,
+            "This repository is not reachable through your GitHub App installation.",
+            403,
+        )
+
+    try:
+        data = GitHubApp().commit(access["installation_id"], access["full_name"], sha)
+    except GitHubNotConfigured as exc:
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE, "GitHub App is not configured", 503
+        ) from exc
+    except httpx.HTTPStatusError as exc:
+        status = exc.response.status_code
+        if status in (404, 422):
+            raise ApiError(
+                ErrorCode.NOT_FOUND,
+                f"GitHub could not find this commit in {access['full_name']}.",
+                404,
+            ) from exc
+        if status in (403, 429):
+            raise ApiError(
+                ErrorCode.SUBSYSTEM_UNAVAILABLE,
+                "GitHub rate limit reached — try again shortly.",
+                503,
+            ) from exc
+        log.warning("reading commit failed: %s", type(exc).__name__)
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE, "GitHub did not return this commit", 503
+        ) from exc
+    except httpx.HTTPError as exc:
+        log.warning("reading commit failed: %s", type(exc).__name__)
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE, "GitHub did not return this commit", 503
+        ) from exc
+
+    github_commit = data.get("commit")
+    if not isinstance(github_commit, dict):
+        github_commit = {}
+    commit_author = github_commit.get("author")
+    if (
+        not isinstance(commit_author, dict)
+        or not isinstance(commit_author.get("name"), str)
+        or not isinstance(commit_author.get("date"), str)
+    ):
+        commit_author = None
+    else:
+        commit_author = {"name": commit_author["name"], "date": commit_author["date"]}
+
+    github_author = data.get("author")
+    author = (
+        {"login": github_author["login"]}
+        if isinstance(github_author, dict) and isinstance(github_author.get("login"), str)
+        else None
+    )
+
+    stats = data.get("stats")
+    if not isinstance(stats, dict):
+        stats = {}
+    file_rows = data.get("files")
+    files = (
+        [
+            {
+                key: file[key]
+                for key in ("filename", "status", "additions", "deletions", "patch")
+                if key in file
+            }
+            for file in file_rows
+            if isinstance(file, dict)
+        ]
+        if isinstance(file_rows, list)
+        else []
+    )
+
+    return {
+        "sha": data.get("sha") if isinstance(data.get("sha"), str) else sha,
+        "html_url": data.get("html_url") if isinstance(data.get("html_url"), str) else "",
+        "commit": {
+            "message": github_commit.get("message")
+            if isinstance(github_commit.get("message"), str)
+            else "",
+            "author": commit_author,
+        },
+        "author": author,
+        "stats": {
+            "additions": stats.get("additions") if type(stats.get("additions")) is int else 0,
+            "deletions": stats.get("deletions") if type(stats.get("deletions")) is int else 0,
+        },
+        "files": files,
+    }

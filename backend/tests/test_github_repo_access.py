@@ -458,3 +458,231 @@ def test_github_recent_commits_parses_the_api() -> None:
             "html_url": "https://github.com/acme/shop/commit/bbb",
         }
     ]
+
+
+def test_commit_uses_case_insensitive_access_and_returns_only_supported_fields(
+    client_factory, monkeypatch
+) -> None:
+    alice = client_factory("alice")
+    _grant(
+        alice.me["user"]["id"],
+        [
+            {
+                "full_name": "Acme/Shop",
+                "installation_id": 42,
+                "default_branch": "main",
+                "private": True,
+            }
+        ],
+    )
+    calls = []
+
+    class FakeApp:
+        def commit(self, installation_id, full_name, sha):
+            calls.append((installation_id, full_name, sha))
+            return {
+                "sha": "a" * 40,
+                "html_url": "https://github.com/Acme/Shop/commit/" + "a" * 40,
+                "node_id": "dropped",
+                "commit": {
+                    "message": "fix: example",
+                    "author": {
+                        "name": "Alice",
+                        "date": "2026-10-17T01:00:00Z",
+                        "email": "dropped@example.com",
+                    },
+                    "verification": {"verified": True},
+                },
+                "author": {"login": "alice", "id": 123},
+                "stats": {"additions": 2, "deletions": 1, "total": 3},
+                "files": [
+                    {
+                        "filename": "src/main.py",
+                        "status": "modified",
+                        "additions": 2,
+                        "deletions": 1,
+                        "patch": "@@ -1 +1 @@\n-old\n+new",
+                        "blob_url": "dropped",
+                        "previous_filename": "dropped",
+                    }
+                ],
+            }
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", FakeApp)
+    response = alice.get(
+        "/api/v1/github/commit",
+        params={"repo": "acme/shop", "sha": "A" * 40},
+    )
+
+    assert response.status_code == 200, response.text
+    assert calls == [(42, "Acme/Shop", "a" * 40)]
+    assert response.json() == {
+        "sha": "a" * 40,
+        "html_url": "https://github.com/Acme/Shop/commit/" + "a" * 40,
+        "commit": {
+            "message": "fix: example",
+            "author": {"name": "Alice", "date": "2026-10-17T01:00:00Z"},
+        },
+        "author": {"login": "alice"},
+        "stats": {"additions": 2, "deletions": 1},
+        "files": [
+            {
+                "filename": "src/main.py",
+                "status": "modified",
+                "additions": 2,
+                "deletions": 1,
+                "patch": "@@ -1 +1 @@\n-old\n+new",
+            }
+        ],
+    }
+
+
+def test_commit_requires_repository_access_before_calling_github_app(
+    client_factory, monkeypatch
+) -> None:
+    alice = client_factory("alice")
+
+    class UnreachableApp:
+        def __init__(self):
+            raise AssertionError("GitHubApp must not be called without access")
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", UnreachableApp)
+    response = alice.get("/api/v1/github/commit", params={"repo": "acme/shop", "sha": "a" * 40})
+
+    assert response.status_code == 403
+    assert response.json()["error"]["message"] == (
+        "This repository is not reachable through your GitHub App installation."
+    )
+
+
+def test_commit_maps_github_not_found_without_token_guidance(client_factory, monkeypatch) -> None:
+    alice = client_factory("alice")
+    _grant(
+        alice.me["user"]["id"],
+        [
+            {
+                "full_name": "acme/shop",
+                "installation_id": 42,
+                "default_branch": "main",
+                "private": True,
+            }
+        ],
+    )
+
+    class MissingApp:
+        def commit(self, installation_id, full_name, sha):
+            request = httpx.Request("GET", "https://api.github.com")
+            response = httpx.Response(404, request=request)
+            raise httpx.HTTPStatusError("not found", request=request, response=response)
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", MissingApp)
+    response = alice.get("/api/v1/github/commit", params={"repo": "acme/shop", "sha": "a" * 40})
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "NOT_FOUND"
+    assert response.json()["error"]["message"] == "GitHub could not find this commit in acme/shop."
+    assert "GITHUB_TOKEN" not in response.text
+
+
+def test_commit_maps_github_not_configured_to_subsystem_unavailable(
+    client_factory, monkeypatch
+) -> None:
+    alice = client_factory("alice")
+    _grant(
+        alice.me["user"]["id"],
+        [
+            {
+                "full_name": "acme/shop",
+                "installation_id": 42,
+                "default_branch": "main",
+                "private": True,
+            }
+        ],
+    )
+
+    class UnconfiguredApp:
+        def __init__(self):
+            raise GitHubNotConfigured("missing app credentials")
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", UnconfiguredApp)
+    response = alice.get("/api/v1/github/commit", params={"repo": "acme/shop", "sha": "a" * 40})
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "SUBSYSTEM_UNAVAILABLE"
+    assert response.json()["error"]["message"] == "GitHub App is not configured"
+
+
+def test_commit_requires_authentication(client_factory) -> None:
+    response = client_factory().get(
+        "/api/v1/github/commit", params={"repo": "acme/shop", "sha": "a" * 40}
+    )
+
+    assert response.status_code == 401
+
+
+def test_commit_rejects_invalid_sha(client_factory) -> None:
+    alice = client_factory("alice")
+    response = alice.get("/api/v1/github/commit", params={"repo": "acme/shop", "sha": "bad-sha"})
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "VALIDATION_FAILED"
+
+
+@pytest.mark.parametrize("status", [403, 429])
+def test_commit_maps_github_rate_limits_to_subsystem_unavailable(
+    client_factory, monkeypatch, status
+) -> None:
+    alice = client_factory("alice")
+    _grant(
+        alice.me["user"]["id"],
+        [
+            {
+                "full_name": "acme/shop",
+                "installation_id": 42,
+                "default_branch": "main",
+                "private": True,
+            }
+        ],
+    )
+
+    class LimitedApp:
+        def commit(self, installation_id, full_name, sha):
+            request = httpx.Request("GET", "https://api.github.com")
+            response = httpx.Response(status, request=request)
+            raise httpx.HTTPStatusError("limited", request=request, response=response)
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", LimitedApp)
+    response = alice.get("/api/v1/github/commit", params={"repo": "acme/shop", "sha": "a" * 40})
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "SUBSYSTEM_UNAVAILABLE"
+    assert response.json()["error"]["message"] == ("GitHub rate limit reached — try again shortly.")
+
+
+def test_commit_hides_transport_error_details_and_logs_only_type_name(
+    client_factory, monkeypatch, caplog
+) -> None:
+    alice = client_factory("alice")
+    _grant(
+        alice.me["user"]["id"],
+        [
+            {
+                "full_name": "acme/shop",
+                "installation_id": 42,
+                "default_branch": "main",
+                "private": True,
+            }
+        ],
+    )
+
+    class OfflineApp:
+        def commit(self, installation_id, full_name, sha):
+            raise httpx.ConnectError("private transport details")
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", OfflineApp)
+    response = alice.get("/api/v1/github/commit", params={"repo": "acme/shop", "sha": "a" * 40})
+
+    assert response.status_code == 503
+    assert response.json()["error"]["message"] == "GitHub did not return this commit"
+    assert "ConnectError" in caplog.text
+    assert "private transport details" not in caplog.text

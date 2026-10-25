@@ -1,5 +1,5 @@
 import { backendOrigin } from '@/lib/backend-proxy';
-import { LiveError, liveAnalysis } from '@/lib/live-analysis';
+import { LiveError, liveAnalysis, type GitHubCommit } from '@/lib/live-analysis';
 
 /** Live analyses take one model call of up to a few minutes. */
 export const maxDuration = 300;
@@ -12,8 +12,8 @@ const fail = (status: number, code: string, message: string) => Response.json({ 
 
 /**
  * POST { repo: "owner/name", sha } → live analysis of that commit. Only for a signed-in user who
- * can reach the repository through the GitHub App (checked against the control plane with their
- * own session cookie), so the server's model key cannot be spent on arbitrary repositories.
+ * can reach the repository through their GitHub App installation, as checked by the control plane
+ * with their session cookie, so the server's model key cannot be spent on arbitrary repositories.
  */
 export async function POST(request: Request): Promise<Response> {
   let body: { repo?: unknown; sha?: unknown };
@@ -22,11 +22,11 @@ export async function POST(request: Request): Promise<Response> {
   const sha = typeof body.sha === 'string' ? body.sha.toLowerCase() : '';
   if (!FULL_NAME.test(repo) || !SHA.test(sha)) return fail(400, 'BAD_REQUEST', 'Expected repo "owner/name" and a 40-character commit SHA.');
 
-  const access = await canReach(request, repo);
-  if (access !== true) return access;
+  const commit = await loadCommit(request, repo, sha);
+  if (commit instanceof Response) return commit;
 
   try {
-    return Response.json(await liveAnalysis(repo, sha));
+    return Response.json(await liveAnalysis(repo, sha, commit));
   } catch (error) {
     if (error instanceof LiveError) return fail(error.status, error.code, error.message);
     console.error('live analysis failed', error);
@@ -34,18 +34,39 @@ export async function POST(request: Request): Promise<Response> {
   }
 }
 
-async function canReach(request: Request, repo: string): Promise<true | Response> {
+async function loadCommit(
+  request: Request,
+  repo: string,
+  sha: string,
+): Promise<GitHubCommit | Response> {
   const cookie = request.headers.get('cookie');
   if (!cookie) return fail(401, 'UNAUTHENTICATED', 'Sign in first.');
   let res: Response;
   try {
-    res = await fetch(`${backendOrigin()}/api/v1/github/repositories`, { headers: { cookie, accept: 'application/json' }, cache: 'no-store', signal: AbortSignal.timeout(15_000) });
+    const params = new URLSearchParams({ repo, sha });
+    res = await fetch(`${backendOrigin()}/api/v1/github/commit?${params}`, {
+      headers: { cookie, accept: 'application/json' },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(15_000),
+    });
   } catch {
-    return fail(502, 'SUBSYSTEM_UNAVAILABLE', 'Could not reach the control plane to check repository access.');
+    return fail(502, 'SUBSYSTEM_UNAVAILABLE', 'Could not reach the control plane to read this commit.');
   }
-  if (res.status === 401) return fail(401, 'UNAUTHENTICATED', 'Sign in first.');
-  if (!res.ok) return fail(502, 'SUBSYSTEM_UNAVAILABLE', 'Could not check repository access.');
-  const list = (await res.json().catch(() => null)) as { items?: { full_name?: unknown }[] } | null;
-  const ok = list?.items?.some(r => typeof r.full_name === 'string' && r.full_name.toLowerCase() === repo.toLowerCase());
-  return ok ? true : fail(403, 'FORBIDDEN', 'This repository is not reachable through your GitHub App installation.');
+  if (!res.ok) {
+    const body = await res.json().catch(() => null) as {
+      error?: { code?: unknown; message?: unknown };
+    } | null;
+    return fail(
+      res.status,
+      typeof body?.error?.code === 'string' ? body.error.code : 'SUBSYSTEM_UNAVAILABLE',
+      typeof body?.error?.message === 'string'
+        ? body.error.message
+        : 'The control plane could not read this commit.',
+    );
+  }
+  try {
+    return await res.json() as GitHubCommit;
+  } catch {
+    return fail(502, 'SUBSYSTEM_UNAVAILABLE', 'The control plane returned an unreadable commit.');
+  }
 }
