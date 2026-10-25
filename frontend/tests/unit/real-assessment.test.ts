@@ -1,6 +1,6 @@
 import type { Assessment, AuthorizedScope } from '@hackatl/frontend-transport';
 import { describe, expect, it } from 'vitest';
-import { assessmentsForCommit, loadCommitAssessments, scopeBody, scopeStateFor } from '@/lib/real-assessment';
+import { assessmentsForCommit, loadCommitAssessments, SCOPE_DURATION_DAYS, scopeBody, scopeStateFor } from '@/lib/real-assessment';
 import { SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
 
 const scope = (
@@ -51,6 +51,14 @@ describe('scopeBody', () => {
       expires_at: '2026-01-31T12:00:00.000Z',
       notes: null,
     });
+  });
+
+  it('sets expiration from the shared scope duration', () => {
+    const now = new Date('2026-01-01T12:00:00.000Z');
+    expect(SCOPE_DURATION_DAYS).toBe(30);
+    expect(scopeBody('repo_123', now).expires_at).toBe(
+      new Date(now.getTime() + SCOPE_DURATION_DAYS * 86_400_000).toISOString(),
+    );
   });
 });
 
