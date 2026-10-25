@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Expired scopes no longer appear active or qualify for assessment selection.
+- Storage report probes use savepoints so a denied optional metric does not abort later checks.
 - Added the Industrial Graphite design-token foundation and reskinned existing UI primitives and console surfaces with graphite neutrals, vermilion signal, Inter, and IBM Plex Mono.
 - Rebuilt the public landing page around a commit-to-verify signal field, six visible stages, and explicit scope and control disclosures.
 - Added a guided repository setup walkthrough (`/projects/<id>/setup?repo=<repoId>`): connecting a repository now lands there, and it walks through authorizing testing, tuning the code reviewer, choosing fix delivery (pull request is preselected), and starting the first review.
