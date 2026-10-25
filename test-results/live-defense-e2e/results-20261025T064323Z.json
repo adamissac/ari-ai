@@ -1,0 +1,83 @@
+{
+  "suite": "live-defense-e2e",
+  "environment": {
+    "git_sha": "da43607589153ab06d088c857b947749b1c3cb2d",
+    "git_branch": "integration/2026-11-02-release",
+    "schema_version": "0.26.0",
+    "orchestrator_version": "7c.1.0",
+    "provider_mode": "fake",
+    "python": "3.12.15",
+    "host": "ip-172-16-4-2.us-west-2.compute.internal",
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "captured_at": "2026-10-25T06:43:23.852485+00:00"
+  },
+  "scenarios": [
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_abrupt_process_death_during_provider_send_requires_recovery",
+      "outcome": "passed",
+      "duration_s": 0.526,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_repo_picker_does_not_disclose_other_tenant_connection",
+      "outcome": "passed",
+      "duration_s": 0.06,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_reconnect_refuses_stale_access_when_fresh_check_fails",
+      "outcome": "passed",
+      "duration_s": 0.075,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_repository_disconnect_stops_next_provider_turn",
+      "outcome": "passed",
+      "duration_s": 0.276,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_job_api_does_not_expose_infrastructure_credentials",
+      "outcome": "passed",
+      "duration_s": 0.069,
+      "failure_stage": null,
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    },
+    {
+      "scenario": "?",
+      "nodeid": "backend/tests/live_defense_e2e/test_rc2_independent.py::test_disconnect_after_final_revocation_read_prevents_success",
+      "outcome": "failed",
+      "duration_s": 0.355,
+      "failure_stage": "/Users/devin/repos/ari-ai/backend/tests/live_defense_e2e/test_rc2_independent.py:192: assert []",
+      "checks": [],
+      "artifacts": [],
+      "notes": [],
+      "markers": []
+    }
+  ],
+  "provider_evidence_note": "All scenarios run through scripted providers (FakeLLM) unless the test is marked live_llm. FakeLLM results do not validate real Anthropic execution."
+}
