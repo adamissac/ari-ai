@@ -1345,3 +1345,36 @@ def test_free_text_and_code_redaction_split(tmp_path):
     assert "hunter2" not in body.decode()
     # Label preference: the transport-DSN pattern names postgres DSNs.
     assert find_high_confidence_secret("postgresql://svc:hunter2@db.internal") == "dsn_credentials"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        'settings = {"password": "n8-dict-secret"}\n',
+        "password: str = 'n8-typed-secret'\n",
+        'd["api_key"] = "n8-subscript-secret"\n',
+    ],
+)
+def test_code_redaction_covers_quoted_keys_and_annotations(source):
+    """N8: quoted mapping keys, annotated and subscript assignments redact."""
+    import ast
+
+    from backend.redaction import redact_code
+
+    out = redact_code(source)
+    for marker in ("n8-dict-secret", "n8-typed-secret", "n8-subscript-secret"):
+        assert marker not in out
+    assert "[REDACTED:kv]" in out
+    ast.parse(out)
+
+
+def test_code_redaction_still_preserves_annotated_nonliteral():
+    """N8 vs N7: typed non-secret expressions stay byte-identical."""
+    from backend.redaction import redact_code
+
+    for expr in (
+        'password: str = os.getenv("DB_PASSWORD")\n',
+        'api_key=os.environ["API_KEY"]\n',
+        '{"password": os.environ["P"]}\n',
+    ):
+        assert redact_code(expr) == expr
