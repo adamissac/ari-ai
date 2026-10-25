@@ -1,7 +1,7 @@
 """Execution reliability operations: reconciliation, stuck detection, operational
 metrics, worker registry and operator recovery resolution.
 
-Metrics are computed from ``jobs``/``job_events``/``worker_heartbeats`` with SQL
+Metrics are computed from ``jobs``/``job_events``/``worker_registry`` with SQL
 (docs/19: DB-query metrics, no separate observability backend).
 
     uv run python -m backend.execution stats [--project PROJECT_ID]
@@ -20,7 +20,7 @@ import sqlalchemy as sa
 from sqlalchemy.engine import Connection
 
 from backend import jobs as jobq
-from backend.db import job_events, jobs, transaction, worker_heartbeats
+from backend.db import job_events, jobs, transaction, worker_registry
 from backend.jobs import ErrorCategory, JobStatus
 from backend.settings import get_settings
 from shared.base import utcnow
@@ -40,7 +40,7 @@ def worker_seen(
     *,
     finished: int = 0,
 ) -> None:
-    stmt = sa.dialects.postgresql.insert(worker_heartbeats).values(
+    stmt = sa.dialects.postgresql.insert(worker_registry).values(
         worker_id=worker_id,
         state=state,
         current_job_id=current_job_id,
@@ -48,11 +48,11 @@ def worker_seen(
     )
     conn.execute(
         stmt.on_conflict_do_update(
-            index_elements=[worker_heartbeats.c.worker_id],
+            index_elements=[worker_registry.c.worker_id],
             set_={
                 "state": state,
                 "current_job_id": current_job_id,
-                "jobs_finished": worker_heartbeats.c.jobs_finished + finished,
+                "jobs_finished": worker_registry.c.jobs_finished + finished,
                 "last_seen_at": sa.func.now(),
             },
         )
@@ -60,7 +60,7 @@ def worker_seen(
 
 
 def worker_gone(conn: Connection, worker_id: str) -> None:
-    conn.execute(sa.delete(worker_heartbeats).where(worker_heartbeats.c.worker_id == worker_id))
+    conn.execute(sa.delete(worker_registry).where(worker_registry.c.worker_id == worker_id))
 
 
 # --- reconciliation ----------------------------------------------------------------
@@ -213,7 +213,7 @@ def reconcile(conn: Connection) -> dict[str, Any]:
             report["prerequisite_failed"] += 1
     stale = timedelta(seconds=get_settings().worker_stale_s * 10)
     report["workers_pruned"] = conn.execute(
-        sa.delete(worker_heartbeats).where(worker_heartbeats.c.last_seen_at < now - stale)
+        sa.delete(worker_registry).where(worker_registry.c.last_seen_at < now - stale)
     ).rowcount
     return report
 
@@ -413,11 +413,11 @@ def stats(conn: Connection, project_id: str | None = None, window_s: int = 86400
         fresh = now - sa.text(f"interval '{int(s.worker_stale_s)} seconds'")
         w = conn.execute(
             sa.select(
-                sa.func.count().filter(worker_heartbeats.c.last_seen_at >= fresh),
+                sa.func.count().filter(worker_registry.c.last_seen_at >= fresh),
                 sa.func.count().filter(
-                    worker_heartbeats.c.last_seen_at >= fresh, worker_heartbeats.c.state == "busy"
+                    worker_registry.c.last_seen_at >= fresh, worker_registry.c.state == "busy"
                 ),
-                sa.func.count().filter(worker_heartbeats.c.last_seen_at < fresh),
+                sa.func.count().filter(worker_registry.c.last_seen_at < fresh),
             )
         ).one()
         out["workers"] = {"active": w[0], "busy": w[1], "stale": w[2]}

@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
-revision = "0016"
-down_revision = "0015"
+revision = "0018"
+down_revision = "0017"
 branch_labels = None
 depends_on = None
 
@@ -86,7 +86,7 @@ def upgrade() -> None:
         "ix_job_events_project_created", "job_events", ["project_id", "created_at"], unique=False
     )
     op.create_table(
-        "worker_heartbeats",
+        "worker_registry",
         sa.Column("worker_id", sa.String(length=120), nullable=False),
         sa.Column("state", sa.String(length=20), nullable=False),
         sa.Column("current_job_id", sa.String(length=80), nullable=True),
@@ -101,14 +101,14 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.CheckConstraint(
-            "state in ('idle','busy','stopping')", name=op.f("ck_worker_heartbeats_state")
+            "state in ('idle','busy','stopping')", name=op.f("ck_worker_registry_state")
         ),
-        sa.PrimaryKeyConstraint("worker_id", name=op.f("pk_worker_heartbeats")),
+        sa.PrimaryKeyConstraint("worker_id", name=op.f("pk_worker_registry")),
     )
 
 
 def downgrade() -> None:
-    op.drop_table("worker_heartbeats")
+    op.drop_table("worker_registry")
     op.drop_index("ix_job_events_project_created", table_name="job_events")
     op.drop_index("ix_job_events_job_seq", table_name="job_events")
     op.drop_table("job_events")

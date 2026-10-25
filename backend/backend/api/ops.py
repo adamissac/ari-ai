@@ -1,19 +1,29 @@
-"""Operator surface: GET /api/v1/ops/status — deploy, migration and queue visibility.
+"""Operator surface.
 
-Read-only and token-gated (X-Ops-Token == OPS_TOKEN). When OPS_TOKEN is unset the
-endpoint answers 404 outside development/test — an unconfigured token must not
-open an ops view on the internet. It intentionally returns a plain JSON object:
-this payload is operator tooling, not a versioned client contract.
+GET /api/v1/ops/status — deploy, migration and queue visibility; token-gated by
+the X-Ops-Token header (OPS_TOKEN). When OPS_TOKEN is unset the endpoint answers
+404 outside development/test — an unconfigured token must not open an ops view
+on the internet. It returns a plain JSON object: operator tooling, not a
+versioned client contract.
+
+Storage reporting and on-demand maintenance (upstream) — disabled entirely
+unless OPS_API_TOKEN is set; a Bearer token checked in constant time, independent
+of user sessions/CSRF (this surface is for automation and on-call, not the UI).
+See docs/deploy/POSTGRES_STORAGE.md.
 """
 
 from __future__ import annotations
 
+import hmac
 import secrets
+from typing import Any
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
+from backend import maintenance
 from backend.api.deps import ApiError
 from backend.db import first_responder_modes, get_engine, jobs
 from backend.llm import llm_mode
@@ -27,7 +37,7 @@ router = APIRouter()
 _HEADER = "X-Ops-Token"
 
 
-def _require_ops(request: Request) -> None:
+def _require_ops_header(request: Request) -> None:
     s = get_settings()
     token = s.ops_token.get_secret_value() if s.ops_token else ""
     if not token:
@@ -99,7 +109,7 @@ def _queue_snapshot(conn: sa.Connection) -> dict:
 
 @router.get("/ops/status")
 def ops_status(request: Request) -> JSONResponse:
-    _require_ops(request)
+    _require_ops_header(request)
     from backend.main import VERSION  # deferred: main imports this router
 
     s = get_settings()
@@ -130,3 +140,72 @@ def ops_status(request: Request) -> JSONResponse:
         "feature_flags": sorted(s.flags()),
     }
     return JSONResponse(body)
+
+
+# --- Storage reporting + on-demand maintenance (upstream; OPS_API_TOKEN Bearer) ---
+
+
+def _require_ops(authorization: str | None = Header(default=None)) -> None:
+    token = get_settings().ops_api_token
+    if token is None:
+        # Disabled ops surface must look like it does not exist.
+        raise HTTPException(status_code=404, detail="not found")
+    secret = token.get_secret_value()
+    scheme, _, presented = (authorization or "").partition(" ")
+    if scheme.lower() != "bearer" or not hmac.compare_digest(presented, secret):
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+
+@router.get("/ops/storage", dependencies=[Depends(_require_ops)])
+def storage_report() -> Any:
+    """Current database/WAL/table/filesystem usage plus reclaimable estimates."""
+    return maintenance.storage_report(engine=get_engine())
+
+
+class MaintenanceRequest(BaseModel):
+    dry_run: bool = True
+
+
+@router.post("/ops/maintenance", dependencies=[Depends(_require_ops)])
+def run_maintenance(body: MaintenanceRequest) -> Any:
+    """Run one retention cycle. Defaults to dry-run; pass {"dry_run": false} to delete."""
+    return maintenance.run_retention(engine=get_engine(), dry_run=body.dry_run)
+
+
+@router.get("/ops/storage/prometheus", dependencies=[Depends(_require_ops)])
+def storage_prometheus() -> Any:
+    """Same numbers in Prometheus text exposition format for external scrapers."""
+    report = maintenance.storage_report(engine=get_engine())
+    lines = [
+        "# HELP ari_postgres_bytes PostgreSQL database size in bytes",
+        "# TYPE ari_postgres_bytes gauge",
+        f"ari_postgres_bytes {report['database']['size_bytes']}",
+        "# HELP ari_postgres_wal_bytes WAL directory size in bytes",
+        "# TYPE ari_postgres_wal_bytes gauge",
+        f"ari_postgres_wal_bytes {report['wal_bytes'] or 0}",
+        "# HELP ari_postgres_table_bytes Total relation size by table",
+        "# TYPE ari_postgres_table_bytes gauge",
+    ]
+    for t in report["tables"]:
+        lines.append(f'ari_postgres_table_bytes{{table="{t["table"]}"}} {t["total_bytes"]}')
+    pct = report["volume"]["pct_used"]
+    if pct is not None:
+        lines += [
+            "# HELP ari_postgres_volume_pct Volume utilization percent",
+            "# TYPE ari_postgres_volume_pct gauge",
+            f"ari_postgres_volume_pct {pct}",
+        ]
+    fs = report.get("filesystem", {})
+    if "artifact_bytes" in fs:
+        lines.append(f"ari_artifact_store_bytes {fs['artifact_bytes']}")
+    if "workdir_bytes" in fs:
+        lines.append(f"ari_security_workdir_bytes {fs['workdir_bytes']}")
+    from fastapi import Response
+
+    return Response("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
+
+
+@router.post("/ops/maintenance/dry-run-report", dependencies=[Depends(_require_ops)])
+def dry_run_report() -> Any:
+    """What the next real cycle would delete, without deleting it."""
+    return maintenance.run_retention(engine=get_engine(), dry_run=True)

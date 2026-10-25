@@ -44,6 +44,13 @@ pids="$pids $api"
 # it was down (a deploy swaps containers). Harmless when nothing was missed.
 python -m backend.redeliver &
 
+# Storage maintenance: hourly storage report + bounded retention. Runs as a sidecar, not
+# in pids: a maintenance bug must never restart the service or block a drain. Ships in
+# dry-run mode — set RETENTION_DRY_RUN=false once a report has been reviewed.
+if [ "${MAINTENANCE_ENABLED:-true}" = "true" ]; then
+  python -m backend.maintenance loop &
+fi
+
 # A deploy sends TERM: workers finish the job in hand and exit (Railway keeps this container
 # for RAILWAY_DEPLOYMENT_DRAINING_SECONDS), so in-flight assessments are not cut off. The API
 # keeps accepting webhooks into the queue until they are done, then stops.
