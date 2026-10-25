@@ -32,7 +32,15 @@ def test_psycopg_dsn_credentials() -> None:
 
 def test_jwt() -> None:
     jwt = (
-        "eyJ" + "hbGciOiJIUzI1NiJ9" + "." + "eyJ" + "zdWIiOiIxMjM0NTY3ODkwIn0" + "." + "SflKxw" + "RJSMeKKF2QT4fwpMeJf36POk6yJV" + "_adQssw5c"
+        "eyJ"
+        + "hbGciOiJIUzI1NiJ9"
+        + "."
+        + "eyJ"
+        + "zdWIiOiIxMjM0NTY3ODkwIn0"
+        + "."
+        + "SflKxw"
+        + "RJSMeKKF2QT4fwpMeJf36POk6yJV"
+        + "_adQssw5c"
     )
     out = redact(f"h = {jwt}")
     assert "SflKxw" not in out
