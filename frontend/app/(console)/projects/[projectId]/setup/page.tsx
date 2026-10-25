@@ -3,7 +3,7 @@
 import type { DeliveryMode, Repository } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { BackdropShapes } from '@/components/backdrop-shapes';
 import { useProject } from '@/components/project';
 import { RepositoryAutomation } from '@/components/repository-automation';
@@ -11,7 +11,6 @@ import { Button, ErrorState, Loading } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
 import { scopeBody, scopeStateFor } from '@/lib/real-assessment';
-import { SCOPE_SANDBOX_EXPLANATION } from '@/lib/scope';
 import { useResource } from '@/lib/use-resource';
 
 const STRICTNESS: Array<[number, string, string]> = [
@@ -71,9 +70,19 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
   const [prs, setPrs] = useState(review.review_pull_requests);
   const [comments, setComments] = useState(review.comment_on_pull_requests);
   const [monitoring, setMonitoring] = useState(project.settings.monitoring_policy.enabled);
-  const [delivery, setDelivery] = useState<DeliveryMode>(project.settings.delivery_mode);
+  const [delivery, setDelivery] = useState<DeliveryMode>(project.settings.delivery_mode === 'auto' ? 'pull_request' : project.settings.delivery_mode);
+  const progressKey = `ari-setup:${project.id}:${repo.id}`;
   const [reviewerSaved, setReviewerSaved] = useState(false);
   const [deliverySaved, setDeliverySaved] = useState(false);
+  useEffect(() => {
+    const saved = window.localStorage.getItem(progressKey) ?? '';
+    setReviewerSaved(saved.includes('reviewer'));
+    setDeliverySaved(saved.includes('delivery'));
+  }, [progressKey]);
+  const markSaved = (step: 'reviewer' | 'delivery') => {
+    const saved = window.localStorage.getItem(progressKey) ?? '';
+    if (!saved.includes(step)) window.localStorage.setItem(progressKey, `${saved} ${step}`.trim());
+  };
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
 
@@ -99,11 +108,13 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
       review: { ...review, strictness, review_pushes: pushes, review_pull_requests: prs, comment_on_pull_requests: comments },
     });
     setReviewerSaved(true);
+    markSaved('reviewer');
   });
   const saveDelivery = () => act('delivery', async () => {
     if (delivery === 'auto' && !window.confirm('Ari will commit verified fixes straight to your default branch with no human check. Continue?')) return;
     await save({ ...project.settings, delivery_mode: delivery });
     setDeliverySaved(true);
+    markSaved('delivery');
   });
   const run = () => act('run', async () => {
     if (scope.kind !== 'active') return;
@@ -136,7 +147,7 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
           <p className="text-sm text-muted">Ari can read <span className="font-mono text-ink">{repo.full_name}</span> on <span className="font-mono text-ink">{repo.default_branch}</span> through the GitHub App.</p>
         </Step>
         <Step n={2} state={st(1)} title="Authorize testing">
-          <p className="text-sm text-muted">{SCOPE_SANDBOX_EXPLANATION}</p>
+          <p className="text-sm text-muted">Ari tests a private copy of your code that it builds itself. It never sends traffic to your live site. This authorization lasts 7 days and you can revoke it anytime.</p>
           {scope.kind === 'active' && <p className="mt-2 text-sm font-medium">Authorized. Ari may test this repository in its sandbox.</p>}
           {scope.kind === 'pending' && <Button variant="primary" className="mt-3" disabled={busy !== null} onClick={() => void approveScope(scope.scope.id)}>{busy === 'scope' ? 'Approving…' : 'Approve authorization'}</Button>}
           {scope.kind !== 'active' && scope.kind !== 'pending' && <Button variant="primary" className="mt-3" disabled={busy !== null} onClick={() => void requestScope()}>{busy === 'scope' ? 'Authorizing…' : 'Authorize sandbox testing'}</Button>}
@@ -145,7 +156,7 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
           <fieldset className="grid gap-2 sm:grid-cols-3">
             <legend className="mb-2 text-sm font-medium">How strict should PR comments be?</legend>
             {STRICTNESS.map(([v, label, hint]) => (
-              <label key={v} className={`cursor-pointer rounded-xl border p-3 text-sm transition-colors ${strictness === v ? 'border-brand bg-white' : 'border-line bg-panel hover:border-brand/50'}`}>
+              <label key={v} className={`cursor-pointer rounded-xl border p-3 text-sm transition-colors ${strictness === v ? 'border-brand bg-brand/10' : 'border-line bg-panel hover:border-brand/50'}`}>
                 <input type="radio" name="strictness" className="sr-only" checked={strictness === v} onChange={() => setStrictness(v)} />
                 <span className="block font-semibold">{label}</span><span className="mt-1 block text-xs text-muted">{hint}</span>
               </label>
@@ -164,7 +175,7 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
         <Step n={4} state={st(3)} title="Choose how fixes reach you">
           <div className="grid gap-2">
             {DELIVERY.map(([mode, label, hint]) => (
-              <label key={mode} className={`cursor-pointer rounded-xl border p-3 text-sm transition-colors ${delivery === mode ? 'border-brand bg-white' : 'border-line bg-panel hover:border-brand/50'}`}>
+              <label key={mode} className={`cursor-pointer rounded-xl border p-3 text-sm transition-colors ${delivery === mode ? 'border-brand bg-brand/10' : 'border-line bg-panel hover:border-brand/50'}`}>
                 <input type="radio" name="delivery" className="sr-only" checked={delivery === mode} onChange={() => setDelivery(mode)} />
                 <span className="block font-semibold">{label}</span><span className="mt-1 block text-xs text-muted">{hint}</span>
               </label>
@@ -184,7 +195,7 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
 
 function Step({ n, state, title, children }: { n: number; state: StepState; title: string; children: ReactNode }) {
   return (
-    <li className={`rounded-2xl border p-5 backdrop-blur-sm transition-all ${state === 'current' ? 'border-brand bg-white/90 shadow-lg' : 'border-line bg-panel/80'} ${state === 'upcoming' ? 'opacity-70' : ''}`} data-step-state={state}>
+    <li className={`rounded-2xl border p-5 backdrop-blur-sm transition-all ${state === 'current' ? 'border-brand bg-panel shadow-[0_0_0_4px_rgba(194,69,45,0.18)]' : 'border-line bg-panel/80'} ${state === 'upcoming' ? 'opacity-70' : ''}`} data-step-state={state}>
       <div className="mb-3 flex items-center gap-3">
         <span className={`grid h-8 w-8 place-items-center rounded-full text-sm font-semibold ${state === 'done' ? 'bg-brand text-white' : state === 'current' ? 'border-2 border-brand text-brand' : 'border border-line text-muted'}`}>{state === 'done' ? '✓' : n}</span>
         <h2 className="text-lg font-semibold">{title}</h2>
