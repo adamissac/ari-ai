@@ -458,3 +458,77 @@ def test_github_recent_commits_parses_the_api() -> None:
             "html_url": "https://github.com/acme/shop/commit/bbb",
         }
     ]
+
+
+def test_live_commit_reads_github_through_the_requesters_installation(
+    client_factory, monkeypatch
+) -> None:
+    alice, mallory = client_factory("alice"), client_factory("mallory")
+    _grant(alice.me["user"]["id"], [ACME])
+    calls = []
+
+    class FakeApp:
+        def commit(self, installation_id, full_name, sha):
+            calls.append((installation_id, full_name, sha))
+            return {
+                "sha": sha,
+                "html_url": f"https://github.com/{full_name}/commit/{sha[:7]}",
+                "author": {"login": "alice"},
+                "commit": {
+                    "message": "feat: x\n\nbody",
+                    "author": {"name": "Alice", "date": "2026-10-24T00:00:00Z"},
+                },
+                "stats": {"additions": 5, "deletions": 2},
+                "files": [
+                    {
+                        "filename": "a.py",
+                        "status": "modified",
+                        "additions": 5,
+                        "deletions": 2,
+                        "patch": "@@ -1 +1 @@",
+                    },
+                    {"filename": "b.bin", "status": "added", "additions": 0, "deletions": 0},
+                ],
+            }
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", FakeApp)
+    sha = "a" * 40
+    assert (
+        client_factory().get(f"/api/v1/github/commit?repo=acme/shop&sha={sha}").status_code == 401
+    )
+    assert mallory.get(f"/api/v1/github/commit?repo=acme/shop&sha={sha}").status_code == 403
+    r = alice.get(f"/api/v1/github/commit?repo=acme/shop&sha={sha}")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert calls == [(42, "acme/shop", sha)]
+    assert body["sha"] == sha and body["message"] == "feat: x\n\nbody"
+    assert body["author_login"] == "alice" and body["author_name"] == "Alice"
+    assert body["additions"] == 5 and body["deletions"] == 2
+    assert body["files"][0]["patch"].startswith("@@") and body["files"][1]["patch"] is None
+
+
+def test_live_commit_validates_inputs(client_factory, monkeypatch) -> None:
+    alice = client_factory("alice")
+    _grant(alice.me["user"]["id"], [ACME])
+    sha = "a" * 40
+    assert alice.get("/api/v1/github/commit?repo=noslash&sha=" + sha).status_code == 400
+    assert alice.get("/api/v1/github/commit?repo=acme/shop&sha=xyz").status_code == 400
+
+
+def test_live_commit_maps_github_404_to_not_found(client_factory, monkeypatch) -> None:
+    alice = client_factory("alice")
+    _grant(alice.me["user"]["id"], [ACME])
+
+    class GoneApp:
+        def commit(self, installation_id, full_name, sha):
+            request = httpx.Request(
+                "GET", f"https://api.github.com/repos/{full_name}/commits/{sha}"
+            )
+            raise httpx.HTTPStatusError(
+                "404", request=request, response=httpx.Response(404, request=request)
+            )
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", GoneApp)
+    r = alice.get(f"/api/v1/github/commit?repo=acme/shop&sha={'b' * 40}")
+    assert r.status_code == 404
+    assert r.json()["error"]["code"] == "NOT_FOUND"

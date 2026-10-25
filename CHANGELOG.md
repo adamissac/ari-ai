@@ -6,6 +6,11 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Live commit analysis no longer needs a `GITHUB_TOKEN` PAT on Vercel: `POST /api/analyze`
+  reads the commit diff through the new backend route `GET /api/v1/github/commit`, which
+  resolves the caller's own GitHub App installation (403 when the repo is not reachable
+  through it). Project Settings now shows the Save/Discard action row at the top of the
+  form as well as the bottom, so budget edits are savable without scrolling.
 - New projects default to owner-authorized pull-request delivery; the 7 Agents switch now toggles between automatically opened fix PRs and manual approval.
 - Starting an assessment with no commit SHA now reviews the latest commit on the repository's
   default branch when connected through the GitHub App.
