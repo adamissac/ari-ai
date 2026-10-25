@@ -53,6 +53,15 @@ explicit exclusion (bottom of document), not a "maybe".
    defensive recommendations on the customer's own staging telemetry. No
    automated enforcement.
 
+## Fix delivery
+
+- `pull_request` (the new-project default once #592 lands) opens a PR, with no
+  approval click when the owner has pre-authorized delivery.
+- `manual` waits for an owner approval before delivery.
+- `auto` commits straight to the default branch and falls back to a PR only if
+  the push is refused. It is not a pilot setting.
+- Ari never merges a PR.
+
 ## Explicit exclusions (customer-visible)
 
 - **Languages other than Python** for deep indexing (JavaScript/TypeScript
