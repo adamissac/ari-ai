@@ -1,13 +1,14 @@
 # Alan — implementation status
 
 Owner: Alan (`security-agents/`, SEC-001 … SEC-013; interim Live Defense UI)
-Branch: `cursor/live-defense-first-responder-0044`
-Current task: Phase 7A deterministic first-responder orchestration (no Phase 7B, no AUTO-EXECUTE)
-Last remote sync: 2026-10-24, `origin/main` @ `c5c2b47d` (PR #453 merged; #412 still OPEN)
-API/contract dependencies: `shared` 0.21.0 first-responder contracts (0.20.0 reserved for open #412); seven AgentSpecs; backend host checkpoints
-Recent PR/commit: https://github.com/adamissac/ari-ai/pull/439 on `cursor/live-defense-first-responder-0044`; rebased onto main; leave open for security review
-Blockers: live seven-agent Claude run (issue #10, no key); human/security approval of #439 (do not merge); GitHub Actions may not queue from this App token
-Next action: leave Phase 7A PR open; do not start Phase 7B; Codex must not train from these records yet
+Branch: `feat/live-defense-phase6-5-rl-gated-pilot`
+Current task: Phase 6.5 RL-gated pilot infrastructure (verdict stays RL BLOCKED; no Phase 7 work on this branch; Phase 7A already on main)
+Last remote sync: 2026-10-24, `origin/main` merged in (PRs #411/#410/#439-era 7A on main; #412 still OPEN)
+API/contract dependencies: `shared` 0.21.0 carrying the Phase 6.5 additive set; backend `GET /rl-readiness`
+Recent PR/commit: https://github.com/adamissac/ari-ai/pull/412 on `feat/live-defense-phase6-5-rl-gated-pilot` (left open; Codex research untouched)
+Verified this session: pytest 25 (phase6_5+authorize); frontend lint/typecheck; vitest 331/78; transport 35. Playwright e2e stack not run.
+Blockers: RL evidence A–J missing; owner-only pilot authorization; live seven-agent run (issue #10); Docker images (INFRA-005)
+Next action: leave PR open for human review of authz tightening; do not start Phase 7 work here; do not provision customer infra
 
 ## What runs today
 
@@ -84,6 +85,11 @@ Updated 2026-10-17 after #100 to #125.
 
 - PR #439 left **open**. Backend/test CI: removed AUTO-EXECUTE route so `test_no_route_applies_a_defensive_action` passes (404, not a path containing `execute`). Four Codex findings fixed with regressions. Shared **0.21.0** / orchestrator `7a.1.1` / Alembic `0015`. #412 keeps 0.20.0. Message: `20261024T050000Z-alan-to-all-live-defense-phase7a-schema-0-21.md`.
 - Executed: `pytest` phase7a + jobs + rl_no_action_path — 33 passed. Contract export 0.21.0. No merge, no Phase 7B, no RL training.
+
+### 2026-10-23 (Live Defense Phase 6.5 RL-gated pilot infrastructure)
+
+- Branch `feat/live-defense-phase6-5-rl-gated-pilot` from live `origin/main` `74a0a3c2`. Additive shared 0.20.0. Server-enforced shadow-only for `rl_gated_pilot`. Backend `GET /rl-readiness` is source of truth; `ready` stays false. Codex/`rl-defense/` untouched. **INFRASTRUCTURE READY — RL BLOCKED.** Distinct from Phase 6 CONDITIONAL GO. No Phase 7 / no customer infra.
+- Executed: pytest 25 (phase6_5+authorize); frontend lint/typecheck; vitest 331/78; transport 35. Playwright e2e stack not run.
 
 ### 2026-10-23 (Live Defense Phase 6 post-merge audit)
 
