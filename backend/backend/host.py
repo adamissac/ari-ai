@@ -219,18 +219,19 @@ class AssessmentHost:
 
         return repository_service(self.project_id, self.repo_id, include_prefix=include_prefix)
 
-    def attach_snapshot(self, ref: SnapshotRef) -> None:
-        from backend.intelligence import snapshot_ref
+    def attach_snapshot(self, ref: SnapshotRef) -> bool:
+        from backend.intel_store import lock_ready_snapshot
 
         ref = SnapshotRef.model_validate(ref.model_dump())
         if (
             ref.project_id != self.project_id
             or ref.repo_id != self.repo_id
             or ref.commit_sha != self.assessment.commit_sha
-            or snapshot_ref(ref.snapshot_id) != ref
         ):
             raise HostError(ErrorCode.SCHEMA_INVALID, "Snapshot does not match assessment")
         with transaction() as conn:
+            if not lock_ready_snapshot(conn, ref):
+                return False
             current = Assessment.model_validate(self._row(conn, lock=True)["doc"])
             if current.snapshot_id and current.snapshot_id != ref.snapshot_id:
                 raise HostError(ErrorCode.CONFLICT_STATE, "Assessment already has another snapshot")
@@ -241,6 +242,7 @@ class AssessmentHost:
                 .where(assessments.c.id == self.assessment_id)
                 .values(doc=current.model_dump(mode="json"))
             )
+        return True
 
     def _row(self, conn: Connection, *, lock: bool = False) -> dict[str, Any]:
         q = sa.select(assessments).where(assessments.c.id == self.assessment_id)

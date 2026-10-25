@@ -54,6 +54,7 @@ from backend.db import (
 )
 from backend.github import GitHubApp, GitHubNotConfigured
 from backend.integrations import load_factory
+from backend.intel_store import lock_ready_snapshot
 from backend.quota import check_project_quota, rate_limit_message
 from backend.redaction import redact_text
 from backend.services import (
@@ -96,7 +97,7 @@ from shared.events import StreamEvent
 from shared.evidence import ArtifactKind
 from shared.findings import Finding, FindingStatus, PatchCandidate, StatusChange, VerificationResult
 from shared.ids import IdPrefix, new_id
-from shared.intelligence import Snapshot, SnapshotStatus
+from shared.intelligence import Snapshot, SnapshotRef, SnapshotStatus
 from shared.monitoring import MonitoringEvent, ReassessmentRequest
 from shared.rl import DefenseRecommendation, PlatformFacts, RLEvaluation, RLExplanation
 from shared.scope import (
@@ -942,15 +943,25 @@ def start_assessment(
                 429,
                 {"resets_at": quota.resets_at.isoformat()},
             )
-        if body.snapshot_id:
+        snapshot_id = body.snapshot_id
+        if snapshot_id:
             snap = (
-                conn.execute(sa.select(snapshots).where(snapshots.c.id == body.snapshot_id))
+                conn.execute(sa.select(snapshots).where(snapshots.c.id == snapshot_id))
                 .mappings()
                 .first()
             )
             if snap is None or snap["repo_id"] != body.repo_id:
                 raise not_found("snapshot")
             commit_sha = snap["commit_sha"]
+            snapshot_ref = SnapshotRef(
+                project_id=project_id,
+                repo_id=body.repo_id,
+                commit_sha=snap["commit_sha"],
+                snapshot_id=snapshot_id,
+                index_version=snap["index_version"],
+            )
+            if not lock_ready_snapshot(conn, snapshot_ref):
+                snapshot_id = None
         try:
             a, job_id = create_assessment(
                 conn,
@@ -961,7 +972,7 @@ def start_assessment(
                 trigger=AssessmentTrigger.manual,
                 budget=body.budget,
                 created_by=user.id,
-                snapshot_id=body.snapshot_id,
+                snapshot_id=snapshot_id,
             )
         except DomainError as e:
             raise ApiError(e.code, str(e), e.status) from e
