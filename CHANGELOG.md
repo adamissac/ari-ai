@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Starting an assessment with no commit SHA now reviews the latest commit on the repository's
+  default branch when connected through the GitHub App.
 - Verify now honors repository-declared `protected_tests` from `build_recipe.json` in its no-tampering check.
 - Added independent 70/80/90% storage alerts and Prometheus gauges for the app data volume mounted at `/data`.
 - Restored impact-gated monitoring for a blank, quoted-empty, or standalone `*`
