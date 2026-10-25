@@ -1,0 +1,19 @@
+{
+  "agent": "codex-rc4-review",
+  "human_owner": "Alan",
+  "state": "READY_FOR_REVIEW",
+  "workstream": "independent RC4 security audit",
+  "branch": "codex/rc4-independent-audit",
+  "latest_sha": "78dc57bc",
+  "task": "Exact-SHA RC4 review",
+  "claims": [
+    "docs/reviews/rc4-independent/"
+  ],
+  "tests": "182 passed, 5 failed, 0 skipped in isolated GitHub run 40202085130; required known findings pass",
+  "blockers": [
+    "N8 literal-credential artifact disclosure",
+    "Latest-main sequential composition conflicts",
+    "Final landing-tree CI unverified"
+  ],
+  "next_action": "Owners fix N8 and reconcile latest-main composition; fresh independent review; no merge/deploy"
+}
