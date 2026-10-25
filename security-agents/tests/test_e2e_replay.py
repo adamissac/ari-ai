@@ -1602,7 +1602,7 @@ def _runner_config_tampering_for_test(
     config_files: dict[str, str],
     changed_path: str,
     patched_text: str,
-    test_command: list[str] | None = None,
+    test_command: str | list[str] | None = None,
     pinned_text: str = "VALUE = 1\n",
     pinned_files: dict[str, str] | None = None,
     new_file: bool = False,
@@ -1785,6 +1785,120 @@ def test_pinned_custom_pytest_config_is_byte_protected(test_command: list[str], 
     )
 
     assert path in tampered
+
+
+@pytest.mark.boundary
+def test_pinned_custom_pytest_config_path_is_lexically_normalized(tmp_path: Path) -> None:
+    path = "ci/custom.ini"
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path=path,
+        pinned_text="[pytest]\n",
+        patched_text="[pytest]\naddopts = --deselect=tests/test_api.py::test_value\n",
+        test_command=["-q", "-c", "tests/../ci/custom.ini", "tests"],
+    )
+
+    assert path in tampered
+
+
+@pytest.mark.boundary
+def test_plain_custom_pytest_config_path_edit_is_protected(tmp_path: Path) -> None:
+    path = "ci/custom.ini"
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path=path,
+        pinned_text="[pytest]\n",
+        patched_text="[pytest]\naddopts = --deselect=tests/test_api.py::test_value\n",
+        test_command=["-q", "-c", path, "tests"],
+    )
+
+    assert path in tampered
+
+
+@pytest.mark.boundary
+def test_plain_custom_pytest_config_allows_unrelated_app_edit(tmp_path: Path) -> None:
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={"ci/custom.ini": "[pytest]\n"},
+        changed_path="app.py",
+        patched_text="VALUE = 2\n",
+        test_command=["-q", "-c", "ci/custom.ini", "tests"],
+    )
+
+    assert tampered == []
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    "test_command",
+    [
+        pytest.param(["-q", "-c", "/etc/x.ini", "tests"], id="absolute-config-path"),
+        pytest.param(["-q", "--config-file", "../../outside.ini", "tests"], id="escaping-config-path"),
+        pytest.param('-q -c "unterminated', id="unparseable-command"),
+    ],
+)
+def test_unmappable_pinned_pytest_config_path_fails_closed(
+    test_command: str | list[str],
+    tmp_path: Path,
+) -> None:
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path="app.py",
+        patched_text="VALUE = 2\n",
+        test_command=test_command,
+    )
+
+    assert "build_recipe.json (unmappable pytest config path: SNAPSHOT_NOT_READY)" in tampered
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    ("patched_text", "expected_tampered"),
+    [
+        pytest.param("pytest_collection_modifyitems = _drop\n", True, id="hook-name-assignment"),
+        pytest.param(
+            "pytest_collection_modifyitems = lambda items: items.clear()\n",
+            True,
+            id="hook-name-lambda",
+        ),
+        pytest.param(
+            "pytest_collection_modifyitems, ordinary = (_drop, None)\n",
+            True,
+            id="hook-name-tuple-target",
+        ),
+        pytest.param(
+            "import importlib\nimportlib.import_module('_pytest.main')\n",
+            True,
+            id="dynamic-pytest-import",
+        ),
+        pytest.param(
+            "import importlib\nimportlib.import_module('pluggy.manager')\n",
+            True,
+            id="dynamic-pluggy-import",
+        ),
+        pytest.param("runner = __import__('pluggy')\n", True, id="builtin-pluggy-import"),
+        pytest.param("ordinary = 2\n", False, id="ordinary-assignment"),
+    ],
+)
+def test_new_pytest_sensitive_constructs_are_flagged(
+    patched_text: str,
+    expected_tampered: bool,
+    tmp_path: Path,
+) -> None:
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path="app.py",
+        patched_text=patched_text,
+    )
+
+    if expected_tampered:
+        assert "app.py" in tampered
+    else:
+        assert tampered == []
 
 
 @pytest.mark.boundary

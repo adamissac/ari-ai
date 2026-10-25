@@ -145,10 +145,11 @@ sandbox environment is scrubbed and transcripts pass through the redactor.
 - **Residual risk:** Verify's project suite runs with the test roots restored to
   the pinned snapshot, so patch-added test files cannot affect protected tests.
   Dynamic or nonliteral `pytest_plugins` declarations are recorded but are not
-  statically expanded to arbitrary Python files. Obfuscated or dynamic hook
-  registration that does not change one of the scanned constructs falls under
-  the broader risk that patched application code executes in the suite;
-  Verify does not protect against arbitrary hostile code in the patch.
+  statically expanded to arbitrary Python files. Dynamic registration through
+  `globals()[...]`, `setattr(sys.modules[...], ...)`, or computed import names
+  is not detected and remains within the broader risk that hostile patched
+  application code executes in the suite; Verify does not protect against
+  arbitrary hostile code in the patch.
   Unsupported or quoted diff path headers fail closed before patch application.
 - **Model output carries no authority.** No output schema has a field that
   approves, verifies or widens scope (asserted by a test).

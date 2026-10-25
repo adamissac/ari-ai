@@ -16,6 +16,7 @@ import ast
 import configparser
 import json
 import os
+import posixpath
 import re
 import shlex
 import shutil
@@ -166,6 +167,14 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
             for child in ast.walk(target)
         )
 
+    def pytest_assignment_names(targets: list[ast.expr]) -> set[str]:
+        return {
+            child.id
+            for target in targets
+            for child in ast.walk(target)
+            if isinstance(child, ast.Name) and child.id.startswith("pytest_")
+        }
+
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("pytest_"):
             record("hook", node.name, node)
@@ -202,6 +211,23 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
                 or module.startswith("pluggy.")
             ):
                 record("runner-import", module, node)
+        elif isinstance(node, ast.Call) and node.args:
+            function = node.func
+            is_importlib = (
+                isinstance(function, ast.Attribute)
+                and function.attr == "import_module"
+                and isinstance(function.value, ast.Name)
+                and function.value.id == "importlib"
+            )
+            is_builtin_import = isinstance(function, ast.Name) and function.id == "__import__"
+            first_arg = node.args[0]
+            if (
+                (is_importlib or is_builtin_import)
+                and isinstance(first_arg, ast.Constant)
+                and isinstance(first_arg.value, str)
+                and first_arg.value.startswith(("_pytest", "pluggy"))
+            ):
+                record("runner-import", first_arg.value, node)
 
         targets: list[ast.expr] = []
         if isinstance(node, ast.Assign):
@@ -210,6 +236,17 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
             targets = [node.target]
         if targets and assigns_pytest_plugins(targets):
             record("pytest-plugins", "pytest_plugins", node)
+
+    for node in tree.body:
+        targets = (
+            node.targets
+            if isinstance(node, ast.Assign)
+            else [node.target]
+            if isinstance(node, ast.AnnAssign)
+            else []
+        )
+        for name in sorted(pytest_assignment_names(targets)):
+            record("pytest-assignment", name, node)
 
     return constructs
 
@@ -1017,12 +1054,22 @@ class PatchApplier:
                     for value in table.values():
                         add_plugin_name(plugin_names, value)
 
+        unmappable_config_path = (
+            f"build_recipe.json (unmappable pytest config path: {ErrorCode.SNAPSHOT_NOT_READY.value})"
+        )
+
+        def fail_closed_config_path() -> None:
+            tampered.add(unmappable_config_path)
+
         recipe: dict[str, Any] = {}
         try:
             recipe_raw = read_config(snapshot_root, "build_recipe.json")
-            recipe = json.loads((recipe_raw or b"{}").decode("utf-8"))
-            add_addopts(plugin_names, recipe.get("test_command"))
-        except (OSError, PlatformError, UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+            parsed_recipe = json.loads((recipe_raw or b"{}").decode("utf-8"))
+            if not isinstance(parsed_recipe, dict):
+                raise ValueError("build_recipe.json must contain an object")
+            recipe = parsed_recipe
+        except (OSError, PlatformError, UnicodeDecodeError, ValueError, AttributeError):
+            fail_closed_config_path()
             recipe = {}
 
         command = recipe.get("test_command")
@@ -1031,10 +1078,19 @@ class PatchApplier:
                 command_tokens = shlex.split(command)
             except ValueError:
                 command_tokens = []
+                fail_closed_config_path()
         elif isinstance(command, list):
-            command_tokens = [item for item in command if isinstance(item, str)]
+            if all(isinstance(item, str) for item in command):
+                command_tokens = command
+            else:
+                command_tokens = []
+                fail_closed_config_path()
+        elif "test_command" not in recipe:
+            command_tokens = []
         else:
             command_tokens = []
+            fail_closed_config_path()
+        add_addopts(plugin_names, command)
         config_names = (
             "pytest.ini",
             ".pytest.ini",
@@ -1054,38 +1110,68 @@ class PatchApplier:
             except (OSError, ValueError, PlatformError):
                 return None
 
+        def normalize_config_path(
+            raw: str,
+            *,
+            allow_root: bool = False,
+            pin: bool = True,
+        ) -> str | None:
+            if not raw:
+                fail_closed_config_path()
+                return None
+            normalized = raw
+            while normalized.startswith("./"):
+                normalized = normalized[2:]
+            normalized = posixpath.normpath(normalized)
+            if allow_root and normalized == ".":
+                try:
+                    snapshot_root.resolve()
+                except (OSError, RuntimeError):
+                    fail_closed_config_path()
+                    return None
+                return ""
+            try:
+                relative = safe_rel_path(normalized)
+                resolved = resolve_under(snapshot_root, relative)
+                resolved_relative = resolved.relative_to(snapshot_root.resolve()).as_posix()
+            except (OSError, PlatformError, RuntimeError, ValueError):
+                fail_closed_config_path()
+                return None
+            if pin:
+                pinned_config_paths.update((relative, resolved_relative))
+            return relative
+
         rootdirs: set[str] = set()
         index = 0
         while index < len(command_tokens):
             token = command_tokens[index]
-            value: str | None = None
-            if token in {"-c", "--config-file", "--rootdir"} and index + 1 < len(command_tokens):
+            if token in {"-c", "--config-file", "--rootdir"}:
+                if index + 1 >= len(command_tokens):
+                    fail_closed_config_path()
+                    index += 1
+                    continue
                 value = command_tokens[index + 1]
                 index += 2
                 if token == "--rootdir":
-                    rootdirs.add(value)
+                    prefix = normalize_config_path(value, allow_root=True, pin=False)
+                    if prefix is not None:
+                        rootdirs.add(prefix)
                 else:
-                    rel_value = repo_relative_path(value)
-                    if rel_value:
-                        pinned_config_paths.add(rel_value)
+                    normalize_config_path(value)
                 continue
-            elif token.startswith("--config-file="):
-                value = token.partition("=")[2]
+            if token.startswith("--config-file="):
+                normalize_config_path(token.partition("=")[2])
             elif token.startswith("-c") and token != "-c":
                 value = token[2:]
+                normalize_config_path(value[1:] if value.startswith("=") else value)
             elif token.startswith("--rootdir="):
-                rootdirs.add(token.partition("=")[2])
-            if value:
-                rel_value = repo_relative_path(value)
-                if rel_value:
-                    pinned_config_paths.add(rel_value)
+                prefix = normalize_config_path(token.partition("=")[2], allow_root=True, pin=False)
+                if prefix is not None:
+                    rootdirs.add(prefix)
             index += 1
         for rootdir in rootdirs:
-            prefix = "" if rootdir in {"", ".", "./"} else repo_relative_path(rootdir)
-            if prefix is None:
-                continue
             for name in config_names:
-                pinned_config_paths.add(f"{prefix}/{name}".strip("/"))
+                normalize_config_path(f"{rootdir}/{name}".strip("/"))
 
         roots = recipe_test_roots(snapshot_root)
         plugin_source_paths = {
