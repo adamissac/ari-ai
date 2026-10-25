@@ -248,9 +248,20 @@ class TestRunner:
     setup: dict[str, tuple[str, ...]] = field(default_factory=dict)  # recipe `sandbox` block
 
     def run(self, ctx: ToolContext, selection: str, node_ids: list[str]) -> dict[str, Any]:
-        workspace = self.workspace_provider(ctx)
-        if selection == "project_suite" and not node_ids and self.suite_workspace_provider is not None:
-            workspace = self.suite_workspace_provider(ctx) or workspace
+        if selection == "project_suite" and self.suite_workspace_provider is not None:
+            if node_ids:
+                return {
+                    "error": "PROJECT_SUITE_NODE_IDS",
+                    "detail": "Verify's project_suite runs the full pinned suite; node_ids are not allowed",
+                }
+            workspace = self.suite_workspace_provider(ctx)
+            if workspace is None:
+                return {
+                    "error": "NO_VERIFY_WORKSPACE",
+                    "detail": "patch.apply_fresh must succeed before project_suite",
+                }
+        else:
+            workspace = self.workspace_provider(ctx)
         args: list[str] = ["-q"]
         if node_ids:
             for raw in node_ids:
@@ -309,7 +320,7 @@ class TestRunner:
             selection=selection,
             **summary,
         )
-        return {
+        result = {
             **_result_summary(res),
             "selection": selection,
             "pytest_args": args,
@@ -317,6 +328,9 @@ class TestRunner:
             "stdout_tail": _tail(res.stdout),
             "stderr_tail": _tail(res.stderr, 15),
         }
+        if self.suite_workspace_provider is not None:
+            result["patch_id"] = ctx.artifacts.get("verify_patch_id")
+        return result
 
 
 # --------------------------------------------------------------------------- check runner
@@ -464,6 +478,8 @@ class PatchApplier:
         if dest.exists():
             shutil.rmtree(dest)
         root = fresh_checkout(self.intel.snapshot, dest)
+        ctx.artifacts["verify_patch_id"] = patch_id
+        ctx.artifacts.pop("verify_suite_workspace", None)
         from ..sandbox.workspace import apply_diff
 
         ok, err = apply_diff(root, diff_text)
@@ -478,9 +494,14 @@ class PatchApplier:
             tampered.update(self._tampered_test_contents(self.intel.snapshot.root, root, protected_tests))
             tampered.update(self._tampered_runner_config(diff_text, self.intel.snapshot.root, root))
             suite_dest = dest.parent / f"verify-suite-{patch_id}"
-            ctx.artifacts["verify_suite_workspace"] = self._verify_suite_workspace(
-                self.intel.snapshot.root, root, suite_dest, roots
-            )
+            try:
+                ctx.artifacts["verify_suite_workspace"] = self._verify_suite_workspace(
+                    self.intel.snapshot.root, root, suite_dest, roots
+                )
+            except (OSError, shutil.Error, PlatformError) as exc:
+                ok = False
+                err = f"verify suite workspace: {type(exc).__name__}"
+                ctx.artifacts.pop("verify_suite_workspace", None)
         tampered_tests = sorted(tampered)
         ctx.artifacts["verify_workspace"] = root
         from ..regressions import RegressionEvidenceUnavailable, read_sources
@@ -498,6 +519,7 @@ class PatchApplier:
             "new_tests": new_tests,
             "tampered_protected_tests": tampered_tests,
             "diff_sha256": sha256_text(diff_text),
+            "patch_id": patch_id,
         }
         ctx.audit.emit(
             "patch.apply_fresh",
@@ -685,11 +707,18 @@ class PatchApplier:
                 raise OSError(f"configuration path is not a file: {path}")
             return resolved.read_bytes()
 
-        def ini_table(raw: bytes | None, section: str) -> dict[str, str]:
+        def ini_table(raw: bytes | None, section: str) -> tuple[bool, dict[str, str]]:
             config = configparser.ConfigParser(interpolation=None)
+            config.optionxform = str
             if raw is not None:
                 config.read_string(raw.decode("utf-8"))
-            return dict(config.items(section, raw=True)) if config.has_section(section) else {}
+            present = config.has_section(section)
+            items = dict(config.items(section, raw=True)) if present else {}
+            return present, items
+
+        def ini_option(raw: bytes | None, section: str, option: str) -> tuple[bool, bool, str | None]:
+            present, items = ini_table(raw, section)
+            return present, option in items, items.get(option)
 
         def nested_table(parsed: dict[str, Any], *keys: str) -> Any:
             current: Any = parsed
@@ -730,9 +759,9 @@ class PatchApplier:
                 elif name == "setup.cfg":
                     changed = ini_table(original_bytes, "tool:pytest") != ini_table(
                         patched_bytes, "tool:pytest"
-                    ) or ini_table(original_bytes, "options.entry_points").get("pytest11") != ini_table(
-                        patched_bytes, "options.entry_points"
-                    ).get("pytest11")
+                    ) or ini_option(original_bytes, "options.entry_points", "pytest11") != ini_option(
+                        patched_bytes, "options.entry_points", "pytest11"
+                    )
                 else:
                     original = tomllib.loads((original_bytes or b"").decode("utf-8"))
                     patched = tomllib.loads((patched_bytes or b"").decode("utf-8"))

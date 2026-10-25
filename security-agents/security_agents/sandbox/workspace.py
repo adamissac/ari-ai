@@ -7,6 +7,7 @@ SANDBOX_POLICY_VIOLATION.
 
 from __future__ import annotations
 
+import contextlib
 import difflib
 import hashlib
 import json
@@ -104,6 +105,47 @@ def test_root_symlinks(root: Path, roots: tuple[str, ...]) -> tuple[str, ...]:
                 continue
             if resolved.is_file():
                 found.add(rel)
+    return tuple(sorted(found))
+
+
+def test_root_files(root: Path, roots: tuple[str, ...]) -> tuple[str, ...]:
+    """Return logical and resolved files reachable through safe test-root symlinks."""
+    found: set[str] = set()
+    visited: set[str] = set()
+    pending: list[Path] = []
+    root_real = root.resolve()
+    for raw_root in roots:
+        rel_root = raw_root.rstrip("/")
+        try:
+            rel_root = safe_rel_path(rel_root)
+        except PlatformError:
+            continue
+        if os.path.lexists(root / rel_root):
+            pending.append(root / rel_root)
+
+    while pending:
+        logical = pending.pop()
+        try:
+            logical_rel = logical.relative_to(root).as_posix()
+            resolved = resolve_under(root, logical_rel)
+        except (OSError, PlatformError, RuntimeError, ValueError):
+            continue
+        if resolved.is_file():
+            found.add(logical_rel)
+            with contextlib.suppress(ValueError):
+                found.add(resolved.relative_to(root_real).as_posix())
+            continue
+        if not resolved.is_dir():
+            continue
+        real = os.path.normcase(str(resolved.resolve()))
+        if real in visited:
+            continue
+        visited.add(real)
+        try:
+            entries = sorted(resolved.iterdir(), key=lambda path: path.name, reverse=True)
+        except OSError:
+            continue
+        pending.extend(logical / entry.name for entry in entries)
     return tuple(sorted(found))
 
 

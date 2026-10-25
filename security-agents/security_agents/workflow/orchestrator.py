@@ -65,7 +65,8 @@ from ..sandbox.workspace import (
     recipe_protected_tests,
     recipe_test_roots,
     resolve_under,
-    test_root_symlinks,
+    safe_rel_path,
+    test_root_files,
     tree_digest,
     under_test_roots,
 )
@@ -758,6 +759,37 @@ class Orchestrator:
         )
         return [result]
 
+    def _added_tests_on_patched(self, candidate: Any, ctx: ToolContext) -> list[dict[str, Any]]:
+        """Run added tests deterministically against Verify's successfully patched workspace."""
+        facts = ctx.artifacts.get("verify_facts") or {}
+        patched = ctx.artifacts.get("verify_workspace")
+        roots = recipe_test_roots(self.intel.snapshot.root)
+        tests = [
+            path for path in candidate.tests_added if isinstance(path, str) and under_test_roots(path, roots)
+        ]
+        if not facts.get("applied") or not patched or not tests:
+            return []
+        try:
+            for rel in tests:
+                if not resolve_under(Path(patched), safe_rel_path(rel)).is_file():
+                    return []
+        except (OSError, PlatformError, ValueError):
+            return []
+        ctx.artifacts["tests_added"] = tests
+        runner = self._test_runner(lambda _ctx: Path(patched))
+        result = runner.run(ctx, "added_tests", [])
+        result["workspace_role"] = "patched"
+        result["patch_id"] = ctx.artifacts.get("verify_patch_id")
+        self._audit(
+            "tests.added_on_patched",
+            "patch",
+            candidate.id,
+            failing=result.get("failing_tests"),
+            passed=result.get("passed"),
+            sandbox_run_id=result.get("sandbox_run_id"),
+        )
+        return [result]
+
     def _test_runner(self, workspace_provider: Any, *, suite_workspace_provider: Any = None) -> TestRunner:
         """Tests run with the target recipe's `test_command` and `sandbox` setup when it has them."""
         recipe: dict[str, Any] = {}
@@ -1268,7 +1300,7 @@ class Orchestrator:
             return ctx.artifacts.get("verify_workspace") or self.intel.snapshot.root
 
         def verify_suite_workspace(ctx: ToolContext) -> Any:
-            return ctx.artifacts.get("verify_suite_workspace") or self.intel.snapshot.root
+            return ctx.artifacts.get("verify_suite_workspace")
 
         services = {
             **self._read_services(),
@@ -1302,6 +1334,7 @@ class Orchestrator:
             unpatched_added_runs = unpatched.result()
         check_runs = list(ctx.artifacts.get("check_runs") or [])
         test_runs = list(ctx.artifacts.get("test_runs") or [])
+        test_runs.extend(self._added_tests_on_patched(candidate, ctx))
         for run in check_runs + test_runs:
             self.result.usage.sandbox_seconds += float(run.get("duration_s") or 0)
         for run in unpatched_added_runs:
@@ -1473,7 +1506,7 @@ class Orchestrator:
         test_roots = recipe_test_roots(root)
         protected.update(recipe_protected_tests(root))
         protected.update(path for path in self.intel.snapshot.files() if under_test_roots(path, test_roots))
-        protected.update(test_root_symlinks(root, test_roots))
+        protected.update(test_root_files(root, test_roots))
         for expectation in self.intel.expectations():
             if expectation.status != "confirmed":
                 continue
