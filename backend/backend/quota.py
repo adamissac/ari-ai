@@ -105,6 +105,20 @@ def check_project_quota(conn: Connection, project_id: str, now: datetime) -> Quo
         )
     ).one()
     if float(spent) >= settings.assessments_usd_per_day and spend_oldest is not None:
+        remaining = float(spent)
+        spend_rows = conn.execute(
+            sa.select(assessments.c.created_at, positive_usage.label("usage_usd"))
+            .where(
+                assessments.c.created_at > now - day_window,
+                assessments.c.created_at <= now,
+                positive_usage > 0,
+            )
+            .order_by(assessments.c.created_at.asc())
+        )
+        for created_at, usage_usd_value in spend_rows:
+            remaining -= float(usage_usd_value)
+            if remaining < settings.assessments_usd_per_day:
+                return QuotaDecision("spend", created_at + day_window)
         return QuotaDecision("spend", spend_oldest + day_window)
 
     return None
