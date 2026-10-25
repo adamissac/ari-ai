@@ -1738,6 +1738,7 @@ Remaining merge gate: final documentation head review/CI. Future numerical proto
 and any collection require separate explicit owner approval. Historical source
 ancestry retained and v6 registry hash unchanged (see verification report).
 
+
 ## 2026-10-24 — Devin (Adam): agent-visibility UI + prod automation enabled
 
 - Prod: enabled `automatic_assessments` on adamissac/mypypath (ari-ai already on), enabled `monitoring_policy` on the `derv` project, approved mypypath's sandbox scope (active to 2026-11-18), stamped delivery authorization on both projects. Push→agents chain verified live: monitoring assessments COMPLETED within ~1-2 min of each push.
@@ -1750,6 +1751,29 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Scout retrained and **promoted**: macro_f1 0.349 vs best deterministic baseline 0.084 (static_analyze_patterns). Checkpoint + `results/scout.json`/REPORT.md committed. Other specialists have no field-compatible eval rows — their tuning signal is the live eval scores, not training data.
 - Eval harness: `run.py` cleanup survives missing `gh` auth; `score_api.py` accepts the bare-list assessments response. All 35 cases pushed as `eval/20261024-110115/*` branches; assessments accumulate live pending a fresh `hackatl_session` for scoring + scope widening (`access_control.authentication` category).
 - Test scope fixture (`make_scope` default) now grants all three check categories — required for the f2 listing invariant after the authentication template landed.
+
+### Connect navigation redesign — commit review + recorded agent replay (feat/adam/commit-review-navigation)
+
+The commit page (`/connect/[org]/[repo]/commit/[sha]`) auto-runs the `/api/analyze`
+quick read on arrival (one Claude call over the real GitHub diff, server-cached per
+commit) and renders it under a "Code review" tab via the shared `CommitAnalysis`
+review body. The "7 agents" tab renders the shared `AgentMap` sector map: when a
+recorded assessment exists for this exact repo+commit, `lib/recorded-analysis.ts`
+synthesizes an `Analysis` from persisted `agent_runs`/`findings` (real tool names,
+outcomes, durations; `step_key`→finding→evidence path pins each step to the sector
+it touched; `kindForPath` maps file paths to component kinds) and plays it back with
+real per-agent statuses including a new `failed` rail state. With no run, the quick
+read's reasoning replays as a labelled preview; with neither, an honest empty state.
+Approval gate, cancel button, mismatch isolation and `RealAssessmentPanel` unchanged.
+Org page repo rows are fully clickable; commit list rows already linked. Checks:
+`npm run lint`, `typecheck`, `test`, `build` all pass on this branch. Follow-ups:
+the auto quick read spends one cached Claude call per commit page view.
+Second-pass fixes on the same branch: `useResource` gained an optional
+`shouldPoll(data)` so `commit-run` polling stops at a terminal assessment state;
+the quick read accepts a URL sha prefix (`startsWith` guard) so short shas no
+longer fail the response-match check; repo/org lookups match case-insensitively
+(GitHub names are); and the tabs no longer flash a Preview/empty state while a
+selected run is still loading.
 
 ## 2026-10-24 — Devin (Adam): first live 45-case eval + baseline
 
