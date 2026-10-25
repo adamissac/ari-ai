@@ -354,9 +354,7 @@ def test_spoofed_author_does_not_authorize_an_unlisted_push_sender(automatic):
     assert records() == []
 
 
-def test_ten_mixed_assessments_skip_automatic_and_block_manual_start(automatic):
-    from datetime import datetime, timedelta
-
+def test_ten_mixed_assessments_skip_automatic_and_allow_manual_start(automatic):
     from shared.base import utcnow
 
     alice, bob, ids, _ = automatic
@@ -388,12 +386,7 @@ def test_ten_mixed_assessments_skip_automatic_and_block_manual_start(automatic):
     assert deferred_jobs == 0
 
     response = manual_start(alice, ids, "f" * 40)
-    assert response.status_code == 429
-    error = response.json()["error"]
-    assert error["code"] == "RATE_LIMITED"
-    assert error["message"].startswith("project review limit reached (10 per hour); resets at ")
-    resets_at = error["details"]["resets_at"]
-    assert datetime.fromisoformat(resets_at) == seeded_at + timedelta(hours=1)
+    assert response.status_code == 202, response.text
 
 
 def test_over_limit_hourly_assessments_report_actual_reset(automatic):
@@ -451,6 +444,58 @@ def test_nine_recent_assessments_allow_next_start(automatic, start_kind):
             .where(assessments.c.project_id == ids["project"])
         ).scalar_one()
     assert count == 10
+
+
+def test_manual_start_ignores_monitoring_assessments_for_daily_quota(automatic):
+    from datetime import timedelta
+
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.monitoring] * 50,
+        created_at=utcnow() - timedelta(hours=2),
+    )
+
+    response = manual_start(alice, ids, "f" * 40)
+
+    assert response.status_code == 202, response.text
+
+
+def test_manual_quota_reset_uses_manual_assessments_only(automatic):
+    from datetime import datetime, timedelta
+
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    monitoring_seeded_at = utcnow() - timedelta(hours=20)
+    manual_seeded_at = utcnow() - timedelta(hours=2)
+    manual_created_at = [manual_seeded_at + timedelta(seconds=index) for index in range(52)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.monitoring] * 50,
+        created_at=monitoring_seeded_at,
+    )
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * 52,
+        created_at=manual_created_at,
+    )
+
+    response = manual_start(alice, ids, "f" * 40)
+
+    assert response.status_code == 429
+    error = response.json()["error"]
+    assert error["code"] == "RATE_LIMITED"
+    assert datetime.fromisoformat(error["details"]["resets_at"]) == manual_created_at[
+        2
+    ] + timedelta(days=1)
 
 
 def test_fifty_daily_assessments_block_by_day_quota(automatic):
