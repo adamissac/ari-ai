@@ -43,7 +43,13 @@ All notable changes are documented here. Format follows
 
 - Add `access_control.role` check template: Probe can now prove role-bypass on mutating routes — a restricted fixture identity must be denied (401/403/404) while a permitted one keeps access. Recipe surface expanded (assessment/finding/scope routes, role-differentiated sandbox identities carol=viewer/dave=member of alice's org); new recipe body placeholders `{expires_in_days:N}` and `{resource:KIND}`. Aliases `authorization.role`, `access_control.mutation`, `access_control.rbac` map to the new category.
 
+
 - Add the pilot launch package under `docs/pilot/`: pilot scope and exclusions, a truthful feature matrix (implemented / staging-only / simulation-only / partial / unavailable), customer onboarding and revocation checklist, a draft data-handling disclosure, incident/support/escalation operations, pilot metrics and per-customer health reporting, a risk register, the staging-rehearsal + first-five plan, and a signed CONDITIONAL GO launch decision.
+
+
+
+- Defense Lab pilot audit: new `test_live_defense_pilot_safety.py` (37 tests) codifies the pilot safety invariants — the 15-check gate fails closed on every broken assumption, unsafe containment kinds stay denied+abstain even with a perfect grant, a typed `claimed_actor_id` can never satisfy `authenticated_session`, `block_source` accepts only the isolated fixture IP, and the adapter re-checks SSRF limits at send time. Fixed a quarantine gap so credential-looking *values* under benign keys (`password=hunter2`, `api_key: …`) are dropped instead of persisted. Adds `docs/DEFENSE_LAB_CAPABILITY_MATRIX.md` (customer-facing real-vs-synthetic signal map + install steps) and `docs/DEFENSE_LAB_EVALUATION_REPORT.md` (reproduction evidence, PR #412/#458 review, explicit go/no-go).
+
 - Eval scorer now reports `validated_any`/`fixed_any` across every finding kind next to the security-only verdicts, and derives finding paths from `source_span` evidence; `benign_artifact_sha512` relabeled — the sha512 swap was a real defect (String(64) sha256 column), not a false positive.
 
 - Add `examples/inventory-lite`, a second owned evaluation/rehearsal fixture with a
