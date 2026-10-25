@@ -1,0 +1,26 @@
+{
+  "agent": "codex-review-automation",
+  "human_owner": "Alan",
+  "workstream": "bounded independent release review automation",
+  "state": "READY_FOR_REVIEW",
+  "task": "Devin \u2192 CI \u2192 immutable-SHA independent Codex review",
+  "branch": "codex/ari-review-cycle",
+  "latest_sha": "ed68a7bd",
+  "prs": [
+    614
+  ],
+  "claims": [
+    "scripts/ari_review/",
+    ".github/ari-review/",
+    ".github/workflows/ari-*.yml"
+  ],
+  "depends_on": [
+    "Manual installation of canonical #614 and fork #9/#10",
+    "Native Codex connection; optional protected API credentials and verified existing Devin caps"
+  ],
+  "blockers": [
+    "Paid API and Devin activation intentionally OFF"
+  ],
+  "tests": "57 local tests and Ruff passed; fork #9 GitHub Docker safety/unit/layout smoke/actionlint passed at abd61416",
+  "next_action": "Human review/manual installation; configure protected credentials and validate first pinned candidate cycle"
+}
