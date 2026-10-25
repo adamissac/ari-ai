@@ -2215,3 +2215,16 @@ No merge is authorized for this review branch.
 - Upstream-reconciled run (`integration/2026-11-02-release` @ 070f75a9, Alembic head 0019 after tenant_rls/worker_heartbeats/execution_reliability/repository_disconnect renumbering; upstream ops storage surface coexists with ours): **GO — 25/25 PASS**, no suite changes needed — checks assert `at_head`, not a pinned id. Report: `deploy/reports/release-readiness-20261025T012355+0000.md`.
 
 - Final RC run (`integration/2026-11-02-release` @ bc490484 — RC SHA frozen by integrator; upstream 580d2f67 merged: #540 onboarding lifecycle, #530 release-gate + dead-letter list, #531 intel audit + write-time secret redaction, #567 ops-alias fix; Alembic head still 0019): **GO — 25/25 PASS**, zero warnings. Report: `deploy/reports/release-readiness-20261025T021130+0000.md`.
+
+### Independent corrected-candidate review — 2026-10-25
+
+Reviewed fork PR #8 at `77897e76eb561f166a2b96c1792545075bc8f078`, compared to
+upstream `eea084bc`. NO-GO: original N1–N4 strict probes now pass; N5 migration
+collision fixed; N6 transfer version ordering requires preserved union. New P2
+N7: generic key=value redaction corrupts non-secret expressions in diff artifacts.
+Focused run 192 passed/4 failed; newer-main compatibility probes 3 failed;
+separate manifest migration tree 2 passed. Same-SHA CI has no visible check/run
+and remains unverified. No production changes, merges or deployments.
+Report: `docs/reviews/corrected-independent/REPORT.md`; strict new regressions:
+`backend/tests/test_independent_corrected_review.py`. Next owners must fix N7,
+recompose updated transfers with current main and rerun all gates on one SHA.

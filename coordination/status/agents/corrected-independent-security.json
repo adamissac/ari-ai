@@ -1,0 +1,13 @@
+{
+  "agent": "codex-independent-security-review",
+  "updated_at": "2026-10-25T07:00:43.390338+00:00",
+  "status": "COMPLETE_NO_GO",
+  "branch": "codex/release-independent-security",
+  "reviewed_product_sha": "77897e76eb561f166a2b96c1792545075bc8f078",
+  "report": "docs/reviews/corrected-independent/REPORT.md",
+  "blockers": [
+    "N7 P2 diff artifact corruption",
+    "transfer equivalence/upstream reconciliation",
+    "same-SHA CI unverified"
+  ]
+}

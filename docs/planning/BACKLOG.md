@@ -242,3 +242,11 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - IMPLEMENTED / review and CI pending **RL-CMDP-010** (Codex), `research/rl-feasibility-and-product-thesis`: authorized read-only capacity/oracle bounds, control expressiveness and product architecture assessment. No new workloads, policy execution or training. Preserve feasibility001 and v6.
 
 - DONE (research specification; PR #437 merge gated on review/CI) **RL-CMDP-011** (Codex), `research/rl-first-responder-orchestration`: Phase7B fixture-only observations/proposals, agent capability/data audit, future evaluation and Grok integration contract proposal. No collection/training/customer enforcement; no production shared/worker/incident changes.
+
+### Independent release review follow-up (2026-10-25)
+
+- OPEN, reliability/redaction + integration: repair N7 nonliteral-source/diff
+  corruption without weakening secret redaction or independent tests. Candidate
+  `77897e76` remains NO-GO. Preserve N1–N4 fixes, reconcile current upstream and
+  transfer schema union, then obtain passing exact-SHA CI before signoff.
+  Evidence: `docs/reviews/corrected-independent/REPORT.md`.
