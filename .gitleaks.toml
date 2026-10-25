@@ -67,3 +67,14 @@ condition = "AND"
 paths = ['''^rehearsal/.*''']
 regexTarget = "line"
 regexes = ['''Bearer\s+tok-[a-z0-9_-]+''']
+
+# Redaction unit tests exist to hold fake secrets the redactor must strip: the
+# canonical Stripe docs key, the jwt.io example token, xoxb-/AIza/ya29 test
+# strings, DSNs with fake passwords. Path-scoped like .env.example above.
+[[allowlists]]
+description = "Deliberately fake secrets in redaction test fixtures"
+paths = [
+  '''^backend/tests/test_redact_text_gaps\.py$''',
+  '''^code-intelligence/tests/test_privacy_redact\.py$''',
+  '''^code-intelligence/tests/test_ingest_extract\.py$''',
+]
