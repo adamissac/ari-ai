@@ -227,18 +227,22 @@ def _transient(exc: Exception) -> bool:
     return isinstance(exc, httpx.TransportError)
 
 
-def _unverified_bytes(
-    conn: Connection, verification: VerificationResult, patch: Any, diff: bytes
-) -> str | None:
-    """Why ``diff`` is not the exact byte string Verify executed, or None when it is.
+def _verified_diff_bytes(
+    conn: Connection, verification: VerificationResult, patch: Any
+) -> tuple[bytes | None, str | None]:
+    """The exact diff bytes Verify executed, or ``(None, reason)`` when delivery must refuse.
 
-    The stored artifact may be a redacted copy; Verify binds the executed bytes' hash to it
-    as evidence on diff_scope_ok. Delivery refuses anything that cannot be tied to that hash."""
+    The member-facing diff artifact may be a redacted copy. When Verify's diff_scope_ok
+    evidence binds a sealed delivery artifact (written once, from the bytes Verify ran),
+    those sealed bytes ship — hash-checked against ``verified_diff_sha256``. Member reads
+    keep seeing the redacted copy; redaction moved to serve time, not store time."""
     import hashlib
     import json
 
-    got = hashlib.sha256(diff).hexdigest()
+    store = ArtifactStore()
     verified = patch.diff_sha256
+    sealed_id = None
+    redacted = False
     for check in verification.checks:
         if check.name.value != "diff_scope_ok":
             continue
@@ -246,14 +250,30 @@ def _unverified_bytes(
             if not ev.artifact_id:
                 continue
             try:
-                doc = json.loads(ArtifactStore().get(conn, ev.artifact_id)[1])
+                doc = json.loads(store.get(conn, ev.artifact_id)[1])
             except (KeyError, OSError, ValueError):
                 continue
             if isinstance(doc, dict) and doc.get("patch_id") == patch.id and "redacted" in doc:
-                if doc["redacted"]:
-                    return "the stored diff was redacted; Verify tested different bytes"
-                verified = doc.get("verified_diff_sha256")
-    return None if got == verified else "stored diff does not match the bytes Verify accepted"
+                redacted = bool(doc["redacted"])
+                verified = doc.get("verified_diff_sha256") or verified
+                sealed_id = doc.get("sealed_diff_artifact_id") or sealed_id
+    if sealed_id:
+        try:
+            _, data = store.get(conn, sealed_id)
+        except (KeyError, OSError):
+            return None, "the sealed delivery bytes for the verified diff are missing"
+        if hashlib.sha256(data).hexdigest() != verified:
+            return None, "sealed diff does not match the bytes Verify accepted"
+        return data, None
+    if redacted:
+        return None, "the stored diff was redacted; Verify tested different bytes"
+    try:
+        _, data = store.get(conn, patch.diff_artifact_id)
+    except (KeyError, OSError):
+        return None, "the stored diff artifact is missing"
+    if hashlib.sha256(data).hexdigest() != verified:
+        return None, "stored diff does not match the bytes Verify accepted"
+    return data, None
 
 
 def _reason(exc: Exception) -> str:
@@ -310,10 +330,9 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
             .first()
         )
         connected = repo is not None and repo["installation_id"] is not None
-        diff, mismatch = b"", None
+        diff, mismatch = None, None
         if granted and connected:
-            diff = ArtifactStore().get(conn, patch.diff_artifact_id)[1]
-            mismatch = _unverified_bytes(conn, verification, patch, diff)
+            diff, mismatch = _verified_diff_bytes(conn, verification, patch)
 
     def finish(action: str, **more: Any) -> None:
         with transaction() as conn:  # own transaction: a raise afterwards must not roll it back
@@ -328,9 +347,9 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
             ErrorCode.SUBSYSTEM_UNAVAILABLE, "repository is not connected through the GitHub App"
         )
 
-    if mismatch:
+    if mismatch or diff is None:
         finish("delivery.failed", reason=mismatch)
-        raise PermanentJobError(ErrorCode.CONFLICT_STATE, mismatch)
+        raise PermanentJobError(ErrorCode.CONFLICT_STATE, mismatch or "verified diff missing")
 
     from backend.github import GitHubApp
 

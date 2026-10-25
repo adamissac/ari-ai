@@ -539,6 +539,24 @@ class AssessmentHost:
                 conn, text, kind=kind, project_id=self.project_id, media_type=media_type
             )
 
+    def store_sealed(
+        self, text: str, kind: ArtifactKind = ArtifactKind.diff, media_type: str = "text/plain"
+    ) -> ArtifactRef:
+        """Delivery-only artifact: the exact bytes, never redacted, never served to members.
+
+        ``project_id=None`` keeps it off ``GET /artifacts/{id}`` (that route 404s on a
+        null project); the delivery worker reads it directly. Redaction stays at serve
+        time: the member-facing artifact is the redacted copy stored via ``store_text``."""
+        with transaction() as conn:
+            return self.store.put_bytes(
+                conn,
+                text.encode(),
+                kind=kind,
+                project_id=None,
+                media_type=media_type,
+                redacted=False,
+            )
+
     # -------------------------------------------------------------- agent runs
     def start_agent_run(
         self,

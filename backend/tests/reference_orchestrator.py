@@ -64,9 +64,17 @@ def _loop(host: AssessmentHost, agent: AgentName, step: str, prompt: str) -> tup
     return run_id, res.final
 
 
+BEARER_DIFF = (
+    "--- a/app/invoices.py\n+++ b/app/invoices.py\n"
+    "+ .filter(tenant=user.tenant)\n"
+    "+ assert headers == 'Bearer fixture-token-alice'\n"
+)
+
+
 class ReferenceOrchestrator:
-    def __init__(self, *, verify_with_patch_run: bool = False) -> None:
+    def __init__(self, *, verify_with_patch_run: bool = False, bearer_diff: bool = False) -> None:
         self.verify_with_patch_run = verify_with_patch_run
+        self.bearer_diff = bearer_diff
 
     def run(self, host: AssessmentHost) -> None:
         a = host.assessment
@@ -151,11 +159,12 @@ class ReferenceOrchestrator:
         f = host.findings()[0]
         host.transition(S.REMEDIATION)
         patch_run, _ = _loop(host, AgentName.patch, f"patch:{f.id}", "write minimal diff")
-        diff = host.store_text(
-            "--- a/app/invoices.py\n+++ b/app/invoices.py\n+ .filter(tenant=user.tenant)\n",
-            ArtifactKind.diff,
-            media_type="text/x-diff",
+        diff_text = (
+            BEARER_DIFF
+            if self.bearer_diff
+            else "--- a/app/invoices.py\n+++ b/app/invoices.py\n+ .filter(tenant=user.tenant)\n"
         )
+        diff = host.store_text(diff_text, ArtifactKind.diff, media_type="text/x-diff")
         patch = PatchCandidate(
             id=new_id(IdPrefix.pat),
             finding_id=f.id,
@@ -184,13 +193,43 @@ class ReferenceOrchestrator:
                 provenance="agent:verify",
             )
         ]
+        binding_ev: dict[str, list[EvidenceRef]] = {}
+        if self.bearer_diff:
+            # Mirrors the real host_adapter: sealed delivery bytes + a verified-bytes
+            # binding doc as evidence on diff_scope_ok.
+            import hashlib
+
+            original_sha = hashlib.sha256(diff_text.encode()).hexdigest()
+            sealed = host.store_sealed(diff_text, media_type="text/x-diff")
+            binding = host.store_json(
+                {
+                    "patch_id": patch.id,
+                    "verified_diff_sha256": original_sha,
+                    "stored_diff_artifact_id": diff.id,
+                    "stored_diff_sha256": diff.sha256,
+                    "redacted": diff.sha256 != original_sha,
+                    "sealed_diff_artifact_id": sealed.id,
+                }
+            )
+            binding_ev = {
+                "diff_scope_ok": [
+                    EvidenceRef(
+                        kind=EvidenceKind.artifact,
+                        artifact_id=binding.id,
+                        sha256=binding.sha256,
+                        provenance="agent:verify",
+                    )
+                ]
+            }
         host.record_verification(
             VerificationResult(
                 id=new_id(IdPrefix.ver),
                 patch_id=patch.id,
                 verdict=VerificationVerdict.accepted,
                 checks=[
-                    VerificationCheck(name=n, passed=True, evidence=ev)
+                    VerificationCheck(
+                        name=n, passed=True, evidence=[*ev, *binding_ev.get(n.value, [])]
+                    )
                     for n in VerificationCheckName
                 ],
                 sandbox_run_ids=["sbx-test"],
@@ -214,6 +253,10 @@ def build_orchestrator() -> ReferenceOrchestrator:
 
 def build_cheating_orchestrator() -> ReferenceOrchestrator:
     return ReferenceOrchestrator(verify_with_patch_run=True)
+
+
+def build_bearer_orchestrator() -> ReferenceOrchestrator:
+    return ReferenceOrchestrator(bearer_diff=True)
 
 
 def scripted_transport() -> Any:

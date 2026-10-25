@@ -277,6 +277,10 @@ class FakeHost:
         self.stored.append(value)
         return type("Art", (), {"id": f"art_{len(self.stored):08d}", "sha256": "0" * 64})()
 
+    def store_sealed(self, text: str, *args: Any, **kwargs: Any) -> Any:
+        self.stored.append({"sealed": text})
+        return type("Art", (), {"id": f"art_sealed_{len(self.stored):08d}", "sha256": "0" * 64})()
+
     # -- runs
     def start_agent_run(self, agent: Any, step_key: str, **kwargs: Any) -> str:
         run_id = f"run_{len(self.runs):08d}HOST"
@@ -504,6 +508,11 @@ def test_resume_after_approval_completes_remediation_and_hardening(host_and_orch
     assert verification.verdict is shared_findings.VerificationVerdict.accepted
     assert verification.produced_by_run_id != patch.produced_by_run_id, "Verify must be its own run"
     assert any("hardened" in m for m in host.progress_messages)
+    # The exact patch bytes are sealed for delivery and bound to Verify's verdict.
+    bindings = [s for s in host.stored if isinstance(s, dict) and "verified_diff_sha256" in s]
+    assert bindings, "Verify must bind the verdict to the bytes it executed"
+    assert bindings[0]["sealed_diff_artifact_id"].startswith("art_sealed_")
+    assert any(isinstance(s, dict) and "sealed" in s for s in host.stored)
     finding = host.recorded_findings[0]
     assert finding.status is shared_findings.FindingStatus.hardened
     path = [(h.from_status, h.to_status) for h in finding.history]

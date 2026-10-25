@@ -248,6 +248,56 @@ def test_a_diff_that_is_not_the_verified_bytes_is_never_delivered(wired) -> None
     assert FakeApp.calls == [] and "delivery.failed" in _actions()
 
 
+def test_a_redacted_diff_still_delivers_the_exact_verified_bytes(
+    wired, settings_override, client_factory, monkeypatch
+) -> None:
+    """A patch whose diff contains credential-shaped fixture strings is redacted in the
+    member-facing artifact but must still deliver the exact bytes Verify ran."""
+    settings_override(orchestrator_factory="reference_orchestrator:build_bearer_orchestrator")
+    seen: list[bytes] = []
+
+    def push(*a, require_tip=False, **k):
+        seen.append(a[3])
+        return "c" * 40
+
+    monkeypatch.setattr(delivery, "push_patch", push)
+    wired("auto")
+    worker.drain(kinds=["deliver_verified_patch"])
+    assert seen and b"Bearer fixture-token-alice" in seen[0]
+    assert "delivery.pushed" in _actions()
+
+    alice = client_factory("alice")
+    import json as _json
+
+    from backend.artifacts import ArtifactStore
+    from backend.db import patch_candidates, verification_results
+
+    with transaction() as conn:
+        pdoc = conn.execute(sa.select(patch_candidates.c.doc)).scalar_one()
+        _, stored = ArtifactStore().get(conn, pdoc["diff_artifact_id"])
+    assert b"fixture-token-alice" not in stored and b"[REDACTED:bearer]" in stored
+    diff_resp = alice.get(f"/api/v1/artifacts/{pdoc['diff_artifact_id']}")
+    assert diff_resp.status_code == 200
+    assert b"fixture-token-alice" not in diff_resp.content
+    assert b"[REDACTED:bearer]" in diff_resp.content
+    # The sealed delivery artifact is unreachable via the member route.
+    with transaction() as conn:
+        vdoc = conn.execute(sa.select(verification_results.c.doc)).scalar_one()
+        sealed_id = None
+        for check in vdoc["checks"]:
+            for ev in check["evidence"]:
+                if not ev.get("artifact_id"):
+                    continue
+                try:
+                    bdoc = _json.loads(ArtifactStore().get(conn, ev["artifact_id"])[1])
+                except (KeyError, OSError, ValueError):
+                    continue
+                if isinstance(bdoc, dict) and "sealed_diff_artifact_id" in bdoc:
+                    sealed_id = bdoc["sealed_diff_artifact_id"]
+        assert sealed_id is not None
+    assert alice.get(f"/api/v1/artifacts/{sealed_id}").status_code == 404
+
+
 def test_switching_on_unblocks_runs_of_a_legacy_project(client_factory, reference) -> None:
     alice, bob = client_factory("alice"), client_factory("bob")
     ids = setup_project(alice, bob)
