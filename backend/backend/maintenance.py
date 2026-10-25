@@ -434,8 +434,9 @@ def _table_stats(conn: Connection) -> list[dict[str, Any]]:
 
 def _try_scalar(conn: Connection, sql: str) -> int | None:
     try:
-        return int(conn.execute(sa.text(sql)).scalar_one())
-    except Exception:
+        with conn.begin_nested():
+            return int(conn.execute(sa.text(sql)).scalar_one())
+    except sa.exc.SQLAlchemyError:
         return None
 
 
