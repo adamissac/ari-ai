@@ -155,3 +155,21 @@ def test_recipe_protected_tests_honors_custom_test_roots(tmp_path: Path) -> None
         )
     )
     assert recipe_protected_tests(tmp_path) == ("backend/tests/test_a.py",)
+
+
+def test_test_root_symlinks_includes_only_in_root_file_targets(tmp_path: Path) -> None:
+    from security_agents.sandbox.workspace import test_root_symlinks
+
+    root = tmp_path / "repo"
+    tests_root = root / "tests"
+    tests_root.mkdir(parents=True)
+    source = root / "src" / "module.py"
+    source.parent.mkdir()
+    source.write_text("value = 1\n")
+    outside = tmp_path / "outside.py"
+    outside.write_text("value = 2\n")
+    (tests_root / "test_inside.py").symlink_to("../src/module.py")
+    (tests_root / "test_outside.py").symlink_to(outside)
+    (tests_root / "test_dangling.py").symlink_to("missing.py")
+
+    assert test_root_symlinks(root, ("tests/",)) == ("tests/test_inside.py",)
