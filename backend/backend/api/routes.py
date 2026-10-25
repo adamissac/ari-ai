@@ -7,6 +7,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Any
 
+import httpx
 import sqlalchemy as sa
 from fastapi import APIRouter, Header, Query, Request, Response
 from fastapi.concurrency import run_in_threadpool
@@ -26,6 +27,7 @@ from backend.api.deps import (
     require_project,
     require_user,
 )
+from backend.api.execution import job_project
 from backend.artifacts import ArtifactStore
 from backend.db import (
     agent_runs,
@@ -48,6 +50,7 @@ from backend.db import (
     transaction,
     verification_results,
 )
+from backend.github import GitHubApp, GitHubNotConfigured
 from backend.integrations import load_factory
 from backend.quota import check_project_quota, rate_limit_message
 from backend.services import (
@@ -891,6 +894,38 @@ def start_assessment(
         replay = idempotent_lookup(conn, user.id, idempotency_key, retry_request)
         if replay:
             return JSONResponse(replay["body"], status_code=replay["status"])
+        commit_sha = body.commit_sha
+        if commit_sha is None and body.snapshot_id is None:
+            repo = (
+                conn.execute(sa.select(repositories).where(repositories.c.id == body.repo_id))
+                .mappings()
+                .first()
+            )
+            if repo is None or repo["project_id"] != project_id:
+                raise not_found("repository")
+            if repo["installation_id"] is None:
+                raise ApiError(
+                    ErrorCode.VALIDATION_FAILED,
+                    "enter a commit SHA: this repository is not connected through the GitHub App",
+                    422,
+                )
+            try:
+                commits = GitHubApp().recent_commits(
+                    repo["installation_id"], repo["full_name"], repo["default_branch"], limit=1
+                )
+            except (GitHubNotConfigured, httpx.HTTPError) as exc:
+                raise ApiError(
+                    ErrorCode.SUBSYSTEM_UNAVAILABLE,
+                    "could not read the latest commit from GitHub",
+                    503,
+                ) from exc
+            if not commits:
+                raise ApiError(
+                    ErrorCode.SUBSYSTEM_UNAVAILABLE,
+                    "could not read the latest commit from GitHub",
+                    503,
+                )
+            commit_sha = commits[0]["sha"]
         quota = check_project_quota(conn, project_id, utcnow())
         if quota is not None:
             raise ApiError(
@@ -899,7 +934,6 @@ def start_assessment(
                 429,
                 {"resets_at": quota.resets_at.isoformat()},
             )
-        commit_sha = body.commit_sha
         if body.snapshot_id:
             snap = (
                 conn.execute(sa.select(snapshots).where(snapshots.c.id == body.snapshot_id))
@@ -1609,31 +1643,33 @@ def list_project_jobs(
 @router.get("/jobs/{job_id}")
 def get_job(job_id: str, request: Request) -> dict[str, Any]:
     from backend.db import jobs as jobs_t
+    from backend.redaction import redact
 
     with transaction() as conn:
         user = _user(conn, request)
         row = conn.execute(sa.select(jobs_t).where(jobs_t.c.id == job_id)).mappings().first()
-        pid = (row["payload"] or {}).get("project_id") if row else None
         # Assessment jobs (including approval resumes) retain only assessment_id
-        # in their payload. Resolve their project through the persisted assessment,
-        # rather than trusting an optional redundant project_id field.
-        if row and row["kind"] == "run_assessment":
-            pid = conn.execute(
-                sa.select(assessments.c.project_id).where(
-                    assessments.c.id == (row["payload"] or {}).get("assessment_id")
-                )
-            ).scalar_one_or_none()
+        # in their payload; job_project resolves them through the persisted assessment.
+        pid = job_project(conn, row) if row else None
         if row is None or not pid:
             raise not_found("job")
         require_project(conn, user, pid)
+        # Scrub at read too: rows persisted before the write-side redaction
+        # keep credentials in last_error/recovery text.
         return {
             "id": row["id"],
             "kind": row["kind"],
             "status": row["status"],
             "attempts": row["attempts"],
-            "result": row["result"],
-            "last_error": {k: v for k, v in (row["last_error"] or {}).items() if k != "trace"}
+            "result": redact(row["result"]),
+            "last_error": redact(
+                {k: v for k, v in (row["last_error"] or {}).items() if k != "trace"}
+            )
             or None,
+            "error_category": row["error_category"],
+            "deadline_at": row["deadline_at"].isoformat() if row["deadline_at"] else None,
+            "effect_state": row["effect_state"],
+            "recovery": redact(row["recovery"]),
         }
 
 

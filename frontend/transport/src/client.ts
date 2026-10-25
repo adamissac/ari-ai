@@ -271,6 +271,12 @@ export class ApiClient {
   pilotReport(projectId: string, options?: RequestOptions): Promise<C.PilotReport> {
     return this.request(`/projects/${segment(projectId)}/pilot-report`, 'PilotReport', options) as Promise<C.PilotReport>;
   }
+  rlReadiness(projectId: string, options?: RequestOptions): Promise<C.RlReadinessAssessment> {
+    return this.request(`/projects/${segment(projectId)}/rl-readiness`, 'RlReadinessAssessment', options) as Promise<C.RlReadinessAssessment>;
+  }
+  enableRlGatedPilot(appId: string, options?: RequestOptions): Promise<C.PilotEnablement> {
+    return this.request(`/applications/${segment(appId)}/enable-rl-gated-pilot`, 'PilotEnablement', options, {}) as Promise<C.PilotEnablement>;
+  }
   defenseHealth(projectId: string, options?: RequestOptions): Promise<C.DefenseHealth> {
     return this.request(`/projects/${segment(projectId)}/defense-health`, 'DefenseHealth', options) as Promise<C.DefenseHealth>;
   }

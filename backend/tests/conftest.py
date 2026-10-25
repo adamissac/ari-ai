@@ -110,6 +110,8 @@ from backend.migrate import upgrade  # noqa: E402
 upgrade()
 
 _TABLES = [
+    "worker_heartbeats",
+    "job_events",
     "analyst_handoffs",
     "first_responder_invocations",
     "first_responder_decisions",
@@ -159,9 +161,11 @@ def clean_db() -> Iterator[None]:
 
     yield
     from backend import pipeline
+    from backend.live_defense import agent_execution
 
     pipeline._ORCHESTRATORS.clear()
     llm.TRANSPORT_OVERRIDE = None
+    agent_execution.GATEWAY_OVERRIDE = None
     get_settings.cache_clear()
     with get_engine().begin() as c:
         c.execute(sa.text("ALTER TABLE audit_events DISABLE TRIGGER USER"))

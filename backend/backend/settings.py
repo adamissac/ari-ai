@@ -74,6 +74,15 @@ class Settings(BaseSettings):
     worker_heartbeat_interval_s: float = 5.0
     worker_liveness_s: float = 30.0
     readyz_require_workers: bool | None = None
+    # Execution reliability (docs/architecture/execution-reliability.md). 0 disables a limit.
+    job_max_running_per_project: int = 4
+    job_max_running_global: int = 0
+    job_max_pending_per_project: int = 1000
+    job_max_running_emergency: int = 2
+    worker_reconcile_interval_s: float = 30.0
+    worker_stale_s: int = 120
+    job_stuck_pending_s: int = 900
+    worker_finalize_retries: int = 3
     orchestrator_factory: str = Field(
         default="security_agents.api:build_orchestrator",
         description="module:callable returning an Orchestrator; see backend/host.py",
@@ -107,6 +116,10 @@ class Settings(BaseSettings):
     # Provisioned size of the PostgreSQL volume in bytes (from the Railway dashboard).
     # 0 = unknown: the report still emits absolute usage but skips percentage alerts.
     postgres_volume_bytes: int = Field(default=0, ge=0)
+    # Provisioned size of the app data volume, Railway sizeMB × 1,000,000.
+    # 0 = skip data-volume alerts.
+    data_volume_bytes: int = Field(default=0, ge=0)
+    data_volume_path: Path = Path("/data")
     maintenance_enabled: bool = True
     maintenance_interval_s: int = Field(default=3600, ge=60)
     # True by default: the loop reports what it WOULD delete without deleting until an

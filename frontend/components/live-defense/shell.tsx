@@ -12,6 +12,7 @@ const TABS = [
   { id: 'explain', label: 'Explainability' },
   { id: 'apps', label: 'Staging apps' },
   { id: 'controls', label: 'Controls' },
+  { id: 'readiness', label: 'Readiness' },
   { id: 'first-responder', label: 'First responder' },
   { id: 'executions', label: 'Executions' },
 ] as const;
