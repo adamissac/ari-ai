@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Storage report probes use savepoints so a denied optional metric does not abort later checks.
 - Added the Industrial Graphite design-token foundation and reskinned existing UI primitives and console surfaces with graphite neutrals, vermilion signal, Inter, and IBM Plex Mono.
 - Added a guided repository setup walkthrough (`/projects/<id>/setup?repo=<repoId>`): connecting a repository now lands there, and it walks through authorizing testing, tuning the code reviewer, choosing fix delivery (pull request is preselected), and starting the first review.
 - Added an hourly GitHub Actions storage watchdog for Railway volume usage and backup freshness, with idempotent issue alerts.
