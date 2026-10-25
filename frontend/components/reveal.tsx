@@ -37,13 +37,14 @@ export function useRevealOnScroll<T extends HTMLElement>(): RefObject<T | null> 
 /**
  * Fade-and-rise when scrolled into view. Server render and no-JS keep content visible;
  * only elements that start below the fold are hidden, then revealed once. Honours
- * prefers-reduced-motion through CSS (globals.css `.reveal`).
+ * prefers-reduced-motion by keeping content visible without observing.
  */
 export function Reveal({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const rect = el.getBoundingClientRect();
     if (rect.top < window.innerHeight) return; // already visible
     // An element at the document's end can never rise above the shrunken bottom margin:

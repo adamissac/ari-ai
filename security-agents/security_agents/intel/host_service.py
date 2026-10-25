@@ -33,7 +33,10 @@ def shared_host_intel(
     service = factory(include_prefix=prefix)
     assessment = host.assessment
     ref = service.index_repository(host.project_id, host.repo_id, assessment.commit_sha)
-    host.attach_snapshot(ref)
+    if not host.attach_snapshot(ref):
+        ref = service.index_repository(host.project_id, host.repo_id, assessment.commit_sha)
+        if not host.attach_snapshot(ref):
+            raise PlatformError(ErrorCode.SNAPSHOT_NOT_READY, "indexed snapshot was not ready")
     adapter = CodeIntelligenceAdapter(service=service, ref=ref, workspace=snapshot.root, path_prefix=prefix)
     adapter.verify_workspace()
     return adapter

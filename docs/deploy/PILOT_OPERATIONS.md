@@ -46,7 +46,15 @@ Railway backend service must set, or `/readyz.capabilities` reports the gap:
 
 Vercel frontend must set `BACKEND_ORIGIN=<railway public origin>`; leave
 `NEXT_PUBLIC_DEMO_ONLY` unset and Deployment Protection off so the OAuth
-callback + API proxy work.
+callback + API proxy work. `ANTHROPIC_API_KEY` on Vercel enables the optional
+live commit analysis (`POST /api/analyze`); no `GITHUB_TOKEN` is needed —
+commit reads go through the backend's GitHub App installation token at
+`GET /api/v1/github/commit`, gated by the caller's session.
+
+Railway service deploy settings (verified live): `healthcheckPath=/readyz`,
+`healthcheckTimeout=300`, `overlapSeconds=30` (old deployment keeps serving
+through the traffic swap — no 502 window), `drainingSeconds=600` (SIGTERM
+grace for in-flight assessments), `restartPolicyType=ON_FAILURE` ×10.
 
 `RAILWAY_GIT_COMMIT_SHA` is injected by Railway and surfaces as
 `git_sha` in `/healthz`, `/readyz`, `/diagnostics`.

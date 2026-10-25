@@ -120,6 +120,12 @@ def process_github_delivery(ctx: JobContext) -> dict[str, Any]:
 
     if not repo["automatic_assessments"]:
         return {"ignored": "repository automatic assessments disabled"}
+    with transaction() as conn:
+        reason = auto_commits.reviewer_ignore_reason(conn, repo, payload, change)
+        if reason:
+            actor = (change.pr_author if change.event == "pull_request" else change.sender) or ""
+            auto_commits._record_schedule_ignore(conn, repo, d, change, reason, actor)
+            return {"ignored": reason}
     if auto_commits.authors():
         with transaction() as conn:
             return auto_commits.schedule(conn, repo, d, payload, change)
