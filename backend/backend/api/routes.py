@@ -594,11 +594,12 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
     App-connected rows require the owner to still hold access through the
     recorded installation, verified with GitHub *fresh*: a revoked installation
     or a GitHub outage denies the request rather than trusting the stale
-    sign-in snapshot. The personal-installation refresh runs in strict mode;
-    when it cannot cover the installation (org installs, no personal install,
-    App unconfigured) the installation-id check stands in. Reconnect does NOT
-    restore ``automatic_assessments`` or revoked deploy mappings: the owner
-    opts back in explicitly.
+    sign-in snapshot. The personal-installation refresh runs in strict mode to
+    refresh the cache and fail fast on GitHub errors; the *target* installation
+    is then always verified directly — a healthy unrelated personal install can
+    never stand in for the recorded grant. Reconnect does NOT restore
+    ``automatic_assessments`` or revoked deploy mappings: the owner opts back
+    in explicitly.
     """
     from backend.db import users
 
@@ -615,15 +616,11 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
             gh = conn.execute(
                 sa.select(users.c.github_login, users.c.github_id).where(users.c.id == user.id)
             ).first()
-            refreshed = (
+            if gh is not None:
                 _refresh_personal_installation_repositories(
                     user.id, gh.github_login, gh.github_id, strict=True
                 )
-                if gh is not None
-                else False
-            )
-            if not refreshed:
-                verify_installation_access(repo["full_name"], repo["installation_id"])
+            verify_installation_access(repo["full_name"], repo["installation_id"])
             if not can_connect(conn, user.id, repo["full_name"], repo["installation_id"]):
                 raise ApiError(
                     ErrorCode.FORBIDDEN,
