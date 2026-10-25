@@ -20,6 +20,8 @@ All notable changes are documented here. Format follows
 - Functional-reviewer evaluation report (`code-review/eval/REVIEWER_EVAL_2026-10-24.md`): executed corpus results (10/10 labels proven), functional-vs-security performance table on the live 45-case set, before/after test evidence, supported scope and honest gaps. Scorer's `source_span` path fallback locked by `security-agents/tests/test_eval_score_api.py`.
 
 - Add `access_control.role` check template: Probe can now prove role-bypass on mutating routes — a restricted fixture identity must be denied (401/403/404) while a permitted one keeps access. Recipe surface expanded (assessment/finding/scope routes, role-differentiated sandbox identities carol=viewer/dave=member of alice's org); new recipe body placeholders `{expires_in_days:N}` and `{resource:KIND}`. Aliases `authorization.role`, `access_control.mutation`, `access_control.rbac` map to the new category.
+
+- Add the pilot launch package under `docs/pilot/`: pilot scope and exclusions, a truthful feature matrix (implemented / staging-only / simulation-only / partial / unavailable), customer onboarding and revocation checklist, a draft data-handling disclosure, incident/support/escalation operations, pilot metrics and per-customer health reporting, a risk register, the staging-rehearsal + first-five plan, and a signed CONDITIONAL GO launch decision.
 - Eval scorer now reports `validated_any`/`fixed_any` across every finding kind next to the security-only verdicts, and derives finding paths from `source_span` evidence; `benign_artifact_sha512` relabeled — the sha512 swap was a real defect (String(64) sha256 column), not a false positive.
 
 - Add `examples/inventory-lite`, a second owned evaluation/rehearsal fixture with a

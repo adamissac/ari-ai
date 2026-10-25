@@ -17,8 +17,16 @@ person, never committed and never pasted into chat.
 | Setup URL | `https://ari-ai-lake.vercel.app/projects` (redirect on update: on) |
 | Webhook URL | `https://ari-ai-production-76d4.up.railway.app/api/v1/webhooks/github` |
 | Webhook secret | a long random string (also goes into Railway, below) |
-| Repository permissions | Contents: **Read-only**, Metadata: **Read-only** |
+| Repository permissions | Contents: **Read & write**, Pull requests: **Read & write**, Metadata: **Read-only** |
 | Subscribe to events | Push |
+
+Write scope is required for fix delivery (PRs/commits) — it is **not** optional
+while `pull_request`/`auto` delivery modes exist. Per-call installation tokens
+are still least-privilege: read tokens request `{contents: read, metadata:
+read}`; write tokens request `{contents: write, pull_requests: write,
+metadata: read}` pinned to a single repository (`backend/backend/github.py`).
+Tell customers the write scope plainly during onboarding — see
+`docs/pilot/CUSTOMER_ONBOARDING.md`.
 | Where can it be installed | Any account (so other people can use it) |
 
 After creating it: note the **App ID** and **Client ID**, generate a **client secret**, and
