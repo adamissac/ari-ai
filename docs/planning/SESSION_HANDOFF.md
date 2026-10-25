@@ -16,6 +16,20 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-26 — Devin (agent, Adam) — protect retention references and destructive ops
+- Did: expanded snapshot protection to findings, memory, decisions, active assessments/jobs, and (by default) all assessment references; added per-snapshot locking/rechecks, assessment binding locks, plan digests, and a separate destructive-maintenance token.
+- State of the code: implemented on `fix/adam/retention-protect-references`; production `RETENTION_DRY_RUN=true` is unchanged. No PR was opened.
+- Commands run and results: `uv run pytest -q backend/tests/test_maintenance.py` — 25 passed;
+  the related backend selection — 48 passed, 4 skipped, 498 deselected, with one
+  existing SQLAlchemy deprecation warning; Ruff check passed and 8 files are formatted.
+  Targeted mypy reports 8 diagnostics in `backend/host.py`, `backend/maintenance.py`,
+  and `backend/api/routes.py`; it reports none in the new settings, ops, binding helper,
+  or host-service retry paths.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: review the pushed branch and handle CI separately.
+- Warnings for the next session: production measurements in the storage runbook are owner-provided (“measured 2026-10-25”), not independently re-read.
+
 ### 2026-10-25 — Devin (agent, Adam) — console commit-history overlay and assessment-count accessibility
 - Did: diagnosed the “2 Issues” Next dev badge on commit history as nested anchors: the whole commit row was a `Link`, and `CommitAssessmentChip` rendered another `Link` inside it. Restructured the row so commit details, SHA navigation, and assessment navigation are sibling links. The additional-assessment count now has singular/plural title and accessible name; unknown assessment states omit the chip.
 - State of the code: the console page now has no hydration warnings or Next overlay issues on `:3102`; comparing `:3101` confirmed the warnings were caused by this branch's nested link.
