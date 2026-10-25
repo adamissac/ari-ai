@@ -6,6 +6,14 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Quota reset timestamps now reflect when an over-limit rolling hour or day window actually falls below its limit.
+- Railway now defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, disabling per-commit full runs while enabled repositories fall back to the legacy impact-gated, coalesced monitoring policy; `*` or a comma-separated GitHub login list opts into per-commit full runs. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.
+- Shared assessment quotas now apply per project across every trigger (10 per rolling hour, 50 per rolling day), with a global $50 rolling-day spend cap. Manual starts receive a 429 with the quota reset time; automatic requests over quota are recorded as skipped and are not requeued.
+- Allow migrations to use an optional database URL separate from the app role.
+
+- Verify-tested diffs are also stored as sealed, delivery-only artifacts. Delivery checks their
+  bytes against both verification bindings and refuses high-confidence credentials; project
+  purge removes sealed copies with other artifacts.
 - GitHub onboarding + continuous assessment hardening: a missing/renamed repo, deleted installation, or GC'd commit now records a skipped monitoring event with an actionable reason instead of retrying to dead-letter; compare failures fall back to payload commits; `installation deleted` / `repositories removed` / `repository renamed` lifecycle events now detach or rename monitored repositories; connecting a repository verifies the installation still grants access (403 with a reinstall hint when it doesn't); deploy doc corrected for App permissions, subscribed events, and the `automatic_assessments` default (opt-in OFF).
 - First-user usability pass on the commit review page: approval cards now name the finding
   they authorize (including remediation-plan `rmp_` subjects resolved through the finding
