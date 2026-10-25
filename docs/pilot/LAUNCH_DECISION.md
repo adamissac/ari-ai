@@ -30,8 +30,6 @@ onboarding. Launch remains **NO-GO** until:
   `MIGRATION_DATABASE_URL` reference.
 - Public TCP proxy access is removed last. Rehearsal cleanup is **DONE**
   (approved and executed); see `DB_ROLE_MIGRATION.md` § Rehearsal cleanup.
-- `pg_monitor` is revoked after PR #610 is deployed, and PRs #605 and #610 are
-  merged.
 - Adam signs off on C9 after personally reviewing PR #5.
 
 ## Rehearsal evidence retained under this NO-GO decision
@@ -65,9 +63,9 @@ start until every row marked Yes is done; C7–C8 are standing rules for the who
 | C10 | **DONE with deviation:** Automatic starts count all project triggers toward 10/hour and 50/day; manual starts count only manual-trigger assessments toward 10/hour and 50/day, so the combined total could reach up to 20/hour and 100/day. The $50 rolling-day spend cap applies to all starts. Automatic runs are opt-in. Final verified Railway values are `PROJECT_ASSESSMENTS_PER_HOUR=10`, `PROJECT_ASSESSMENTS_PER_DAY=50`, and `ASSESSMENTS_USD_PER_DAY=50`. This differs from the owner's stated target of one pool shared by manual and automatic runs; owner decision pending on whether manual runs should count automatic ones too. | Yes |
 | C10b | Pilot projects must use `delivery_mode=pull_request`; the rehearsal project was restored from `auto` to `pull_request` through the settings API before Leg 9 delivery. This does not close C9's personal-review gate | Yes |
 | C11 | Sandbox capacity confirmed for the pilot. 19 assessments failed `HTTP 402 Hobby plan usage limit` between 10-20 and 10-23; none since, with about 9,800 sandbox-seconds on 10-24. Confirm which plan the sandbox team is on (D5) | Yes |
-| C12 | **OPEN:** the `postgres` admin password rotation is complete. Still open: owner rotation of the Anthropic key and GitHub App private key from their consoles; remove public TCP proxy access last; revoke `pg_monitor` now that PR #610 is merged (in progress). Rehearsal cleanup is **DONE**; see `DB_ROLE_MIGRATION.md` § Rehearsal cleanup | Yes |
+| C12 | **OPEN:** the `postgres` admin password rotation is complete. Still open: owner rotation of the Anthropic key and GitHub App private key from their consoles; remove public TCP proxy access last. `pg_monitor` was revoked from `ari_app` after #610 deployed; the storage report is healthy with WAL size unreported. Rehearsal cleanup is **DONE**; see `DB_ROLE_MIGRATION.md` § Rehearsal cleanup | Yes |
 | C13 | Railway runtime documents and checks the code-intelligence variables (`INTELLIGENCE_REPOSITORIES_FILE` + one persistence option) so a redeploy cannot reproduce the D3 snapshot failure | Before customer 2 |
-| C14 | Merge PRs #605 and #610 | Yes |
+| C14 | **DONE:** #605 and #610 merged and deployed (`a85885aa`) | Yes |
 
 ## Documented exceptions (accepted for the pilot)
 

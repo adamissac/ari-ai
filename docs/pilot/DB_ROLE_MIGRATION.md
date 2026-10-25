@@ -20,8 +20,10 @@ remains a backup-validation gap.
 NOCREATEROLE NOREPLICATION`. It has CONNECT on the database, USAGE on the
 schema, SELECT/INSERT/UPDATE/DELETE on all tables, USAGE/SELECT on all
 sequences, and matching default privileges for `postgres` on future tables
-and sequences. It also has `pg_monitor` for storage-report WAL metrics; revoke
-this membership after PR #610 is deployed.
+and sequences. It initially had `pg_monitor` for storage-report WAL metrics.
+At about 11:30Z on 2026-10-25, after PR #610 deployed, the admin connection ran
+`REVOKE pg_monitor FROM ari_app`. The role now has no role memberships; its
+attributes remain `NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION`.
 `pgaudit.log=none`.
 
 The `ari_app` password was set as a locally computed SCRAM-SHA-256 verifier;
@@ -58,6 +60,13 @@ Hosted verification after cutover:
   patches. The owner session received 200 on the same 14 GETs. Eve's POST
   assessment start and POST cancel both returned 404, and her project list
   was empty.
+
+After PRs #605 and #610 merged, the Railway production deploy of `a85885aa`
+succeeded and `/healthz` reported `git_sha` `a85885aa`. After the revocation,
+`pg_stat_activity` showed 14 app connections as `ari_app`. The ops endpoint
+`GET /api/v1/ops/storage` returned 200 with `wal_bytes: null` and `alerts: []`;
+WAL bytes are no longer reported for the app role because #610's savepoint
+skips the denied WAL probe. `/readyz` was ready with 24 workers and 0 queued.
 
 In the least-privilege test harness, tests that fail only as `ari_app` are
 test- or operator-path cases: DDL in `test_automation_opt_in`;

@@ -16,6 +16,18 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-26 — Adam: production #605/#610 deployment and pg_monitor revocation
+- Done: PRs #605 and #610 are merged; Railway deployed `a85885aa`
+  successfully, and `/healthz` reports that `git_sha`.
+- Done: at about 11:30Z on 2026-10-25, the admin connection revoked
+  `pg_monitor` from `ari_app`. The role has no memberships and retains
+  `NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION`; 14 app
+  connections use `ari_app`.
+- Verified: `GET /api/v1/ops/storage` returned 200 with `wal_bytes: null` and
+  `alerts: []`; `/readyz` was ready with 24 workers and 0 queued. WAL size is
+  no longer reported for the app role after #610's savepoint-protected probe.
+- Open: rotate the Anthropic and GitHub App keys; remove public database access last.
+
 ### 2026-10-26 — Devin (agent, Adam) — preserve impact-gated reviewer monitoring (#593)
 - Did: restored `origin/main`'s impact/correlation/quota/reassessment path while adding one shared reviewer-eligibility gate before either impact processing or the per-commit scheduler. Quoted-empty and sole `*` global settings route to impact monitoring. Added filter coverage for both routes and an impact-path pull-request comment test using the reassessment request's event IDs.
 - State of the code: both routes use `reviewer_ignore_reason`; ignored events are recorded before impact work. Impact-created PR assessments enqueue a deduplicated review and resolve the PR number from their triggering monitoring event.
