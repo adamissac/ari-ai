@@ -25,6 +25,7 @@ Design notes (docs/deploy/POSTGRES_STORAGE.md):
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -46,6 +47,7 @@ from backend.db import (
     artifacts,
     assessment_events,
     assessments,
+    findings,
     get_engine,
     idempotency_keys,
     index_payloads,
@@ -54,8 +56,10 @@ from backend.db import (
     monitoring_events,
     projects,
     reassessment_requests,
+    repositories,
     runtime_windows,
     sessions,
+    snapshots,
     transaction,
     webhook_deliveries,
 )
@@ -94,14 +98,182 @@ def _hours(n: int) -> datetime:
     return datetime.now(UTC) - timedelta(hours=n)
 
 
-def _active_snapshot_ids(conn: Connection) -> set[str]:
-    """snapshot_ids referenced by any non-terminal assessment — never pruned."""
-    rows = conn.execute(
+def _snapshot_protection_reasons(
+    conn: Connection, project_id: str, s: Settings
+) -> dict[str, set[str]]:
+    from backend.intelligence_memory import expectation_decisions, verified_regression_memory
+
+    def ids(query: sa.Select[Any]) -> set[str]:
+        return {sid for sid in conn.execute(query).scalars() if sid}
+
+    terminal = [state.value for state in TERMINAL_STATES]
+    active_jobs = jobs.c.status.in_(("queued", "running"))
+    snapshot_from_memory = verified_regression_memory.join(
+        snapshots, verified_regression_memory.c.snapshot_id == snapshots.c.id
+    ).join(repositories, snapshots.c.repo_id == repositories.c.id)
+    snapshot_from_decisions = expectation_decisions.join(
+        snapshots, expectation_decisions.c.snapshot_id == snapshots.c.id
+    ).join(repositories, snapshots.c.repo_id == repositories.c.id)
+    assessment_job_join = jobs.join(
+        assessments, jobs.c.payload["assessment_id"].as_string() == assessments.c.id
+    )
+    all_assessments = ids(
         sa.select(assessments.c.doc["snapshot_id"].as_string())
-        .where(assessments.c.state.notin_([s.value for s in TERMINAL_STATES]))
+        .where(assessments.c.project_id == project_id)
         .where(assessments.c.doc["snapshot_id"].as_string().is_not(None))
     )
-    return {r[0] for r in rows}
+    reasons = {
+        "a_findings": ids(
+            sa.select(findings.c.doc["snapshot_id"].as_string())
+            .where(findings.c.project_id == project_id)
+            .where(findings.c.doc["snapshot_id"].as_string().is_not(None))
+        ),
+        "b_verified_regression_memory": ids(
+            sa.select(verified_regression_memory.c.snapshot_id)
+            .select_from(snapshot_from_memory)
+            .where(repositories.c.project_id == project_id)
+        ),
+        "c_expectation_decisions": ids(
+            sa.select(expectation_decisions.c.snapshot_id)
+            .select_from(snapshot_from_decisions)
+            .where(repositories.c.project_id == project_id)
+        ),
+        "d_non_terminal_assessments": ids(
+            sa.select(assessments.c.doc["snapshot_id"].as_string())
+            .where(assessments.c.project_id == project_id)
+            .where(assessments.c.state.notin_(terminal))
+            .where(assessments.c.doc["snapshot_id"].as_string().is_not(None))
+        ),
+        "e_active_jobs": ids(
+            sa.select(jobs.c.payload["snapshot_id"].as_string())
+            .where(active_jobs)
+            .where(jobs.c.payload["snapshot_id"].as_string().is_not(None))
+        )
+        | ids(
+            sa.select(assessments.c.doc["snapshot_id"].as_string())
+            .select_from(assessment_job_join)
+            .where(active_jobs)
+            .where(assessments.c.project_id == project_id)
+            .where(assessments.c.doc["snapshot_id"].as_string().is_not(None))
+        ),
+        "f_all_assessments": (
+            all_assessments if s.retention_protect_assessment_snapshots else set()
+        ),
+    }
+    return reasons
+
+
+def _protected_snapshot_ids(conn: Connection, s: Settings) -> set[str]:
+    """Return ready snapshot references that retention must not remove."""
+    project_id = conn.execute(
+        sa.text("SELECT current_setting('ari.project_id', true)")
+    ).scalar_one_or_none()
+    if not project_id:
+        raise RuntimeError("snapshot protection requires a scoped project transaction")
+    reasons = _snapshot_protection_reasons(conn, project_id, s)
+    return set().union(*reasons.values())
+
+
+def _assessment_snapshot_ids(conn: Connection, project_id: str) -> set[str]:
+    return {
+        sid
+        for sid in conn.execute(
+            sa.select(assessments.c.doc["snapshot_id"].as_string())
+            .where(assessments.c.project_id == project_id)
+            .where(assessments.c.doc["snapshot_id"].as_string().is_not(None))
+        ).scalars()
+        if sid
+    }
+
+
+def _snapshot_is_protected(
+    conn: Connection,
+    project_id: str,
+    snapshot_id: str,
+    s: Settings,
+    *,
+    created_at: datetime,
+    grace_cutoff: datetime,
+    assessment_grace_cutoff: datetime,
+) -> bool:
+    from backend.intelligence_memory import expectation_decisions, verified_regression_memory
+
+    terminal = [state.value for state in TERMINAL_STATES]
+    active_jobs = jobs.c.status.in_(("queued", "running"))
+    snapshot_from_memory = verified_regression_memory.join(
+        snapshots, verified_regression_memory.c.snapshot_id == snapshots.c.id
+    ).join(repositories, snapshots.c.repo_id == repositories.c.id)
+    snapshot_from_decisions = expectation_decisions.join(
+        snapshots, expectation_decisions.c.snapshot_id == snapshots.c.id
+    ).join(repositories, snapshots.c.repo_id == repositories.c.id)
+    assessment_job_join = jobs.join(
+        assessments, jobs.c.payload["assessment_id"].as_string() == assessments.c.id
+    )
+    checks = [
+        sa.exists(
+            sa.select(1)
+            .select_from(findings)
+            .where(
+                findings.c.project_id == project_id,
+                findings.c.doc["snapshot_id"].as_string() == snapshot_id,
+            )
+        ),
+        sa.exists(
+            sa.select(1)
+            .select_from(snapshot_from_memory)
+            .where(
+                repositories.c.project_id == project_id,
+                verified_regression_memory.c.snapshot_id == snapshot_id,
+            )
+        ),
+        sa.exists(
+            sa.select(1)
+            .select_from(snapshot_from_decisions)
+            .where(
+                repositories.c.project_id == project_id,
+                expectation_decisions.c.snapshot_id == snapshot_id,
+            )
+        ),
+        sa.exists(
+            sa.select(1)
+            .select_from(assessments)
+            .where(
+                assessments.c.project_id == project_id,
+                assessments.c.state.notin_(terminal),
+                assessments.c.doc["snapshot_id"].as_string() == snapshot_id,
+            )
+        ),
+        sa.exists(
+            sa.select(1)
+            .select_from(jobs)
+            .where(
+                active_jobs,
+                jobs.c.payload["snapshot_id"].as_string() == snapshot_id,
+            )
+        ),
+        sa.exists(
+            sa.select(1)
+            .select_from(assessment_job_join)
+            .where(
+                active_jobs,
+                assessments.c.project_id == project_id,
+                assessments.c.doc["snapshot_id"].as_string() == snapshot_id,
+            )
+        ),
+    ]
+    assessment_reference = sa.exists(
+        sa.select(1)
+        .select_from(assessments)
+        .where(
+            assessments.c.project_id == project_id,
+            assessments.c.doc["snapshot_id"].as_string() == snapshot_id,
+        )
+    )
+    if s.retention_protect_assessment_snapshots or created_at >= min(
+        grace_cutoff, assessment_grace_cutoff
+    ):
+        checks.append(assessment_reference)
+    return any(conn.execute(sa.select(*checks)).one())
 
 
 def _scope_tenant(conn: Connection, project_id: str) -> None:
@@ -118,6 +290,7 @@ def _payload_prune_targets(
     """
     keep = s.retention_snapshots_per_repo
     grace = _days(s.retention_snapshot_grace_days)
+    assessment_grace = _days(s.retention_assessment_snapshot_days)
     orphan_grace = _hours(s.retention_orphan_grace_hours)
 
     ready_ids = set(
@@ -140,8 +313,8 @@ def _payload_prune_targets(
         ).scalars()
     )
 
-    # Superseded: ready snapshots beyond `keep` per repo, older than the grace window,
-    # and not referenced by any in-flight assessment.
+    # Superseded snapshots remain protected by durable findings, memory, decisions,
+    # active work, and (by default) any assessment reference.
     repo_ids = (
         conn.execute(
             sa.select(index_snapshots.c.repo_id)
@@ -151,7 +324,8 @@ def _payload_prune_targets(
         .scalars()
         .all()
     )
-    protected = _active_snapshot_ids(conn)
+    protected = _protected_snapshot_ids(conn, s)
+    assessment_ids = _assessment_snapshot_ids(conn, project_id)
     prunable_ready: set[str] = set()
     for rid in repo_ids:
         ranked = conn.execute(
@@ -161,34 +335,35 @@ def _payload_prune_targets(
             .order_by(index_snapshots.c.created_at.desc())
         ).all()
         for sid, created in ranked[keep:]:
-            if sid not in protected and created < grace:
+            age_cutoff = min(grace, assessment_grace) if sid in assessment_ids else grace
+            if sid not in protected and created < age_cutoff:
                 prunable_ready.add(sid)
     return orphan_snapshots, prunable_ready
 
 
 def _prune_index_payloads(
-    engine: Engine, project_id: str, s: Settings, *, dry_run: bool
+    engine: Engine,
+    project_id: str,
+    s: Settings,
+    *,
+    dry_run: bool,
+    confirmed_snapshot_ids: set[str] | None = None,
 ) -> dict[str, Any]:
     """Prune orphan + superseded ready payloads for one project.
 
-    Every transaction touching index_payloads/index_snapshots re-sets ari.project_id
-    (set_config(..., true) is transaction-local). Delete batches commit per batch so a
-    large first cleanup never holds one giant lock.
+    Every transaction touching index_payloads/index_snapshots re-sets ari.project_id.
+    Orphans are batch-deleted; each ready snapshot is locked, rechecked, and deleted in
+    its own short transaction.
     """
     batch = s.retention_batch_limit
     with transaction(engine) as conn:
         _scope_tenant(conn, project_id)
         orphans, superseded = _payload_prune_targets(conn, project_id, s)
+        if confirmed_snapshot_ids is not None:
+            orphans.intersection_update(confirmed_snapshot_ids)
+            superseded.intersection_update(confirmed_snapshot_ids)
         targets = sorted(orphans | superseded)
-        if not targets:
-            return {
-                "payload_rows": 0,
-                "payload_bytes": 0,
-                "index_snapshot_rows": 0,
-                "orphan_snapshots": 0,
-                "superseded_snapshots": 0,
-            }
-        stats = conn.execute(
+        payload_stats = conn.execute(
             sa.select(
                 sa.func.count(),
                 sa.func.coalesce(sa.func.sum(index_payloads.c.size_bytes), 0),
@@ -196,15 +371,34 @@ def _prune_index_payloads(
             .where(index_payloads.c.project_id == project_id)
             .where(index_payloads.c.snapshot_id.in_(targets))
         ).first()
-        snap_rows = conn.execute(
-            sa.select(sa.func.count())
-            .select_from(index_snapshots)
-            .where(index_snapshots.c.snapshot_id.in_(targets))
-        ).scalar_one()
-        payload_rows, payload_bytes = int(stats[0]), int(stats[1])
+        orphan_stats = conn.execute(
+            sa.select(
+                sa.func.count(),
+                sa.func.coalesce(sa.func.sum(index_payloads.c.size_bytes), 0),
+            )
+            .where(index_payloads.c.project_id == project_id)
+            .where(index_payloads.c.snapshot_id.in_(orphans))
+        ).first()
+        ready_ids = set(
+            conn.execute(
+                sa.select(index_snapshots.c.snapshot_id).where(
+                    index_snapshots.c.project_id == project_id
+                )
+            ).scalars()
+        )
+        protection_reasons = _snapshot_protection_reasons(conn, project_id, s)
+        protected_counts = {
+            reason: len(ids & ready_ids) for reason, ids in protection_reasons.items()
+        }
+        payload_rows, payload_bytes = int(payload_stats[0]), int(payload_stats[1])
+        orphan_payload_bytes = int(orphan_stats[1])
 
-    if not dry_run and targets:
-        deleted = 0
+    skipped_now_protected = 0
+    deleted_payload_rows = 0
+    deleted_payload_bytes = 0
+    deleted_snapshot_rows = 0
+    pruned_snapshot_ids: list[str] = []
+    if not dry_run and orphans:
         while True:
             with transaction(engine) as conn:
                 _scope_tenant(conn, project_id)
@@ -213,22 +407,71 @@ def _prune_index_payloads(
                     index_payloads,
                     sa.and_(
                         index_payloads.c.project_id == project_id,
-                        index_payloads.c.snapshot_id.in_(targets),
+                        index_payloads.c.snapshot_id.in_(orphans),
                     ),
                     batch,
                 )
-            deleted += n
+            deleted_payload_rows += n
             if n < batch:
                 break
-        payload_rows = deleted
-        if superseded:
+        deleted_payload_bytes += orphan_payload_bytes
+
+    if not dry_run:
+        for snapshot_id in sorted(superseded):
             with transaction(engine) as conn:
                 _scope_tenant(conn, project_id)
-                conn.execute(
-                    sa.delete(index_snapshots).where(
-                        index_snapshots.c.snapshot_id.in_(sorted(superseded))
+                created_at = conn.execute(
+                    sa.text(
+                        "SELECT created_at FROM index_snapshots "
+                        "WHERE project_id = :project_id AND snapshot_id = :snapshot_id "
+                        "FOR UPDATE"
+                    ),
+                    {"project_id": project_id, "snapshot_id": snapshot_id},
+                ).scalar_one_or_none()
+                if created_at is None:
+                    continue
+                if _snapshot_is_protected(
+                    conn,
+                    project_id,
+                    snapshot_id,
+                    s,
+                    created_at=created_at,
+                    grace_cutoff=_days(s.retention_snapshot_grace_days),
+                    assessment_grace_cutoff=_days(s.retention_assessment_snapshot_days),
+                ):
+                    skipped_now_protected += 1
+                    continue
+                payload = conn.execute(
+                    sa.select(
+                        sa.func.count(),
+                        sa.func.coalesce(sa.func.sum(index_payloads.c.size_bytes), 0),
+                    ).where(
+                        index_payloads.c.project_id == project_id,
+                        index_payloads.c.snapshot_id == snapshot_id,
+                    )
+                ).one()
+                payload_result = conn.execute(
+                    sa.delete(index_payloads).where(
+                        index_payloads.c.project_id == project_id,
+                        index_payloads.c.snapshot_id == snapshot_id,
                     )
                 )
+                snapshot_result = conn.execute(
+                    sa.delete(index_snapshots).where(
+                        index_snapshots.c.project_id == project_id,
+                        index_snapshots.c.snapshot_id == snapshot_id,
+                    )
+                )
+                deleted_payload_rows += payload_result.rowcount or 0
+                deleted_payload_bytes += int(payload[1])
+                deleted_snapshot_rows += snapshot_result.rowcount or 0
+                if snapshot_result.rowcount:
+                    pruned_snapshot_ids.append(snapshot_id)
+
+    if not dry_run and targets:
+        payload_rows = deleted_payload_rows
+        payload_bytes = deleted_payload_bytes
+        snap_rows = deleted_snapshot_rows
         with transaction(engine) as conn:
             audit.record(
                 conn,
@@ -244,15 +487,22 @@ def _prune_index_payloads(
                     "payload_rows": payload_rows,
                     "payload_bytes": payload_bytes,
                     "orphan_snapshots": len(orphans),
-                    "superseded_snapshots": len(superseded),
+                    "superseded_snapshots": deleted_snapshot_rows,
+                    "skipped_now_protected": skipped_now_protected,
                 },
             )
+    else:
+        snap_rows = len(superseded)
     return {
         "payload_rows": payload_rows,
         "payload_bytes": payload_bytes,
         "index_snapshot_rows": snap_rows,
         "orphan_snapshots": len(orphans),
-        "superseded_snapshots": len(superseded),
+        "superseded_snapshots": (deleted_snapshot_rows if not dry_run else len(superseded)),
+        "protected_snapshots": protected_counts,
+        "skipped_now_protected": skipped_now_protected,
+        "snapshot_ids": targets,
+        "pruned_snapshot_ids": pruned_snapshot_ids,
     }
 
 
@@ -434,8 +684,9 @@ def _table_stats(conn: Connection) -> list[dict[str, Any]]:
 
 def _try_scalar(conn: Connection, sql: str) -> int | None:
     try:
-        return int(conn.execute(sa.text(sql)).scalar_one())
-    except Exception:
+        with conn.begin_nested():
+            return int(conn.execute(sa.text(sql)).scalar_one())
+    except sa.exc.SQLAlchemyError:
         return None
 
 
@@ -517,6 +768,19 @@ def storage_report(engine: Engine | None = None, s: Settings | None = None) -> d
         for t in ALERT_THRESHOLDS_PCT
         if pct is not None and pct >= t
     ]
+    data_volume_limit = s.data_volume_bytes
+    data_volume_used = _du(s.data_volume_path) if s.data_volume_path.is_dir() else None
+    data_volume_pct = (
+        round(100.0 * data_volume_used / data_volume_limit, 2)
+        if data_volume_limit > 0 and data_volume_used is not None
+        else None
+    )
+    alerts.extend(
+        f"data volume usage at {data_volume_pct:.1f}% of configured volume "
+        f"({data_volume_used}/{data_volume_limit} bytes)"
+        for t in ALERT_THRESHOLDS_PCT
+        if data_volume_pct is not None and data_volume_pct >= t
+    )
     reclaim = run_retention(engine=engine, s=s, dry_run=True)
     return {
         "generated_at": datetime.now(UTC).isoformat(),
@@ -527,6 +791,12 @@ def storage_report(engine: Engine | None = None, s: Settings | None = None) -> d
         "replication_slots": slots,
         "long_running_transactions": long_running,
         "volume": {"limit_bytes": limit or None, "used_bytes": used, "pct_used": pct},
+        "data_volume": {
+            "path": str(s.data_volume_path),
+            "limit_bytes": data_volume_limit or None,
+            "used_bytes": data_volume_used,
+            "pct_used": data_volume_pct,
+        },
         "alerts": alerts,
         "tables": tables,
         "jobs": job_stats,
@@ -542,6 +812,7 @@ def run_retention(
     s: Settings | None = None,
     *,
     dry_run: bool | None = None,
+    confirmed_snapshot_ids: set[str] | None = None,
 ) -> dict[str, Any]:
     """Apply bounded retention. `dry_run=None` uses settings.retention_dry_run."""
     s = s or get_settings()
@@ -611,9 +882,14 @@ def run_retention(
         project_ids = [r[0] for r in conn.execute(sa.select(projects.c.id))]
     payload_totals: dict[str, dict[str, Any]] = {}
     for pid in project_ids:
-        res = _prune_index_payloads(engine, pid, s, dry_run=dry_run)
-        if res["payload_rows"] or res["index_snapshot_rows"]:
-            payload_totals[pid] = res
+        res = _prune_index_payloads(
+            engine,
+            pid,
+            s,
+            dry_run=dry_run,
+            confirmed_snapshot_ids=confirmed_snapshot_ids,
+        )
+        payload_totals[pid] = res
 
     with transaction(engine) as conn:
         detail = _prune_assessment_detail(conn, s, dry_run=dry_run)
@@ -627,7 +903,34 @@ def run_retention(
     checkouts = _gc_checkout_refs(s, dry_run=dry_run)
     if checkouts:
         deleted.update(checkouts)
-    return {"dry_run": dry_run, "deleted": deleted}
+    snapshot_ids = sorted(
+        sid for result in payload_totals.values() for sid in result["snapshot_ids"]
+    )
+    stable_deleted = _without_byte_counts(deleted)
+    plan_json = json.dumps(
+        {"deleted": stable_deleted, "snapshot_ids": snapshot_ids},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return {
+        "dry_run": dry_run,
+        "deleted": deleted,
+        "snapshot_ids": snapshot_ids,
+        "plan_digest": hashlib.sha256(plan_json.encode()).hexdigest(),
+        "generated_at": datetime.now(UTC).isoformat(),
+    }
+
+
+def _without_byte_counts(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _without_byte_counts(item)
+            for key, item in value.items()
+            if "byte" not in key.lower()
+        }
+    if isinstance(value, list):
+        return [_without_byte_counts(item) for item in value]
+    return value
 
 
 def _post_alert(url: str, payload: dict[str, Any]) -> None:
@@ -675,6 +978,37 @@ def run_once(engine: Engine | None = None, s: Settings | None = None) -> dict[st
                     for t in report["tables"][:5]
                 ],
                 "reclaimable": report["reclaimable"],
+                "at": report["generated_at"],
+            },
+        )
+    data_volume = report["data_volume"]
+    data_pct = data_volume["pct_used"]
+    data_level = 0
+    if data_pct is not None:
+        for t in ALERT_THRESHOLDS_PCT:
+            if data_pct >= t:
+                data_level = t
+    if data_level:
+        log.warning(
+            "data volume storage alert: %.1f%% of %d-byte volume used (level %d%%)",
+            data_pct,
+            s.data_volume_bytes,
+            data_level,
+        )
+    if s.ops_alert_webhook_url and data_level:
+        _post_alert(
+            s.ops_alert_webhook_url,
+            {
+                "service": "ari-ai-backend",
+                "kind": "data_volume_storage",
+                "path": data_volume["path"],
+                "pct_used": data_pct,
+                "used_bytes": data_volume["used_bytes"],
+                "limit_bytes": data_volume["limit_bytes"],
+                "level": data_level,
+                "filesystem": {
+                    key: value for key, value in report["filesystem"].items() if key != "checkouts"
+                },
                 "at": report["generated_at"],
             },
         )

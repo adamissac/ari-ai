@@ -2,9 +2,10 @@
 
 import pytest
 import sqlalchemy as sa
-from helpers import HEAD, post_webhook, push_payload, setup_project
+from helpers import BASE, HEAD, post_webhook, push_payload, setup_project
 
 from backend import worker
+from backend.auto_commits import authors
 from backend.db import (
     assessments,
     jobs,
@@ -75,11 +76,20 @@ def seed_assessments(alice, ids, triggers, *, created_at=None, spend=None):
                 sa.select(assessments.c.doc).where(assessments.c.id == assessment.id)
             ).scalar_one()
             doc["state"] = "FAILED"
-            if spend is not None and index == 0:
-                doc.setdefault("usage", {})["usd"] = spend
+            if spend is not None:
+                if isinstance(spend, list):
+                    row_spend = spend[index]
+                elif index == 0:
+                    row_spend = spend
+                else:
+                    row_spend = None
+                if row_spend is not None:
+                    doc.setdefault("usage", {})["usd"] = row_spend
             values = {"state": "FAILED", "doc": doc}
             if created_at is not None:
-                values["created_at"] = created_at
+                values["created_at"] = (
+                    created_at[index] if isinstance(created_at, list) else created_at
+                )
             conn.execute(
                 sa.update(assessments).where(assessments.c.id == assessment.id).values(**values)
             )
@@ -92,6 +102,23 @@ def manual_start(alice, ids, sha):
         f"/api/v1/projects/{ids['project']}/assessments",
         json={"repo_id": ids["repo"], "scope_id": ids["scope"], "commit_sha": sha},
     )
+
+
+def reviewer_webhook(alice, ids, *, settings=None, payload=None, event="push"):
+    if settings:
+        project_settings = alice.get(f"/api/v1/projects/{ids['project']}").json()["settings"]
+        project_settings["review"].update(settings)
+        response = alice.patch(
+            f"/api/v1/projects/{ids['project']}", json={"settings": project_settings}
+        )
+        assert response.status_code == 200, response.text
+    if payload is None:
+        payload = push_payload(["app.py"])
+        payload["sender"] = {"login": "adamissac"}
+        payload["commits"][0]["id"] = HEAD
+    response = post_webhook(alice, payload, event=event)
+    assert response.status_code == 202, response.text
+    worker.drain(kinds=["process_github_delivery"])
 
 
 def test_each_commit_runs_even_docs_only_active_and_duplicate_delivery(automatic):
@@ -327,9 +354,7 @@ def test_spoofed_author_does_not_authorize_an_unlisted_push_sender(automatic):
     assert records() == []
 
 
-def test_ten_mixed_assessments_skip_automatic_and_block_manual_start(automatic):
-    from datetime import datetime, timedelta
-
+def test_ten_mixed_assessments_skip_automatic_and_allow_manual_start(automatic):
     from shared.base import utcnow
 
     alice, bob, ids, _ = automatic
@@ -361,12 +386,32 @@ def test_ten_mixed_assessments_skip_automatic_and_block_manual_start(automatic):
     assert deferred_jobs == 0
 
     response = manual_start(alice, ids, "f" * 40)
+    assert response.status_code == 202, response.text
+
+
+def test_over_limit_hourly_assessments_report_actual_reset(automatic):
+    from datetime import datetime, timedelta
+
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    seeded_at = utcnow() - timedelta(seconds=20)
+    created_at = [seeded_at + timedelta(seconds=index) for index in range(12)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * 12,
+        created_at=created_at,
+    )
+
+    response = manual_start(alice, ids, "f" * 40)
     assert response.status_code == 429
     error = response.json()["error"]
-    assert error["code"] == "RATE_LIMITED"
-    assert error["message"].startswith("project review limit reached (10 per hour); resets at ")
-    resets_at = error["details"]["resets_at"]
-    assert datetime.fromisoformat(resets_at) == seeded_at + timedelta(hours=1)
+    assert "project review limit reached (10 per hour); resets at " in error["message"]
+    assert datetime.fromisoformat(error["details"]["resets_at"]) == created_at[2] + timedelta(
+        hours=1
+    )
 
 
 @pytest.mark.parametrize("start_kind", ["manual", "automatic"])
@@ -399,6 +444,58 @@ def test_nine_recent_assessments_allow_next_start(automatic, start_kind):
             .where(assessments.c.project_id == ids["project"])
         ).scalar_one()
     assert count == 10
+
+
+def test_manual_start_ignores_monitoring_assessments_for_daily_quota(automatic):
+    from datetime import timedelta
+
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.monitoring] * 50,
+        created_at=utcnow() - timedelta(hours=2),
+    )
+
+    response = manual_start(alice, ids, "f" * 40)
+
+    assert response.status_code == 202, response.text
+
+
+def test_manual_quota_reset_uses_manual_assessments_only(automatic):
+    from datetime import datetime, timedelta
+
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    monitoring_seeded_at = utcnow() - timedelta(hours=20)
+    manual_seeded_at = utcnow() - timedelta(hours=2)
+    manual_created_at = [manual_seeded_at + timedelta(seconds=index) for index in range(52)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.monitoring] * 50,
+        created_at=monitoring_seeded_at,
+    )
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * 52,
+        created_at=manual_created_at,
+    )
+
+    response = manual_start(alice, ids, "f" * 40)
+
+    assert response.status_code == 429
+    error = response.json()["error"]
+    assert error["code"] == "RATE_LIMITED"
+    assert datetime.fromisoformat(error["details"]["resets_at"]) == manual_created_at[
+        2
+    ] + timedelta(days=1)
 
 
 def test_fifty_daily_assessments_block_by_day_quota(automatic):
@@ -434,6 +531,31 @@ def test_fifty_daily_assessments_block_by_day_quota(automatic):
     assert datetime.fromisoformat(error["details"]["resets_at"]) == seeded_at + timedelta(days=1)
 
 
+def test_over_limit_daily_assessments_report_actual_reset(automatic):
+    from datetime import datetime, timedelta
+
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    seeded_at = utcnow() - timedelta(hours=2, seconds=51)
+    created_at = [seeded_at + timedelta(seconds=index) for index in range(52)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * 52,
+        created_at=created_at,
+    )
+
+    response = manual_start(alice, ids, "f" * 40)
+    assert response.status_code == 429
+    error = response.json()["error"]
+    assert "project review limit reached (50 per day); resets at " in error["message"]
+    assert datetime.fromisoformat(error["details"]["resets_at"]) == created_at[2] + timedelta(
+        days=1
+    )
+
+
 def test_global_spend_from_any_trigger_blocks_automatic_and_manual(automatic):
     alice, bob, ids, _ = automatic
     assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
@@ -459,6 +581,84 @@ def test_global_spend_from_any_trigger_blocks_automatic_and_manual(automatic):
     response = manual_start(alice, ids, "f" * 40)
     assert response.status_code == 429
     assert response.json()["error"]["message"].startswith("daily spend cap reached; resets at ")
+
+
+def test_over_limit_spend_quota_resets_when_spend_falls_below_cap(automatic, settings_override):
+    from datetime import timedelta
+
+    from backend.quota import check_project_quota
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(assessments_usd_per_day="10")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    now = utcnow()
+    row_times = [now - timedelta(hours=hours) for hours in (3, 2, 1)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * len(row_times),
+        created_at=row_times,
+        spend=[6.0, 6.0, 6.0],
+    )
+
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], now)
+
+    assert decision is not None and decision.reason == "spend"
+    assert decision.resets_at == row_times[1] + timedelta(days=1)
+
+
+def test_fractional_spend_resets_only_after_total_falls_below_cap(automatic, settings_override):
+    from datetime import timedelta
+
+    from backend.quota import check_project_quota
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(assessments_usd_per_day="50")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    now = utcnow()
+    row_times = [now - timedelta(hours=hours) for hours in (4, 3, 2, 1)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * len(row_times),
+        created_at=row_times,
+        spend=[0.1, 0.2, 25.0, 25.0],
+    )
+
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], now)
+
+    assert decision is not None and decision.reason == "spend"
+    assert decision.resets_at == row_times[2] + timedelta(days=1)
+
+
+def test_at_limit_spend_quota_resets_when_oldest_usage_expires(automatic, settings_override):
+    from datetime import timedelta
+
+    from backend.quota import check_project_quota
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(assessments_usd_per_day="10")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    now = utcnow()
+    row_times = [now - timedelta(hours=hours) for hours in (3, 2)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * len(row_times),
+        created_at=row_times,
+        spend=[6.0, 4.0],
+    )
+
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], now)
+
+    assert decision is not None and decision.reason == "spend"
+    assert decision.resets_at == row_times[0] + timedelta(days=1)
 
 
 def test_reuses_inflight_manual_assessment(automatic):
@@ -507,6 +707,7 @@ def test_pull_request_commit_still_uses_authenticated_automatic_path(automatic):
         "pull_request": {
             "head": {"sha": HEAD, "ref": "feature"},
             "base": {"sha": "a" * 40},
+            "user": {"login": "adamissac"},
             "updated_at": "2026-10-17T01:02:03Z",
         },
     }
@@ -665,7 +866,6 @@ def test_legacy_monitoring_pipeline_obeys_shared_quota(automatic, settings_overr
             Action.assess, "test assessment", scope=ReassessmentScope.full
         ),
     )
-
     pushed_sha = "d" * 40
     push(alice, pushed_sha)
 
@@ -680,17 +880,563 @@ def test_legacy_monitoring_pipeline_obeys_shared_quota(automatic, settings_overr
     assert len(records()) == 10
 
 
-def test_wildcard_runs_any_pusher_and_unlinked_author(automatic, settings_override):
+@pytest.mark.parametrize(
+    ("settings", "author", "branch", "event", "draft", "reason"),
+    [
+        ({"review_pushes": False}, "adamissac", "main", "push", False, "push reviews disabled"),
+        (
+            {"review_pull_requests": False},
+            "adamissac",
+            "main",
+            "pull_request",
+            False,
+            "pull request reviews disabled",
+        ),
+        (
+            {"review_draft_prs": False},
+            "adamissac",
+            "main",
+            "pull_request",
+            True,
+            "draft pull requests disabled",
+        ),
+        (
+            {"include_branches": ["release/*"]},
+            "adamissac",
+            "main",
+            "pull_request",
+            False,
+            "branch excluded",
+        ),
+        (
+            {"exclude_branches": ["m*"]},
+            "adamissac",
+            "main",
+            "pull_request",
+            False,
+            "branch excluded",
+        ),
+        (
+            {"include_branches": ["release/*"]},
+            "adamissac",
+            "main",
+            "push",
+            False,
+            "branch excluded",
+        ),
+        ({"exclude_branches": ["m*"]}, "adamissac", "main", "push", False, "branch excluded"),
+        ({}, "adamissac", "feature", "push", False, "not on the default branch"),
+        (
+            {"include_authors": ["teammate*"]},
+            "adamissac",
+            "main",
+            "push",
+            False,
+            "author is outside",
+        ),
+        (
+            {"include_authors": ["teammate*"]},
+            "adamissac",
+            "main",
+            "pull_request",
+            False,
+            "author is outside",
+        ),
+        ({}, "adamissac[bot]", "main", "push", False, "author excluded"),
+        ({}, "adamissac[bot]", "main", "pull_request", False, "author excluded"),
+    ],
+)
+@pytest.mark.parametrize("global_authors", ["adamissac", '""'])
+def test_reviewer_filters_record_ignored_reason(
+    automatic, settings_override, settings, author, branch, event, draft, reason, global_authors
+):
+    alice, _, ids, _ = automatic
+    settings_override(github_auto_commit_authors=global_authors)
+    if event == "pull_request":
+        payload = {
+            "repository": {"full_name": "acme/payments-lite"},
+            "installation": {"id": 99},
+            "sender": {"login": author},
+            "action": "synchronize",
+            "number": 7,
+            "pull_request": {
+                "head": {"sha": HEAD, "ref": "feature"},
+                "base": {"sha": BASE, "ref": branch},
+                "user": {"login": author},
+                "updated_at": "2026-10-17T01:02:03Z",
+                "draft": draft,
+            },
+        }
+    else:
+        payload = push_payload(["app.py"])
+        payload["ref"] = f"refs/heads/{branch}"
+        payload["sender"] = {"login": author}
+        payload["commits"][0]["id"] = HEAD
+    reviewer_webhook(alice, ids, settings=settings, payload=payload, event=event)
+    with transaction() as conn:
+        event_doc = conn.execute(sa.select(monitoring_events.c.doc)).scalar_one()
+    assert event_doc["status"] == "ignored"
+    assert reason in event_doc["status_reason"]
+    assert event_doc.get("impact") is None
+
+
+@pytest.mark.parametrize(
+    ("settings", "author", "branch", "event", "draft"),
+    [
+        ({}, "adamissac", "main", "push", False),
+        ({"include_branches": ["MA*"]}, "adamissac", "main", "push", False),
+        ({"exclude_branches": ["release/*"]}, "adamissac", "main", "push", False),
+        ({"include_authors": ["ADA*"]}, "adamissac", "main", "push", False),
+        ({"include_branches": ["MA*"]}, "adamissac", "main", "pull_request", False),
+        ({"exclude_branches": ["release/*"]}, "adamissac", "main", "pull_request", False),
+        ({"include_authors": ["ADA*"]}, "adamissac", "main", "pull_request", False),
+        ({}, "adamissac", "main", "pull_request", False),
+        ({"review_draft_prs": True}, "adamissac", "main", "pull_request", True),
+    ],
+)
+@pytest.mark.parametrize("global_authors", ["adamissac", '""'])
+def test_reviewer_filters_allow_matching_events(
+    automatic,
+    settings_override,
+    monkeypatch,
+    settings,
+    author,
+    branch,
+    event,
+    draft,
+    global_authors,
+):
+    alice, _, ids, _ = automatic
+    settings_override(github_auto_commit_authors=global_authors)
+    if not authors():
+        monkeypatch.setattr(
+            "backend.github.GitHubApp.compare_paths",
+            lambda *args: (["app.py"], True),
+        )
+        monkeypatch.setattr("backend.pipeline._impact_provider", lambda: (None, "test provider"))
+    if event == "pull_request":
+        payload = {
+            "repository": {"full_name": "acme/payments-lite"},
+            "installation": {"id": 99},
+            "sender": {"login": author},
+            "action": "synchronize",
+            "number": 7,
+            "pull_request": {
+                "head": {"sha": HEAD, "ref": "feature"},
+                "base": {"sha": BASE, "ref": branch},
+                "user": {"login": author},
+                "updated_at": "2026-10-17T01:02:03Z",
+                "draft": draft,
+            },
+        }
+    else:
+        payload = push_payload(["app.py"])
+        payload["ref"] = f"refs/heads/{branch}"
+        payload["sender"] = {"login": author}
+        payload["commits"][0]["id"] = HEAD
+    reviewer_webhook(alice, ids, settings=settings, payload=payload, event=event)
+    with transaction() as conn:
+        commit_jobs = (
+            conn.execute(sa.select(jobs.c.id).where(jobs.c.kind == "assess_github_commit"))
+            .scalars()
+            .all()
+        )
+    if authors():
+        assert len(commit_jobs) == 1
+    else:
+        with transaction() as conn:
+            event_doc = conn.execute(sa.select(monitoring_events.c.doc)).scalar_one()
+        assert not commit_jobs
+        assert event_doc.get("impact") is not None
+        assert "reviewer settings" not in event_doc["status_reason"]
+
+
+@pytest.mark.parametrize(
+    ("allowlist", "uses_scheduler"),
+    [
+        ("", False),
+        ('""', False),
+        ("''", False),
+        ("  ", False),
+        ("*", False),
+        ("adamissac,teammate", True),
+        ('"adamissac","teammate"', True),
+    ],
+)
+def test_empty_star_and_comma_global_author_allowlist_semantics(
+    automatic, settings_override, monkeypatch, allowlist, uses_scheduler
+):
+    alice, _, ids, _ = automatic
+    settings_override(github_auto_commit_authors=allowlist)
+
+    if not uses_scheduler:
+        monkeypatch.setattr(
+            "backend.github.GitHubApp.compare_paths",
+            lambda *args: (["app.py"], True),
+        )
+        monkeypatch.setattr("backend.pipeline._impact_provider", lambda: (None, "test provider"))
+    reviewer_webhook(alice, ids)
+    with transaction() as conn:
+        commit_jobs = (
+            conn.execute(sa.select(jobs.c.id).where(jobs.c.kind == "assess_github_commit"))
+            .scalars()
+            .all()
+        )
+    assert bool(authors()) is uses_scheduler
+    if uses_scheduler:
+        assert len(commit_jobs) == 1
+    else:
+        with transaction() as conn:
+            event_doc = conn.execute(sa.select(monitoring_events.c.doc)).scalar_one()
+        assert not commit_jobs
+        assert event_doc.get("impact") is not None
+
+
+def test_comma_global_allowlist_rejects_unlisted_sender(automatic, settings_override):
+    alice, _, ids, _ = automatic
+    settings_override(github_auto_commit_authors="teammate,other")
+    reviewer_webhook(alice, ids)
+    with transaction() as conn:
+        event_doc = conn.execute(sa.select(monitoring_events.c.doc)).scalar_one()
+    assert event_doc["status"] == "ignored"
+    assert "global automatic-review allowlist" in event_doc["status_reason"]
+
+
+def test_project_hourly_review_limit_only_lowers_server_cap(automatic, settings_override):
+    from backend.quota import check_project_quota
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(project_assessments_per_hour="10")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    project_settings = alice.get(f"/api/v1/projects/{ids['project']}").json()["settings"]
+    project_settings["review"]["max_reviews_per_hour"] = 2
+    assert (
+        alice.patch(
+            f"/api/v1/projects/{ids['project']}", json={"settings": project_settings}
+        ).status_code
+        == 200
+    )
+    seed_assessments(alice, ids, [AssessmentTrigger.manual] * 2)
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], utcnow())
+    assert decision is not None and decision.reason == "hour" and decision.limit == 2
+
+    project_settings["review"]["max_reviews_per_hour"] = 20
+    assert (
+        alice.patch(
+            f"/api/v1/projects/{ids['project']}", json={"settings": project_settings}
+        ).status_code
+        == 200
+    )
+    seed_assessments(alice, ids, [AssessmentTrigger.manual] * 8)
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], utcnow())
+    assert decision is not None and decision.reason == "hour" and decision.limit == 10
+
+
+def test_pr_review_body_filters_strictness_and_redacts_secrets():
+    from backend.auto_commits import _pr_review_body
+
+    token = "ghp_" + "x" * 36
+    body, count = _pr_review_body(
+        "asm_test",
+        "prj_test",
+        [
+            {
+                "title": f"Sensitive {token}",
+                "severity": {"level": "high"},
+                "status": "verified",
+                "evidence": [
+                    {"path": "src/auth.py", "span": {"start_line": 17}, "content": "do not include"}
+                ],
+            },
+            {
+                "title": "Low severity",
+                "severity": {"level": "low"},
+                "status": "open",
+                "evidence": [{"path": "src/other.py", "span": {"start_line": 2}}],
+            },
+        ],
+        2,
+    )
+    assert count == 1
+    assert "Ari security review" in body
+    assert "Sensitive [REDACTED" in body and token not in body
+    assert "src/auth.py:17" in body
+    assert "Low severity" not in body and "do not include" not in body
+    assert "No findings at this strictness." not in body
+
+
+def test_pr_review_body_reports_empty_strictness_match():
+    from backend.auto_commits import _pr_review_body
+
+    body, count = _pr_review_body(
+        "asm_test",
+        "prj_test",
+        [{"title": "Low", "severity": {"level": "low"}, "evidence": []}],
+        3,
+    )
+    assert count == 0
+    assert "No findings at this strictness." in body
+
+
+def seed_pr_assessment(ids, bob):
+    from shared.base import utcnow
+    from shared.ids import IdPrefix, new_id
+    from shared.monitoring import (
+        CommitRange,
+        EventSource,
+        EventStatus,
+        EventType,
+        MonitoringEvent,
+        ReassessmentRequest,
+        ReassessmentScope,
+        ReassessmentStatus,
+    )
+
+    now = utcnow()
+    event_id = new_id(IdPrefix.evt)
+    request_id = new_id(IdPrefix.rrq)
+    event = MonitoringEvent(
+        id=event_id,
+        project_id=ids["project"],
+        repo_id=ids["repo"],
+        source=EventSource.github,
+        type=EventType.pull_request,
+        occurred_at=now,
+        received_at=now,
+        dedupe_key=f"test:pr:{event_id}",
+        payload_artifact_id=None,
+        commit_range=CommitRange(base_sha=BASE, head_sha=HEAD),
+        pr_number=7,
+        status=EventStatus.processed,
+    )
+    request = ReassessmentRequest(
+        id=request_id,
+        project_id=ids["project"],
+        repo_id=ids["repo"],
+        event_ids=[event_id],
+        scope=ReassessmentScope.full,
+        head_sha=HEAD,
+        status=ReassessmentStatus.started,
+        reason="test PR review",
+        created_at=now,
+    )
+    from backend.services import create_assessment
+
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    with transaction() as conn:
+        conn.execute(
+            sa.insert(monitoring_events).values(
+                id=event.id,
+                project_id=event.project_id,
+                repo_id=event.repo_id,
+                dedupe_key=event.dedupe_key,
+                status=event.status.value,
+                doc=event.model_dump(mode="json"),
+            )
+        )
+        assessment, _ = create_assessment(
+            conn,
+            project_id=ids["project"],
+            repo_id=ids["repo"],
+            scope_id=ids["scope"],
+            commit_sha=HEAD,
+            trigger=AssessmentTrigger.monitoring,
+            budget=None,
+            created_by=None,
+            reassessment_request_id=request_id,
+        )
+        assessment_doc = conn.execute(
+            sa.select(assessments.c.doc).where(assessments.c.id == assessment.id)
+        ).scalar_one()
+        assessment_doc["state"] = "COMPLETED"
+        conn.execute(
+            sa.update(assessments)
+            .where(assessments.c.id == assessment.id)
+            .values(state="COMPLETED", doc=assessment_doc)
+        )
+        request = request.model_copy(update={"assessment_id": assessment.id})
+        conn.execute(
+            sa.insert(reassessment_requests).values(
+                id=request.id,
+                project_id=request.project_id,
+                repo_id=request.repo_id,
+                status=request.status.value,
+                doc=request.model_dump(mode="json"),
+            )
+        )
+        from backend.host import _enqueue_pr_review
+        from shared.assessment import Assessment
+
+        completed = Assessment.model_validate(assessment_doc)
+        _enqueue_pr_review(conn, completed)
+        _enqueue_pr_review(conn, completed)
+    return assessment.id
+
+
+def test_pr_review_job_is_deduped_and_4xx_is_permanent(automatic, monkeypatch):
+    import httpx
+
+    from backend.db import audit_events
+
+    alice, _, ids, _ = automatic
+    assessment_id = seed_pr_assessment(ids, automatic[1])
+    calls = []
+
+    class GitHub:
+        def post_pull_request_review(self, *args):
+            calls.append(args)
+            request = httpx.Request("POST", "https://api.github.com/review")
+            response = httpx.Response(422, request=request)
+            raise httpx.HTTPStatusError("unprocessable", request=request, response=response)
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+    worker.drain(kinds=["post_pr_review"])
+    with transaction() as conn:
+        job = conn.execute(sa.select(jobs).where(jobs.c.kind == "post_pr_review")).mappings().one()
+        failures = [
+            doc
+            for doc in conn.execute(sa.select(audit_events.c.doc)).scalars()
+            if doc["action"] == "monitoring.pr_review_failed"
+        ]
+    assert len(calls) == 1
+    assert job["payload"]["assessment_id"] == assessment_id
+    assert job["attempts"] == 1
+    assert job["status"] != "queued"
+    assert failures
+
+
+def test_pr_review_job_noops_when_comments_are_disabled(automatic, monkeypatch):
+    alice, _, ids, _ = automatic
+    seed_pr_assessment(ids, automatic[1])
+    project = alice.get(f"/api/v1/projects/{ids['project']}").json()
+    project["settings"]["review"]["comment_on_pull_requests"] = False
+    assert (
+        alice.patch(
+            f"/api/v1/projects/{ids['project']}", json={"settings": project["settings"]}
+        ).status_code
+        == 200
+    )
+    calls = []
+
+    class GitHub:
+        def post_pull_request_review(self, *args):
+            calls.append(args)
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+    worker.drain(kinds=["post_pr_review"])
+    assert calls == []
+
+
+def test_impact_path_pull_request_posts_review_from_monitoring_event(
+    automatic, settings_override, monkeypatch
+):
+    from backend.host import AssessmentHost
+    from monitoring.api import Action, Decision
+    from shared.assessment import AssessmentState
+    from shared.monitoring import ReassessmentScope
+
+    alice, bob, ids, _ = automatic
+    settings_override(github_auto_commit_authors="")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    monkeypatch.setattr("backend.pipeline._impact_provider", lambda: (None, "test provider"))
+    monkeypatch.setattr(
+        "backend.pipeline.decide",
+        lambda *args, **kwargs: Decision(
+            Action.assess, "test assessment", scope=ReassessmentScope.full
+        ),
+    )
+    monkeypatch.setattr(
+        "backend.github.GitHubApp.compare_paths",
+        lambda *args: (["app.py"], True),
+    )
+    payload = {
+        "repository": {"full_name": "acme/payments-lite"},
+        "installation": {"id": 99},
+        "sender": {"login": "adamissac"},
+        "action": "synchronize",
+        "number": 7,
+        "pull_request": {
+            "head": {"sha": HEAD, "ref": "feature"},
+            "base": {"sha": BASE, "ref": "main"},
+            "user": {"login": "adamissac"},
+            "updated_at": "2026-10-17T01:02:03Z",
+            "draft": False,
+        },
+    }
+    reviewer_webhook(alice, ids, payload=payload, event="pull_request")
+    with transaction() as conn:
+        event_doc = conn.execute(sa.select(monitoring_events.c.doc)).scalar_one()
+        request_doc = conn.execute(
+            sa.select(reassessment_requests.c.doc).where(
+                reassessment_requests.c.doc["head_sha"].astext == HEAD
+            )
+        ).scalar_one()
+        assessment_id = request_doc["assessment_id"]
+        assert request_doc["event_ids"] == [event_doc["id"]]
+        assert event_doc["pr_number"] == 7
+        assessment_doc = conn.execute(
+            sa.select(assessments.c.doc).where(assessments.c.id == assessment_id)
+        ).scalar_one()
+        assessment_doc["state"] = "REPORTING"
+        conn.execute(
+            sa.update(assessments)
+            .where(assessments.c.id == assessment_id)
+            .values(state="REPORTING", doc=assessment_doc)
+        )
+
+    AssessmentHost(assessment_id).transition(AssessmentState.COMPLETED, "test completion")
+    with transaction() as conn:
+        job = (
+            conn.execute(sa.select(jobs).where(jobs.c.dedupe_key == f"prreview:{assessment_id}"))
+            .mappings()
+            .one()
+        )
+    assert job["payload"]["assessment_id"] == assessment_id
+
+    calls = []
+
+    class GitHub:
+        def post_pull_request_review(self, *args):
+            calls.append(args)
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+    worker.drain(kinds=["post_pr_review"])
+    assert len(calls) == 1
+    assert calls[0][2] == 7
+    assert "Ari security review" in calls[0][3]
+    assert "No findings at this strictness." in calls[0][3]
+
+
+def test_wildcard_uses_impact_path_for_any_pusher_and_unlinked_author(
+    automatic, settings_override, monkeypatch
+):
     alice, bob, ids, identity = automatic
     identity["login"] = ""  # commit email maps to no GitHub account
     settings_override(github_auto_commit_authors="*")
+    assert authors() == set()
+    monkeypatch.setattr(
+        "backend.github.GitHubApp.compare_paths",
+        lambda *args: (["app.py"], True),
+    )
+    monkeypatch.setattr("backend.pipeline._impact_provider", lambda: (None, "test provider"))
     bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
     p = push_payload(["app.py"])
     p["commits"][0]["id"] = HEAD
     p["sender"] = {"login": "teammate"}
-    post_webhook(alice, p)
+    assert post_webhook(alice, p).status_code == 202
     worker.drain(kinds=["process_github_delivery", "assess_github_commit"])
-    assert records() == [HEAD]
+    with transaction() as conn:
+        event_doc = conn.execute(sa.select(monitoring_events.c.doc)).scalar_one()
+        commit_jobs = (
+            conn.execute(sa.select(jobs.c.id).where(jobs.c.kind == "assess_github_commit"))
+            .scalars()
+            .all()
+        )
+    assert event_doc.get("impact") is not None
+    assert not commit_jobs
 
 
 def test_missing_commit_records_skipped_instead_of_dead_lettering(automatic, monkeypatch):

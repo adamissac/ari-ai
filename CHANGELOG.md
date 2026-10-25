@@ -7,8 +7,49 @@ All notable changes are documented here. Format follows
 ## [Unreleased]
 
 - Fix sandbox-target seed after `AssessmentState.COMPLETED` rename and honor POST recipe routes in the owner/deny probe so `backend / test` stays green on PR #458.
-- Railway now defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, disabling per-commit full runs while enabled repositories fall back to the legacy impact-gated, coalesced monitoring policy; `*` or a comma-separated GitHub login list opts into per-commit full runs. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.
-- Shared assessment quotas now apply per project across every trigger (10 per rolling hour, 50 per rolling day), with a global $50 rolling-day spend cap. Manual starts receive a 429 with the quota reset time; automatic requests over quota are recorded as skipped and are not requeued.
+- Setup now shows the actual expiry of the sandbox scope being approved; landing copy states the default and maximum authorization durations.
+- Refined the console account menu, mobile project navigation, status marks, assessment headers, and commit-to-assessment links.
+- Added opt-in bounded exact-SHA release review automation with isolated strict
+  regressions, signed evidence, existing-owner routing and a protected cost ledger.
+  No automatic merge, deployment or customer enforcement.
+- Commit pages now warn when reviewing a commit other than the latest default-branch commit and link to the latest commit.
+- Verified-patch delivery skips fixes already present on the default branch and annotates stale-base pull requests.
+- Expired scopes no longer appear active or qualify for assessment selection.
+- Retention now protects findings, regression memory, expectation decisions, and assessment references; per-snapshot locking closes bind/delete races, and destructive ops maintenance requires a separate token plus a current plan digest.
+- Storage report probes use savepoints so a denied optional metric does not abort later checks.
+- Added the Industrial Graphite design-token foundation and reskinned existing UI primitives and console surfaces with graphite neutrals, vermilion signal, Inter, and IBM Plex Mono.
+- Rebuilt the public landing page around a commit-to-verify signal field, six visible stages, and explicit scope and control disclosures.
+- Verify's Python hook scan accepts UTF-8 BOMs, `--rootdir` preserves semantic checks for `tox.ini`, `setup.cfg`, and `pyproject.toml`, and unreadable or invalid pinned pytest configuration fails closed.
+- Verify uses a context-aware pytest binding scan for unpacking, imports, global stores, and hook-rooted attribute/subscript writes, `setattr`, and `del`, without treating local names or subscript indexes as bindings. It keeps changed `conftest.py` files byte-protected when they are config symlink targets, checks linked config target content through fresh checkouts, and ignores syntax-invalid inert test-root Python fixtures during plugin discovery. Added `apply_fresh` regressions for linked config changes and config read and walk failures.
+- Added a guided repository setup walkthrough (`/projects/<id>/setup?repo=<repoId>`): connecting a repository now lands there, and it walks through authorizing testing, tuning the code reviewer, choosing fix delivery (pull request is preselected), and starting the first review. The setup page also has decorative floating background shapes that stop moving when reduced motion is on.
+- Setup now distinguishes repository automatic reviews from push/PR review preferences and searches up to 2,000 audit events before reporting no build-recipe result.
+- Verify permits genuinely new recipe-declared tests while rejecting protected-test and runner-configuration tampering; it binds evidence to the candidate patch, protects pinned plugin modules and runner-shadow paths, scans changed application modules for new pytest hooks, rejects unsupported or quoted diff headers, and runs its project suite with the pinned test roots.
+- Added an hourly GitHub Actions storage watchdog for Railway volume usage and backup freshness, with idempotent issue alerts.
+- Live commit analysis no longer needs a `GITHUB_TOKEN` PAT on Vercel: `POST /api/analyze`
+  reads the commit diff through the new backend route `GET /api/v1/github/commit`, which
+  resolves the caller's own GitHub App installation (403 when the repo is not reachable
+  through it). Project Settings now shows the Save/Discard action row at the top of the
+  form as well as the bottom, so budget edits are savable without scrolling.
+- New projects default to owner-authorized pull-request delivery; the 7 Agents switch now toggles between automatically opened fix PRs and manual approval.
+- Verified patch pages now show delivery progress and outcomes, including actionable failure reasons.
+- Starting an assessment with no commit SHA now reviews the latest commit on the repository's
+  default branch when connected through the GitHub App.
+- Verify now honors repository-declared `protected_tests` from `build_recipe.json` in its no-tampering check.
+- Added independent 70/80/90% storage alerts and Prometheus gauges for the app data volume mounted at `/data`.
+- Restored impact-gated monitoring for a blank, quoted-empty, or standalone `*`
+  `GITHUB_AUTO_COMMIT_AUTHORS` value. Project reviewer filters now gate both the
+  impact path and per-commit rollout scheduling; impact-path PR assessments can
+  also post comments using the pull request number on their triggering event.
+- Added project Code reviewer controls for push/PR eligibility, branch and author filters, finding strictness, PR comments, and an optional hourly cap. Empty or `*` `GITHUB_AUTO_COMMIT_AUTHORS` no longer blocks reviewer scheduling.
+- Railway defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, which adds no global author restriction; project reviewer settings determine eligibility. Repository `automatic_assessments` remains an explicit opt-in, and manual Run remains available.
+- Quota reset timestamps now reflect when an over-limit rolling hour or day window actually falls below its limit.
+- Spend-cap reset times now wait until expiring usage takes rolling spend below the configured limit.
+- Spend-cap reset calculations use exact Numeric usage and a single database snapshot.
+- With a blank, quoted-empty, or standalone `*` `GITHUB_AUTO_COMMIT_AUTHORS` value, enabled repositories use the impact-gated, coalesced monitoring policy; a non-empty comma-separated login list opts into per-commit full runs. Project reviewer filters apply to both paths. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled).
+- Railway defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, which imposes no global author restriction; project reviewer settings determine eligibility. Repository `automatic_assessments` remains an explicit opt-in, and manual Run remains available.
+- Authenticated GET/HEAD requests now have a separate 600/minute per-user limit; mutations retain 60/minute. Automatic assessment quotas count all project triggers (10 per rolling hour, 50 per rolling day), while manual starts count only manual-trigger assessments. All starts remain subject to the global $50 rolling-day spend cap; manual quota blocks return 429 with a reset time, and automatic over-quota requests are skipped without requeueing.
+- Automatic assessments count all project triggers toward the 10/hour and 50/day limits; manual starts count only manual-trigger assessments. The optional per-project hourly cap may lower the server limit. All starts remain subject to the global $50 rolling-day spend cap; manual blocks return 429 with a reset time, and automatic over-quota requests are skipped without requeueing.
+
 - Allow migrations to use an optional database URL separate from the app role.
 
 - Verify-tested diffs are also stored as sealed, delivery-only artifacts. Delivery checks their

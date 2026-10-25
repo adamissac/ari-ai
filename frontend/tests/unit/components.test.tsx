@@ -2,14 +2,23 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DiffView } from '@/components/diff-view';
 import { Badge, ErrorState } from '@/components/ui';
-import { FINDING_STATUS } from '@/lib/status';
+import { ASSESSMENT_STATE, FINDING_STATUS } from '@/lib/status';
 
 afterEach(cleanup);
 
 describe('components', () => {
-  it('badges render text and glyph', () => {
-    render(<Badge view={FINDING_STATUS.hypothesis} />);
+  it('badges render text and status marks', () => {
+    const { container } = render(<Badge view={FINDING_STATUS.hypothesis} />);
     expect(screen.getByText('Hypothesis')).toBeTruthy();
+    expect(container.querySelector('.status-mark-pending')).toBeTruthy();
+  });
+  it('draws the done, paused, and failed status marks', () => {
+    const { container, rerender } = render(<Badge view={FINDING_STATUS.verified} />);
+    expect(container.querySelector('.status-mark-done')).toBeTruthy();
+    rerender(<Badge view={ASSESSMENT_STATE.AWAITING_APPROVAL} />);
+    expect(container.querySelector('.status-mark-paused')).toBeTruthy();
+    rerender(<Badge view={ASSESSMENT_STATE.FAILED} />);
+    expect(container.querySelector('.status-mark-failed')?.textContent).toBe('×');
   });
   it('diff content is rendered as text, never as HTML', () => {
     const { container } = render(<DiffView diff={'--- a/x.py\n+++ b/x.py\n@@ -1 +1 @@\n-<b>old</b>\n+<img src=x onerror=alert(1)>\n'} />);

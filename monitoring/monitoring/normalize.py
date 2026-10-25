@@ -35,6 +35,8 @@ class GitHubChange:
     pr_title: str = ""
     pr_body: str = ""
     pr_base_ref: str | None = None
+    pr_author: str | None = None
+    draft: bool = False
     forced: bool = False
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -173,5 +175,7 @@ def _pull_request(payload: dict[str, Any], name: str, sender: str | None) -> Git
         pr_title=_s(pr.get("title"), 500),
         pr_body=_s(pr.get("body"), 20_000),
         pr_base_ref=_s(pr_base.get("ref"), 255) or None,
+        pr_author=_s(_obj(pr.get("user")).get("login"), 80) or None,
+        draft=bool(pr.get("draft")),
         notes=("pull_request payload carries no file list; fetch compare(base, head)",),
     )

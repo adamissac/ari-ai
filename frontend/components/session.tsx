@@ -4,10 +4,10 @@ import { ApiError, type MeResponse } from '@hackatl/frontend-transport';
 import { createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { notifySessionChanged } from '@/lib/session-events';
 import { AuthStage, LockIcon } from '@/components/auth-stage';
 import { BRAND_NAME } from '@/components/brand';
 import { GitHubMark } from '@/components/demo/ui';
-import { INTRO_KEY } from '@/components/intro-loader';
 import { ErrorState, Loading } from '@/components/ui';
 
 type SessionState =
@@ -45,7 +45,7 @@ export function OptionalSession({ children }: { children: ReactNode }) {
   const refresh = useCallback(() => { api().session().then(setMe, () => setMe(null)); }, []);
   const signOut = useCallback(async () => {
     await api().logout();
-    try { window.sessionStorage.removeItem(INTRO_KEY); } catch { /* storage unavailable */ }
+    notifySessionChanged(null);
     setMe(null);
   }, []);
   if (!me) return <>{children}</>;
@@ -82,7 +82,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await api().logout();
-    try { window.sessionStorage.removeItem(INTRO_KEY); } catch { /* storage unavailable */ }
+    notifySessionChanged(null);
     setState({ status: 'signed-out' });
   }, []);
 
@@ -94,7 +94,10 @@ export function SessionGate({ children }: { children: ReactNode }) {
       </div>
     );
   }
-  if (state.status === 'signed-out') return <SignIn onSignedIn={me => setState({ status: 'signed-in', me })} />;
+  if (state.status === 'signed-out') return <SignIn onSignedIn={me => {
+    setState({ status: 'signed-in', me });
+    notifySessionChanged(me);
+  }} />;
   return <SessionContext.Provider value={{ me: state.me, refresh, signOut }}>{children}</SessionContext.Provider>;
 }
 
@@ -126,7 +129,7 @@ function SignIn({ onSignedIn }: { onSignedIn: (me: MeResponse) => void }) {
       <Link href="/access" className="auth-btn auth-btn-ghost" data-testid="access-link">Use an access code</Link>
       {devLoginVisible && (
         <form onSubmit={submit} className="mt-6 border-t border-white/10 pt-5" aria-label="Development login">
-          <p className="label-mono mb-3 text-[11px] text-[#ffb8a6]">Development login · local backend only</p>
+          <p className="label-mono mb-3 text-[11px] text-brand">Development login · local backend only</p>
           <label htmlFor="dev-login" className="auth-label">GitHub login</label>
           <input id="dev-login" className="auth-input" value={login} onChange={e => setLogin(e.target.value)} required pattern="(?:[A-Za-z0-9]|-){1,39}" autoComplete="username" name="github_login" />
           <button type="submit" className="auth-btn auth-btn-ghost mt-3" disabled={busy || !login.trim()}>Development sign-in</button>

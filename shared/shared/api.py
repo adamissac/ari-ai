@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from pydantic import Field, model_validator
@@ -171,12 +172,6 @@ class AssessmentCreate(StrictModel):
     snapshot_id: SnapshotId | None = None
     budget: Budget | None = None
 
-    @model_validator(mode="after")
-    def _target(self) -> AssessmentCreate:
-        if not (self.commit_sha or self.snapshot_id):
-            raise ValueError("commit_sha or snapshot_id is required")
-        return self
-
 
 class AcceptRisk(StrictModel):
     reason: ShortText = Field(min_length=3)
@@ -188,9 +183,19 @@ class AssessmentDetail(StrictModel):
     findings: list[Finding]
 
 
+class PatchDelivery(StrictModel):
+    status: Literal["pending", "pr_opened", "pushed", "failed", "skipped"]
+    reason: str | None = None
+    url: str | None = None
+    branch: str | None = None
+    commit_sha: str | None = None
+    at: datetime | None = None
+
+
 class PatchView(StrictModel):
     patch: PatchCandidate
     verification: VerificationResult | None = None
+    delivery: PatchDelivery | None = None
 
 
 class WebhookAck(StrictModel):

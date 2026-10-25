@@ -1,0 +1,100 @@
+{
+  "eea084bc87ac6ca94f578073251c478655b09366": {
+    "steps": [
+      {
+        "step": "01-pr412",
+        "sha": "0e2d26c232658a38261d0ce68617f15ba8661566",
+        "exit": 0,
+        "output": "a0cf5695d0d2f1b954c572a7d00b78d20df648f0\n",
+        "stderr": "",
+        "result_commit": "93b8d393dd3b0f3abea4429325caab1eecca0075",
+        "result_tree": "a0cf5695d0d2f1b954c572a7d00b78d20df648f0",
+        "schema": "0.22.0"
+      },
+      {
+        "step": "02-pr458",
+        "sha": "40f1e333fbaf5ee2a00117e26d3b19d4b0e4f7ee",
+        "exit": 0,
+        "output": "8f01e9a19238b8874ec72842e111be9b6d234f7d\n",
+        "stderr": "",
+        "result_commit": "39135f9ec1ced01b7492aedc0e1686f4eeced301",
+        "result_tree": "8f01e9a19238b8874ec72842e111be9b6d234f7d",
+        "schema": "0.23.0"
+      },
+      {
+        "step": "execution-reliability",
+        "sha": "1ae4952e7c12dff049d9939e9a976fd0d57f1f0f",
+        "exit": 0,
+        "output": "1e875b3a8613bb68e9833923579a5e72dbb584a4\n",
+        "stderr": "",
+        "result_commit": "80ec0a0c11df871ca98a73c5d50549661d0365c5",
+        "result_tree": "1e875b3a8613bb68e9833923579a5e72dbb584a4",
+        "schema": "0.23.0"
+      },
+      {
+        "step": "investigation-observability",
+        "sha": "286f20af7197db9fa230438419bb3e3fca43aee5",
+        "exit": 0,
+        "output": "70a5aca920610a1a4c744c14ed4d9b8cc7878a46\n",
+        "stderr": "",
+        "result_commit": "efc2fbdf3e271098750afab3f776f8284f31ff96",
+        "result_tree": "70a5aca920610a1a4c744c14ed4d9b8cc7878a46",
+        "schema": "0.24.0"
+      },
+      {
+        "step": "pilot-security-hardening",
+        "sha": "da14512608626512415ba2aafdf207c1b1a16747",
+        "exit": 0,
+        "output": "e00e8e172d4d70705effe28f239a6a6ae12a2906\n",
+        "stderr": "",
+        "result_commit": "b27aff34f0794d0667671fa2323e5de9e315f4bc",
+        "result_tree": "e00e8e172d4d70705effe28f239a6a6ae12a2906",
+        "schema": "0.25.0"
+      },
+      {
+        "step": "customer-onboarding",
+        "sha": "36ebc704fcc2a5dc0a4f4f77b7c0f352aca6cb15",
+        "exit": 0,
+        "output": "df490ffb66585908453d1fe417b457630eed0766\n",
+        "stderr": "",
+        "result_commit": "83046bdaf422d1432fae8015ba91ebe07c8a80bd",
+        "result_tree": "df490ffb66585908453d1fe417b457630eed0766",
+        "schema": "0.26.0"
+      },
+      {
+        "step": "pilot-deployment-ops",
+        "sha": "bb09759136fcc97963f6eeadbd863b35d8ef9cac",
+        "exit": 0,
+        "output": "19989356d9a9c7f8de3a2ba606883bcd5042bd26\n",
+        "stderr": "",
+        "result_commit": "c01e306afc3c0c775592112154d783e2be457e65",
+        "result_tree": "19989356d9a9c7f8de3a2ba606883bcd5042bd26",
+        "schema": "0.26.0"
+      },
+      {
+        "step": "release-validation",
+        "sha": "283ad2d49c9a0a76fa4f9c27a5629eb1b629465e",
+        "exit": 0,
+        "output": "2aa683477cf3bd3ff139e0fa0730b99d94c94ab6\n",
+        "stderr": "",
+        "result_commit": "767fb42133e5b14df19f6409965991378086715b",
+        "result_tree": "2aa683477cf3bd3ff139e0fa0730b99d94c94ab6",
+        "schema": "0.26.0"
+      }
+    ],
+    "final": "767fb42133e5b14df19f6409965991378086715b",
+    "production_differences": []
+  },
+  "e41c9dc22e6536463cdab9be6a2a4cd76302c866": {
+    "steps": [
+      {
+        "step": "01-pr412",
+        "sha": "0e2d26c232658a38261d0ce68617f15ba8661566",
+        "exit": 1,
+        "output": "731d330c7f3963e88c222593fa6794d04479ab50\n100644 b16266fedd38e67eb5c99663ed1f2ed26b35fbb3 1\tshared/generated/contracts.schema.json\n100644 3d3bcadf714c549df1ada719f3a82765d1e09f0e 2\tshared/generated/contracts.schema.json\n100644 5ae16d4418545f5a3594fce599eaa37671b910b4 3\tshared/generated/contracts.schema.json\n100644 75e732a3455399894bb150a2da11afa2a1a1bf17 1\tshared/generated/ts/contracts.ts\n100644 d7733c207584489acb055a47f5ea7ee112c33c90 2\tshared/generated/ts/contracts.ts\n100644 73fc98925570a0918d56ecfedbe544f4895e6c96 3\tshared/generated/ts/contracts.ts\n\nAuto-merging CHANGELOG.md\nAuto-merging backend/README.md\nAuto-merging docs/13_BACKEND_API_DESIGN.md\nAuto-merging docs/planning/SESSION_HANDOFF.md\nAuto-merging frontend/transport/src/client.ts\nAuto-merging shared/generated/contracts.schema.json\nCONFLICT (content): Merge conflict in shared/generated/contracts.schema.json\nAuto-merging shared/generated/ts/contracts.ts\nCONFLICT (content): Merge conflict in shared/generated/ts/contracts.ts\nAuto-merging shared/shared/__init__.py\nAuto-merging shared/shared/registry.py\n",
+        "stderr": ""
+      }
+    ],
+    "blocked": true
+  }
+}
