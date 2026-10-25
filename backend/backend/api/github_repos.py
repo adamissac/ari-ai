@@ -9,6 +9,7 @@ the sign-in snapshot so GitHub can enforce user-to-server visibility.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import httpx
@@ -319,3 +320,83 @@ def recent_commits(repo_id: str, request: Request) -> dict[str, Any]:
             ErrorCode.SUBSYSTEM_UNAVAILABLE, "GitHub did not return commits", 503
         ) from exc
     return {"items": items, "next_cursor": None, "available": True, "reason": None}
+
+
+_FULL_NAME = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
+_COMMIT_SHA = re.compile(r"[0-9a-f]{40}")
+
+
+@router.get("/github/commit")
+def repository_commit(repo: str, sha: str, request: Request) -> dict[str, Any]:
+    """One commit and its per-file diff, read live through the requester's GitHub App
+    installation. Live analysis goes through this so the frontend needs no PAT."""
+    if not _FULL_NAME.fullmatch(repo):
+        raise ApiError(ErrorCode.VALIDATION_FAILED, 'Expected repo "owner/name".', 400)
+    sha = sha.lower()
+    if not _COMMIT_SHA.fullmatch(sha):
+        raise ApiError(ErrorCode.VALIDATION_FAILED, "Expected a 40-character commit SHA.", 400)
+    with transaction() as conn:
+        user = require_user(conn, request)
+        access = (
+            conn.execute(
+                sa.select(github_repo_access.c.installation_id).where(
+                    github_repo_access.c.user_id == user.id,
+                    sa.func.lower(github_repo_access.c.full_name) == repo.lower(),
+                )
+            )
+            .mappings()
+            .first()
+        )
+    if access is None:
+        raise ApiError(
+            ErrorCode.FORBIDDEN,
+            "This repository is not reachable through your GitHub App installation.",
+            403,
+        )
+    try:
+        data = GitHubApp().commit(access["installation_id"], repo, sha)
+    except GitHubNotConfigured as exc:
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE, "GitHub App is not configured", 503
+        ) from exc
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            raise ApiError(ErrorCode.NOT_FOUND, "GitHub could not find this commit.", 404) from exc
+        log.warning("commit %s on %s failed: %s", sha[:8], repo, exc.response.status_code)
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE,
+            f"GitHub returned {exc.response.status_code} for this commit.",
+            503,
+        ) from exc
+    except httpx.HTTPError as exc:
+        log.warning("commit %s on %s failed: %s", sha[:8], repo, type(exc).__name__)
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE, "GitHub did not return this commit", 503
+        ) from exc
+
+    commit = data.get("commit") or {}
+    author = commit.get("author") or {}
+    stats = data.get("stats") or {}
+    files = [
+        {
+            "filename": f.get("filename"),
+            "status": f.get("status"),
+            "additions": f.get("additions", 0),
+            "deletions": f.get("deletions", 0),
+            "patch": f.get("patch"),
+        }
+        for f in data.get("files") or []
+        if isinstance(f, dict)
+    ]
+    return {
+        "sha": data.get("sha"),
+        "html_url": data.get("html_url"),
+        "message": commit.get("message") or "",
+        "author_name": author.get("name"),
+        "author_login": (data.get("author") or {}).get("login"),
+        "committed_at": author.get("date"),
+        "additions": stats.get("additions", 0),
+        "deletions": stats.get("deletions", 0),
+        "files": files,
+        "next_cursor": None,
+    }

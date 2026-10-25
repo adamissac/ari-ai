@@ -109,7 +109,9 @@ a future experiment (~6h CPU); no model promotion.
 
 ### Automatic/manual mode and Haiku-only follow-up (#377 / #380)
 
-Implemented per-repository persisted ON/OFF, owner-only API, migration 0009 and proposed additive schema 0.15.0; manual Run shown when OFF. Added signed-sender gate and per-project start quotas that defer every excess commit durably. Production/staging gateway, Railway startup and quick-read enforce Haiku 5.5. Historical evidence labels preserved. Contract review requested from Alan; full test/CI and deployment verification remain pending.
+Implemented per-repository persisted ON/OFF, owner-only API, migration 0009 and proposed additive schema 0.15.0; manual Run shown when OFF. Added signed-sender gate and per-project start quotas; excess automatic commits are recorded as skipped and not requeued. Production/staging gateway, Railway startup and quick-read enforce Haiku 5.5. Historical evidence labels preserved. Contract review requested from Alan; full test/CI and deployment verification remain pending.
+
+Follow-up completed on `fix/adam/project-page-limits`: authenticated GET/HEAD requests use a separate 600/minute limit, mutations retain 60/minute, manual quotas count only manual-trigger assessments, and automatic quotas still count every trigger. The shared $50/day spend cap is unchanged.
 ### 2026-10-21 — V10 execution authorized
 
 IN_PROGRESS on `feat/alan/live-retrain-v10`: owner requested continuation after
@@ -242,3 +244,15 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - IMPLEMENTED / review and CI pending **RL-CMDP-010** (Codex), `research/rl-feasibility-and-product-thesis`: authorized read-only capacity/oracle bounds, control expressiveness and product architecture assessment. No new workloads, policy execution or training. Preserve feasibility001 and v6.
 
 - DONE (research specification; PR #437 merge gated on review/CI) **RL-CMDP-011** (Codex), `research/rl-first-responder-orchestration`: Phase7B fixture-only observations/proposals, agent capability/data audit, future evaluation and Grok integration contract proposal. No collection/training/customer enforcement; no production shared/worker/incident changes.
+
+### Independent review automation — activation pending (2026-10-25)
+
+Automation package implemented; local safety suite 56 passing. Manually review/merge
+installation PRs, verify GitHub container CI, then configure native Codex, optional
+OpenAI project key and existing Devin sessions with confirmed native hard caps.
+No prompt relay is needed after activation. See
+`docs/release/AUTOMATED_INDEPENDENT_REVIEW.md`; paid calls remain OFF.
+
+Installation PRs: canonical #614; fork #9 (main), #10 (ci/upstream-main). Fork #9
+controller Docker unit/layout/actionlint checks passed at abd61416; paid activation
+remains OFF pending manual installation and protected credential/session setup.

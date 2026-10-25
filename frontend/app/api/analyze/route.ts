@@ -26,7 +26,7 @@ export async function POST(request: Request): Promise<Response> {
   if (access !== true) return access;
 
   try {
-    return Response.json(await liveAnalysis(repo, sha));
+    return Response.json(await liveAnalysis(repo, sha, request.headers.get('cookie') ?? ''));
   } catch (error) {
     if (error instanceof LiveError) return fail(error.status, error.code, error.message);
     console.error('live analysis failed', error);
