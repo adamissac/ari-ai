@@ -3,9 +3,9 @@
   "human_owner": "Adam",
   "workstream": "fixing agent pipeline failures; intel-store retry; eval-runner retry; pilot rehearsal v2; ops retention",
   "state": "WORKING",
-  "task": "Eval run 3 scoring (eval/20261024-153652) + #542/#543 in wave 2",
+  "task": "Eval run 3 scoring (eval/20261024-153652); #538 main-merge resolved for integration lead",
   "branch": "fix/intel-store-orphan-retry, fix/eval-runner-retry, ari/fix-pat_01M5R13A056A25J7ZXWHHDZ9SN, feat/adam/pilot-rehearsal-v2, docs/adam/live-inventory-rehearsal-evidence, fix/adam/postgres-storage-retention, docs/devin-pilot-handoff",
-  "latest_sha": "12d048fe",
+  "latest_sha": "5a56e44c",
   "prs": [
     542,
     543,
@@ -27,6 +27,6 @@
   ],
   "blockers": [],
   "last_update_utc": "2026-10-25T00:20:00Z",
-  "tests": "#542/#543 refreshed with main by integration lead; gitleaks green after fixture-token scrub",
-  "next_action": "score eval run 3 results; post baselines to Adam; clean eval artifacts"
+  "tests": "typecheck+vitest green on #538 merge resolution; eval3 10/12 batches; #543 retries surviving live 503s",
+  "next_action": "score eval3 on completion; post baselines to Adam; confirm eval branches self-cleaned"
 }
