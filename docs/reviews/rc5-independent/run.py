@@ -71,7 +71,7 @@ def command(network,candidate,suite,evidence,config,tests):
 class Docker(ci.Docker):
     def call(self,*args,**kwargs):
         if args[:2] == ('network','rm') and results is not None:
-            code = "import os; from pathlib import Path; root=Path('/evidence');\nfor p,ds,fs in os.walk(root,followlinks=False):\n for d in ds:\n  q=Path(p)/d\n  if not q.is_symlink(): q.chmod(q.stat().st_mode|0o700)"
+            code = "import os; from pathlib import Path; root=Path('/evidence');\nfor p,ds,fs in os.walk(root,followlinks=False):\n for d in ds:\n  q=Path(p)/d\n  if not q.is_symlink(): q.chmod(q.stat().st_mode|0o777)"
             super().call('run','--rm','--network','none','--read-only','--user','10001:10001','--cap-drop=ALL','--security-opt=no-new-privileges','--mount',f'type=bind,src={results},dst=/evidence','ari-review-tests','/app/.venv/bin/python','-c',code,check=False,capture_output=True)
         return super().call(*args,**kwargs)
 ci.git,ci.test_command,ci.Docker = git,command,Docker
