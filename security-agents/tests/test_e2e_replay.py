@@ -692,6 +692,43 @@ def _apply_fresh_diff(
     return applier.apply_fresh(ctx, patch_id), ctx
 
 
+@pytest.mark.boundary
+def test_unreadable_pinned_tox_ini_fails_closed_through_apply_fresh(
+    intel: LocalIntel,
+    tmp_path: Path,
+) -> None:
+    from security_agents.agents import verify as verify_agent
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+
+    (intel.snapshot.root / "tox.ini").write_text("[pytest\n", encoding="utf-8")
+    work = tmp_path / "unreadable-config"
+    patched = fresh_checkout(intel.snapshot, work / "patch-worktree")
+    app = patched / "payments_lite" / "app.py"
+    app.write_text(app.read_text(encoding="utf-8") + "\n# approved app edit\n", encoding="utf-8")
+    diff = unified_diff(intel.snapshot.root, patched, ["payments_lite/app.py"])
+
+    facts, ctx = _apply_fresh_diff(intel, work, diff, ["payments_lite/app.py"])
+
+    unreadable = "tox.ini (pytest config unreadable: SNAPSHOT_NOT_READY)"
+    assert facts["applied"]
+    assert unreadable in facts["tampered_protected_tests"]
+    verdict, checks, _ = verify_agent.compute_verdict(
+        verify_agent.VerifyEvidence(
+            apply_facts=dict(ctx.artifacts["verify_facts"]),
+            recheck_runs=[],
+            test_runs=[],
+            baseline_failing=[],
+            tests_added=[],
+            protected_tests=[],
+            original_check_ref="access_control.ownership@1",
+            original_check_params={},
+            candidate_id="pat_runner_config",
+        )
+    )
+    assert verdict == "rejected"
+    assert not next(check for check in checks if check.name.value == "no_test_tampering").passed
+
+
 _DESELECT_PROTECTED_TEST = (
     "def pytest_collection_modifyitems(items):\n"
     "    items[:] = [item for item in items if "
@@ -1420,7 +1457,14 @@ def test_apply_fresh_flags_effective_runner_configuration_changes(
     facts, _ = _apply_fresh_diff(intel, tmp_path, diff, plan_files=[path])
 
     assert facts["applied"], facts["apply_error"]
-    assert (path in facts["tampered_protected_tests"]) is expected_tampered, scenario
+    if scenario == "unparsable-pyproject":
+        tampered = (
+            "pyproject.toml (pytest config unreadable: SNAPSHOT_NOT_READY)"
+            in facts["tampered_protected_tests"]
+        )
+    else:
+        tampered = path in facts["tampered_protected_tests"]
+    assert tampered is expected_tampered, scenario
 
 
 def test_sandbox_entry_imports_pytest_and_pluggy_before_workspace_path() -> None:
@@ -1928,6 +1972,57 @@ def test_pinned_rootdir_config_is_byte_protected(test_command: list[str], tmp_pa
 @pytest.mark.parametrize(
     ("path", "pinned_text", "patched_text"),
     [
+        pytest.param(
+            "pyproject.toml",
+            '[project]\ndependencies = ["base"]\n[tool.pytest.ini_options]\naddopts = "-q"\n',
+            '[project]\ndependencies = ["base", "extra"]\n[tool.pytest.ini_options]\naddopts = "-q"\n',
+            id="rootdir-dependency-only-pyproject",
+        ),
+        pytest.param(
+            "tox.ini",
+            "[pytest]\npython_files = check_*.py\n[testenv]\ncommands = pytest\n",
+            "[pytest]\npython_files = check_*.py\n[testenv]\ncommands = pytest -q\n",
+            id="rootdir-unrelated-tox-testenv",
+        ),
+    ],
+)
+def test_rootdir_keeps_semantic_config_changes_allowed(
+    path: str,
+    pinned_text: str,
+    patched_text: str,
+    tmp_path: Path,
+) -> None:
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path=path,
+        pinned_text=pinned_text,
+        patched_text=patched_text,
+        test_command=["-q", "--rootdir", ".", "tests"],
+    )
+
+    assert tampered == []
+
+
+@pytest.mark.boundary
+def test_rootdir_subdirectory_uses_tox_pytest_section_checks(tmp_path: Path) -> None:
+    path = "sub/tox.ini"
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path=path,
+        pinned_text="[pytest]\npython_files = check_*.py\n",
+        patched_text="[pytest]\npython_files = test_*.py\n",
+        test_command=["-q", "--rootdir", "sub", "tests"],
+    )
+
+    assert path in tampered
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    ("path", "pinned_text", "patched_text"),
+    [
         (
             "tox.ini",
             "[pytest]\npython_files = check_*.py\n",
@@ -2028,6 +2123,44 @@ def test_generic_hook_scan_allows_unrelated_app_edits(
     )
 
     assert tampered == []
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    ("pinned_text", "patched_text", "expected_tampered"),
+    [
+        pytest.param(
+            "\ufeffVALUE = 1\n",
+            "\ufeffVALUE = 2\n",
+            False,
+            id="ordinary-bom-app-edit",
+        ),
+        pytest.param(
+            "\ufeffVALUE = 1\n",
+            "\ufeffVALUE = 1\ndef pytest_collection_modifyitems(items):\n    items.clear()\n",
+            True,
+            id="bom-app-adds-pytest-hook",
+        ),
+    ],
+)
+def test_bom_prefixed_python_sources_are_scanned(
+    pinned_text: str,
+    patched_text: str,
+    expected_tampered: bool,
+    tmp_path: Path,
+) -> None:
+    tampered = _runner_config_tampering_for_test(
+        tmp_path,
+        config_files={},
+        changed_path="app.py",
+        pinned_text=pinned_text,
+        patched_text=patched_text,
+    )
+
+    if expected_tampered:
+        assert "app.py" in tampered
+    else:
+        assert tampered == []
 
 
 @pytest.mark.boundary
@@ -2299,7 +2432,7 @@ index 1234567..89abcde 100644
     assert PatchApplier._tampered_tests(diff, ["tests/test_api.py"]) == ["tests/test_api.py"]
 
 
-def test_tampered_tests_skips_traversal_header_and_flags_later_protected_section() -> None:
+def test_tampered_tests_marks_traversal_header_and_flags_later_protected_section() -> None:
     from security_agents.tools import PatchApplier
 
     diff = """diff --git a/../x b/../x
@@ -2314,7 +2447,11 @@ index 1234567..89abcde 100644
  existing
 +def test_bypass(): pass
 """
-    assert PatchApplier._tampered_tests(diff, ["tests/test_api.py"]) == ["tests/test_api.py"]
+    assert set(PatchApplier._tampered_tests(diff, ["tests/test_api.py"])) == {
+        "a/../x (protected-test discovery failed: SNAPSHOT_NOT_READY)",
+        "b/../x (protected-test discovery failed: SNAPSHOT_NOT_READY)",
+        "tests/test_api.py",
+    }
 
 
 def test_tampered_tests_flags_plain_unified_diff_and_apply_diff_accepts_it(
