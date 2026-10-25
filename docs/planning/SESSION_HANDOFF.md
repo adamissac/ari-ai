@@ -43,7 +43,6 @@ adds an entry before ending.
 
 ---
 
-<<<<<<< HEAD
 ### 2026-10-24 — Cursor (agent, Alan) — Phase 7C MERGEABLE + Devin compatibility review (do not merge #458)
 - Did: Six security-review findings remain intact on conflict-free #458. Merged `origin/main` through `d1864e9a` (#513 eval cases). **Did not cherry-pick or merge** Devin fork work (`m-alan08/ari-ai` PRs 1–3). **Did not start Phase 7D.** Schema still **0.22.0**; open #412 keeps **0.20.0**; Alembic stays **0015**. Probe/Patch not expanded. No AUTO-EXECUTE.
 - Devin review (read-only, not merged):
@@ -93,6 +92,23 @@ adds an entry before ending.
 - Decisions: do not merge. Security review required because first-responder now runs real agent loops. #412 rebases to 0.23.0+ if this lands first. Live Anthropic remains opt-in (issue #10); this e2e used FakeLLM.
 - Next: human/security review of the PR. Do not train RL from these records yet.
 - Warnings: **leave the PR open**. This is not Probe expansion, not AUTO-EXECUTE, not customer production, not Codex Phase 7B.
+
+### 2026-10-25 — Devin (agent, Alan) — R2 disconnect-side cancellation for release-0019
+- Did (fork PR #4): R2 P1 fix-request from Devin Integration. Disconnect now locks the
+  repo row FOR UPDATE for the whole transaction (serializes per-operation and
+  final-persist revocation checks), identifies live-defense work via the trusted
+  repo<->mapping linkage (jobs keyed by application_id, mapping_id, and decision_id
+  -> first_responder_decisions.application_id), cancels queued+waiting linked jobs,
+  and sets cancel_requested on RUNNING linked jobs (cooperative; evidence/cost
+  preserved). New `services.repository_revocation(conn, repo_id=, application_id=,
+  mapping_id=)` is the canonical check for Alan's #458 first_responder source
+  callback and final persist — returns 'repository_disconnected' /
+  'deploy_mapping_revoked' / None. Did NOT touch first_responder.py (#458 head).
+  Codex probe `test_repository_disconnect_stops_next_provider_turn` goes green only
+  on the composed tree once #458 calls the helper per provider turn.
+- Tests: 20/20 test_customer_security_hardening (new: linked agent-step jobs
+  cancelled incl. running -> cancel_requested, unrelated decision untouched,
+  repository_revocation contract); regression subsets green; ruff/format clean.
 
 ### 2026-10-24 — Devin (agent, Alan) — canonical repo disconnect + migration rebase + e2e fix
 - Did: resolved the three blockers on PR #4 (feat/devin-pilot-security-hardening):
@@ -157,8 +173,6 @@ adds an entry before ending.
 - Next: human review of #412; RL owner must supply A–J evidence before any later owner-approval verdict. Do not start Phase 7.
 
 HEAD
-||||||| 580d2f67
-=======
 ### 2026-10-25 — Devin (agent, Adam) — e2e spec updates + landing 320px overflow fix on `feat/adam/home-deep-sea-landing` (PR #536)
 - Did: PR #536 e2e CI failed on 8 tests — all caused by the intended new UI, plus one real bug. Updated specs to the new DOM: `demo-recovery.spec.ts` (rail nav 'Project' has 11 links, no MORE `summary` dropdown; '7 Agents' casing), `pages.spec.ts` (removed the `summary` click before the Expectations aria-current check), `journey.spec.ts` ('7 agents' → '7 Agents' PageTitle), `landing.spec.ts` (`.hero-content p` 0 → 2: kicker + lede). REAL BUG FIXED: `.stat-num` "Never" in Sixtyfour at `text-6xl` measured ~306px wide inside a 248px card → pushed `documentElement.scrollWidth` to 342 at 320px viewport → clamped to `text-[clamp(2.25rem,15vw,3.75rem)] md:text-7xl` in `components/story.tsx` (verified scrollWidth = viewport at 1440/390/320).
 - Commands run and results (executed): Playwright probe scripts (system Chrome) bisecting `.hero-cover` children → `.story-rain` section → `.story-stat[2]` → `.stat-num` (scrollWidth 306 vs clientWidth 248); post-fix scrollWidth OK at all three widths.
@@ -187,7 +201,6 @@ HEAD
 - Next steps: owner reviews preview; open PR only on approval. If he wants kairo-closer styling, that was deliberately walked back — confirm before re-adding.
 - Warnings for the next session: `frontend/AGENTS.md` is Next-generated — do NOT commit it. Commit identity must stay `Adam Issac <62719255+adamissac@users.noreply.github.com>` via `git -c` flags. The screen-recording tool's post-processing is broken on this box — `screencapture -V` works as fallback.
 
->>>>>>> upstream/main
 ### 2026-10-24 — Devin (agent, Adam) — code-intelligence pipeline audit
 - Did: on `feat/adam/intel-pipeline-audit`, audited ingest→extract→store→retrieve→memory for pilot readiness. Reproduced the PR #441 redaction/parser regression on main (38/582 tracked .py unparseable post-redact + 2 line-count shifts); verified the fix (0 broken, 0 line shifts, 0 leaked literal secrets across the same corpus). Indexed payments-lite, `backend/` prefix, and the whole repo; ran a labeled-question retrieval eval; benchmarked latency/memory. Found a silent coverage gap — `@app.get(FIXTURE_ROUTE)`-style non-literal route paths were dropped with no IndexIssue — and fixed it so they are flagged. Carries `7a5b329f` verbatim, so merging this branch lands PR #441's fix.
 - State of the code (verified how): `code-intelligence/tests` 57 passed 1 skipped; `backend/tests/test_intel_store.py test_intelligence_memory_api.py test_intelligence_ingestion_profile.py test_payload_store_intel_integration.py` 9 passed on real Postgres; new retrieval eval + route-diagnostic tests pass; benchmark harness executed on payments-lite.

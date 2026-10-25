@@ -41,6 +41,7 @@ from backend.db import (
     deploy_commit_mappings,
     finding_records,
     findings,
+    first_responder_decisions,
     monitoring_events,
     patch_candidates,
     projects,
@@ -486,12 +487,40 @@ def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
     with transaction() as conn:
         user = _user(conn, request)
         repo = _owner_repo(conn, user, repo_id)
+        # Lock the repo row for the whole disconnect so concurrent per-operation
+        # and final-persist revocation checks (which read/lock the same row)
+        # serialize against this transaction instead of racing it.
+        conn.execute(
+            sa.select(repositories.c.id).where(repositories.c.id == repo_id).with_for_update()
+        )
         if repo["disconnected_at"] is None:
             now = utcnow()
             conn.execute(
                 sa.update(repositories)
                 .where(repositories.c.id == repo_id)
                 .values(disconnected_at=now, automatic_assessments=False)
+            )
+            # Trusted repo<->mapping linkage: every application that ever attested
+            # this repo (revoked or not) identifies the live-defense work to stop.
+            app_ids = sa.select(deploy_commit_mappings.c.application_id).where(
+                deploy_commit_mappings.c.repo_id == repo_id
+            )
+            mapping_ids = sa.select(deploy_commit_mappings.c.id).where(
+                deploy_commit_mappings.c.repo_id == repo_id
+            )
+            decision_ids = sa.select(first_responder_decisions.c.id).where(
+                first_responder_decisions.c.application_id.in_(app_ids)
+            )
+            repo_snapshot_ids = sa.select(snapshots.c.id).where(snapshots.c.repo_id == repo_id)
+            linked = sa.or_(
+                jobs_table.c.payload["repo_id"].astext == repo_id,
+                sa.and_(
+                    jobs_table.c.kind == "index_snapshot",
+                    jobs_table.c.payload["snapshot_id"].astext.in_(repo_snapshot_ids),
+                ),
+                jobs_table.c.payload["application_id"].astext.in_(app_ids),
+                jobs_table.c.payload["mapping_id"].astext.in_(mapping_ids),
+                jobs_table.c.payload["decision_id"].astext.in_(decision_ids),
             )
             mappings_revoked = conn.execute(
                 sa.update(deploy_commit_mappings)
@@ -501,20 +530,18 @@ def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
                 )
                 .values(revoked_at=now)
             ).rowcount
-            repo_snapshot_ids = sa.select(snapshots.c.id).where(snapshots.c.repo_id == repo_id)
             jobs_cancelled = conn.execute(
                 sa.update(jobs_table)
-                .where(
-                    jobs_table.c.status == "queued",
-                    sa.or_(
-                        jobs_table.c.payload["repo_id"].astext == repo_id,
-                        sa.and_(
-                            jobs_table.c.kind == "index_snapshot",
-                            jobs_table.c.payload["snapshot_id"].astext.in_(repo_snapshot_ids),
-                        ),
-                    ),
-                )
+                .where(jobs_table.c.status.in_(["queued", "waiting"]), linked)
                 .values(status="cancelled", updated_at=sa.func.now())
+            ).rowcount
+            # Running steps can't be un-spent: flag them for cooperative cancel so
+            # the worker/agent loop and the provider callback stop at the next
+            # boundary. Already-incurred evidence and cost are preserved.
+            jobs_flagged = conn.execute(
+                sa.update(jobs_table)
+                .where(jobs_table.c.status == "running", linked)
+                .values(cancel_requested=True, updated_at=sa.func.now())
             ).rowcount
             snapshots_failed = conn.execute(
                 sa.update(snapshots)
@@ -546,6 +573,7 @@ def disconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
                 installation_id=repo["installation_id"],
                 deploy_mappings_revoked=mappings_revoked,
                 queued_jobs_cancelled=jobs_cancelled,
+                running_jobs_flagged=jobs_flagged,
                 snapshots_failed=snapshots_failed,
                 assessments_cancelled=assessments_cancelled,
             )
