@@ -892,3 +892,173 @@ def test_deadline_compatibility_with_database_clock():
         )
         execution.reconcile(conn)
     assert _job(jid)["status"] == "timed_out"
+
+
+# --- R5: reconcile derives job uncertainty from the billable-request ledger -------------
+
+
+def _mk_invocation(conn, pid: str, doc: dict) -> str:
+    """Insert the org/project/decision/invocation chain a provider ledger hangs off."""
+    from backend.db import (
+        first_responder_decisions,
+        first_responder_invocations,
+        organizations,
+        projects,
+    )
+
+    org_id, dec_id, inv_id = f"org-{pid}", f"dec-{pid}", f"inv-{pid}"
+    conn.execute(sa.insert(organizations).values(id=org_id, name=org_id))
+    conn.execute(sa.insert(projects).values(id=pid, org_id=org_id, name=pid, settings={}))
+    conn.execute(
+        sa.insert(first_responder_decisions).values(
+            id=dec_id,
+            project_id=pid,
+            dedupe_key=f"r5-{pid}",
+            action="respond",
+            doc={},
+        )
+    )
+    conn.execute(
+        sa.insert(first_responder_invocations).values(
+            id=inv_id,
+            decision_id=dec_id,
+            project_id=pid,
+            agent="scout",
+            status="running",
+            doc=doc,
+        )
+    )
+    return inv_id
+
+
+def _attempt(status: str, seq: int = 1) -> dict:
+    return {
+        "id": f"att_{seq:04d}",
+        "idempotency_key": f"fr-provider:inv:{seq}",
+        "status": status,
+        "effect_key": f"provider:att_{seq:04d}",
+    }
+
+
+def test_expired_lease_with_unresolved_provider_ledger_requires_recovery():
+    """R5: abrupt death during a provider send -> recovery_required, never requeue."""
+    pid = "prj_r5"
+    with transaction() as conn:
+        inv_id = _mk_invocation(
+            conn,
+            pid,
+            {
+                "execution": {
+                    "provider_attempts": [
+                        _attempt("settled"),
+                        _attempt("in_flight", 2),
+                    ]
+                }
+            },
+        )
+        jid, _ = jobs.enqueue(
+            conn,
+            "live_defense_agent_step",
+            {"project_id": pid, "invocation_id": inv_id},
+        )
+    assert _claim("dead-worker", ["live_defense_agent_step"]) is not None
+    _expire(jid)
+    with transaction() as conn:
+        report = execution.reconcile(conn)
+    assert report["recovery_required"] == 1 and report["requeued"] == 0
+    row = _job(jid)
+    assert row["status"] == "recovery_required"
+    assert row["error_category"] == "uncertain_side_effect"
+    # Owner/attempt fencing and the ledger row's idempotency evidence are audited.
+    rec = row["recovery"]
+    assert rec["previous_owner"] == "dead-worker" and rec["attempt"] == 1
+    assert rec["uncertainty_source"] == "provider_attempt_ledger"
+    assert rec["ledger_attempt_id"] == "att_0002"
+    assert rec["idempotency_key"] == "fr-provider:inv:2"
+    last = _events(jid)[-1]
+    assert last["to_status"] == "recovery_required"
+    # Audited operator resolution still works on the ledger-derived recovery.
+    with transaction() as conn:
+        out = execution.resolve_recovery(
+            conn, jid, resolution="applied", actor_id="u1", note="provider confirmed 2xx"
+        )
+        assert out["status"] == "succeeded"
+
+
+def test_expired_lease_with_uncertain_provider_outcome_flag_requires_recovery():
+    """R5: the invocation-level uncertain flag is honoured the same way."""
+    pid = "prj_r5_flag"
+    with transaction() as conn:
+        inv_id = _mk_invocation(conn, pid, {"execution": {"uncertain_provider_outcome": True}})
+        jid, _ = jobs.enqueue(
+            conn, "live_defense_agent_step", {"project_id": pid, "invocation_id": inv_id}
+        )
+    assert _claim("w", ["live_defense_agent_step"]) is not None
+    _expire(jid)
+    with transaction() as conn:
+        execution.reconcile(conn)
+    assert _job(jid)["status"] == "recovery_required"
+
+
+def test_expired_lease_with_only_settled_attempts_requeues_normally():
+    """R5: a fully settled ledger carries no uncertainty -> normal lease recovery."""
+    pid = "prj_r5_settled"
+    with transaction() as conn:
+        inv_id = _mk_invocation(
+            conn,
+            pid,
+            {"execution": {"provider_attempts": [_attempt("settled"), _attempt("failed", 2)]}},
+        )
+        jid, _ = jobs.enqueue(
+            conn, "live_defense_agent_step", {"project_id": pid, "invocation_id": inv_id}
+        )
+    assert _claim("w", ["live_defense_agent_step"]) is not None
+    _expire(jid)
+    with transaction() as conn:
+        report = execution.reconcile(conn)
+    assert report["requeued"] == 1 and report["recovery_required"] == 0
+    assert _job(jid)["status"] == "queued"
+
+
+def test_expired_lease_with_missing_invocation_requeues_normally():
+    """R5: a dangling invocation_id adds no uncertainty."""
+    with transaction() as conn:
+        jid, _ = jobs.enqueue(
+            conn,
+            "live_defense_agent_step",
+            {"project_id": "prj_r5_missing", "invocation_id": "inv-does-not-exist"},
+        )
+    assert _claim("w", ["live_defense_agent_step"]) is not None
+    _expire(jid)
+    with transaction() as conn:
+        report = execution.reconcile(conn)
+    assert report["requeued"] == 1
+    assert _job(jid)["status"] == "queued"
+
+
+def test_atomic_reservation_committed_with_ledger_write_is_fenced():
+    """R5 alt: ledger writers can commit job uncertainty atomically via begin_effect
+    inside their own reservation transaction — same recovery_required outcome."""
+    pid = "prj_r5_atomic"
+    with transaction() as conn:
+        inv_id = _mk_invocation(conn, pid, {"execution": {"provider_attempts": []}})
+        jid, _ = jobs.enqueue(
+            conn, "live_defense_agent_step", {"project_id": pid, "invocation_id": inv_id}
+        )
+    job = _claim("w", ["live_defense_agent_step"])
+    assert job is not None
+    with transaction() as conn:
+        # Ledger reservation + job uncertainty land in one commit (Grok's contract).
+        from backend.db import first_responder_invocations
+
+        conn.execute(
+            sa.update(first_responder_invocations)
+            .where(first_responder_invocations.c.id == inv_id)
+            .values(doc={"execution": {"provider_attempts": [_attempt("in_flight")]}})
+        )
+        assert jobs.begin_effect(conn, jid, "w", "provider:att_0001") is True
+    _expire(jid)
+    with transaction() as conn:
+        report = execution.reconcile(conn)
+    assert report["recovery_required"] == 1
+    assert _job(jid)["status"] == "recovery_required"
