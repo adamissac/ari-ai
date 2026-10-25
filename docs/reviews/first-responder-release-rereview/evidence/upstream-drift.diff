@@ -1,0 +1,55 @@
+diff --git a/backend/backend/main.py b/backend/backend/main.py
+index d42d89ed..3e331240 100644
+--- a/backend/backend/main.py
++++ b/backend/backend/main.py
+@@ -19,11 +19,13 @@ from backend.api import (
+     live_defense,
+     live_defense_controls,
+     live_defense_first_responder,
+-    ops,
+     routes,
+     runtime,
+     webhooks,
+ )
++from backend.api import (
++    ops as ops_api,
++)
+ from backend.api.deps import ApiError, require_user
+ from backend.settings import get_settings
+ from shared import SCHEMA_VERSION
+@@ -168,7 +170,7 @@ def create_app() -> FastAPI:
+         live_defense.router,
+         live_defense_controls.router,
+         live_defense_first_responder.router,
+-        ops.router,
++        ops_api.router,
+     ):
+         app.include_router(r, prefix="/api/v1")
+     return app
+diff --git a/coordination/status/agents/devin-pipeline-fixer.json b/coordination/status/agents/devin-pipeline-fixer.json
+index acc7148c..0d2965e5 100644
+--- a/coordination/status/agents/devin-pipeline-fixer.json
++++ b/coordination/status/agents/devin-pipeline-fixer.json
+@@ -3,9 +3,9 @@
+   "human_owner": "Adam",
+   "workstream": "fixing agent pipeline failures; intel-store retry; eval-runner retry; pilot rehearsal v2; ops retention",
+   "state": "WORKING",
+-  "task": "Eval run 3 scoring (eval/20261024-153652) + #542/#543 in wave 2",
++  "task": "Eval run 3 scoring (eval/20261024-153652); #538 main-merge resolved for integration lead",
+   "branch": "fix/intel-store-orphan-retry, fix/eval-runner-retry, ari/fix-pat_01M5R13A056A25J7ZXWHHDZ9SN, feat/adam/pilot-rehearsal-v2, docs/adam/live-inventory-rehearsal-evidence, fix/adam/postgres-storage-retention, docs/devin-pilot-handoff",
+-  "latest_sha": "12d048fe",
++  "latest_sha": "5a56e44c",
+   "prs": [
+     542,
+     543,
+@@ -27,6 +27,6 @@
+   ],
+   "blockers": [],
+   "last_update_utc": "2026-10-25T00:20:00Z",
+-  "tests": "#542/#543 refreshed with main by integration lead; gitleaks green after fixture-token scrub",
+-  "next_action": "score eval run 3 results; post baselines to Adam; clean eval artifacts"
+-}
+\ No newline at end of file
++  "tests": "typecheck+vitest green on #538 merge resolution; eval3 10/12 batches; #543 retries surviving live 503s",
++  "next_action": "score eval3 on completion; post baselines to Adam; confirm eval branches self-cleaned"
++}

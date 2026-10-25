@@ -660,3 +660,7 @@ the full readiness suite — GO, 25/25 (migrations to 0017, smoke 15/15, crash
 recovery, restore parity, authz/estop, alert redaction). One cross-PR defect
 found+fixed on my branch (openapi dev-gate vs smoke/release_check). My verdict
 matches theirs: infra GO; deploy stays NO-GO until Codex P1s F1/F2 land.
+
+### Independent release re-review (2026-10-25)
+
+Fork PR #8 dd530ae3 against latest observed upstream dc9a623a: **NO-GO**, two P1 and three P2 findings, six new strict failing reproductions. Original backend 510 passed/8 skipped; focused audit/migration47, security+shared712, cross-security/contracts114, frontend347, transport35, RL integration/ingest14 passed; local readiness25 PASS. Detailed evidence and owner actions: `docs/reviews/first-responder-release-rereview/REPORT.md`. Product unchanged; no merge/deploy. Browser final result is in the report/evidence. Audit branch `codex/first-responder-release-rereview`.

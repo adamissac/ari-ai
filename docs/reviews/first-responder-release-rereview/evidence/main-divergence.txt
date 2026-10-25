@@ -1,0 +1,67 @@
+f78637de chore(coordination): devin-pipeline-fixer status refresh (#569)
+5a56e44c fix(backend): alias api ops router import to avoid shadowing ops helpers (#567)
+ee8b91e2 chore(coordination): rehearsal reproduction + e2e stale-head resolution (#565)
+cae5a2a1 docs(status): code-review-eval lane DONE — final scorer verification on merged gate head (#566)
+d7e037c5 feat(infra): capability-aware readiness, worker heartbeats, deploy pairing gate + restart/rollback evidence (#533)
+a9d5e0be feat(frontend): rebuild connect navigation into review + recorded agent replay (#496)
+7b558189 docs(pilot): pilot launch package with conditional go decision (#527)
+95fe9b80 Merge pull request #533
+5f405cdf Merge pull request #564
+83cd49ce docs(pilot): branch-protection infra limitation + org migration plan
+fd88ac74 feat(ops): Postgres storage report, bounded retention, and 70/80/90 volume alerts (#558)
+52575681 Merge coordination message
+1cfa4e0d coord: broadcast pilot-rehearsal-target live
+19a16af0 docs(status): code-review eval lane — #529 merged, #530 owns inverted conflict (#563)
+ceb2a709 fix: Remove the pre-authorization cache short-circuit in get_project. Resolve the user and call require_project(conn, us (#546)
+586370b0 docs(code-review): executed functional-reviewer eval report + scorer path-fallback regression tests (#529)
+9a097eb5 test(security-agents): live seven-agent assessment evidence + run manifest (#528)
+c17d78f2 chore(coordination): devin-pipeline-fixer status refresh (#561)
+08fcd176 test(evals): retry transient scorer failures instead of aborting the run (#543)
+3eeb1a17 fix(intel-store): let not-ready index payloads be rewritten on retry (#542)
+14e54f7b Merge remote-tracking branch 'origin/fix/test-sandbox-target-method'
+2e337bb9 Merge pull request #528 from adamissac/feat/adam/seven-agent-live-evidence
+7f8b6a98 Merge pull request from adamissac/fix/intel-store-orphan-retry
+1fb245f2 Merge pull request #555 from adamissac/docs/adam/live-inventory-rehearsal-evidence
+c9727918 fix(pilot): run two-org rehearsal end-to-end — real API shapes + executed 13/13 evidence (#556)
+ce57cc65 Merge pull request #562 from adamissac/feat/adam/cloud-20261025-run21
+6ab6289d docs(status): Adam scheduled cloud health run 21
+35ba63a6 Merge remote-tracking branch 'origin/main' into mwork
+0474bb92 Merge remote-tracking branch 'origin/main' into mwork
+3af0fa72 coord: shared multi-agent board + AGENT COMMS issue + regenerator + protocol (#560)
+a443aee7 test(backend): honor recipe method + body_template in sandbox-target authz sweep (#557)
+0518a88f docs(planning): handoff — pilot rehearsal results, defects, branch state (#554)
+ae7b6ff8 test(backend): honor recipe method + body_template in sandbox-target authz sweep
+ad282cf4 test(rehearsal): ledgerlite pilot target with planted CWE-639 entry read (#550)
+8fadcbaf docs(rehearsal): live seven-agent run evidence on inventory-lite
+5edcfa34 Merge remote-tracking branch 'origin/main' into mwork
+2652020c docs(status): pilot-readiness coordination — gitleaks root cause, ledgerlite verification, merge order
+d0db27ac Merge remote-tracking branch 'origin/main' into mwork
+3f56e7dd Merge remote-tracking branch 'origin/main' into fix/intel-store-orphan-retry
+4f083ba6 docs(status): pilot merge order + gitleaks unblock record (#549)
+42285c2f feat(examples): inventory-lite rehearsal fixture + executed check-level rehearsal (#537)
+d29e5176 docs(coordination): integration lead PR tracker + merge order (#553)
+33d68634 fix(deploy): use AssessmentState.COMPLETED in sandbox target seed (#551)
+ed5cbf7d feat(pilot): two-organization rehearsal package (#541)
+cd79e0f7 Merge remote-tracking branch 'origin/main' into feat/adam/seven-agent-live-evidence
+6f84bf3c merge: resolve vs main; renumber heartbeats migration to 0017 after #535 kept 0016
+08114692 Merge pull request #535 from adamissac/feat/adam/tenant-data-protection
+8e30f44c merge: resolve .gitleaks.toml vs main #544 (their rehearsal/ path allowlist supersedes the commit-scoped entry)
+79341ba5 docs(changelog): clean conflict markers committed by automated rebase
+ab4c8613 chore: retrigger CI after upstream gitleaks finding was removed
+b8dccfeb ci(gitleaks): allowlist rehearsal-branch fixture tokens already removed at HEAD
+85e61239 fix(backend): repair pre-existing main regressions surfaced by suite run
+ad7ac047 fix(ops): owner-gate /diagnostics, scrub public readyz details, prove stopped workers aren't live
+36f5ef48 docs(deploy): pilot operations runbook, checklist and evidence record
+cdf8fd61 test(deploy): restart_recovery evidence harness + latest run
+2e8585b8 feat(frontend): /api/frontend-version + deploy/verify_pair.sh pairing gate
+b09b9120 feat(backend): capability-aware /readyz, /diagnostics, worker heartbeats
+445dd16d Merge remote-tracking branch 'origin/main' into m-seven-agent-live-evidence
+337d0dd6 fix(intel-store): let not-ready index payloads be rewritten on retry
+d7eb53ad Merge remote-tracking branch 'origin/main' into feat/adam/seven-agent-live-evidence
+4bbd06c7 Merge remote-tracking branch 'origin/main' into feat/adam/tenant-data-protection
+83730e2b Merge remote-tracking branch 'origin/main' into feat/adam/seven-agent-live-evidence
+1b321079 docs(security-agents): state run outcome plainly and add staging rehearsal criteria
+8e8f9150 Merge remote-tracking branch 'origin/main' into feat/adam/tenant-data-protection
+b41edefd feat(security): tenant data protection — adversarial suite, source-store RLS, purge workflow
+e0bd18a3 docs(coordination): hand seven-agent live evidence to release gate for pilot readiness
+15de4fef test(security-agents): archive live seven-agent evidence and run manifest

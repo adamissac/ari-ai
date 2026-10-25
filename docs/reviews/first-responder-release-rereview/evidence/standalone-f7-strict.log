@@ -1,0 +1,42 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________________ test_agent_step_jobs_have_durable_deadline __________________
+
+staging = <live_defense_e2e.harness.OwnedStaging object at 0x10bc9b620>
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "F7 (remaining): deadline_at is propagated on the decision, invocation "
+            "and step payload, but the jobs.deadline_at column is still NULL — the "
+            "queue itself cannot time the job out"
+        ),
+    )
+    def test_agent_step_jobs_have_durable_deadline(staging):
+        """First-responder step jobs must carry the incident deadline (F7)."""
+        from .transports import fake_provider, gateway_factory
+    
+        alice, bob = staging.login("alice"), staging.login("bob")
+        app = staging.create_project(alice, bob)
+        repo, sha = staging.checkout_owned_repo("repo-compat-f7")
+        staging.bind_repo(app, repo)
+        staging.index_snapshot(app.repo_id, sha)
+        staging.register_app(app)
+        staging.issue_token(app)
+        staging.attest_mapping(app, commit_sha=sha)
+        staging.set_mode(alice, app.project_id, "monitor")
+        staging.use_gateway(gateway_factory(fake_provider(repo / "target")))
+    
+        assert staging.ingest(alice, app).status_code == 202
+        staging.drain()
+    
+        steps = staging.job_rows("live_defense_agent_step")
+        assert steps, "expected agent-step jobs after a monitor-mode investigation"
+>       assert all(j["deadline_at"] is not None for j in steps)
+E       assert False
+E        +  where False = all(<generator object test_agent_step_jobs_have_durable_deadline.<locals>.<genexpr> at 0x10ca7f2a0>)
+
+backend/tests/live_defense_e2e/test_exec_reliability_compat.py:303: AssertionError
+=========================== short test summary info ============================
+FAILED backend/tests/live_defense_e2e/test_exec_reliability_compat.py::test_agent_step_jobs_have_durable_deadline
+1 failed in 0.89s

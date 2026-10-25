@@ -1,0 +1,51 @@
+
+> @hackatl/frontend-transport@0.1.0 test
+> npm run build && node --test tests/*.test.mjs
+
+
+> @hackatl/frontend-transport@0.1.0 build
+> tsc -p tsconfig.json
+
+✔ session cookie mode and CSRF; mutations are explicit and never retried (20.104ms)
+✔ canonical response schema rejects wrong IDs, unknown fields and absent fields (0.602166ms)
+✔ idempotency key required and forwarded exactly once; abort forwarded (0.306083ms)
+✔ 401 clears CSRF, login is opt-in, invalid content and large responses fail (1.257459ms)
+✔ list envelopes validate canonical elements and reject malformed pagination (4.5605ms)
+✔ logout accepts 204 and clears mutation credentials (0.180125ms)
+✔ incident methods keep scoped paths, typed envelopes and explicit CSRF mutations (0.243584ms)
+✔ expectations list maps cursor to offset and validates page shape (15.825042ms)
+✔ decideExpectation is a CSRF-protected PATCH and surfaces 409 conflicts (4.543917ms)
+✔ updateProject uses PATCH; non-mutating reads stay GET (0.90375ms)
+✔ BehavioralExpectation responses are schema-validated (8.525833ms)
+✔ finding detail validates the finding and each typed evidence record (32.966666ms)
+✔ live defense health and reviews validate shared types and never include a token secret (5.503542ms)
+✔ live policy decisions require NOT_EXECUTED and reject synthesized envelopes (4.531084ms)
+✔ recommendation list keeps the backend simulation label and rejects other envelopes (0.246958ms)
+✔ artifact text is bounded and its declared SHA-256 must match the bytes (4.023875ms)
+✔ cancel requires a session and validates the acknowledgement (0.91725ms)
+✔ event log cursor is validated before any request (0.147ms)
+✔ snapshot list builds its query and validates each Snapshot (2.2655ms)
+✔ assessments list sends a validated cursor and keeps the unpaged path (0.175ms)
+✔ assessment report is decoded as the shared AssessmentReport (13.289ms)
+✔ monitoring feed forwards limit and cursor (the feed used to truncate silently) (0.280666ms)
+✔ GitHub repository picker validates every row and the install link (0.696417ms)
+✔ repository commits are validated: full SHAs and https links only (0.49625ms)
+✔ create/decide calls forward an optional Idempotency-Key and omit it when absent (22.397125ms)
+✔ SSE frames handle chunked Unicode, BOM, CRLF, comments, retry and multiline data (4.19675ms)
+✔ bounded records and malformed UTF-8 close the reader (0.322042ms)
+✔ reconnect sends last yielded cursor, suppresses replay, stops on terminal (16.301708ms)
+✔ invalid JSON, canonical enums and mismatched envelopes are fatal without reconnect (0.534458ms)
+✔ permission denial does not reconnect; transient network errors have a finite retry budget (3.213625ms)
+✔ abort interrupts reconnect delay; early consumer return cancels body (0.63925ms)
+✔ EOF alone is not completion; checks persisted terminal state or fails (0.338125ms)
+✔ missing severity is explicitly unscored and simulation remains visible (0.923541ms)
+✔ scored vectors, versions, observation and review status stay visible (0.252ms)
+✔ the CVSS 3.1 score that sets the level is shown, with 4.0 alongside (ADR-0012) (0.229917ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 176.542667

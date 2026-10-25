@@ -1,0 +1,29 @@
+...................................s.................................... [ 13%]
+........................................................................ [ 27%]
+........................................................................ [ 41%]
+......................ss................................................ [ 55%]
+........................................................................ [ 69%]
+....................................................................s... [ 83%]
+........................................................s............... [ 97%]
+...........                                                              [100%]
+=============================== warnings summary ===============================
+backend/tests/live_defense_e2e/test_exec_reliability_compat.py::test_compat_per_project_concurrency_is_fair
+  /private/tmp/ari-release-rereview/backend/tests/conftest.py:180: PytestWarning: Value of environment variable JOB_MAX_RUNNING_PER_PROJECT type should be str, but got 1 (type: int); converted to str implicitly
+    monkeypatch.setenv(k.upper(), v)
+
+backend/tests/test_assessment_repo_id.py::test_assessment_carries_its_repository_and_old_docs_are_backfilled
+  /private/tmp/ari-release-rereview/backend/tests/test_assessment_repo_id.py:30: SADeprecationWarning: Type object <class 'sqlalchemy.dialects.postgresql.json.JSONB'> does not include operator 'sub' in its operator classes.  Using built-in operators (not including custom or overridden operators) outside of a type's stated operator classes is deprecated and will raise InvalidRequestError in a future release
+    .values(doc=assessments.c.doc - "repo_id")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+-------------- generated xml file: /tmp/ari-rereview-backend.xml ---------------
+=========================== short test summary info ============================
+SKIPPED [1] backend/tests/test_rl_expectations.py:15: could not import 'rl_defense.platform_mapping': No module named 'rl_defense'
+SKIPPED [1] backend/tests/test_rl_expectations_real_index.py:15: could not import 'rl_defense.platform_mapping': No module named 'rl_defense'
+SKIPPED [1] backend/tests/test_rl_integration.py:15: could not import 'rl_defense': No module named 'rl_defense'
+SKIPPED [1] backend/tests/live_defense_e2e/test_scenarios.py:969: live provider eval is opt-in: set RUN_LIVE_LLM_EVAL=1 and provide a key
+SKIPPED [1] backend/tests/test_host_http_probe_docker.py:17: needs RUN_DOCKER_SANDBOX=1 and SANDBOX_IMAGE
+SKIPPED [1] backend/tests/test_host_http_probe_docker.py:56: needs RUN_DOCKER_SANDBOX=1 and SANDBOX_IMAGE
+SKIPPED [1] backend/tests/test_llm_gateway.py:294: live provider smoke is opt-in: RUN_LIVE_LLM_EVAL=1 and ANTHROPIC_API_KEY (shell or .env)
+SKIPPED [1] backend/tests/test_runtime_ingest.py:165: could not import 'rl_defense.platform_mapping': No module named 'rl_defense'
+510 passed, 8 skipped, 2 warnings in 110.10s (0:01:50)

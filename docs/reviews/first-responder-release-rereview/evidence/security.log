@@ -1,0 +1,149 @@
+........................................................................ [  9%]
+...................................................................s.... [ 19%]
+............sssssssssss................................................. [ 29%]
+.........................................................ssss........... [ 39%]
+........................................................................ [ 48%]
+........................................................................ [ 58%]
+........................................................................ [ 68%]
+...................sssssss.............................................. [ 78%]
+........................................................................ [ 88%]
+............................................................s........... [ 97%]
+................                                                         [100%]
+=============================== warnings summary ===============================
+security-agents/tests/standards/test_negative.py:14
+  /private/tmp/ari-release-rereview/security-agents/tests/standards/test_negative.py:14: PytestUnknownMarkWarning: Unknown pytest.mark.standards - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytestmark = [pytest.mark.standards, pytest.mark.negative]
+
+security-agents/tests/standards/test_negative.py:14
+  /private/tmp/ari-release-rereview/security-agents/tests/standards/test_negative.py:14: PytestUnknownMarkWarning: Unknown pytest.mark.negative - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytestmark = [pytest.mark.standards, pytest.mark.negative]
+
+security-agents/tests/standards/test_rules_of_engagement.py:22
+  /private/tmp/ari-release-rereview/security-agents/tests/standards/test_rules_of_engagement.py:22: PytestUnknownMarkWarning: Unknown pytest.mark.standards - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytestmark = pytest.mark.standards
+
+security-agents/tests/standards/test_sarif.py:12
+  /private/tmp/ari-release-rereview/security-agents/tests/standards/test_sarif.py:12: PytestUnknownMarkWarning: Unknown pytest.mark.standards - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytestmark = pytest.mark.standards
+
+security-agents/tests/standards/test_sarif.py:51
+  /private/tmp/ari-release-rereview/security-agents/tests/standards/test_sarif.py:51: PytestUnknownMarkWarning: Unknown pytest.mark.negative - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.negative
+
+security-agents/tests/test_checks.py:276
+  /private/tmp/ari-release-rereview/security-agents/tests/test_checks.py:276: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_checks.py:289
+  /private/tmp/ari-release-rereview/security-agents/tests/test_checks.py:289: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_e2e_replay.py:319
+  /private/tmp/ari-release-rereview/security-agents/tests/test_e2e_replay.py:319: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_e2e_replay.py:338
+  /private/tmp/ari-release-rereview/security-agents/tests/test_e2e_replay.py:338: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_e2e_replay.py:353
+  /private/tmp/ari-release-rereview/security-agents/tests/test_e2e_replay.py:353: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_e2e_replay.py:375
+  /private/tmp/ari-release-rereview/security-agents/tests/test_e2e_replay.py:375: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_e2e_replay.py:389
+  /private/tmp/ari-release-rereview/security-agents/tests/test_e2e_replay.py:389: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_e2e_replay.py:450
+  /private/tmp/ari-release-rereview/security-agents/tests/test_e2e_replay.py:450: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_e2e_replay.py:499
+  /private/tmp/ari-release-rereview/security-agents/tests/test_e2e_replay.py:499: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_sandbox.py:178
+  /private/tmp/ari-release-rereview/security-agents/tests/test_sandbox.py:178: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_sandbox.py:220
+  /private/tmp/ari-release-rereview/security-agents/tests/test_sandbox.py:220: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_sandbox.py:296
+  /private/tmp/ari-release-rereview/security-agents/tests/test_sandbox.py:296: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_sandbox.py:315
+  /private/tmp/ari-release-rereview/security-agents/tests/test_sandbox.py:315: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_live_provider.py:40
+  /private/tmp/ari-release-rereview/security-agents/tests/test_live_provider.py:40: PytestUnknownMarkWarning: Unknown pytest.mark.live - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytest.mark.live,
+
+security-agents/tests/test_security_boundaries.py:47
+  /private/tmp/ari-release-rereview/security-agents/tests/test_security_boundaries.py:47: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytestmark = pytest.mark.boundary
+
+security-agents/tests/test_specialist_integration.py:121
+  /private/tmp/ari-release-rereview/security-agents/tests/test_specialist_integration.py:121: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_specialist_integration.py:129
+  /private/tmp/ari-release-rereview/security-agents/tests/test_specialist_integration.py:129: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_states.py:79
+  /private/tmp/ari-release-rereview/security-agents/tests/test_states.py:79: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_strict_schema.py:83
+  /private/tmp/ari-release-rereview/security-agents/tests/test_strict_schema.py:83: PytestUnknownMarkWarning: Unknown pytest.mark.live - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.live
+
+security-agents/tests/test_tool_registry.py:150
+  /private/tmp/ari-release-rereview/security-agents/tests/test_tool_registry.py:150: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_tool_registry.py:217
+  /private/tmp/ari-release-rereview/security-agents/tests/test_tool_registry.py:217: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_tool_registry.py:286
+  /private/tmp/ari-release-rereview/security-agents/tests/test_tool_registry.py:286: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_tool_registry.py:310
+  /private/tmp/ari-release-rereview/security-agents/tests/test_tool_registry.py:310: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+security-agents/tests/test_tool_registry.py:328
+  /private/tmp/ari-release-rereview/security-agents/tests/test_tool_registry.py:328: PytestUnknownMarkWarning: Unknown pytest.mark.boundary - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.boundary
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] security-agents/tests/test_contracts.py:44: shared 0.25.0 is newer than the versions this adapter was verified against ('0.2.0', '0.4.0', '0.7.0', '0.9.0'); the structural check above is what gates correctness
+SKIPPED [1] security-agents/tests/test_docker_sandbox_live.py:87: set RUN_DOCKER_SANDBOX=1 with a Docker engine
+SKIPPED [1] security-agents/tests/test_docker_sandbox_live.py:97: set RUN_DOCKER_SANDBOX=1 with a Docker engine
+SKIPPED [1] security-agents/tests/test_docker_sandbox_live.py:112: set RUN_DOCKER_SANDBOX=1 with a Docker engine
+SKIPPED [1] security-agents/tests/test_docker_sandbox_live.py:177: set RUN_DOCKER_SANDBOX=1 with a Docker engine
+SKIPPED [1] security-agents/tests/test_docker_sandbox_live.py:187: set RUN_DOCKER_SANDBOX=1 with a Docker engine
+SKIPPED [1] security-agents/tests/test_docker_sandbox_live.py:196: set RUN_DOCKER_SANDBOX=1 with a Docker engine
+SKIPPED [1] security-agents/tests/test_docker_sandbox_live.py:210: set RUN_DOCKER_SANDBOX=1 with a Docker engine
+SKIPPED [1] security-agents/tests/test_docker_sandbox_live.py:223: set RUN_DOCKER_SANDBOX=1 with a Docker engine
+SKIPPED [1] security-agents/tests/test_docker_sandbox_live.py:235: set RUN_DOCKER_SANDBOX=1 with a Docker engine
+SKIPPED [1] security-agents/tests/test_docker_sandbox_live.py:264: set RUN_DOCKER_SANDBOX=1 with a Docker engine
+SKIPPED [1] security-agents/tests/test_docker_sandbox_live.py:295: set RUN_DOCKER_SANDBOX=1 with a Docker engine
+SKIPPED [1] security-agents/tests/test_live_provider.py:61: set RUN_LIVE_LLM_EVAL=1 to run the live provider smoke
+SKIPPED [1] security-agents/tests/test_live_provider.py:110: set RUN_LIVE_LLM_EVAL=1 to run the live provider smoke
+SKIPPED [1] security-agents/tests/test_live_provider.py:187: set RUN_LIVE_LLM_EVAL=1 to run the live provider smoke
+SKIPPED [1] security-agents/tests/test_live_provider.py:251: set RUN_LIVE_LLM_EVAL=1 to run the live provider smoke
+SKIPPED [7] security-agents/tests/test_strict_schema.py:83: opt-in: RUN_LIVE_LLM_EVAL=1 and ANTHROPIC_API_KEY
+SKIPPED [1] shared/tests/test_contracts.py:149: TypeScript compiler not available; set TSC=/path/to/tsc
+712 passed, 24 skipped, 29 warnings in 106.43s (0:01:46)

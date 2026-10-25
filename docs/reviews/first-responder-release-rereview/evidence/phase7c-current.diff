@@ -1,0 +1,57 @@
+diff --git a/backend/backend/live_defense/first_responder.py b/backend/backend/live_defense/first_responder.py
+index 5ad2e3b5..de5ab038 100644
+--- a/backend/backend/live_defense/first_responder.py
++++ b/backend/backend/live_defense/first_responder.py
+@@ -467,7 +467,6 @@ def _record_invocations(
+                 },
+                 dedupe_key=f"live_defense_agent_step:{decision.id}:{agent.value}",
+                 priority=70 if agent is AgentName.scout else 90,
+-                deadline_at=decision.deadline_at,
+             )
+             inv = inv.model_copy(update={"job_id": job_id})
+             conn.execute(
+@@ -866,7 +865,6 @@ def _enqueue_agent_step(
+         },
+         dedupe_key=f"live_defense_agent_step:{decision.id}:{agent.value}",
+         priority=90 if agent is AgentName.diagnose else 70,
+-        deadline_at=decision.deadline_at,
+     )
+     updated = inv.model_copy(update={"job_id": job_id})
+     conn.execute(
+diff --git a/backend/backend/live_defense/provider_ledger.py b/backend/backend/live_defense/provider_ledger.py
+index a7db7dbd..846d77e8 100644
+--- a/backend/backend/live_defense/provider_ledger.py
++++ b/backend/backend/live_defense/provider_ledger.py
+@@ -14,7 +14,6 @@ import sqlalchemy as sa
+ from sqlalchemy.engine import Connection
+ 
+ from backend.db import first_responder_invocations, transaction
+-from backend.db import jobs as jobs_table
+ from shared.base import utcnow
+ from shared.live_defense import (
+     AgentExecutionRecord,
+@@ -186,24 +185,6 @@ def mark_attempt_uncertain(invocation_id: str, attempt_id: str, *, error_code: s
+         settled_at=utcnow(),
+         error_code=error_code,
+     )
+-    # Bridge to the reliability recovery path (Alembic 0016): the worker may die
+-    # before this commit is visible to its run loop, so flag the owning job row
+-    # too. Reconcile then parks it ``recovery_required`` — the uncertain billable
+-    # outcome survives the crash and is never silently requeued for replay.
+-    with transaction() as conn:
+-        conn.execute(
+-            sa.update(jobs_table)
+-            .where(
+-                jobs_table.c.payload["invocation_id"].as_string() == invocation_id,
+-                jobs_table.c.status == "running",
+-                jobs_table.c.effect_state.is_(None),
+-            )
+-            .values(
+-                effect_state="in_flight",
+-                effect_key=attempt_id,
+-                updated_at=sa.func.now(),
+-            )
+-        )
+ 
+ 
+ def mark_attempt_cancelled(invocation_id: str, attempt_id: str) -> None:

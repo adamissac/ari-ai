@@ -1,0 +1,11 @@
+{
+  "release_sha": "dd530ae3b00d31ecc54a6fb5908a50b8b6b1965d",
+  "upstream_sha": "dc9a623aca21678bd34a84d61a4bb8433445a59f",
+  "initial_upstream_sha": "ee8b91e2399a46b203917ba4defc7550bcad9e2a",
+  "standalone_e2e_sha": "611c38ce55e3acd487812b551a9ecdc05908318c",
+  "providers": "scripted only; RUN_LIVE_LLM_EVAL=0; API keys blank",
+  "database": "isolated embedded PostgreSQL 16; disposable databases",
+  "audit_product_changes": false,
+  "independent_tests": "strict failing reproductions added separately after original backend suite",
+  "redaction": "synthetic token patterns replaced in retained logs; no raw JUnit copied"
+}

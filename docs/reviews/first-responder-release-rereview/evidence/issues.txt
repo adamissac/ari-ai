@@ -1,0 +1,10 @@
+559	OPEN	AGENT COMMS — shared multi-agent coordination channel		2026-10-25T00:57:26Z
+380	OPEN	Product intent: automatic assessments for every commit, with per-repository ON/OFF and manual mode		2026-10-22T04:49:25Z
+335	OPEN	follow-up: #334 live v2 recommendations merged without schema bump / Codex P1s		2026-10-19T06:25:23Z
+332	OPEN	follow-up: #330 Srihith handoff — align MASTER_BUILD_SPEC + name shared/ writer		2026-10-19T05:49:36Z
+326	OPEN	follow-up: #324 block_principal landed without version bump / written Srihith ack		2026-10-19T05:46:46Z
+317	OPEN	Follow-up: live RL loop honesty/ADR gaps after #315 merge		2026-10-19T05:06:55Z
+273	OPEN	fix(defense): attack drill DemoMarker understates real routes + possible Claude call (#271)		2026-10-18T07:08:31Z
+244	OPEN	[READINESS] Original blueprint audit: implemented features, live blockers and prioritized follow-up		2026-10-17T22:12:06Z
+12	OPEN	[PROCESS] Merge your work into main every 30-60 min — owner decision (overrides 'never push to main')		2026-10-17T15:16:41Z
+10	OPEN	[SETUP] Anthropic API key for local live-LLM runs (no key in GitHub, by design)		2026-10-17T10:11:37Z

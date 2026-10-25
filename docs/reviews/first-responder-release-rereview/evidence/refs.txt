@@ -1,0 +1,483 @@
+origin/feat/adam/release-gate 2026-10-24 18:03:18 -0700 Merge remote-tracking branch 'origin/main' into m530
+origin/feat/adam/intel-pipeline-audit 2026-10-24 18:03:14 -0700 Merge remote-tracking branch 'origin/main' into m531
+origin/fix/adam/github-onboarding-hardening 2026-10-24 18:03:03 -0700 Merge remote-tracking branch 'origin/main' into mwork
+origin/feat/adam/defense-lab-pilot-audit 2026-10-24 18:03:02 -0700 merge: origin/main into defense-lab-pilot-audit
+origin/main 2026-10-25 01:02:14 +0000 chore(coordination): devin-pipeline-fixer status refresh (#569)
+origin/chore/devin-fixer-status-2 2026-10-24 18:01:39 -0700 chore(coordination): refresh devin-pipeline-fixer status fields
+origin/feat/adam/home-deep-sea-landing 2026-10-24 18:01:32 -0700 chore: merge origin/main into feat/adam/home-deep-sea-landing
+origin/feat/adam/first-user-usability 2026-10-24 18:00:54 -0700 merge: main into first-user-usability
+review/onboarding-current 2026-10-24 17:59:18 -0700 Merge remote-tracking branch 'origin/main' into fix/adam/github-onboarding-hardening
+review/gate-current 2026-10-24 17:56:44 -0700 fix(backend): alias api ops import — main F811 shadowing broke /readyz+/diagnostics
+origin/eval/20261024-153652/vuln_token_unified_perms 2026-10-24 17:56:25 -0700 feat(github): unify installation token permissions
+origin/eval/20261024-153652/vuln_delivery_tip_check_removed 2026-10-24 17:56:24 -0700 refactor(delivery): drop the redundant tip re-fetch
+origin/eval/20261024-153652/vuln_artifact_digest_optional 2026-10-24 17:56:22 -0700 fix(artifacts): tolerate rows written before the digest column existed
+origin/eval/20261024-153652/vuln_csrf_post_exempt 2026-10-24 17:56:21 -0700 fix(auth): let idempotent POSTs through without the CSRF header
+origin/chore/adam/status-rehearsal-confirm 2026-10-24 17:54:17 -0700 Merge remote-tracking branch 'origin/main' into mwork
+origin/fix/ops-import-shadow 2026-10-24 17:49:05 -0700 fix(backend): alias api ops router import to avoid shadowing ops helpers
+origin/fix/adam/ops-import-collision 2026-10-24 17:49:04 -0700 fix(backend): resolve ops import collision in main.py
+origin/docs/adam/status-final-verification 2026-10-24 17:48:04 -0700 docs(status): code-review-eval lane DONE — final scorer verification on merged gate head
+origin/feat/adam/pilot-readiness-ops 2026-10-24 17:47:50 -0700 Merge remote-tracking branch 'origin/main' into mwork
+origin/feat/adam/commit-review-navigation 2026-10-24 17:47:25 -0700 Merge remote-tracking branch 'origin/main' into mwork
+origin/docs/adam/branch-protection-migration 2026-10-24 17:42:11 -0700 docs(pilot): branch-protection infra limitation + org migration plan
+origin/docs/adam/status-529-merged 2026-10-24 17:31:43 -0700 docs(status): code-review eval lane — #529 merged, #530 owns inverted conflict
+origin/docs/adam/pilot-launch 2026-10-24 17:31:27 -0700 fix: resolve leftover merge markers in changelog and handoff
+review/release-8 2026-10-24 17:31:05 -0700 docs(integration): note alert-webhook cherry-pick + readiness re-run
+origin/fix/adam/postgres-storage-retention 2026-10-24 17:30:03 -0700 chore: merge origin/main into fix/adam/postgres-storage-retention
+origin/feat/adam/seven-agent-live-evidence 2026-10-24 17:26:00 -0700 Merge remote-tracking branch 'origin/main' into mwork
+origin/docs/reviewer-eval-report 2026-10-24 17:20:14 -0700 ci(gitleaks): drop redundant tok-* allowlist; #544's path-scoped rule covers it
+origin/feat/adam/cloud-20261025-run21 2026-10-25 00:18:04 +0000 docs(status): Adam scheduled cloud health run 21
+origin/chore/devin-fixer-status 2026-10-24 17:01:59 -0700 chore(coordination): devin-pipeline-fixer status refresh
+origin/feat/adam/pilot-rehearsal-v2 2026-10-24 17:01:20 -0700 Merge remote-tracking branch 'origin/main' into mwork
+origin/docs/adam/live-inventory-rehearsal-evidence 2026-10-24 17:01:18 -0700 Merge remote-tracking branch 'origin/main' into mwork
+origin/ari/fix-pat_01M5R13A056A25J7ZXWHHDZ9SN 2026-10-24 17:01:17 -0700 Merge remote-tracking branch 'origin/main' into mwork
+origin/fix/eval-runner-retry 2026-10-24 17:01:06 -0700 Merge remote-tracking branch 'origin/main' into mwork
+origin/fix/intel-store-orphan-retry 2026-10-24 17:01:05 -0700 Merge remote-tracking branch 'origin/main' into mwork
+origin/feat/alan/live-defense-phase7c-agent-execution 2026-10-24 23:58:25 +0000 merge(live-defense): origin/main into #458 so GitHub Actions can run
+review/phase7c-current 2026-10-24 23:58:25 +0000 merge(live-defense): origin/main into #458 so GitHub Actions can run
+origin/coord/agent-board 2026-10-24 16:54:52 -0700 coord: add multi-agent protocol to CLAUDE.md onboarding
+origin/fix/test-sandbox-target-method 2026-10-24 16:52:33 -0700 test(backend): honor recipe method + body_template in sandbox-target authz sweep
+review/e2e-current 2026-10-24 16:34:42 -0700 docs(devin-qa): reflect F1/F8 fixed on corrected Phase 7C head; F7 remains pinned
+origin/docs/devin-pilot-handoff 2026-10-24 16:33:32 -0700 docs(planning): handoff — pilot rehearsal results, defects, branch state
+origin/docs/devin/integration-tracker 2026-10-24 16:31:47 -0700 docs(coordination): integration lead PR tracker + merge order
+origin/fix/sandbox-target-assessment-state 2026-10-24 16:31:36 -0700 fix(deploy): use shared AssessmentState.COMPLETED member in sandbox fixture
+origin/fix/devin/sandbox-target-assessment-state 2026-10-24 16:31:16 -0700 fix(deploy): use AssessmentState.COMPLETED in sandbox target seed
+origin/docs/adam/coordination-merge-order 2026-10-24 16:16:35 -0700 docs(status): pilot merge order + gitleaks unblock record
+origin/test/pilot-rehearsal-drills 2026-10-24 16:09:05 -0700 test(backend): pilot rehearsal drills — cross-tenant ID substitution, cancel, deletion
+origin/rehearsal/ledgerlite-v2 2026-10-24 16:06:33 -0700 test(rehearsal): ledgerlite pilot target with planted CWE-639 entry read
+origin/feat/adam/pilot-rehearsal 2026-10-24 15:55:07 -0700 Merge remote-tracking branch 'origin/main' into m-pilot-rehearsal
+origin/feat/adam/rehearsal-inventory-lite 2026-10-24 15:55:04 -0700 Merge remote-tracking branch 'origin/main' into m-rehearsal-inventory-lite
+origin/feat/adam/tenant-data-protection 2026-10-24 15:54:26 -0700 Merge remote-tracking branch 'origin/main' into m535
+origin/fix/adam/gitleaks-rehearsal-fixtures 2026-10-24 15:42:56 -0700 ci(gitleaks): allowlist planted rehearsal fixture bearer tokens
+origin/rehearsal/ledgerlite 2026-10-24 15:42:10 -0700 test(rehearsal): ledgerlite pilot target with planted CWE-639 entry read
+origin/ari/fix-pat_01M5R0Z346HV42EEDWXEGWF1PQ 2026-10-24 22:37:40 +0000 fix: Fix the fixture so it uses the real enum member (e.g. AssessmentState.COMPLETED, after confirming the enum definition in shared/ or backend/ and that the value matches what the app expects). Then re-run the access_control.role check for accept-risk. Do not change routes.py or deps.py; the owner gate there is correct. Separately, the trace/confirmation step should not classify setup errors (AttributeError before any request is made, target_contacted=false) as a confirmed authorization failure....
+origin/fix/adam/gitleaks-font-manifest 2026-10-24 15:35:56 -0700 chore(infra): allowlist demo bearer tokens in rehearsal fixtures
+origin/feat/adam/cloud-20261024-run20 2026-10-24 22:17:56 +0000 docs(status): Adam cloud health run 20
+origin/fix/adam/redaction-syntax 2026-10-24 15:12:09 -0700 style(intel): format privacy redactor
+origin/feat/adam/access-control-role-template 2026-10-24 15:00:22 -0700 feat(checks): access_control.role template proves role-bypass on mutating routes
+origin/chore/agent-commit-cadence 2026-10-24 14:51:02 -0700 chore(ci): retrigger e2e after flaky settings-persistence run
+origin/feat/live-defense-phase6-5-rl-gated-pilot 2026-10-24 14:38:30 -0700 Merge remote-tracking branch 'origin/main' into pilot-412-merge
+origin/fix/eval-scorer-findings-paths 2026-10-24 14:18:44 -0700 docs(handoff,changelog): first live 45-case eval baseline + scorer lessons
+origin/feat/adam/cloud-20261024-run19 2026-10-24 20:17:20 +0000 docs(status): Adam cloud health run 19
+origin/codex/first-responder-integration-review 2026-10-24 16:11:00 -0400 docs(review): pin exact PR-base diffs and review resolution provenance
+review/pr-c 2026-10-24 12:13:07 -0700 style(live-defense): fix import ordering in e2e scenarios
+review/pr-a 2026-10-24 18:48:10 +0000 docs(live-defense): record MERGEABLE #458 and Devin compatibility review
+review/pr-d 2026-10-24 11:44:32 -0700 Merge remote-tracking branch 'origin/main' into feat/devin-investigation-observability
+origin/docs/adam/eval-readme-45 2026-10-24 11:42:45 -0700 docs(evals): README reflects the 45-case set
+origin/feat/adam/eval-45-cases 2026-10-24 11:32:35 -0700 test(evals): extend commit set to 45 cases across eight new CWEs
+review/pr-b 2026-10-24 11:30:01 -0700 fix(jobs): keep settled marker when a later effect is cleanly rejected
+origin/feat/adam/specialist-eval-brain 2026-10-24 11:19:21 -0700 fix(specialists): make each eval case its own code family
+origin/feat/adam/cloud-20261024-run18 2026-10-24 18:17:09 +0000 docs(status): Adam cloud health run 18
+origin/feat/adam/agent-visibility-not-needed 2026-10-24 10:54:28 -0700 fix(frontend): satisfy noUncheckedIndexedAccess in earlyEndNote
+origin/feat/adam/eval-expansion 2026-10-24 10:38:34 -0700 feat(checks): access_control.authentication template validates missing-authz
+origin/fix/adam/sweep-orphan-snapshots 2026-10-24 09:51:46 -0700 docs: changelog + handoff for orphan-snapshot sweep fix
+origin/feat/adam/cloud-20261024-run17 2026-10-24 16:17:48 +0000 docs(status): Adam cloud health run 17
+origin/perf/adam/sandbox-trim 2026-10-24 12:12:50 -0400 perf(sandbox): one round trip for setup, teardown off the critical path
+origin/feat/adam/commit-eval 2026-10-24 11:22:54 -0400 feat(evals): labelled commit eval for the live pipeline, with baseline
+origin/perf/adam/parallel-runs-after-write 2026-10-24 11:20:41 -0400 perf(llm): run independent calls after a write side by side
+origin/feat/adam/cloud-20261024-run16 2026-10-24 14:17:35 +0000 docs(status): Adam cloud health run 16
+origin/fix/adam/lenient-advisory-fields 2026-10-24 08:19:07 -0400 fix(llm): name the last validation error when a final output is rejected
+origin/feat/adam/cloud-20261024-run15 2026-10-24 12:17:28 +0000 docs(status): Adam cloud health run 15
+origin/perf/adam/batch-tool-calls 2026-10-24 07:50:20 -0400 perf(llm): tell every agent that batched tool calls run in parallel
+origin/perf/adam/reviewer-fewer-rounds 2026-10-24 07:25:03 -0400 perf(reviewer): fewer rounds: parallel reads/runs, speculative repeat and base
+origin/perf/adam/batch-blob-reads 2026-10-24 06:56:51 -0400 perf(index): read all blobs with one git cat-file --batch
+origin/perf/adam/patch-one-test-turn 2026-10-24 06:34:05 -0400 perf(patch): check the test on unpatched code in the same turn as the fix
+origin/perf/adam/symbol-index 2026-10-24 06:28:11 -0400 perf(intel): index call edges once and cache symbols()
+origin/feat/adam/cloud-20261024-1017 2026-10-24 10:17:01 +0000 docs(status): Adam cloud health run 14
+origin/fix/adam/functional-repair-after-fortify 2026-10-24 06:11:12 -0400 fix(agents): finish Fortify's step before the functional repair
+origin/perf/adam/diagnose-alongside-trace 2026-10-24 05:49:12 -0400 perf(agents): run the baseline test run beside Scout
+origin/perf/adam/fortify-alongside 2026-10-24 05:25:09 -0400 perf(agents): run Fortify's step alongside Patch and Verify
+origin/fix/adam/idle-worker-drain 2026-10-24 04:51:30 -0400 fix(worker): an idle worker exits at once on SIGTERM
+origin/feat/adam/cloud-20261024-0840 2026-10-24 08:49:52 +0000 docs(status): Adam scheduled health run 13
+origin/fix/adam/no-missed-webhooks 2026-10-24 02:54:53 -0400 fix(webhooks): redeliver missed GitHub webhooks on boot; keep the API up while draining
+origin/feat/adam/cloud-20261024-0640 2026-10-24 06:39:17 +0000 docs(status): Adam scheduled health run 12
+origin/perf/adam/patch-cause-code 2026-10-24 02:22:16 -0400 perf(patch): give Patch the diagnosed cause code instead of a file list
+origin/cursor/live-defense-first-responder-0044 2026-10-24 06:12:31 +0000 docs(live-defense): record #439 rebase onto main (docs conflicts)
+origin/perf/adam/reviewer-sandbox 2026-10-24 02:02:28 -0400 perf(reviewer): recipe sandbox setup for test runs; skip data dumps in search
+origin/perf/adam/parallel-tool-calls 2026-10-24 01:33:21 -0400 perf(agents): run a turn's independent tool calls side by side
+origin/fix/adam/resume-race 2026-10-24 00:52:57 -0400 fix(resume): queued resume no-ops when the in-process resume already moved on
+origin/perf/adam/index-cache 2026-10-24 00:32:50 -0400 perf(reviewer): run the repeat and base test runs side by side
+origin/perf/adam/diff-focused-scout 2026-10-24 00:21:04 -0400 perf(index): hoist doc-expectation and import lookups out of hot loops
+origin/feat/adam/cloud-20261024-1 2026-10-24 04:17:21 +0000 docs(handoff): adam scheduled health run 11
+origin/test/adam/e2e-final 2026-10-24 00:03:04 -0400 perf(api): skip the membership join when reading a repository
+origin/perf/adam/sandbox-base-snapshot 2026-10-23 23:40:06 -0400 perf(sandbox): boot every check from a prebuilt base snapshot
+origin/perf/adam/fast-agents 2026-10-23 23:32:49 -0400 perf: cut a commit's review time (reviewer beside Scout, caching, inline resume)
+origin/feat/adam/recipe-generator 2026-10-23 23:26:18 -0400 docs(handoff): build-recipe generator
+origin 2026-10-23 23:16:48 -0400 Merge remote-tracking branch 'origin/main' into research/rl-first-responder-orchestration
+origin/research/rl-first-responder-orchestration 2026-10-23 23:16:48 -0400 Merge remote-tracking branch 'origin/main' into research/rl-first-responder-orchestration
+origin/feat/adam/cloud-20261024-run10 2026-10-24 02:45:28 +0000 docs(status): Adam cloud health run 10
+origin/research/rl-feasibility-and-product-thesis 2026-10-23 22:06:23 -0400 docs(research): assess capacity limits and deprioritize RL product dependency
+origin/fix/adam/patch-test-first 2026-10-23 21:37:16 -0400 fix(security-agents): Patch writes the failing regression test first
+origin/research/rl-resource-feasibility-001 2026-10-23 21:13:22 -0400 test(rl): isolate integrity fault fixture from prior process memory
+origin/fix/adam/recipe-test-roots 2026-10-23 20:51:32 -0400 fix(security-agents): repos can say where their tests live
+origin/feat/adam/cloud-20261024-run9 2026-10-24 00:48:51 +0000 Merge remote-tracking branch 'origin/main' into feat/adam/cloud-20261024-run9
+origin/research/rl-resource-exhaustion-feasibility 2026-10-23 20:04:33 -0400 docs(rl): record resource regression checks and training no-go
+origin/fix/adam/agent-output-room 2026-10-23 19:56:34 -0400 fix(security-agents): give every agent room for its thinking and answer
+origin/fix/adam/graceful-deploys 2026-10-23 18:47:04 -0400 fix(deploy): deploys let in-flight assessments finish instead of killing them
+origin/feat/adam/cloud-20261023-run8 2026-10-23 22:42:31 +0000 docs(status): Adam cloud health run 8
+origin/fix/adam/review-the-commit-diff 2026-10-23 18:34:48 -0400 fix: the reviewer reviews each commit's diff, not the whole repository
+origin/fix/adam/patch-edit-tool 2026-10-23 18:11:52 -0400 feat(security-agents): Patch edits spans instead of rewriting whole files
+origin/fix/adam/final-turn-within-cap 2026-10-23 17:34:32 -0400 fix(host): an aborted approval resume no longer strands the assessment
+origin/fix/adam/append-only-final-turn 2026-10-23 17:15:51 -0400 fix(llm): keep agent conversations append-only on the final turn
+origin/research/rl-adaptive-defense-readiness 2026-10-23 17:10:20 -0400 fix(rl): exclude same-tick evidence at the action cutoff
+origin/test/adam/concurrent-a 2026-10-23 17:02:34 -0400 perf(api): skip the membership join when reading a repository
+origin/test/adam/concurrent-b 2026-10-23 17:02:34 -0400 docs: note concurrent run check
+origin/fix/adam/audit-findings 2026-10-23 16:43:06 -0400 fix: never skip a commit, cap total spend, harden agent search
+origin/feat/adam/cloud-20261023-2100 2026-10-23 20:20:02 +0000 docs(status): Adam scheduled cloud health run 7
+origin/fix/adam/thinking-signature 2026-10-23 16:17:54 -0400 fix: reviewer crash on signed thinking; keep Probe's confirmed result
+origin/feat/adam/deploy-rl-policy 2026-10-23 15:52:59 -0400 fix(deploy): run three workers so one assessment does not block every commit
+origin/test/adam/agent-ownership-regression 2026-10-23 15:31:13 -0400 perf(api): skip the membership join when reading a repository
+origin/feat/adam/ari-sandbox-target 2026-10-23 15:17:05 -0400 feat: let the security agents attack and test the real ari-ai backend
+origin/feat/adam/cloud-20261023-1900 2026-10-23 18:54:53 +0000 docs(status): Adam scheduled cloud health run 6
+origin/fix/adam/real-code-pipeline 2026-10-23 14:42:18 -0400 fix: run the reviewer and agents on real pushes from anyone
+origin/feat/alan/authorization-context-provider 2026-10-23 13:30:40 -0400 feat(rl): add trusted research authorization provider (RL-CMDP-006)
+origin/feat/adam/cloud-20261023-1700 2026-10-23 16:54:42 +0000 docs(status): Adam scheduled cloud health run 5
+origin/feat/alan/feasibility-readiness-audit 2026-10-23 11:54:58 -0400 chore(rl): integrate current main while preserving readiness evidence
+origin/feat/live-defense-phase6-pilot-audit 2026-10-23 15:37:52 +0000 fix(live-defense): serialize disconnect vs execute and keep recovered trail
+origin/feat/adam/cloud-20261023-1422 2026-10-23 15:05:01 +0000 docs(status): Adam scheduled cloud health run 4
+origin/fix/adam/agent-final-turn-submit-only 2026-10-23 10:11:37 -0400 fix(llm): offer only submit_result on an agent's final turn
+origin/feat/alan/read-response-integrity 2026-10-23 10:03:53 -0400 fix(rl): bind buffered payment responses to authorized resource
+origin/feat/adam/cloud-20261023-1225 2026-10-23 12:58:11 +0000 docs(status): Adam scheduled cloud health run 3
+origin/fix/adam/agent-final-turn 2026-10-23 07:14:11 -0400 fix(llm): ask the agent to submit on its final turn
+origin/feat/adam/delivery-mode 2026-10-23 07:10:25 -0400 Merge main into feat/adam/delivery-mode
+origin/feat/adam/ui-refresh 2026-10-23 07:02:57 -0400 style(ui): add scanner sweep across hero headline
+origin/feat/adam/cloud-20261023-2 2026-10-23 10:43:45 +0000 docs(status): Adam scheduled health run 2026-10-23 (2)
+origin/fix/adam/checkout-disk 2026-10-23 06:37:54 -0400 fix(backend): stop re-downloading the full tree for every commit fetch
+origin/fix/adam/rl-live-followups 2026-10-23 06:30:00 -0400 docs(rl): ADR-0022 boundaries of live lab enforcement and known gaps (#317)
+origin/fix/adam/live-defense-codex-findings 2026-10-23 06:25:44 -0400 fix(live-defense): per-application runtime windows, exact shadow evidence, rotation lock, pilot trail
+origin/fix/adam/automation-opt-in 2026-10-23 06:09:09 -0400 merge: integrate current main; renumber automation opt-in migration to 0013, schema 0.19.0
+origin/fix/adam/vercel-sandbox-runs 2026-10-23 05:53:10 -0400 fix(security-agents): make Vercel Sandbox runs actually execute
+origin/feat/devin/ui-enhancements 2026-10-23 05:48:53 -0400 fix(frontend): drop hover lift on badges and input focus; honor reduced motion
+origin/feat/live-defense-phase4-controlled-enforcement 2026-10-23 05:47:21 -0400 merge(main): integrate Phase 5 pilot readiness into Phase 4 enforcement
+origin/feat/adam/cloud-20261023-1 2026-10-23 08:47:32 +0000 docs(status): Adam scheduled health run 2026-10-23
+origin/feat/live-defense-phase5-pilot-readiness 2026-10-23 06:21:48 +0000 Merge remote-tracking branch 'origin/main' into feat/live-defense-phase5-pilot-readiness
+origin/feat/alan/read-context-integration 2026-10-23 01:58:49 -0400 feat(rl): bind owned payment reads to current application context
+origin/feat/alan/deterministic-feasibility 2026-10-23 01:33:31 -0400 fix(rl): reject feasibility compute overruns after final response
+origin/feat/alan/constrained-rl-phase1 2026-10-23 00:35:39 -0400 chore(rl): integrate current main and pin archived reconstruction revision
+origin/feat/live-defense-phase3-shadow-runtime 2026-10-22 21:07:47 +0000 test(frontend): wait for Live Defense overview before reload
+origin/feat/live-defense-pilot-phase2 2026-10-22 17:58:37 +0000 fix(backend): pin Alembic single-head check to 0010
+origin/feat/live-defense-pilot-ui 2026-10-22 10:31:41 +0000 fix(ci): allowlist SHA-256 api.py digests in gitleaks
+origin/feat/alan/rl-duration-handoff 2026-10-21 19:52:16 -0400 docs(rl): hand off verified duration results and no-v11 decision
+origin/feat/alan/rl-duration-study 2026-10-21 19:41:39 -0400 fix(rl): verify complete aggregates with frozen evaluation semantics
+origin/feat/adam/automatic-commits 2026-10-21 18:28:24 +0000 Merge remote-tracking branch 'origin/main' into feat/adam/automatic-commits
+origin/feat/alan/rl-diagnosis-handoff 2026-10-21 14:26:20 -0400 docs(rl): record verified diagnosis and pause further training
+origin/feat/alan/rl-targeted-diagnosis 2026-10-21 14:17:36 -0400 fix(rl): preserve and bind durable validation rejection evidence
+origin/feat/alan/live-retrain-v10 2026-10-21 13:38:50 -0400 feat(rl): retain complete controlled v10 study and rejected gates
+origin/feat/alan/rl-v10-handoff 2026-10-21 01:45:07 -0400 docs(rl): record merged continuation and pending v10 experiment
+origin/feat/alan/v10-demo-balance 2026-10-21 01:27:37 -0400 fix(rl): retain source and gate provenance with atomic evidence finalization
+origin/feat/alan/live-retrain-v9 2026-10-21 01:06:14 -0400 style(rl): sort study budget regression imports
+origin/feat/alan/rl-v8-continuation 2026-10-21 00:52:30 -0400 chore(rl): integrate current main before incumbent fix merge
+origin/feat/alan/v9-reporting 2026-10-21 00:32:18 -0400 fix(rl): preserve portable compressed study evidence
+origin/feat/adam/ui-polish 2026-10-21 04:32:07 +0000 fix(ui): preserve existing footer hover motion
+origin/fix/adam/commit-workspace 2026-10-20 19:32:23 +0000 fix(ui): retain selected run and repository during refresh
+origin/feat/adam/project-simplify 2026-10-20 06:58:02 +0000 fix(ui): identify replay links and secondary routes accessibly
+origin/feat/adam/landing-motion 2026-10-20 02:50:28 +0000 feat(ui): add motion accents and reduce hero ant density
+origin/feat/alan/live-retrain-v8 2026-10-19 22:36:43 -0400 Merge remote-tracking branch 'origin/main' into feat/alan/live-retrain-v8
+origin/fix/adam/hero-headline 2026-10-20 02:12:41 +0000 fix(ui): preserve headline contrast and tighten line spacing
+origin/fix/adam/compact-footer 2026-10-20 01:55:10 +0000 fix(ui): align footer branding navigation and legal row
+origin/fix/adam/restore-landing 2026-10-20 01:40:49 +0000 fix(ui): restore original hero and scroll-driven landing
+origin/feat/adam/landing-redesign 2026-10-20 01:20:48 +0000 fix(ui): preserve reading gestures and keyboard focus
+origin/feat/alan/live-retrain-v7 2026-10-19 20:27:10 -0400 feat(rl-live): v7 run evidence, platform agreement test, verdict reject
+origin/feat/alan/runtime-principal-detector 2026-10-19 18:45:31 -0400 feat(contracts,backend,rl): 0.14 runtime principal detection feeds the RL defense (ADR-0017)
+origin/feat/alan/v6-evidence-restore 2026-10-19 14:56:39 -0400 feat(rl-live): restore original v6 checkpoint and experience bytes as hash-pinned evidence
+origin/feat/adam/defense-switch 2026-10-19 17:51:05 +0000 test(ui): verify defense switch persists through real API
+origin/feat/adam/lab-redesign-v2 2026-10-19 13:48:37 -0400 Merge branch 'main' into feat/adam/lab-redesign-v2
+origin/feat/alan/live-v6-dqfd 2026-10-19 17:24:24 +0000 docs: preserve complete histories during RL integration
+origin/feat/alan/serve-live-v3 2026-10-19 13:21:43 -0400 Merge pull request #361 from adamissac/fix/adam/live-v3-review
+origin/fix/adam/dqfd-review 2026-10-19 17:18:17 +0000 test(e2e): match sandbox owner approval on training branch
+origin/fix/adam/live-v3-review 2026-10-19 17:17:12 +0000 test(e2e): honor explicit sandbox owner approval policy
+origin/fix/adam/sandbox-runtime-approval 2026-10-19 05:26:57 -0400 fix(security): align runtime with sandbox owner approval
+origin/fix/adam/assessment-approval-flow 2026-10-19 05:22:20 -0400 docs(api): describe sandbox owner approval policy
+origin/fix/adam/calm-video-zoom 2026-10-19 05:07:53 -0400 fix(frontend): ease video zoom slowly after hard scrolling
+origin/feat/alan/live-v5-cql 2026-10-19 05:02:53 -0400 Merge remote-tracking branch 'origin/main' into feat/alan/live-v5-cql
+origin/feat/adam/specialists-bundled-digests 2026-10-19 01:58:08 -0700 feat(specialists): mark real-corpus rows and record bundled digests in manifests
+origin/fix/adam/video-scroll-stop 2026-10-19 04:53:40 -0400 Merge remote-tracking branch 'origin/main' into fix/adam/video-scroll-stop
+origin/feat/adam/cloud-20261019-0827 2026-10-19 08:29:42 +0000 docs(status): dedupe
+origin/fix/adam/player-floor-adr-docs 2026-10-19 04:18:24 -0400 fix: video height floor on short screens; ADR index and pricing note
+origin/feat/adam/explainer-player-polish 2026-10-19 04:03:21 -0400 fix(frontend): explainer player shows a preview and visible controls
+origin/docs/adam/haiku-default-specs 2026-10-19 03:52:55 -0400 docs(decisions): index ADR-0015 in the decisions README
+origin/feat/adam/specialists-live-comparison 2026-10-19 03:37:55 -0400 fix(specialists): keep non-provider crashes, per-invocation specialist provenance, reject empty --configs
+origin/feat/alan/live-v4-final 2026-10-19 03:30:47 -0400 docs(rl-live): record v4 pre-registration SHA mapping after main history rewrite
+origin/feat/alan/live-v4 2026-10-19 02:39:04 -0400 feat(rl-live): v4 reward flag, delegation-aware detector, multi-val selection; pre-register val_v4 and holdout_v4
+origin/feat/adam/cloud-20261019-0623 2026-10-19 06:32:05 +0000 Merge remote-tracking branch 'origin/main' into feat/adam/cloud-20261019-0623
+origin/feat/alan/serve-v2-recommendations 2026-10-19 02:13:47 -0400 Merge remote-tracking branch 'origin/main' into feat/alan/serve-v2-recommendations
+origin/feat/alan/live-v3 2026-10-19 02:05:59 -0400 merge origin/main into feat/alan/live-v3; retarget v3 action proposal to interim shared/ approver
+origin/feat/alan/ci-backend-rl-integration 2026-10-19 01:49:25 -0400 ci(backend): run the backend <-> rl_defense integration test instead of skipping it
+origin/feat/alan/srihith-handover 2026-10-19 01:42:08 -0400 docs(coordination): record Srihith's departure and interim shared/ approval
+origin/fix/GH-repo-list-refresh 2026-10-18 22:29:31 -0700 fix(github): refresh personal-installation repositories live in the picker
+origin/fix/adam/remove-home-invitation 2026-10-19 01:23:57 -0400 docs(frontend): drop stale homepage invitation README claim
+origin/feat/alan/shared-block-principal 2026-10-19 01:16:09 -0400 feat(shared): add block_principal to DefenseActionName
+origin/feat/UI-connect-real-assessment 2026-10-18 22:12:43 -0700 fix(ui): say when connected-commit lists are first-page only
+origin/feat/alan/live-block-principal 2026-10-19 00:59:07 -0400 docs(rl-live): record reworded pre-registration commit in v2 provenance
+origin/fix/SEC-live-probe-roe 2026-10-18 21:34:53 -0700 test(security): issue rules of engagement in the live Probe test
+origin/feat/adam/cloud-20261019-0600 2026-10-19 00:24:27 -0400 chore: refresh PR tip after author rewrite
+origin/feat/alan/live-rl-retrain 2026-10-19 00:23:53 -0400 Merge remote-tracking branch 'origin/main' into feat/alan/live-rl-retrain
+origin/feat/alan/live-rl-loop 2026-10-18 23:42:47 -0400 test(rl): add fastapi/httpx dev deps so live-loop tests run in CI
+origin/feat/adam/specialist-models 2026-10-18 22:55:03 -0400 feat(specialists): one trained model per security agent, advisory and evidence-gated
+origin/feat/adam/live-commit-analysis-video 2026-10-18 22:20:10 -0400 fix(frontend): explainer chapter on the light surface after the hero
+origin/feat/adam/cloud-20261019-0217 2026-10-19 02:17:13 +0000 docs(status): Adam cloud run 2026-10-19 02:17Z no-op
+origin/feat/adam/cloud-20261019-0016 2026-10-19 00:16:59 +0000 docs(status): Adam cloud run 2026-10-19 00:16Z no-op
+origin/feat/adam/cloud-20261018-2000 2026-10-18 22:16:57 +0000 docs(status): Adam cloud run 2026-10-18 20:15Z no-op
+origin/feat/adam/cloud-20261019-0400 2026-10-18 20:17:30 +0000 docs(status): Adam cloud run 2026-10-19 04:00Z no-op
+origin/feat/adam/cloud-20261018-1816 2026-10-18 18:16:59 +0000 docs(status): Adam cloud run 2026-10-18 18:15Z no-op
+origin/feat/adam/cloud-20261018-2359 2026-10-18 16:17:42 +0000 docs(status): Adam cloud run 2026-10-19 02:00Z no-op
+origin/feat/adam/cloud-20261019-0000 2026-10-18 14:17:25 +0000 docs(status): Adam cloud run 2026-10-19 00:00Z no-op
+origin/feat/adam/cloud-20261018-2200 2026-10-18 12:17:28 +0000 docs(status): Adam cloud run 2026-10-18 22:00Z no-op
+origin/feat/adam/cloud-20261018-1800 2026-10-18 08:21:51 +0000 docs(status): Adam cloud run 2026-10-18 18:00Z no-op
+origin/fix/srihith/drill-source 2026-10-18 02:56:10 -0400 fix(monitoring): attack drills get their own RuntimeSource "drill" (contracts 0.12, #273)
+origin/feat/adam/trailer 2026-10-18 02:38:45 -0400 feat(trailer): render the 3:48 explainer (1080p30 web MP4 + poster)
+origin/feat/adam/cloud-20261018-1600 2026-10-18 06:32:27 +0000 docs(status): Adam cloud run 2026-10-18 16:00Z no-op
+origin/claude/wizardly-mccarthy-hni97r 2026-10-18 00:33:40 -0400 Merge pull request #299 from adamissac/feat/adam/cloud-20261018-run
+origin/feat/adam/cloud-20261018-run 2026-10-18 04:33:27 +0000 docs(status): Adam cloud run 2026-10-18 handoff
+origin/fix/adam/evaluation-language 2026-10-17 23:54:46 -0400 test(e2e): align demo, pages and journey specs with #297 evaluation copy
+origin/feat/adam/home-next-step 2026-10-17 23:09:44 -0400 fix(frontend): center sign-in over subtle animated background
+origin/feat/adam/cloud-20261018 2026-10-18 03:05:52 +0000 docs(status): adam cloud run 2026-10-18 (rl install stalled)
+origin/feat/sai/pricing-four-tiers 2026-10-17 21:00:52 -0400 feat(frontend): four pricing plans priced by assessments and source lines
+origin/fix/srihith/landing-pricing-nav-test 2026-10-17 20:53:42 -0400 test(e2e): Pricing nav link matches its siblings after #290 (fixes main frontend CI)
+origin/fix/pricing-nav-style 2026-10-17 20:44:00 -0400 fix(frontend): match pricing navigation to sibling links
+origin/feat/vihaan/live-defense 2026-10-17 20:19:58 -0400 Revert "feat(live-defense): telemetry ingest, rules, RL-with-floor policy, gate, signed controls, verify, expiry"
+origin/fix/srihith/footer-under-signin 2026-10-17 20:15:36 -0400 fix(ui): mark the auth stage in a layout effect so the footer never paints under it
+origin/feat/srihith/auth-screens-hero 2026-10-17 20:00:38 -0400 feat(ui): sign-in screens on the home hero's stage
+origin/feat/sai/reviewer-eval-corpus-v2 2026-10-17 19:58:08 -0400 feat(code-review): independent evaluation corpus with executed labels and precision/recall scorer
+origin/fix/adam/demo-user-akshar 2026-10-17 23:56:43 +0000 test(frontend): provenance test follows the removed sample-data tag and footer
+origin/feat/sarosh/demo-provenance-labels 2026-10-17 19:37:55 -0400 docs(frontend): record integrated provenance verification
+origin/feat/sai/lab-ui-polish 2026-10-17 19:29:16 -0400 feat(frontend): Defense Lab polish — player under the map, section rhythm, quieter caveat
+origin/fix/adam/demo-account-refine 2026-10-17 23:26:20 +0000 fix(demo): friend's Lumen Pay account framing; survive API restarts during deploys
+origin/feat/srihith/demo-access-code 2026-10-17 19:09:42 -0400 feat(demo): demo account behind an access code; remove public demo links
+origin/feat/sai/lab-scoreboard-polish 2026-10-17 19:02:51 -0400 feat(frontend): cleaner Defense Lab scoreboard — headline numbers, range bands, quiet notes
+origin/feat/adam/commit-agent-map 2026-10-17 23:01:56 +0000 Merge remote-tracking branch 'origin/main' into feat/adam/commit-agent-map
+origin/feat/sai/lab-player-minimal 2026-10-17 18:51:51 -0400 fix(frontend): the truth switch's real checkbox sits on top so clicks reach it
+origin/chore/adam/human-only-contributors-coauthor 2026-10-17 18:26:47 -0400 docs(coordination): contributors rewrite uses human Co-authored-by
+origin/feat/adam/attack-drill 2026-10-17 22:24:55 +0000 feat(defense): attack drill — Claude plans a simulated attack, real detection responds
+origin/fix/adam/vercel-ignore-prev-sha 2026-10-17 18:15:27 -0400 fix(vercel): compare against the last deployed commit when skipping builds
+origin/docs/sai/status-cycle 2026-10-17 18:10:33 -0400 docs(status): Sai cycle — #244 status, Verify docs
+origin/docs/srihith/tallybook-demo 2026-10-17 18:06:33 -0400 docs(demo): Tallybook customer repo, answer key and end-to-end demo run
+origin/chore/adam/human-only-contributors 2026-10-17 18:06:22 -0400 chore(git): attribute commits to the six humans, not AI agents
+origin/docs/sai/verify-red-green-docs 2026-10-17 18:05:17 -0400 docs: Verify red→green rule for security patches; #244 status note
+origin/fix/adam/vercel-deploy-quota 2026-10-17 17:59:15 -0400 ci(vercel): deploy only main, and only when the frontend changed
+origin/fix/sai/verify-red-predicate 2026-10-17 17:56:26 -0400 fix(security): unpatched red uses the shared clean-reproduction predicate (#252)
+origin/fix/srihith/checks-any-app-factory 2026-10-17 17:48:59 -0400 fix(security): check templates import the recipe's app_factory, not payments_lite
+origin/feat/adam/clear-defense-journey 2026-10-17 17:34:05 -0400 Merge remote-tracking branch 'origin/main' into feat/adam/clear-defense-journey
+origin/docs/alan/demo-truthfulness 2026-10-17 17:31:31 -0400 feat(demo): show the recorded live M3 run beside the simulated demo; honest RL wording; demo runbook
+origin/feat/srihith/public-home-sign-in 2026-10-17 17:27:37 -0400 test(e2e): landing tests open the public home page without signing in
+origin/fix/sai/unpin-header 2026-10-17 17:23:35 -0400 fix(frontend): header scrolls away on inner pages; landing keeps its fixed header
+origin/fix/adam/oauth-callback-host 2026-10-17 21:19:15 +0000 fix(auth): GitHub callback on the backend domain bounces to the public origin
+origin/docs/adam/m8-evidence 2026-10-17 17:15:38 -0400 docs(coordination): M8 deployment evidence, independently verified
+origin/fix/srihith/enforce-operator-budget-cap 2026-10-17 17:11:54 -0400 fix(backend): enforce LLM_MAX_USD/TOKENS_PER_ASSESSMENT operator caps (NFR-07, #244 P1)
+origin/fix/sai/reviewer-sandbox-followup 2026-10-17 17:11:33 -0400 fix(review): fail closed on invalid hosted settings in sandbox selection; README for #246 policy
+origin/docs/srihith/cvss-runtime-truth 2026-10-17 17:05:42 -0400 docs+ui: CVSS semantics match ADR-0012 (#244 P1)
+origin/docs/adam/m3-live-evidence 2026-10-17 17:04:25 -0400 Merge remote-tracking branch 'origin/main' into docs/adam/m3-live-evidence
+origin/feat/vihaan/idempotent-actions 2026-10-17 17:02:57 -0400 test(e2e): sign in on a console page; pin the public home page
+origin/docs/srihith/hosted-e2e-prompt 2026-10-17 17:02:10 -0400 docs(prompts): hosted end-to-end run prompt (#244 P0 hosted integration)
+origin/docs/alan/m3-live-pass 2026-10-17 16:55:02 -0400 docs(milestones): fix escapes and heading in the M3 entry
+origin/fix/sai/verify-red-green 2026-10-17 16:53:59 -0400 fix(security): Verify requires Patch's added tests to fail on the unpatched snapshot
+origin/feat/srihith/assessment-repo-id 2026-10-17 16:47:07 -0400 feat(contracts): 0.11 Assessment.repo_id so findings link source in multi-repo scopes (#244)
+origin/fix/srihith/reviewer-sandbox-fail-closed 2026-10-17 16:40:45 -0400 fix(review): reviewer sandbox follows the agents' isolation policy; no host fallback off-dev (#244 P0)
+origin/docs/srihith/product-readiness-audit 2026-10-17 16:34:52 -0400 docs(readiness): note #239 merged in the hosted-integration P0 item
+origin/feat/adam/github-onboarding 2026-10-17 16:28:45 -0400 Merge origin/main into feat/adam/github-onboarding
+origin/fix/sai/m3-fortify-schema 2026-10-17 16:25:11 -0400 fix(security): Fortify schema-valid final output and a strict live M3 assertion
+origin/feat/adam/cloud-20261017-run 2026-10-17 20:21:47 +0000 docs(status): adam cloud run no-op entry
+origin/fix/srihith/header-contrast-stale-tone 2026-10-17 16:18:16 -0400 fix(frontend): header contrast re-reads the surface when the page settles (#240)
+origin/fix/sai/probe-subject-routes-nr3gdi 2026-10-17 19:37:13 +0000 refactor(security): name the Probe route label helper; document subject-route precedence
+origin/docs/sai/frontend-readme-refresh 2026-10-17 14:58:53 -0400 docs(frontend): refresh README for landing, pricing, Lab replay, brand mark and motion; cycle note
+origin/fix/alan/probe-route-granularity 2026-10-17 14:40:56 -0400 fix(security): adversarial review fixes for Probe discovery and recipe binding
+origin/feat/adam/railway-backend 2026-10-17 18:35:27 +0000 feat(security-agents): Vercel Sandbox driver (SECURITY_SANDBOX=vercel)
+origin/docs/sai/cycle-signin-pricing 2026-10-17 14:28:11 -0400 docs(coordination): sign-in tab, pricing honesty, single lab game (#232); SAI status
+origin/feat/sai/signin-pricing-honesty 2026-10-17 14:24:19 -0400 fix(frontend): combine phone header fixes for account chip
+origin/audit/alan/m3-readiness 2026-10-17 13:52:09 -0400 docs(coordination): M3 live run readiness and operator checklist
+origin/feat/adam/hosted-demo-scroll 2026-10-17 17:45:40 +0000 docs: scroll performance and demo-only build (handoff, coordination)
+origin/feat/adam/simulated-demo 2026-10-17 13:22:36 -0400 Merge origin/main (keep both handoff entries)
+origin/feat/adam/rl005-no-action-path 2026-10-17 17:04:35 +0000 test(rl): no API route can apply a defense recommendation (RL-005)
+origin/docs/sai/lab-premium-msg 2026-10-17 12:58:00 -0400 docs(coordination): premium Defense Lab replay (#214, #223)
+origin/feat/srihith/idempotent-mutations 2026-10-17 12:56:09 -0400 feat(api): Idempotency-Key on create/decide endpoints (Vihaan's ask)
+origin/feat/vihaan/fix-round-2 2026-10-17 12:54:56 -0400 fix(lab): ground-truth box uses the site's mono type
+origin/feat/sai/defense-lab-premium 2026-10-17 12:53:08 -0400 fix(frontend): Defense Lab polish from browser review
+origin/feat/adam/event-log-cursor-follow 2026-10-17 16:51:16 +0000 Merge origin/main into feat/adam/event-log-cursor-follow
+origin/docs/sai/hero-momentum-msg 2026-10-17 12:40:24 -0400 docs(coordination): hero momentum (#220)
+origin/fix/srihith/persist-tool-summaries 2026-10-17 12:38:36 -0400 fix(security): persisted transcripts keep each tool call's bounded result summary
+origin/feat/sai/hero-momentum 2026-10-17 12:36:28 -0400 feat(frontend): stronger momentum and a hero that rides it
+origin/fix/alan/m3-live-roe 2026-10-17 12:32:27 -0400 fix(security): Probe can discover valid check parameters; RoE honours category aliases
+origin/fix/srihith/trace-results-and-monitoring-cursor 2026-10-17 12:30:32 -0400 fix: tool trace keeps successful results; transport pages the monitoring feed
+origin/feat/sarosh/hero-momentum-scroll 2026-10-17 12:21:47 -0400 docs(coordination): notify frontend owners of hero momentum follow-up
+origin/feat/alan/verify-http-recheck 2026-10-17 12:17:57 -0400 feat(security): Verify can re-run the http check against the patched workspace
+origin/feat/srihith/report-tool-trace 2026-10-17 12:16:19 -0400 feat(security): per-run tool_trace in the assessment report (M3 diagnosability)
+origin/fix/srihith/truncating-list-cursors 2026-10-17 12:07:36 -0400 fix(api): capped lists page with real cursors instead of silently truncating
+origin/codex/backend-artifact-snapshot-fixes 2026-10-17 12:04:13 -0400 fix(backend): retain snapshot reuse after a newer profile fails
+origin/docs/srihith/status-1600 2026-10-17 12:01:04 -0400 docs(status): Srihith 30-minute sweep (#205 events cursor; merged #195 #197 #201 #204)
+origin/docs/sai/faq-momentum-msg 2026-10-17 11:58:33 -0400 docs(coordination): FAQ + momentum scroll (#206)
+origin/feat/adam/create-incident-note 2026-10-17 11:56:46 -0400 Merge origin/main (keep both doc entries)
+origin/fix/sarosh/relative-import-grounding 2026-10-17 11:56:41 -0400 docs(planning): mark relative-import grounding done via PR 201
+origin/feat/alan/snapshot-http-target 2026-10-17 11:55:48 -0400 test(security): make the copied snapshot file writable before patching it
+origin/feat/sai/faq-momentum 2026-10-17 11:55:16 -0400 Merge remote-tracking branch 'origin/main' into feat/sai/faq-momentum
+origin/feat/adam/request-scope-note 2026-10-17 11:52:54 -0400 Merge origin/main (README rows combined; keep both doc entries)
+origin/fix/srihith/events-log-cursor 2026-10-17 11:52:38 -0400 fix(api): events log returns a real next_cursor (Adam's ask)
+origin/docs/sai/pricing-msg 2026-10-17 11:45:21 -0400 docs(coordination): pricing page (#202)
+origin/feat/vihaan/fix-round 2026-10-17 11:42:32 -0400 Merge remote-tracking branch 'origin/main' into feat/vihaan/fix-round
+origin/feat/sai/pricing 2026-10-17 11:41:26 -0400 feat(frontend): pricing page in the kairo.security layout
+origin/feat/adam/event-log-page-note 2026-10-17 11:39:40 -0400 Merge origin/main (keep both doc entries)
+origin/feat/adam/cancel-assessment-note 2026-10-17 11:39:13 -0400 Merge origin/main (keep both doc entries)
+origin/fix/alan/offline-font-build 2026-10-17 11:38:19 -0400 Merge origin/main (keep both doc/status entries)
+origin/feat/adam/start-assessment-note 2026-10-17 11:34:38 -0400 merge: remote start-assessment updates
+origin/docs/sai/lab-redesign-msg 2026-10-17 11:33:35 -0400 docs(coordination): Defense Lab redesign (#198)
+origin/feat/sai/lab-redesign 2026-10-17 11:26:28 -0400 feat(frontend): Defense Lab redesign — easier to read and to replay
+origin/feat/sarosh/intelligence-maintenance 2026-10-17 11:24:22 -0400 Merge remote-tracking branch 'origin/main' into feat/sarosh/intelligence-maintenance
+origin/docs/sai/next-step-live-demo 2026-10-17 11:19:36 -0400 docs(coordination): next step — live recorded end-to-end demo run, owners needed
+origin/docs/sai/ant-logo-msg 2026-10-17 11:08:28 -0400 docs(coordination): bare ant logo (#186)
+origin/fix/alan/explicit-conflict-recovery 2026-10-17 11:05:33 -0400 Merge remote-tracking branch 'origin/main' into fix/alan/explicit-conflict-recovery
+origin/feat/vihaan/ux-clarity 2026-10-17 11:05:19 -0400 Merge remote-tracking branch 'origin/main' into feat/vihaan/ux-clarity
+origin/feat/sai/ant-only-logo 2026-10-17 11:05:04 -0400 feat(frontend): bare ant logo (Kairo-style), no tile
+origin/docs/sai/page-polish-msg 2026-10-17 10:58:51 -0400 docs(coordination): app page polish (#184)
+origin/feat/sai/page-polish 2026-10-17 10:55:25 -0400 feat(frontend): carry the landing design through the app pages
+origin/test/alan/demo-recovery-smoke 2026-10-17 10:54:35 -0400 Merge origin/main into test/alan/demo-recovery-smoke (keep both doc entries)
+origin/fix/adam/rl-readme-install 2026-10-17 10:53:30 -0400 docs(rl): README install line includes ../standards (matches rl.yml)
+origin/docs/sarosh/ari-logo-merged 2026-10-17 10:52:42 -0400 docs(coordination): record merged Ari logo verification
+origin/fix/srihith/verify-binds-verified-bytes 2026-10-17 10:49:09 -0400 style: ruff fix
+origin/test/alan/hosted-http-probe-persistence 2026-10-17 10:43:03 -0400 test(security): hosted Docker run persists Probe's http evidence on PostgreSQL
+origin/feat/sarosh/ari-logo 2026-10-17 10:42:21 -0400 Merge remote-tracking branch 'origin/main' into feat/sarosh/ari-logo
+origin/fix/srihith/patch-diff-hash-stored 2026-10-17 10:39:16 -0400 fix(security): Patch candidate diff_sha256 names the stored (redacted) artifact (#155)
+origin/feat/alan/probe-http-transport 2026-10-17 10:38:13 -0400 feat(security): Probe can run reviewed checks over HTTP against the Docker target
+origin/docs/sai/logo-signoff 2026-10-17 10:34:03 -0400 docs(coordination): logo placement sign-off for #169; SAI status
+origin/docs/sai/graph-msg 2026-10-17 10:32:17 -0400 docs(coordination): graph-view episode replay (#174)
+origin/feat/sai/graph-replay 2026-10-17 10:29:35 -0400 feat(frontend): Obsidian-style graph view for the Defense Lab episode replay
+origin/docs/srihith/status-monitor-resume 2026-10-17 10:26:43 -0400 docs(status): Srihith — monitor loop resumed after Devin (#166, #168 merged; #156 awaiting author)
+origin/docs/adam/m5-evidence 2026-10-17 10:24:33 -0400 docs(coordination): M5 gate evidence (Double DQN) re-verified on main
+origin/docs/sai/cta-spacing-msg 2026-10-17 10:24:07 -0400 docs(coordination): CTA spacing fix (#167)
+origin/feat/adam/cloud-20261017-1500 2026-10-17 14:23:12 +0000 docs(status): adam cloud run no-op
+origin/feat/alan/http-check-transport 2026-10-17 10:21:38 -0400 feat(security): opt-in HTTP check transport that reaches a real Docker target
+origin/feat/sai/cta-spacing 2026-10-17 10:21:28 -0400 fix(frontend): white space between landing CTA band and footer
+origin/fix/alan/demo-api-reliability 2026-10-17 10:19:16 -0400 docs(api): record retry guarantees and integration evidence (API-RETRY-001)
+origin/docs/sai/story-msg 2026-10-17 10:17:12 -0400 docs(coordination): landing story chapters merged (#163)
+origin/feat/sai/story-sections 2026-10-17 10:14:24 -0400 feat(frontend): scroll-told landing chapters (Kairo pattern)
+origin/docs/sai/landing-split-msg 2026-10-17 10:08:06 -0400 docs(coordination): / landing, projects at /projects (#161)
+origin/feat/sai/landing-split 2026-10-17 10:05:13 -0400 feat(frontend): landing page explains Ari AI; projects move to /projects
+origin/docs/sai/hero-intro-msg 2026-10-17 09:59:13 -0400 docs(coordination): hero intro/header merged (#157); SAI status
+origin/docs/srihith/m3-live-attempt 2026-10-17 09:57:40 -0400 docs(m3): live seven-role attempt — FAIL at Probe (inconclusive), Scout+Probe live, $0.38
+origin/feat/sai/hero-intro 2026-10-17 09:56:14 -0400 feat(frontend): Kairo-style intro loader, floating header and full-screen pinned hero
+origin/feat/adam/rl-training-r4 2026-10-17 09:55:38 -0400 Merge remote-tracking branch 'origin/main' into feat/adam/rl-training-r4
+origin/docs/sai/hero-motion-msg 2026-10-17 09:48:59 -0400 docs(coordination): hero motion merged (#153)
+origin/feat/sai/hero-motion 2026-10-17 09:46:43 -0400 feat(frontend): interactive hero motion inspired by kairo.security
+origin/docs/sarosh/profile-merge-handoff 2026-10-17 09:45:35 -0400 docs(coordination): record merged ingestion profile proof
+origin/fix/sarosh/intelligence-scope-cache 2026-10-17 09:40:11 -0400 Merge remote-tracking branch 'origin/main' into fix/sarosh/intelligence-scope-cache
+origin/docs/sai/typography-msg 2026-10-17 09:39:03 -0400 docs(coordination): typography system merged (#149)
+origin/feat/sai/typography 2026-10-17 09:36:01 -0400 feat(frontend): typography — Space Grotesk headings, Inter body/nav/metrics, IBM Plex Mono technical text
+origin/docs/sarosh/codex-handoff 2026-10-17 13:26:50 +0000 Merge remote-tracking branch 'origin/main' into merge-145
+origin/docs/alan/handoff-worktree 2026-10-17 09:24:19 -0400 docs(planning): handoff, status accuracy, review packet, shared-worktree warning
+origin/feat/alan/check-review-packet 2026-10-17 09:23:25 -0400 feat(security): review packet for human sign-off of Probe check templates (SEC-005)
+origin/fix/alan/m7-runner-isolation 2026-10-17 09:21:26 -0400 fix(qa): isolate M7 demo runner from shared database (QA-002)
+origin/docs/alan/status-accuracy 2026-10-17 09:20:34 -0400 docs(status): accurate verified and unverified list for security agents; ACK #127 and #133
+origin/docs/alan/security-docker-evidence 2026-10-17 09:19:04 -0400 docs(security): reconcile Docker execution evidence (SEC-004)
+origin/fix/sai/owasp-2025-standalone 2026-10-17 08:29:05 -0400 fix(standards): 2025 OWASP matrix cites only tests/security so the security suite passes standalone
+origin/docs/sai/review-139 2026-10-17 08:16:09 -0400 docs(coordination): Sai — review of #139 (standalone tests/security run)
+origin/devin/1792238876-owasp-2025-mirror 2026-10-17 12:07:56 +0000 feat(standards): mirror Sai's reviewer controls into the 2025 OWASP LLM matrix
+origin/feat/adam/index-note 2026-10-17 07:53:54 -0400 feat(ui): say what indexing a commit does not do
+origin/docs/sai/status-cycle27 2026-10-17 07:50:29 -0400 docs(coordination): Sai status — cycles 14–27
+origin/feat/adam/create-project-note 2026-10-17 07:44:02 -0400 feat(ui): say what creating a project does not do
+origin/feat/srihith/owasp-reviewer-controls 2026-10-17 07:43:10 -0400 feat(standards): credit the reviewer's tested controls in the OWASP LLM 2025 matrix
+origin/feat/sai/owasp-reviewer-2026 2026-10-17 07:34:46 -0400 test(security): OWASP LLM 2026 evidence for the reviewer agent; matrix rows, manifest, rendered doc
+origin/feat/srihith/roe-persistence 2026-10-17 07:34:46 -0400 fix(host): record_roe emits no stream event (it can follow the terminal event)
+origin/feat/adam/honest-headline 2026-10-17 07:34:13 -0400 fix(ui): stop saying every fix is already proven
+origin/feat/adam/connect-note 2026-10-17 07:24:26 -0400 feat(ui): say what connecting a repository does not do
+origin/docs/srihith/milestone-evidence-precision 2026-10-17 07:23:55 -0400 docs(milestones): qualify path-filtered CI scope; cite executed green runs for M0/M4
+origin/fix/srihith/env-example-guard 2026-10-17 07:22:06 -0400 fix(env): no inline comments after empty values in .env.example
+origin/docs/sai/docker-verified 2026-10-17 07:19:37 -0400 docs(review): reviewer Docker sandbox path verified in CI; update M2 limitation
+origin/feat/sai/docker-reviewer-proof 2026-10-17 07:16:32 -0400 Merge remote-tracking branch 'origin/main' into feat/sai/docker-reviewer-proof
+origin/feat/adam/monitoring-summary 2026-10-17 07:14:06 -0400 docs(planning): record the monitoring summary test results
+origin/docs/alan/docker-sandbox-evidence 2026-10-17 07:11:05 -0400 Merge remote-tracking branch 'origin/main' into docs/alan/docker-sandbox-evidence
+origin/ci/alan/docker-sandbox-live 2026-10-17 07:08:00 -0400 ci(security): run reviewed Probe checks through the Docker driver
+origin/feat/adam/assessment-phases 2026-10-17 07:04:55 -0400 merge(main): keep the assessment phases and the findings-tab note
+origin/docs/alan/hosted-artifacts-note 2026-10-17 07:03:19 -0400 docs(coordination): hosted SARIF and RoE artifacts note
+origin/feat/alan/hosted-sarif-roe-artifacts 2026-10-17 06:59:26 -0400 feat(security): hosted assessments store the SARIF log and rules of engagement as report artifacts
+origin/feat/adam/finding-groups 2026-10-17 10:59:06 +0000 Merge remote-tracking branch 'origin/main' into merge-120
+origin/feat/adam/assessment-phase 2026-10-17 10:55:18 +0000 Merge remote-tracking branch 'origin/main' into merge-115
+origin/docs/sai/owasp-reviewer-rows 2026-10-17 06:53:18 -0400 docs(coordination): Sai — OWASP LLM matrix reviewer controls proposal
+origin/feat/adam/lab-step-story 2026-10-17 10:50:48 +0000 Merge remote-tracking branch 'origin/main' into merge-111
+origin/docs/alan/claude-md-commands 2026-10-17 06:48:50 -0400 docs: security-agents commands in CLAUDE.md
+origin/docs/alan/p1-notes 2026-10-17 06:46:34 -0400 docs(status): Alan status and handoff for P1 work
+origin/feat/alan/owasp-llm-agent-runtime 2026-10-17 06:45:44 -0400 Merge remote-tracking branch 'origin/main' into feat/alan/owasp-llm-agent-runtime
+origin/feat/alan/sarif-export 2026-10-17 06:42:19 -0400 feat(security): SARIF 2.1.0 export validated against the pinned OASIS schema
+origin/docs/sai/review-task-status 2026-10-17 06:41:01 -0400 docs(planning): REVIEW-001..003 owned by Sai, DONE with evidence
+origin/feat/adam/project-journey 2026-10-17 06:33:51 -0400 feat(ui): show the latest check as six recorded phases
+origin/fix/alan/trace-sensitivity-from-expectations 2026-10-17 06:33:33 -0400 Merge remote-tracking branch 'origin/main' into fix/alan/trace-sensitivity-from-expectations
+origin/feat/alan/shared-cvss31 2026-10-17 06:33:15 -0400 chore: resync PR head after revert
+origin/docs/alan/sec-task-status 2026-10-17 06:33:01 -0400 docs(status): Alan status after #100 and #103
+origin/feat/adam/lab-episode-story 2026-10-17 10:26:30 +0000 Merge remote-tracking branch 'origin/main' into merge-105
+origin/feat/adam/finding-story 2026-10-17 10:22:28 +0000 Merge remote-tracking branch 'origin/main' into merge-104
+origin/devin/1792232277-fix-standards-host-labels 2026-10-17 10:17:57 +0000 fix(tests): point host-mode test at the fixture labels file
+origin/feat/adam/project-overview 2026-10-17 06:17:41 -0400 Merge remote-tracking branch 'origin/main' into feat/adam/project-overview
+origin/devin/m7-demo-validation 2026-10-17 06:16:10 -0400 feat(qa): add M7 demo validation with genuine end-to-end verification
+origin/feat/alan/m3-live-seven-smoke 2026-10-17 06:11:57 -0400 docs(planning): handoff for standards P0 and M3 evidence
+origin/devin/demo-reliability 2026-10-17 06:11:52 -0400 fix(qa): refactor preflight to use shared test schema
+origin/devin/1792231812-monitoring-budget-doc 2026-10-17 10:10:12 +0000 docs(shared): note that monitoring_budget default is intentionally small
+origin/feat/alan/standards-roe-wiring 2026-10-17 06:06:42 -0400 docs(security): ADR-0012 CVSS v3.1 level with v4.0 alongside, RQ-016, RoE docs and coordination messages
+origin/feat/adam/finding-expectations 2026-10-17 06:06:35 -0400 Merge remote-tracking branch 'origin/main' into feat/adam/finding-expectations
+origin/fix/srihith/rl-checkpoint-integrity 2026-10-17 09:55:18 +0000 fix(rl): load the same bytes that were pinned — close check/load TOCTOU
+origin/docs/sai/m2-evidence 2026-10-17 05:54:55 -0400 docs(milestones): record M2 (reviewer) with live and CI evidence
+origin/feat/adam/frontend-agent-view 2026-10-17 05:53:39 -0400 merge: keep the agent-view tests and the CheckCategory notes from main
+origin/feat/alan/verify-honesty-check-category 2026-10-17 09:45:49 +0000 merge: keep both task-board notes from main and this branch
+origin/fix/srihith/qa-reliability 2026-10-17 05:42:01 -0400 chore(qa): integrate validated QA tools with current main
+origin/docs/srihith/m0-compose 2026-10-17 05:36:50 -0400 docs(milestones): M0 evidence (all six owner ACKs, contract checks in CI); compose-stack runs in CI
+origin/fix/srihith/fortify-closure-artifacts 2026-10-17 05:34:50 -0400 chore(integration): combine closure evidence with canonical reference catalogs
+origin/test/srihith/m7-push-to-regression 2026-10-17 05:32:06 -0400 test(m7): signed push -> seven agents -> independent Verify -> verified regressions, one test
+origin/fix/srihith/check-category-ui 2026-10-17 05:30:57 -0400 fix(ui): consume canonical scope check categories
+origin/feat/srihith/killswitch-error-code 2026-10-17 09:30:23 +0000 Merge branch 'feat/srihith/killswitch-error-code' of https://git-manager.devin.ai/proxy/github.com/adamissac/hackatl-agentic-security into feat/srihith/killswitch-error-code
+origin/feat/alan/recovered-catalogs 2026-10-17 05:29:52 -0400 fix(standards): resolve catalog integration against current main
+origin/feat/srihith/compose-artifact-store 2026-10-17 09:29:41 +0000 docs(status): session 7 follow-ups (#85 merged, #89 opened)
+origin/feat/srihith/functional-verify-honesty 2026-10-17 05:22:31 -0400 docs(coordination): align #85 message with the landed 'none' label
+origin/feat/sai/redaction-hash-proof 2026-10-17 05:06:26 -0400 test(review): prove reviewer diff_sha256 matches the redacted stored artifact on the real host
+origin/feat/alan/host-resume-hardening 2026-10-17 08:59:25 +0000 style(security): ruff-format resume-hardening and record test evidence
+origin/fix/srihith/verify-followups 2026-10-17 04:56:18 -0400 fix(verify): close the remaining #71/#73 review items
+origin/devin/1792226619-incident-closure 2026-10-17 01:54:10 -0700 docs(coordination): re-verify fortify artifact gap after #73
+origin/feat/sai/test-path-contract 2026-10-17 04:52:34 -0400 test(review): lock repo-relative generated-test path contract used by functional Verify; status
+origin/feat/alan/host-finding-persistence 2026-10-17 04:44:08 -0400 merge: keep finding-lifecycle notes and the new frontend pages
+origin/feat/alan/seven-agent-runtime 2026-10-17 04:44:07 -0400 merge: record the new frontend pages beside the security handoff
+origin/devin/1792226026-frontend-gaps 2026-10-17 01:37:42 -0700 docs(coordination): Adam status — frontend gap pages
+origin/feat/srihith/functional-remediation 2026-10-17 04:32:53 -0400 fix(review): no-snapshot fallback uses a documented synthetic ref, never a random id
+origin/feat/sai/cycle11-notes 2026-10-17 04:27:50 -0400 docs(coordination): Sai — ACK #71 functional remediation
+origin/docs/srihith/status-pass3 2026-10-17 04:24:09 -0400 docs(status): Srihith — unclaimed-work pass (#69, #71 held for #73, #77)
+origin/feat/srihith/transport-snapshots-dtos 2026-10-17 04:21:41 -0400 feat(transport): snapshots() list and report() decoded as shared AssessmentReport
+origin/fix/srihith/gitleaks-commit-pin 2026-10-17 04:19:48 -0400 docs(coordination): credit Sai's #76 for the gitleaks fix
+origin/fix/sai/gitleaks-commit-sha-allowlist 2026-10-17 04:14:42 -0400 ci(secrets): allowlist pinned 40-hex *_COMMIT constants (generic-api-key false positive blocking every PR)
+origin/feat/sai/authz-cwe-test 2026-10-17 04:09:52 -0400 test(review): authorization hand-off carries the catalog-validated CWE to Scout
+origin/feat/sai/status-cycle9 2026-10-17 03:57:20 -0400 docs(coordination): Sai status — cycles 7–9
+origin/feat/alan/security-standards 2026-10-17 03:41:52 -0400 Merge origin/main into Alan's standards follow-up
+origin/feat/sai/functional-verify-inputs 2026-10-17 03:33:31 -0400 feat(review): functional_verification_inputs — integrity-checked evidence bundle for an independent functional Verify
+origin/feat/srihith/detail-report-dtos 2026-10-17 03:25:19 -0400 docs(coordination): Srihith — M6 asks done; functional-remediation design; CVSS ACK
+origin/feat/srihith/snapshot-list 2026-10-17 03:21:14 -0400 feat(api): GET /repositories/{repo_id}/snapshots (status filter, cursor paging)
+origin/feat/srihith/finding-lifecycle 2026-10-17 03:20:00 -0400 feat(host): persisted finding lifecycle with evidence gates; complete usage ledger
+origin/feat/sai/readme-live-evidence 2026-10-17 03:18:51 -0400 docs(review): record live Tier-3 evidence (P1→P2 hand-off verified live); status
+origin/wip/unclaimed-security-agents-0307 2026-10-17 03:07:40 -0400 wip: unclaimed local security-agents edits preserved from Adam's checkout
+origin/feat/sai/cwe-e2e 2026-10-17 03:05:00 -0400 test(review): reviewer CWE classification end to end — valid tag recorded, category dropped, finding survives
+origin/feat/srihith/rl-expectations 2026-10-17 03:03:35 -0400 Merge origin/main into feat/srihith/rl-expectations
+origin/fix/adam/rl-expectation-criticality 2026-10-17 02:58:45 -0400 fix(backend): type-safe error-code extraction in _catalog_code
+origin/feat/sai/cycle4-notes 2026-10-17 02:52:00 -0400 docs(coordination): Sai cycle 4 — ACK #57, status
+origin/feat/sai/tolerant-span-quotes 2026-10-17 02:45:12 -0400 fix(review): tolerant span-quote verification (line numbers, skipped lines, re-anchoring) so security hand-offs reach Scout
+origin/feat/srihith/standards-to-main 2026-10-17 02:41:15 -0400 test(transport): include Finding.standards (contracts 0.7.0) in finding-detail fixture
+origin/feat/sai/eval-security-handoff 2026-10-17 02:29:05 -0400 test(review): answer-key evaluator credits the planted IDOR as a Scout handoff
+origin/feat/sai/cycle2-notes 2026-10-17 02:17:02 -0400 docs(coordination): Sai cycle 2 — #35 CI triage
+origin/feat/sai/cycle1-notes 2026-10-17 01:59:14 -0400 docs(coordination): Sai cycle 1 — #49 review message, status
+origin/feat/sai/decision-consumer 2026-10-17 01:54:14 -0400 test(review): consumer proof — human decisions from the real intelligence memory drive reviewer claims
+origin/docs/adam/visualization-structure 2026-10-17 01:37:02 -0400 docs(ux): record the defense-map and seven-agent visualization structure
+origin/feat/sarosh/intelligence-memory 2026-10-17 00:45:32 -0400 docs(coordination): record PR 39 merge hold pending contract-owner ACK
+origin/feat/srihith/standards-alignment 2026-10-17 00:21:07 -0400 fix(migrations): coexist with the pending intelligence-memory revision
+origin/feat/vihaan/frontend 2026-10-17 00:11:30 -0400 ci(frontend): run on Node 24; jsdom 30 needs ^22.22.2 or >=24.15
+origin/feat/sai/ui-message 2026-10-17 00:04:59 -0400 docs(coordination): Sai — Ari AI UI pass summary for Vihaan and team
+origin/feat/sai/ari-ui 2026-10-17 00:03:39 -0400 fix(frontend): Defense Lab legend names the brand ring colour; DDQN bar stands out from neutral baselines
+origin/feat/sai/status-round3 2026-10-16 23:49:42 -0400 docs(coordination): Sai status — round 3
+origin/feat/sai/functional-remediation 2026-10-16 23:47:37 -0400 feat(review): request and run approval-gated repairs for validated functional findings
+origin/feat/sai/human-decisions 2026-10-16 23:44:00 -0400 feat(review): honor human expectation decisions (confirmed/conflicting/rejected) when adjudicating intent
+origin/feat/srihith/backend-monitoring 2026-10-16 23:35:17 -0400 Merge pull request #37 from adamissac/feat/srihith/backend-monitoring
+origin/feat/sai/status-ci 2026-10-16 23:10:40 -0400 docs(coordination): Sai status — code-review CI live
+origin/feat/sai/review-ci 2026-10-16 23:08:46 -0400 ci(review): code-review workflow with strict mypy, Postgres-backed reviewer suite and shared-sandbox step
+origin/feat/sai/intel-consumer 2026-10-16 23:01:03 -0400 test(review): consume the real code-intelligence index; status and README refresh
+origin/feat/sai/shared-sandbox-adapter 2026-10-16 22:57:51 -0400 feat(review): SandboxPort adapter over the shared security_agents drivers (docker / shared-local)
+origin/feat/sai/authz-handoff 2026-10-16 22:53:18 -0400 feat(review): hand authorization findings to Scout as hypotheses with executed test evidence
+origin/feat/sai/review-followups 2026-10-16 22:50:49 -0400 docs(coordination): Sai — reviewer merged, acks to Srihith/Alan, test-DB leak fix
+origin/feat/sai/reviewer-repair-agent 2026-10-16 22:27:48 -0400 docs(coordination): ask Srihith to call review_assessment in FUNCTIONAL_REVIEW; Sai status
+origin/feat/sarosh/intelligence-handoff 2026-10-16 22:09:01 -0400 Merge pull request #21 from adamissac/feat/sarosh/intelligence-handoff
+origin/feat/sarosh/code-intelligence 2026-10-16 22:04:55 -0400 Merge remote-tracking branch 'origin/main' into feat/sarosh/code-intelligence
+origin/feat/adam/rl-training-v1 2026-10-16 21:59:03 -0400 Merge remote-tracking branch 'origin/main' into feat/adam/rl-training-v1
+origin/feat/adam/payments-lite-recipe-check 2026-10-16 21:57:57 -0400 test(examples): keep build_recipe.json consistent with the payments-lite target
+origin/feat/adam/rl-shared-contracts 2026-10-16 21:48:43 -0400 fix(rl): keep explain(facts) compatible with the backend's call
+origin/feat/adam/payments-lite 2026-10-16 21:29:53 -0400 Merge remote-tracking branch 'origin/main' into feat/adam/payments-lite
+origin/feat/adam/rl-defense 2026-10-16 21:21:39 -0400 Merge remote-tracking branch 'origin/main' into feat/adam/rl-defense
+origin/feat/adam/infra-docs-ci 2026-10-16 21:09:52 -0400 fix(ci): pre-commit hook falls back to default rules when .gitleaks.toml is absent
+origin/docs/adam/git-cadence 2026-10-16 20:34:20 -0400 docs: require frequent commits and reading git changes for all developers

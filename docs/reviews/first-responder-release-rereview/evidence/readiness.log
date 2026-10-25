@@ -1,0 +1,29 @@
+[PASS] env.postgres Scratch PostgreSQL: embedded pgserver
+[PASS] preflight.gate Preflight rejects staging without secrets: exit=1; errors include missing secrets
+[PASS] preflight.config Preflight accepts complete staging config: config+worker checks pass
+[PASS] migrate Alembic migrations to unified head: at head ['0017']
+[PASS] boot.api API boots under staging config: /healthz 200 on :51706
+[PASS] boot.worker Worker boots (preflight + migrate gate): real hackatl-worker started
+[PASS] worker.sigterm Worker graceful SIGTERM (deploy drain): idle worker exited rc=0
+[PASS] http.smoke Staging smoke suite (real HTTP): smoke: 15 passed, 0 failed (http://127.0.0.1:51706)
+[PASS] job.success Job claim → run → complete: release_probe_success job job_01M5R96TE3Y17TKQEXHFTJ5GE0 succeeded (attempts=1)
+[PASS] alert.webhook Critical-failure alert webhook: sink received job_failed_permanent severity=critical
+[PASS] logs.redaction Secret redaction in alert payload: payload carries [REDACTED:anthropic_key], raw key absent
+[PASS] logs.json Worker JSON log format (staging auto): 4 parseable JSON log lines
+[PASS] logs.redact_stream Secret never reaches worker log stream: raw probe secret absent from worker output
+[PASS] worker.recovery Worker crash → lease expiry → re-claim: killed owner Alans-MacBook-Pro-2.local:84813; job job_01M5R96V8F8V5E6WPBHYNAX694 succeeded attempts=2
+[PASS] backup pg_dump backup: hackatl-20261025T010132Z.dump (size:   124K)
+[PASS] restore Restore drill into scratch DB: restored DB at head, jobs rows=3
+[PASS] authz.setup Operator session → create project: project prj_01M5R97JA804ZJM0Z4C3DPGJPM via minted session
+[PASS] authz.nonmember Non-member cannot read foreign project: GET /projects/prj_01M5R97JA804ZJM0Z4C3DPGJPM as non-member -> 404
+[PASS] authz.owner_gate Emergency stop requires owner role: non-owner POST emergency-stop -> 404
+[PASS] control.estop Emergency-stop end-to-end (API→queue→worker): POST -> 201; worker job status=succeeded
+[PASS] control.estop_clear Emergency-stop clear path: clear -> 200, active=False
+[PASS] control.off_mode First-responder OFF by default: ops/status non-default modes: 0 (default=off)
+[PASS] artifacts Artifact storage write+address: content-addressed artifact at sha256/b90923ce47dc…
+[PASS] release.check release_check.py release checklist: release check: 18 checks, 0 failed
+[PASS] ops.visibility Ops status: migrations + queue visibility: at_head=True; queue counts={'succeeded': 3, 'failed': 1}
+---
+verdict: GO (0 FAIL)
+report:  /tmp/ari-rereview-readiness/release-readiness-20261025T010138+0000.md
+json:    /tmp/ari-rereview-readiness/release-readiness-20261025T010138+0000.json

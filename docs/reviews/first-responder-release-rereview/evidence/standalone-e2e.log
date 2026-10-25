@@ -1,0 +1,10 @@
+.......x                                                                 [100%]
+=============================== warnings summary ===============================
+backend/tests/live_defense_e2e/test_exec_reliability_compat.py::test_compat_per_project_concurrency_is_fair
+  /private/tmp/ari-e2e-rereview/backend/tests/conftest.py:178: PytestWarning: Value of environment variable JOB_MAX_RUNNING_PER_PROJECT type should be str, but got 1 (type: int); converted to str implicitly
+    monkeypatch.setenv(k.upper(), v)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+XFAIL backend/tests/live_defense_e2e/test_exec_reliability_compat.py::test_agent_step_jobs_have_durable_deadline - F7 (remaining): deadline_at is propagated on the decision, invocation and step payload, but the jobs.deadline_at column is still NULL — the queue itself cannot time the job out
+7 passed, 1 xfailed, 1 warning in 1.76s

@@ -1,0 +1,283 @@
+▲ Next.js 16.4.2
+- Local:         http://127.0.0.1:51442
+- Network:       http://127.0.0.1:51442
+✓ Ready in 81ms
+✓ Running next.config.ts took 64ms
+
+Running 49 tests using 1 worker
+
+(node:84464) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium] › tests/e2e/brand.spec.ts:33:1 › supplied logo loads on sign-in, scrolled header and projects on desktop/mobile (5.5s)
+  ✓   2 [chromium] › tests/e2e/brand.spec.ts:89:1 › intro uses the supplied mark and exits; reduced motion skips it (3.6s)
+job job_01M5R95PDB0Q1AW9DPXTZGSH5T (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+job job_01M5R95S6SFP6N79BCER9DG3H0 (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+  ✓   3 [chromium] › tests/e2e/commit-workspace.spec.ts:5:1 › organization → repository → commit keeps real agent work and replay in that commit (14.5s)
+  ✓   4 [chromium] › tests/e2e/conflict-recovery.spec.ts:6:1 › a conflicting action requires explicit preparation before a single new submission (1.4s)
+job job_01M5R95PDB0Q1AW9DPXTZGSH5T (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+job job_01M5R95S6SFP6N79BCER9DG3H0 (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+  ✓   5 [chromium] › tests/e2e/demo-recovery.spec.ts:5:1 › project assessment list recovers from a lost backend response and survives refresh (1.0s)
+  ✓   6 [chromium] › tests/e2e/demo-recovery.spec.ts:23:1 › a missing assessment shows the real backend error rather than completed results (521ms)
+  ✓   7 [chromium] › tests/e2e/demo-recovery.spec.ts:32:1 › project navigation leads with the workflows and keeps tools reachable (2.3s)
+job job_01M5R95PDB0Q1AW9DPXTZGSH5T (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+job job_01M5R95S6SFP6N79BCER9DG3H0 (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+  ✓   8 [chromium] › tests/e2e/demo.spec.ts:13:1 › demo account: access code, Lumen Pay, repo, commit, seven agents, review, defense (6.2s)
+  ✓   9 [chromium] › tests/e2e/demo.spec.ts:63:1 › demo pages need the access code, then return the visitor where they were going (957ms)
+  ✓  10 [chromium] › tests/e2e/demo.spec.ts:71:1 › the access cookie cannot be forged (523ms)
+  ✓  11 [chromium] › tests/e2e/demo.spec.ts:79:1 › Defense Lab replays a recorded evaluation from the bundle, labelled as an isolated test network, with held-out scores (522ms)
+job job_01M5R95PDB0Q1AW9DPXTZGSH5T (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+job job_01M5R95S6SFP6N79BCER9DG3H0 (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+  ✓  12 [chromium] › tests/e2e/honesty.spec.ts:7:1 › backend unreachable is an explicit error, never fake content (9.0s)
+job job_01M5R95S6SFP6N79BCER9DG3H0 (register_verified_regression) errored; now dead
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+job job_01M5R95PDB0Q1AW9DPXTZGSH5T (register_verified_regression) errored; now dead
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+  ✓  13 [chromium] › tests/e2e/honesty.spec.ts:15:1 › a response that violates the shared contract is rejected, not rendered (8.9s)
+  ✓  14 [chromium] › tests/e2e/honesty.spec.ts:21:1 › the home page is public: a signed-out visitor sees it, not a sign-in form (545ms)
+  ✓  15 [chromium] › tests/e2e/honesty.spec.ts:28:1 › a signed-in visitor still sees who they are on the home page (659ms)
+  ✓  16 [chromium] › tests/e2e/honesty.spec.ts:35:1 › the home page stays up even when the backend is down (812ms)
+  ✓  17 [chromium] › tests/e2e/honesty.spec.ts:42:1 › signed-out users see sign-in, not data (762ms)
+  ✓  18 [chromium] › tests/e2e/honesty.spec.ts:53:1 › signed-in console and Defense Lab keep the records footer (738ms)
+  ✓  19 [chromium] › tests/e2e/honesty.spec.ts:60:1 › Defense Lab plots only the committed, schema-validated evaluation bundle (1.3s)
+  ✓  20 [chromium] › tests/e2e/honesty.spec.ts:99:1 › a malformed bundle name is refused by the server (13ms)
+  ✓  21 [chromium] › tests/e2e/idempotent-retry.spec.ts:7:1 › retrying a create whose response was lost does not create a duplicate (633ms)
+  ✓  22 [chromium] › tests/e2e/interface.spec.ts:6:1 › workspace design stays navigable and fits desktop and phone (9.5s)
+job job_01M5R97GVDRA7ZFQT6ZCP7FN2Y (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+job job_01M5R97PDTCX0DED131NPM55YJ (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+⨯ [ResponseAborted: ]
+job job_01M5R97GVDRA7ZFQT6ZCP7FN2Y (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+job job_01M5R97PDTCX0DED131NPM55YJ (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+job job_01M5R97GVDRA7ZFQT6ZCP7FN2Y (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+job job_01M5R97PDTCX0DED131NPM55YJ (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+  ✓  23 [chromium] › tests/e2e/journey.spec.ts:13:1 › one real assessment from scope approval to verified patch (22.8s)
+  ✓  24 [chromium] › tests/e2e/journey.spec.ts:149:1 › signed GitHub push appears in the monitoring feed (4.0s)
+job job_01M5R97GVDRA7ZFQT6ZCP7FN2Y (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+job job_01M5R97PDTCX0DED131NPM55YJ (register_verified_regression) errored; now queued
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+drill: Claude plan unusable, using scripted plan: Expecting value: line 1 column 1 (char 0)
+  ✓  25 [chromium] › tests/e2e/journey.spec.ts:183:1 › connect a repository to a project through the UI (7.7s)
+  ✓  26 [chromium] › tests/e2e/landing.spec.ts:7:3 › floating navigation and minimal hero at 1440px (10.5s)
+job job_01M5R97GVDRA7ZFQT6ZCP7FN2Y (register_verified_regression) errored; now dead
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+job job_01M5R97PDTCX0DED131NPM55YJ (register_verified_regression) errored; now dead
+Traceback (most recent call last):
+  File "/private/tmp/ari-release-rereview/backend/backend/worker.py", line 240, in run_one
+    result = fn(ctx)
+             ^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/pipeline.py", line 672, in register_verified_regression
+    return persist_verified_regression(ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/ari-release-rereview/backend/backend/intelligence_jobs.py", line 36, in persist_verified_regression
+    raise RuntimeError(
+RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot
+  ✓  27 [chromium] › tests/e2e/landing.spec.ts:7:3 › floating navigation and minimal hero at 1024px (14.8s)
+  ✓  28 [chromium] › tests/e2e/landing.spec.ts:7:3 › floating navigation and minimal hero at 390px (8.6s)
+  ✓  29 [chromium] › tests/e2e/landing.spec.ts:7:3 › floating navigation and minimal hero at 320px (9.5s)
+  ✓  30 [chromium] › tests/e2e/landing.spec.ts:105:1 › reduced motion keeps the hero, logo and menu visible (1.5s)
+  ✓  31 [chromium] › tests/e2e/landing.spec.ts:124:1 › Ari footer fits desktop and mobile (2.7s)
+  ✓  32 [chromium] › tests/e2e/landing.spec.ts:141:1 › process cards traverse with scrolling again (1.0s)
+  ✓  33 [chromium] › tests/e2e/landing.spec.ts:155:1 › motion accents respond to hover and respect reduced motion (2.5s)
+  ✓  34 [chromium] › tests/e2e/live-defense-e2e.spec.ts:25:1 › Live Defense e2e: OFF mode stops investigation and renders honestly (30.4s)
+  ✓  35 [chromium] › tests/e2e/live-defense-investigations.spec.ts:24:1 › Executions: investigation timeline, agent states, diagnostics (14.4s)
+  ✓  36 [chromium] › tests/e2e/live-defense-phase4.spec.ts:4:1 › Live Defense Phase 4: authorize owned-test control, verify, rollback (9.6s)
+  ✓  37 [chromium] › tests/e2e/live-defense-phase7a.spec.ts:4:1 › Live Defense Phase 7A: first-responder modes, states, no auto-execute (7.9s)
+  ✓  38 [chromium] › tests/e2e/live-defense-phase7c.spec.ts:22:1 › Live Defense Phase 7C: Scout executes, Probe is not expanded, no AUTO-EXECUTE (10.9s)
+  ✓  39 [chromium] › tests/e2e/live-defense.spec.ts:21:1 › Live Defense shadow pilot: staging app, ingest, unknown health, review without enforcement (26.7s)
+  ✓  40 [chromium] › tests/e2e/live-defense.spec.ts:140:1 › Live Defense Phase 5: rotate, revoke, disconnect, restart ingest, export report (14.1s)
+  ✓  41 [chromium] › tests/e2e/live-defense.spec.ts:196:1 › RL-gated readiness dashboard stays BLOCKED from the backend (5.6s)
+  ✓  42 [chromium] › tests/e2e/onboarding.spec.ts:15:1 › onboarding wizard drives the full customer journey (25.7s)
+  ✓  43 [chromium] › tests/e2e/onboarding.spec.ts:96:1 › a fresh customer org completes onboarding through real routes (26.1s)
+  ✓  44 [chromium] › tests/e2e/onboarding.spec.ts:187:1 › onboarding progress is project-isolated (10.8s)
+  ✓  45 [chromium] › tests/e2e/pages.spec.ts:6:1 › owner edits project settings and they persist on reload (12.2s)
+  ✓  46 [chromium] › tests/e2e/pages.spec.ts:23:1 › owner opts into defense from OFF and the setting persists after reload (14.1s)
+  ✓  47 [chromium] › tests/e2e/pages.spec.ts:47:1 › simulated incident: triage, owner, two-person containment approval (46.3s)
+  ✓  48 [chromium] › tests/e2e/pages.spec.ts:82:1 › incident closure: link verified finding, criteria with evidence, communication (2.2m)
+  ✓  49 [chromium] › tests/e2e/pages.spec.ts:142:1 › expectations page shows the version-pinned snapshot view (14.6s)
+
+  49 passed (9.4m)

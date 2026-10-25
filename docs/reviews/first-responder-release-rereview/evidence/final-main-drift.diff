@@ -1,0 +1,3527 @@
+diff --git a/.github/workflows/README.md b/.github/workflows/README.md
+index c342c346..168eea5d 100644
+--- a/.github/workflows/README.md
++++ b/.github/workflows/README.md
+@@ -38,3 +38,9 @@ code-intelligence, the security-agents sandbox, payments-lite). It runs Ruff, fo
+ strict mypy on `code_review`, the reviewer suite against a Postgres service (FakeTransport;
+ real git exports and pytest executions), and the reviewer through the shared
+ `security_agents` sandbox driver. The live reviewer eval (`-m live_llm`) never runs here.
++
++## Path gates (2026-10-24, release gate)
++
++Workflow triggers no longer use `paths:` filters — every job runs on every push/PR so a GitHub "required check" can never sit at *Expected — waiting for status*. Instead each job's first step runs `scripts/ci/path_gate.py`, which diffs base→HEAD against the suite's original path globs and emits `run=true|false` plus a `**RUN**`/`**SKIP** — <reason>` line in the step summary; the real steps are conditional on `run == 'true'`. An unknown or unfetchable base fails safe to RUN (prefer extra CI over a skipped check). Skip is therefore an explicit, visible verdict — not an absent job.
++
++Job ids are unique across workflows (e.g. `backend-tests`, `intel-tests`, `review-tests`, `secagents-tests`, `rl-tests`) so each required check names exactly one thing. `pilot-verify.yml` is the manual release pipeline — see `docs/release/RELEASE_GATE_2026-10-24.md` for the category matrix and the required-check list.
+diff --git a/.github/workflows/backend.yml b/.github/workflows/backend.yml
+index 23ce8fa0..2ddade03 100644
+--- a/.github/workflows/backend.yml
++++ b/.github/workflows/backend.yml
+@@ -2,18 +2,21 @@ name: backend
+ 
+ # CORE-002 / CORE-003: lint, generated-contract freshness, and the control-plane test
+ # suite against a real PostgreSQL service. The live Claude smoke never runs here.
++#
++# Release gate: the workflow runs on every PR and every push to main so the
++# `backend-tests` and `rl-integration` checks always report. When the diff does
++# not touch backend inputs the suite steps are skipped by the gate step and the
++# check passes marked SKIPPED in the job summary — a skip is never silent.
+ on:
+   pull_request:
+-    paths: ["standards/**", "specialists/**", "tests/security/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", "rl-defense/rl_defense/**", "rl-defense/pyproject.toml", "rl-defense/configs/topology/**", ".github/workflows/backend.yml"]
+   push:
+     branches: [main]
+-    paths: ["standards/**", "specialists/**", "tests/security/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", "rl-defense/rl_defense/**", "rl-defense/pyproject.toml", "rl-defense/configs/topology/**", ".github/workflows/backend.yml"]
+ 
+ permissions:
+   contents: read
+ 
+ jobs:
+-  test:
++  backend-tests:
+     runs-on: ubuntu-24.04
+     timeout-minutes: 15
+     services:
+@@ -29,28 +32,43 @@ jobs:
+     env:
+       TEST_DATABASE_URL: postgresql+psycopg://ci:ci-only@localhost:5432/postgres
+       UV_PYTHON: "3.12"
++      GATE_GLOBS: "standards/**,specialists/**,tests/security/**,shared/**,backend/**,monitoring/**,pyproject.toml,uv.lock,rl-defense/rl_defense/**,rl-defense/pyproject.toml,rl-defense/configs/topology/**,.github/workflows/backend.yml"
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "$GATE_GLOBS"
+       - name: Install uv (pinned)
++        if: steps.gate.outputs.run == 'true'
+         run: python3 -m pip install --user "uv==0.11.28"
+       - name: Install workspace
++        if: steps.gate.outputs.run == 'true'
+         run: ~/.local/bin/uv sync --frozen
+       - name: Lint and format
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           ~/.local/bin/uv run ruff check shared monitoring backend standards
+           ~/.local/bin/uv run ruff format --check shared monitoring backend standards
+           ~/.local/bin/uv run mypy
+       - name: Generated contracts are current (CORE-003)
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           ~/.local/bin/uv run python -m shared.export --check
+           ~/.local/bin/uv run python -m shared.examples --check
+       - name: TypeScript compiler for the generated-types test
++        if: steps.gate.outputs.run == 'true'
+         run: npm install --global --no-audit --no-fund typescript@5.6.3
+       - name: Tests (real PostgreSQL; fake LLM transport only)
++        if: steps.gate.outputs.run == 'true'
+         run: TSC=$(command -v tsc) ~/.local/bin/uv run pytest -q
+ 
+   # backend/tests/test_rl_integration.py importorskips rl_defense, which the workspace does
+-  # not install, so the `test` job above always skips it. This job installs CPU torch and
++  # not install, so the `backend-tests` job above always skips it. This job installs CPU torch and
+   # rl-defense into the workspace venv (without touching uv.lock) and runs it for real.
+   rl-integration:
+     runs-on: ubuntu-24.04
+@@ -68,17 +86,29 @@ jobs:
+     env:
+       TEST_DATABASE_URL: postgresql+psycopg://ci:ci-only@localhost:5432/postgres
+       UV_PYTHON: "3.12"
++      GATE_GLOBS: "standards/**,specialists/**,tests/security/**,shared/**,backend/**,monitoring/**,pyproject.toml,uv.lock,rl-defense/rl_defense/**,rl-defense/pyproject.toml,rl-defense/configs/topology/**,.github/workflows/backend.yml"
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "$GATE_GLOBS"
+       - name: Install uv (pinned)
++        if: steps.gate.outputs.run == 'true'
+         run: python3 -m pip install --user "uv==0.11.28"
+       - name: Install workspace + rl-defense (CPU-only torch)
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           ~/.local/bin/uv sync --frozen
+           ~/.local/bin/uv pip install --python .venv/bin/python --index-url https://download.pytorch.org/whl/cpu torch
+           ~/.local/bin/uv pip install --python .venv/bin/python gymnasium scipy
+           ~/.local/bin/uv pip install --python .venv/bin/python --no-deps -e rl-defense
+       - name: Backend <-> rl_defense integration (must run, not skip)
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           set -o pipefail
+           ~/.local/bin/uv run --no-sync pytest -q -rs backend/tests/test_rl_integration.py | tee rl.log
+diff --git a/.github/workflows/code-intelligence.yml b/.github/workflows/code-intelligence.yml
+index eda1d089..88f6a642 100644
+--- a/.github/workflows/code-intelligence.yml
++++ b/.github/workflows/code-intelligence.yml
+@@ -1,17 +1,17 @@
+ name: code-intelligence
+ 
++# Release gate: runs on every PR and push to main so `intel-tests` always
++# reports; the gate step marks unrelated diffs SKIPPED in the job summary.
+ on:
+   pull_request:
+-    paths: ["standards/**", "code-intelligence/**", "shared/**", "backend/**", "monitoring/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/code-intelligence.yml"]
+   push:
+     branches: [main]
+-    paths: ["standards/**", "code-intelligence/**", "shared/**", "backend/**", "monitoring/**", "pyproject.toml", "uv.lock", ".github/workflows/code-intelligence.yml"]
+ 
+ permissions:
+   contents: read
+ 
+ jobs:
+-  test:
++  intel-tests:
+     runs-on: ubuntu-24.04
+     timeout-minutes: 15
+     services:
+@@ -28,16 +28,29 @@ jobs:
+     env:
+       TEST_DATABASE_URL: postgresql+psycopg://ci:ci-only@localhost:5432/postgres
+       UV_PYTHON: "3.12"
++      GATE_GLOBS: "standards/**,code-intelligence/**,shared/**,backend/**,monitoring/**,examples/payments-lite/**,pyproject.toml,uv.lock,.github/workflows/code-intelligence.yml"
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "$GATE_GLOBS"
+       - name: Install uv
++        if: steps.gate.outputs.run == 'true'
+         run: python3 -m pip install --user "uv==0.11.28"
+       - name: Install locked workspace
++        if: steps.gate.outputs.run == 'true'
+         run: ~/.local/bin/uv sync --frozen
+       - name: Lint, format and strict types
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           ~/.local/bin/uv run ruff check code-intelligence
+           ~/.local/bin/uv run ruff format --check code-intelligence
+           ~/.local/bin/uv run mypy --config-file code-intelligence/pyproject.toml code-intelligence/code_intelligence
+       - name: Intelligence and PostgreSQL integration (FakeTransport; no live key)
++        if: steps.gate.outputs.run == 'true'
+         run: ~/.local/bin/uv run pytest -ra code-intelligence/tests backend/tests/test_intel_store.py backend/tests/test_payload_store_intel_integration.py
+diff --git a/.github/workflows/code-review.yml b/.github/workflows/code-review.yml
+index 0daf2171..1962da4d 100644
+--- a/.github/workflows/code-review.yml
++++ b/.github/workflows/code-review.yml
+@@ -1,17 +1,20 @@
+ name: code-review
+ 
++# Release gate: runs on every PR and push to main so `review-tests` and
++# `docker-reviewer` always report; unrelated diffs are marked SKIPPED.
+ on:
+   pull_request:
+-    paths: ["standards/**", "code-review/**", "shared/**", "backend/**", "code-intelligence/**", "security-agents/security_agents/sandbox/**", "security-agents/sandbox/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/code-review.yml"]
+   push:
+     branches: [main]
+-    paths: ["standards/**", "code-review/**", "shared/**", "backend/**", "code-intelligence/**", "security-agents/security_agents/sandbox/**", "security-agents/sandbox/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/code-review.yml"]
+ 
+ permissions:
+   contents: read
+ 
++env:
++  GATE_GLOBS: "standards/**,code-review/**,shared/**,backend/**,code-intelligence/**,security-agents/security_agents/sandbox/**,security-agents/sandbox/**,examples/payments-lite/**,pyproject.toml,uv.lock,.github/workflows/code-review.yml"
++
+ jobs:
+-  test:
++  review-tests:
+     runs-on: ubuntu-24.04
+     timeout-minutes: 20
+     services:
+@@ -30,18 +33,31 @@ jobs:
+       UV_PYTHON: "3.12"
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "$GATE_GLOBS"
+       - name: Install uv
++        if: steps.gate.outputs.run == 'true'
+         run: python3 -m pip install --user "uv==0.11.28"
+       - name: Install locked workspace
++        if: steps.gate.outputs.run == 'true'
+         run: ~/.local/bin/uv sync --frozen
+       - name: Lint, format and strict types
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           ~/.local/bin/uv run ruff check code-review
+           ~/.local/bin/uv run ruff format --check code-review
+           ~/.local/bin/uv run mypy --config-file code-review/pyproject.toml code-review/code_review
+       - name: Reviewer suite (FakeTransport; real git, pytest and PostgreSQL; no live key)
++        if: steps.gate.outputs.run == 'true'
+         run: ~/.local/bin/uv run pytest -ra code-review/tests
+       - name: Reviewer through the shared security_agents sandbox driver
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           ~/.local/bin/uv pip install -e security-agents --no-deps
+           ~/.local/bin/uv run --no-sync pytest -ra code-review/tests/test_shared_sandbox.py
+@@ -53,13 +69,25 @@ jobs:
+       UV_PYTHON: "3.12"
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "$GATE_GLOBS"
+       - name: Install uv (pinned)
++        if: steps.gate.outputs.run == 'true'
+         run: python3 -m pip install --user "uv==0.11.28"
+       - name: Install locked workspace
++        if: steps.gate.outputs.run == 'true'
+         run: ~/.local/bin/uv sync --frozen
+       - name: Build sandbox image (base pinned by digest)
++        if: steps.gate.outputs.run == 'true'
+         run: docker build -t hackatl-sandbox:ci security-agents/sandbox
+       - name: Reviewer through the real Docker sandbox
++        if: steps.gate.outputs.run == 'true'
+         env:
+           RUN_DOCKER_SANDBOX: "1"
+           SANDBOX_IMAGE: hackatl-sandbox:ci
+diff --git a/.github/workflows/containers.yml b/.github/workflows/containers.yml
+index 01a7c948..a10f5ca9 100644
+--- a/.github/workflows/containers.yml
++++ b/.github/workflows/containers.yml
+@@ -1,27 +1,42 @@
+ name: containers
++
++# Release gate: runs on every PR and push to main so `backend-image` and
++# `compose-stack` always report; unrelated diffs are marked SKIPPED.
+ on:
+   pull_request:
+-    paths: ["backend/Dockerfile", ".dockerignore", "docker-compose.yml", ".env.example", "pyproject.toml", "uv.lock", "shared/**", "backend/**", "code-intelligence/**", "code-review/**", "security-agents/**", "standards/**", "tests/packaging/**", ".github/workflows/containers.yml"]
+   push:
+     branches: [main]
+-    paths: ["backend/Dockerfile", ".dockerignore", "docker-compose.yml", ".env.example", "pyproject.toml", "uv.lock", "shared/**", "backend/**", "code-intelligence/**", "code-review/**", "security-agents/**", "standards/**", "tests/packaging/**", ".github/workflows/containers.yml"]
+ permissions:
+   contents: read
++env:
++  GATE_GLOBS: "backend/Dockerfile,.dockerignore,docker-compose.yml,.env.example,pyproject.toml,uv.lock,shared/**,backend/**,code-intelligence/**,code-review/**,security-agents/**,standards/**,tests/packaging/**,.github/workflows/containers.yml"
+ jobs:
+   backend-image:
+     runs-on: ubuntu-24.04
+     timeout-minutes: 15
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
++        with:
++          fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "$GATE_GLOBS"
+       - name: Install pinned uv
++        if: steps.gate.outputs.run == 'true'
+         run: python3 -m pip install --user "uv==0.11.28"
+       - name: Verify build inputs
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           ~/.local/bin/uv sync --frozen
+           ~/.local/bin/uv run pytest -ra tests/packaging
+       - name: Build actual control-plane image
++        if: steps.gate.outputs.run == 'true'
+         run: docker build -f backend/Dockerfile -t hackatl-backend:ci .
+       - name: Non-root imports without network, credentials or a database
++        if: steps.gate.outputs.run == 'true'
+         run: >-
+           docker run --rm --network none --read-only --tmpfs /tmp
+           hackatl-backend:ci python -c
+@@ -32,27 +47,40 @@ jobs:
+     timeout-minutes: 20
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
++        with:
++          fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "$GATE_GLOBS"
+       - name: Install pinned uv
++        if: steps.gate.outputs.run == 'true'
+         run: python3 -m pip install --user "uv==0.11.28"
+       - name: Local-only .env from the documented template
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           cp .env.example .env
+           sed -i "s/^GITHUB_WEBHOOK_SECRET=.*/GITHUB_WEBHOOK_SECRET=ci-compose-smoke/; s/^SESSION_SECRET=.*/SESSION_SECRET=$(openssl rand -hex 32)/" .env
+       - name: Start db, migrate, api, worker
++        if: steps.gate.outputs.run == 'true'
+         run: docker compose up -d --build --wait
+       - name: Readiness reports database, queue and webhook secret
++        if: steps.gate.outputs.run == 'true'
+         run: >-
+           curl -fsS http://localhost:8000/readyz | python3 -c
+           "import json, sys; d = json.load(sys.stdin); print(d); assert d['database'] and d['queue'] and d['webhook_secret_configured'], d"
+       - name: Signed webhook is verified, persisted and enqueued
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           ~/.local/bin/uv sync --frozen
+           GITHUB_WEBHOOK_SECRET=ci-compose-smoke ~/.local/bin/uv run python -m backend.replay_webhook \
+             --api http://localhost:8000 --repo acme/payments-lite \
+             --head 1111111111111111111111111111111111111111 --path app/payments.py
+       - name: Compose logs
+-        if: always()
++        if: always() && steps.gate.outputs.run == 'true'
+         run: docker compose logs --no-color --tail 200
+       - name: Tear down
+-        if: always()
++        if: always() && steps.gate.outputs.run == 'true'
+         run: docker compose down -v
+diff --git a/.github/workflows/docs.yml b/.github/workflows/docs.yml
+index 5b96599c..87ec03b7 100644
+--- a/.github/workflows/docs.yml
++++ b/.github/workflows/docs.yml
+@@ -1,11 +1,11 @@
+ name: docs
+ 
++# Release gate: runs on every PR and push to main so `links` always reports;
++# unrelated diffs are marked SKIPPED in the job summary.
+ on:
+   pull_request:
+-    paths: ["**/*.md", "scripts/check_links.py", ".github/workflows/docs.yml"]
+   push:
+     branches: [main]
+-    paths: ["**/*.md", "scripts/check_links.py", ".github/workflows/docs.yml"]
+ 
+ permissions:
+   contents: read
+@@ -16,5 +16,14 @@ jobs:
+     timeout-minutes: 5
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "**/*.md,scripts/check_links.py,.github/workflows/docs.yml"
+       - name: Internal links, anchors and Mermaid block types
++        if: steps.gate.outputs.run == 'true'
+         run: python3 -I scripts/check_links.py
+diff --git a/.github/workflows/examples.yml b/.github/workflows/examples.yml
+index 2f94a261..fd5219c3 100644
+--- a/.github/workflows/examples.yml
++++ b/.github/workflows/examples.yml
+@@ -1,11 +1,11 @@
+ name: examples
+ 
++# Release gate: runs on every PR and push to main so `payments-lite` always
++# reports; unrelated diffs are marked SKIPPED in the job summary.
+ on:
+   pull_request:
+-    paths: ["examples/**", ".github/workflows/examples.yml"]
+   push:
+     branches: [main]
+-    paths: ["examples/**", ".github/workflows/examples.yml"]
+ 
+ permissions:
+   contents: read
+@@ -19,20 +19,35 @@ jobs:
+         working-directory: examples/payments-lite
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        working-directory: ${{ github.workspace }}
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "examples/**,.github/workflows/examples.yml"
+       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
++        if: steps.gate.outputs.run == 'true'
+       - name: Install
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           uv venv --python 3.12 target/.venv
+           uv pip install --python target/.venv/bin/python -e "target[dev]" pyyaml
+       - name: Lint
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           target/.venv/bin/ruff check --config target/pyproject.toml target label_checks
+           target/.venv/bin/ruff format --check --config target/pyproject.toml target label_checks
+       - name: Target's own tests (pass; planted defects are untested by design)
++        if: steps.gate.outputs.run == 'true'
+         run: cd target && .venv/bin/python -m pytest -q
+       - name: Label checks (planted defects exist, negatives are safe, no hints in target)
++        if: steps.gate.outputs.run == 'true'
+         run: target/.venv/bin/python -m pytest -q label_checks
+       - name: Docker build recipe
++        if: steps.gate.outputs.run == 'true'
+         run: docker build -t payments-lite:ci target && docker run --rm payments-lite:ci id -u | grep -qx 10001
+ 
+   inventory-lite:
+diff --git a/.github/workflows/frontend.yml b/.github/workflows/frontend.yml
+index 2f91fb16..0257c40f 100644
+--- a/.github/workflows/frontend.yml
++++ b/.github/workflows/frontend.yml
+@@ -1,15 +1,19 @@
+ name: frontend
+ 
++# Release gate: runs on every PR and push to main so `static-and-unit` and `e2e`
++# always report; the gate step skips suite steps on unrelated diffs and marks
++# the check SKIPPED in the job summary — a skip is never silent.
+ on:
+   pull_request:
+-    paths: ["frontend/**", "shared/generated/**", "backend/**", "rl-defense/results/**", "rl-defense/fixtures/defense_lab.schema.json", ".github/workflows/frontend.yml"]
+   push:
+     branches: [main]
+-    paths: ["frontend/**", "shared/generated/**", "backend/**", "rl-defense/results/**", "rl-defense/fixtures/defense_lab.schema.json", ".github/workflows/frontend.yml"]
+ 
+ permissions:
+   contents: read
+ 
++env:
++  GATE_GLOBS: "frontend/**,shared/generated/**,backend/**,rl-defense/results/**,rl-defense/fixtures/defense_lab.schema.json,.github/workflows/frontend.yml"
++
+ jobs:
+   static-and-unit:
+     runs-on: ubuntu-24.04
+@@ -19,20 +23,36 @@ jobs:
+         working-directory: frontend
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        working-directory: ${{ github.workspace }}
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "$GATE_GLOBS"
+       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
++        if: steps.gate.outputs.run == 'true'
+         with:
+           node-version: "24"
+       - name: Transport (build + node tests against generated contracts)
++        if: steps.gate.outputs.run == 'true'
+         run: npm ci --prefix transport && npm test --prefix transport
+       - name: Install app
++        if: steps.gate.outputs.run == 'true'
+         run: npm ci
+       - name: ESLint
++        if: steps.gate.outputs.run == 'true'
+         run: npm run lint
+       - name: Strict TypeScript
++        if: steps.gate.outputs.run == 'true'
+         run: npm run typecheck
+       - name: Unit tests (Vitest)
++        if: steps.gate.outputs.run == 'true'
+         run: npm test
+       - name: Production build
++        if: steps.gate.outputs.run == 'true'
+         run: npm run build
+ 
+   e2e:
+@@ -56,21 +76,34 @@ jobs:
+       UV_PYTHON: "3.12"
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "$GATE_GLOBS"
+       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
++        if: steps.gate.outputs.run == 'true'
+         with:
+           node-version: "24"
+       - name: Install uv
++        if: steps.gate.outputs.run == 'true'
+         run: python3 -m pip install --user "uv==0.11.28"
+       - name: Install locked Python workspace
++        if: steps.gate.outputs.run == 'true'
+         run: ~/.local/bin/uv sync --frozen --all-packages
+       - name: Install transport and app
++        if: steps.gate.outputs.run == 'true'
+         working-directory: frontend
+         run: npm ci --prefix transport && npm run build --prefix transport && npm ci && npx playwright install --with-deps chromium
+       - name: Browser e2e against the real stack
++        if: steps.gate.outputs.run == 'true'
+         working-directory: frontend
+         run: ../.venv/bin/python tests/e2e/stack.py
+       - name: Upload Playwright report
+-        if: failure()
++        if: failure() && steps.gate.outputs.run == 'true'
+         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+         with:
+           name: playwright-report
+diff --git a/.github/workflows/pilot-verify.yml b/.github/workflows/pilot-verify.yml
+new file mode 100644
+index 00000000..6713d33f
+--- /dev/null
++++ b/.github/workflows/pilot-verify.yml
+@@ -0,0 +1,315 @@
++name: pilot-verify
++
++# The single pilot verification pipeline. Manual dispatch on an exact ref;
++# every category reports its real status — PASSED / FAILED / SKIPPED — in the
++# final summary. Categories are labelled by execution mode so a report never
++# confuses fake-LLM, replay, simulated, live-provider and live-deployed runs.
++on:
++  workflow_dispatch:
++    inputs:
++      ref:
++        description: "Commit SHA or ref to verify (release candidate)"
++        required: true
++      live_model:
++        description: "Authorize live-provider (Claude) checks — costs money, needs ANTHROPIC_API_KEY"
++        type: boolean
++        required: false
++        default: false
++      hosted_url:
++        description: "Deployed base URL for hosted smoke (empty = skip)"
++        required: false
++        default: ""
++      load_workers:
++        description: "Concurrent workers for the load/recovery probe"
++        required: false
++        default: "4"
++
++permissions:
++  contents: read
++
++jobs:
++  # Category 1 — static analysis + unit tests (no DB, no sandbox, no model)
++  static-unit:
++    runs-on: ubuntu-24.04
++    timeout-minutes: 20
++    steps:
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          ref: ${{ inputs.ref }}
++      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
++        with:
++          node-version: "24"
++      - name: Install uv
++        run: python3 -m pip install --user "uv==0.11.28"
++      - name: Install workspace
++        run: ~/.local/bin/uv sync --frozen
++      - name: Static checks (ruff, format, mypy, generated contracts)
++        run: |
++          ~/.local/bin/uv run ruff check shared monitoring backend standards
++          ~/.local/bin/uv run ruff format --check shared monitoring backend standards
++          ~/.local/bin/uv run mypy
++          ~/.local/bin/uv run python -m shared.export --check
++          ~/.local/bin/uv run python -m shared.examples --check
++      - name: Frontend static + unit (lint, strict tsc, Vitest)
++        run: |
++          npm ci --prefix frontend/transport && npm test --prefix frontend/transport
++          npm ci --prefix frontend
++          npm run lint --prefix frontend
++          npm run typecheck --prefix frontend
++          npm test --prefix frontend
++
++  # Category 2 — real PostgreSQL: persistence, migrations, queue, authz
++  real-db:
++    runs-on: ubuntu-24.04
++    timeout-minutes: 20
++    services:
++      postgres:
++        image: postgres:16
++        env:
++          POSTGRES_USER: ci
++          POSTGRES_PASSWORD: ci-only
++          POSTGRES_DB: postgres
++        ports: ["5432:5432"]
++        options: >-
++          --health-cmd "pg_isready -U ci" --health-interval 2s --health-timeout 5s --health-retries 30
++    env:
++      TEST_DATABASE_URL: postgresql+psycopg://ci:ci-only@localhost:5432/postgres
++      UV_PYTHON: "3.12"
++    steps:
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          ref: ${{ inputs.ref }}
++      - name: Install uv
++        run: python3 -m pip install --user "uv==0.11.28"
++      - name: Install workspace
++        run: ~/.local/bin/uv sync --frozen
++      - name: Migration proof — single head, upgrade, downgrade, re-upgrade
++        run: ~/.local/bin/uv run pytest -q backend/tests/test_parallel_migrations.py
++      - name: Job lifecycle — leases, retries, idempotency, cursors, artifacts, redelivery
++        run: >-
++          ~/.local/bin/uv run pytest -q
++          backend/tests/test_jobs_queue.py backend/tests/test_assessment_retries.py
++          backend/tests/test_idempotent_mutations.py backend/tests/test_events_log_cursor.py
++          backend/tests/test_list_cursors.py backend/tests/test_artifact_concurrency.py
++          backend/tests/test_redeliver.py backend/tests/test_job_status_api.py
++      - name: Full control-plane suite (real DB, fake LLM transport)
++        run: TSC=$(command -v true) ~/.local/bin/uv run pytest -q
++
++  # Category 3 — real Docker sandbox isolation
++  real-sandbox:
++    runs-on: ubuntu-24.04
++    timeout-minutes: 25
++    env:
++      UV_PYTHON: "3.12"
++    steps:
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          ref: ${{ inputs.ref }}
++      - name: Install uv
++        run: python3 -m pip install --user "uv==0.11.28"
++      - name: Install workspace
++        run: ~/.local/bin/uv sync --frozen
++      - name: Build sandbox + target images (base pinned by digest)
++        run: |
++          docker build -t hackatl-sandbox:ci security-agents/sandbox
++          docker build -t hackatl-target:ci -f security-agents/sandbox/target.Dockerfile examples/payments-lite/target
++      - name: Real Docker sandbox tests
++        working-directory: security-agents
++        env:
++          RUN_DOCKER_SANDBOX: "1"
++          SANDBOX_IMAGE: hackatl-sandbox:ci
++          SANDBOX_TARGET_IMAGE: hackatl-target:ci
++          SANDBOX_ALLOW_UNPINNED_IMAGE: "1"
++        run: ~/.local/bin/uv run pytest -q -rA tests/test_docker_sandbox_live.py
++      - name: Reviewer through the real Docker sandbox
++        env:
++          RUN_DOCKER_SANDBOX: "1"
++          SANDBOX_IMAGE: hackatl-sandbox:ci
++          SANDBOX_ALLOW_UNPINNED_IMAGE: "1"
++        run: ~/.local/bin/uv run pytest -q -rA code-review/tests/test_docker_sandbox_reviewer.py
++
++  # Category 4 — browser E2E: real API + Postgres + worker + next start + Playwright.
++  # Model replies are scripted test transports (provider_mode=fake) — replayed, not live.
++  browser-e2e:
++    runs-on: ubuntu-24.04
++    timeout-minutes: 40
++    services:
++      postgres:
++        image: postgres:16
++        env:
++          POSTGRES_USER: ci
++          POSTGRES_PASSWORD: ci-only
++          POSTGRES_DB: postgres
++        ports: ["5432:5432"]
++        options: >-
++          --health-cmd "pg_isready -U ci" --health-interval 2s --health-timeout 5s --health-retries 30
++    env:
++      TEST_DATABASE_URL: postgresql+psycopg://ci:ci-only@localhost:5432/postgres
++      UV_PYTHON: "3.12"
++    steps:
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          ref: ${{ inputs.ref }}
++      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
++        with:
++          node-version: "24"
++      - name: Install uv
++        run: python3 -m pip install --user "uv==0.11.28"
++      - name: Install locked Python workspace
++        run: ~/.local/bin/uv sync --frozen --all-packages
++      - name: Install transport and app
++        working-directory: frontend
++        run: npm ci --prefix transport && npm run build --prefix transport && npm ci && npx playwright install --with-deps chromium
++      - name: Browser e2e against the real stack
++        working-directory: frontend
++        run: ../.venv/bin/python tests/e2e/stack.py
++      - name: Upload Playwright report
++        if: failure()
++        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
++        with:
++          name: playwright-report
++          path: frontend/playwright-report
++          retention-days: 14
++
++  # Category 5 — authorized live-model (real provider, costs money). Runs ONLY
++  # when live_model=true was explicitly authorized on dispatch; otherwise the
++  # job reports SKIPPED — never silently absent from the release report.
++  live-model:
++    runs-on: ubuntu-24.04
++    timeout-minutes: 30
++    env:
++      UV_PYTHON: "3.12"
++    steps:
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          ref: ${{ inputs.ref }}
++      - name: Record authorization state
++        run: |
++          if [ "${{ inputs.live_model }}" != "true" ]; then
++            echo "**SKIP** — live_model not authorized on this dispatch" >> "$GITHUB_STEP_SUMMARY"
++            echo "authorized=false" >> "$GITHUB_OUTPUT"
++          else
++            echo "authorized=true" >> "$GITHUB_OUTPUT"
++          fi
++        id: auth
++      - name: Refuse unbudgeted live runs
++        if: steps.auth.outputs.authorized == 'true'
++        run: |
++          if [ -z "${{ secrets.ANTHROPIC_API_KEY }}" ]; then
++            echo "live_model was authorized but ANTHROPIC_API_KEY is not configured" >&2
++            exit 1
++          fi
++      - name: Live reviewer eval (real provider, budget-capped)
++        if: steps.auth.outputs.authorized == 'true'
++        env:
++          RUN_LIVE_LLM_EVAL: "1"
++          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
++        run: |
++          python3 -m pip install --user "uv==0.11.28"
++          ~/.local/bin/uv sync --frozen
++          ~/.local/bin/uv run pytest -q -m live_llm code-review/tests -s
++
++  # Category 6 — hosted smoke against a deployed environment (live deployment,
++  # not the CI stack). Only when hosted_url is supplied.
++  hosted-smoke:
++    runs-on: ubuntu-24.04
++    timeout-minutes: 10
++    steps:
++      - name: Record hosted target
++        id: target
++        run: |
++          if [ -z "${{ inputs.hosted_url }}" ]; then
++            echo "**SKIP** — no hosted_url supplied" >> "$GITHUB_STEP_SUMMARY"
++            echo "configured=false" >> "$GITHUB_OUTPUT"
++          else
++            echo "configured=true" >> "$GITHUB_OUTPUT"
++          fi
++      - name: Smoke the live deployment (readiness + version + auth boundary)
++        if: steps.target.outputs.configured == 'true'
++        env:
++          BASE: ${{ inputs.hosted_url }}
++        run: |
++          set -euo pipefail
++          curl -fsS "$BASE/healthz" | python3 -m json.tool
++          curl -fsS "$BASE/readyz" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d); assert d.get('database') and d.get('queue'), d"
++          code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/v1/projects")
++          [ "$code" = "401" ] || { echo "expected 401 unauthenticated, got $code"; exit 1; }
++
++  # Category 7 — bounded load + recovery: queue saturation, lease expiry under
++  # crash, dead-letter visibility, idempotent retries (real PostgreSQL).
++  load-recovery:
++    runs-on: ubuntu-24.04
++    timeout-minutes: 20
++    services:
++      postgres:
++        image: postgres:16
++        env:
++          POSTGRES_USER: ci
++          POSTGRES_PASSWORD: ci-only
++          POSTGRES_DB: postgres
++        ports: ["5432:5432"]
++        options: >-
++          --health-cmd "pg_isready -U ci" --health-interval 2s --health-timeout 5s --health-retries 30
++    env:
++      TEST_DATABASE_URL: postgresql+psycopg://ci:ci-only@localhost:5432/postgres
++      UV_PYTHON: "3.12"
++      LOAD_WORKERS: ${{ inputs.load_workers }}
++    steps:
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          ref: ${{ inputs.ref }}
++      - name: Install uv
++        run: python3 -m pip install --user "uv==0.11.28"
++      - name: Install workspace
++        run: ~/.local/bin/uv sync --frozen
++      - name: Bounded concurrency + recovery probe
++        run: ~/.local/bin/uv run python scripts/ci/load_probe.py
++      - name: Queue + recovery regression suite
++        run: >-
++          ~/.local/bin/uv run pytest -q
++          backend/tests/test_jobs_queue.py backend/tests/test_artifact_concurrency.py
++
++  # Rollup: every category's verdict lands here — run/skip/fail, never silent.
++  verify-summary:
++    if: always()
++    needs:
++      - static-unit
++      - real-db
++      - real-sandbox
++      - browser-e2e
++      - live-model
++      - hosted-smoke
++      - load-recovery
++    runs-on: ubuntu-24.04
++    env:
++      R1: ${{ needs.static-unit.result }}
++      R2: ${{ needs.real-db.result }}
++      R3: ${{ needs.real-sandbox.result }}
++      R4: ${{ needs.browser-e2e.result }}
++      R5: ${{ needs.live-model.result }}
++      R6: ${{ needs.hosted-smoke.result }}
++      R7: ${{ needs.load-recovery.result }}
++      REF: ${{ inputs.ref }}
++      LIVE: ${{ inputs.live_model }}
++      HOSTED: ${{ inputs.hosted_url }}
++    run: |
++      {
++        echo "## Pilot verification — $REF"
++        echo ""
++        echo "| Category | Mode | Result |"
++        echo "|---|---|---|"
++        echo "| static-unit | static analysis + unit (no DB/model) | $R1 |"
++        echo "| real-db | real PostgreSQL | $R2 |"
++        echo "| real-sandbox | real Docker sandbox | $R3 |"
++        echo "| browser-e2e | real stack + browser; scripted (fake) model | $R4 |"
++        echo "| live-model | authorized live provider | $R5 (live_model=$LIVE) |"
++        echo "| hosted-smoke | live deployed environment | $R6 (hosted_url=${HOSTED:-none}) |"
++        echo "| load-recovery | bounded load + crash recovery, real DB | $R7 |"
++      } | tee -a "$GITHUB_STEP_SUMMARY"
++      for r in "$R1" "$R2" "$R3" "$R4" "$R7"; do
++        [ "$r" = "success" ] || { echo "required category failed/cancelled"; exit 1; }
++      done
++      # live-model and hosted-smoke may legitimately skip; failure is still fatal.
++      for r in "$R5" "$R6"; do
++        case "$r" in success|skipped) ;; *) echo "optional category failed: $r"; exit 1;; esac
++      done
+diff --git a/.github/workflows/qa-tools.yml b/.github/workflows/qa-tools.yml
+index 61073d63..93b60091 100644
+--- a/.github/workflows/qa-tools.yml
++++ b/.github/workflows/qa-tools.yml
+@@ -1,10 +1,10 @@
+ name: qa-tools
++# Release gate: runs on every PR and push to main so `runner-semantics` always
++# reports; unrelated diffs are marked SKIPPED.
+ on:
+   pull_request:
+-    paths: ["scripts/devin_qa/**", "tests/qa/**", ".github/workflows/qa-tools.yml"]
+   push:
+     branches: [main]
+-    paths: ["scripts/devin_qa/**", "tests/qa/**", ".github/workflows/qa-tools.yml"]
+ permissions:
+   contents: read
+ jobs:
+@@ -12,4 +12,13 @@ jobs:
+     runs-on: ubuntu-24.04
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+-      - run: python3 -m unittest discover -s tests/qa -v
++        with:
++          fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "scripts/devin_qa/**,tests/qa/**,.github/workflows/qa-tools.yml"
++      - if: steps.gate.outputs.run == 'true'
++        run: python3 -m unittest discover -s tests/qa -v
+diff --git a/.github/workflows/research-bounds.yml b/.github/workflows/research-bounds.yml
+index 244b5c73..bcaf5544 100644
+--- a/.github/workflows/research-bounds.yml
++++ b/.github/workflows/research-bounds.yml
+@@ -1,10 +1,10 @@
+ name: read-only research bounds
++# Release gate: runs on every PR and push to main so `audit` always reports;
++# unrelated diffs are marked SKIPPED.
+ on:
+   pull_request:
+-    paths: ["scripts/research/resource_bounds.py", "tests/research/**", "docs/research/rl-product-thesis/**", ".github/workflows/research-bounds.yml"]
+   push:
+     branches: [main]
+-    paths: ["scripts/research/resource_bounds.py", "tests/research/**", "docs/research/rl-product-thesis/**", ".github/workflows/research-bounds.yml"]
+ permissions:
+   contents: read
+ jobs:
+@@ -15,12 +15,21 @@ jobs:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+         with:
+           fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "scripts/research/resource_bounds.py,tests/research/**,docs/research/rl-product-thesis/**,.github/workflows/research-bounds.yml"
+       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884
++        if: steps.gate.outputs.run == 'true'
+       - name: Install analytical test tools only
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           uv venv --python 3.12 .venv-audit
+           uv pip install --python .venv-audit/bin/python pytest==9.1.1 ruff==0.17.2
+       - name: Lint and read-only mathematical/provenance tests
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           .venv-audit/bin/ruff check scripts/research/resource_bounds.py tests/research/test_resource_bounds.py
+           .venv-audit/bin/ruff format --check scripts/research/resource_bounds.py tests/research/test_resource_bounds.py
+diff --git a/.github/workflows/rl.yml b/.github/workflows/rl.yml
+index 7d2ee531..a32e5dab 100644
+--- a/.github/workflows/rl.yml
++++ b/.github/workflows/rl.yml
+@@ -1,39 +1,53 @@
+ name: rl-defense
+ 
++# Release gate: runs on every PR and push to main so `rl-tests` always reports;
++# unrelated diffs are marked SKIPPED in the job summary.
+ on:
+   pull_request:
+-    paths: ["standards/**", "rl-defense/**", "shared/shared/rl.py", "shared/shared/ids.py", "shared/shared/base.py", ".github/workflows/rl.yml"]
+   push:
+     branches: [main]
+-    paths: ["standards/**", "rl-defense/**", "shared/shared/rl.py", "shared/shared/ids.py", "shared/shared/base.py", ".github/workflows/rl.yml"]
+ 
+ permissions:
+   contents: read
+ 
+ jobs:
+-  test:
++  rl-tests:
+     runs-on: ubuntu-latest
+     timeout-minutes: 20
+     defaults:
+       run:
+         working-directory: rl-defense
++    env:
++      GATE_GLOBS: "standards/**,rl-defense/**,shared/shared/rl.py,shared/shared/ids.py,shared/shared/base.py,.github/workflows/rl.yml"
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+           fetch-depth: 0 # retained evidence audits resolve the original execution commit
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        working-directory: ${{ github.workspace }}
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "$GATE_GLOBS"
+       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
++        if: steps.gate.outputs.run == 'true'
+       - name: Install (CPU-only torch)
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           uv venv --python 3.12 .venv
+           uv pip install --python .venv/bin/python --index-url https://download.pytorch.org/whl/cpu torch
+           uv pip install --python .venv/bin/python -e ../standards -e ../shared -e ".[dev]"
+       - name: Lint
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           .venv/bin/ruff check rl_defense tests
+           .venv/bin/ruff format --check rl_defense tests
+       - name: Tests (check_env, determinism, DDQN math, short training + eval)
++        if: steps.gate.outputs.run == 'true'
+         run: .venv/bin/python -m pytest -q
+       - name: Smoke train (20k steps, CPU) and reload checkpoint
++        if: steps.gate.outputs.run == 'true'
+         run: |
+           .venv/bin/python -m rl_defense.train --seed 0 --steps 20000 --run-dir runs/ci --log-every 5000
+           .venv/bin/python -c "from rl_defense.api import load_policy; print(load_policy('runs/ci/ddqn_seed0.pt').policy_version)"
+diff --git a/.github/workflows/security-agents.yml b/.github/workflows/security-agents.yml
+index 65fa24ed..1ae9d434 100644
+--- a/.github/workflows/security-agents.yml
++++ b/.github/workflows/security-agents.yml
+@@ -3,31 +3,47 @@ name: security-agents
+ # Pillar 2 runtime: the seven-agent suite (scripted FakeLLM, real tool registry,
+ # scope_guard and local sandbox against the owned payments-lite target). Live
+ # provider tests never run here.
++#
++# Release gate: runs on every PR and push to main so `secagents-tests` and
++# `docker-sandbox` always report; unrelated diffs are marked SKIPPED.
+ on:
+   pull_request:
+-    paths: ["standards/**", "specialists/**", "security-agents/**", "shared/**", "code-intelligence/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/security-agents.yml"]
+   push:
+     branches: [main]
+-    paths: ["standards/**", "specialists/**", "security-agents/**", "shared/**", "code-intelligence/**", "examples/payments-lite/**", "pyproject.toml", "uv.lock", ".github/workflows/security-agents.yml"]
+ 
+ permissions:
+   contents: read
+ 
++env:
++  GATE_GLOBS: "standards/**,specialists/**,security-agents/**,shared/**,code-intelligence/**,examples/payments-lite/**,pyproject.toml,uv.lock,.github/workflows/security-agents.yml"
++
+ jobs:
+-  test:
++  secagents-tests:
+     runs-on: ubuntu-24.04
+     timeout-minutes: 20
+     env:
+       UV_PYTHON: "3.12"
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "$GATE_GLOBS"
+       - name: Install uv (pinned)
++        if: steps.gate.outputs.run == 'true'
+         run: python3 -m pip install --user "uv==0.11.28"
+       - name: Install workspace
++        if: steps.gate.outputs.run == 'true'
+         run: ~/.local/bin/uv sync --frozen
+       - name: Lint
++        if: steps.gate.outputs.run == 'true'
+         run: ~/.local/bin/uv run ruff check security-agents/security_agents security-agents/tests
+       - name: Tests
++        if: steps.gate.outputs.run == 'true'
+         working-directory: security-agents
+         run: ~/.local/bin/uv run pytest -q
+ 
+@@ -38,15 +54,28 @@ jobs:
+       UV_PYTHON: "3.12"
+     steps:
+       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          fetch-depth: 0
++      - name: Release gate — does this suite apply to the diff?
++        id: gate
++        run: >-
++          python3 scripts/ci/path_gate.py
++          --base "${{ github.event.pull_request.base.sha || github.event.before }}"
++          --globs "$GATE_GLOBS"
+       - name: Install uv (pinned)
++        if: steps.gate.outputs.run == 'true'
+         run: python3 -m pip install --user "uv==0.11.28"
+       - name: Install workspace
++        if: steps.gate.outputs.run == 'true'
+         run: ~/.local/bin/uv sync --frozen
+       - name: Build sandbox image (base pinned by digest)
++        if: steps.gate.outputs.run == 'true'
+         run: docker build -t hackatl-sandbox:ci security-agents/sandbox
+       - name: Build payments-lite target image (base pinned by digest)
++        if: steps.gate.outputs.run == 'true'
+         run: docker build -t hackatl-target:ci -f security-agents/sandbox/target.Dockerfile examples/payments-lite/target
+       - name: Real Docker sandbox tests
++        if: steps.gate.outputs.run == 'true'
+         working-directory: security-agents
+         env:
+           RUN_DOCKER_SANDBOX: "1"
+@@ -55,6 +84,7 @@ jobs:
+           SANDBOX_ALLOW_UNPINNED_IMAGE: "1"
+         run: ~/.local/bin/uv run pytest -q -rA tests/test_docker_sandbox_live.py
+       - name: Hosted run on PostgreSQL with Docker and the http probe transport
++        if: steps.gate.outputs.run == 'true'
+         env:
+           RUN_DOCKER_SANDBOX: "1"
+           SANDBOX_IMAGE: hackatl-sandbox:ci
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 8f4cc86d..01607c7f 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
+ 
+ ## [Unreleased]
+ 
++- Audit the code-intelligence pipeline end to end: land the parse-safe secret redaction from PR #441, redact mid-line bare secret literals in calls/collections, flag non-literal route paths as IndexIssue findings instead of silently dropping them, add a labeled-question retrieval evaluation and a reproducible index benchmark, and record executed coverage/recall/isolation numbers in `code-intelligence/evidence/m2-index-retrieval-audit.json` with the full report in `docs/research/intel-pipeline-audit/`.
++
+ - Readiness/diagnostics split infra liveness from assessment capability: `/readyz` now reports `status=ready|degraded|not_ready` (503 unless ready) with per-capability booleans for live model, GitHub App (configured; `GET /app`-verified), Vercel Sandbox env, artifact-store writability and worker heartbeats; new `/diagnostics` (org-owner auth required — worker ids, env-var names, queue counts, migration state are internal metadata) adds verified GitHub check, migration drift, queue counts and worker rows; `/healthz` gains `git_sha` + `schema_version`. Contract schema 0.22.0. Frontend adds `/api/frontend-version` + `deploy/verify_pair.sh` to detect Vercel/Railway schema skew before it breaks users. Worker liveness is heartbeat-backed (`worker_heartbeats`, migration 0017; `READYZ_REQUIRE_WORKERS` requires ≥1 in staging/production) and `last_poll_at` ensures a stopped claim loop cannot report as a healthy worker.
+ - Rebuild the connect → organization → repository → commit flow: the commit page now loads
+   the code review (headline, comments, real per-file diffs, patch, tests) on arrival instead
+@@ -13,17 +15,21 @@ All notable changes are documented here. Format follows
+   sector map — each saved tool call pinned to the part of the app it touched — or a labelled
+   preview of the quick read when no run exists. Failed runs are marked on the agent rail; the
+   organization page's repository rows are fully clickable.
++### CI / release gate (2026-10-24)
++- Workflows run on every push/PR with per-job RUN/SKIP path gates (`scripts/ci/path_gate.py`); job ids made unique for required checks.
++- New manual `pilot-verify.yml` pipeline (static/unit, real DB, real sandbox, browser E2E, authorized live-model, hosted smoke, load/recovery).
++- New `GET /projects/{id}/jobs?status=` endpoint for dead-letter/failed-job visibility; `last_error` secret-scrubbed at write time, owners get sanitized detail, other members get `{code, category}`.
++- Eval harness: unscored cases no longer counted as misses (`scored:false` + reason).
++- `scripts/ci/load_probe.py` bounded queue concurrency/crash-recovery probe.
+ 
+ - Postgres storage controls for the Railway deployment: `python -m backend.maintenance` (`report`/`apply`/`loop`) plus a bearer-token ops surface (`GET /api/v1/ops/storage`, `/ops/storage/prometheus`, `POST /api/v1/ops/maintenance`) reporting DB/WAL/table/file-store usage with fixed 70/80/90% volume alerts to `OPS_ALERT_WEBHOOK_URL`. Bounded retention (`RETENTION_DRY_RUN=true` by default — report-only until flipped) deletes expired sessions, old idempotency keys, terminal job rows, webhook deliveries, monitoring events, settled reassessment requests, runtime windows, orphaned and superseded index payload sets (keeping the newest 5 ready snapshots per repo), orphaned artifact objects, and stale `refs/ari/*` clone refs; audit events, findings, approvals, scopes, assessments, and any snapshot referenced by a live assessment are never deleted. Hourly maintenance sidecar in `deploy/railway/start.sh`. Runbook: `docs/deploy/POSTGRES_STORAGE.md`.
+ 
+-=======
+ - Pilot infra limitation documented: `docs/pilot/BRANCH_PROTECTION_LIMITATION.md` — branch-protection rulesets can't be enforced on a personal-account private repo; the release gate stays advisory/procedural, with a step-by-step org-migration plan to enforced protection.
+ - fix(pilot): two-org rehearsal runs end-to-end — real API shapes (repo connect + file binding, scope targets/approve, real commit_sha), target app gets factory + seed + build_recipe; 13/13 steps pass against real Anthropic + Vercel sandbox with genuine findings and proven org isolation.
+-
+ - Live seven-agent rehearsal evidence on `examples/inventory-lite`: full orchestrator run with the real Anthropic provider (all 7 roles live, `asm_01M5R4912YTF8XKT9X0GXHY668`, $0.0334) found the planted CWE-639 ownership defect (`validation=confirmed`, verdict `accepted`, hardened with 3 regression tests); second hypothesis honestly inconclusive. Report + evidence doc under `docs/rehearsal/`.
+-
+ - Seven-agent live evidence: a budgeted real-Claude run of the full security workflow on the payments-lite fixture completed end to end (Probe executed the ownership check, Verify independently re-ran it on a fresh checkout and accepted the patch); manifest + per-agent tool traces, costs, specialist provenance and limitations archived under `security-agents/tests/artifacts/live/20261024T213713Z-*`.
+-- Readiness/diagnostics split infra liveness from assessment capability: `/readyz` now reports `status=ready|degraded|not_ready` (503 unless ready) with per-capability booleans for live model, GitHub App (configured; `GET /app`-verified), Vercel Sandbox env, artifact-store writability and worker heartbeats; new `/diagnostics` (org-owner auth required — worker ids, env-var names, queue counts, migration state are internal metadata) adds verified GitHub check, migration drift, queue counts and worker rows; `/healthz` gains `git_sha` + `schema_version`. Contract schema 0.22.0. Frontend adds `/api/frontend-version` + `deploy/verify_pair.sh` to detect Vercel/Railway schema skew before it breaks users. Worker liveness is heartbeat-backed (`worker_heartbeats`, migration 0017; `READYZ_REQUIRE_WORKERS` requires ≥1 in staging/production) and `last_poll_at` ensures a stopped claim loop cannot report as a healthy worker.
++||||||| 3af0fa72
++=======
+ - Tenant data protection: two-tenant adversarial suite (17 tests) covering every project-scoped read/write/SSE/artifact/job/audit surface plus forged-ID and storage-accessor claims; FORCE row-level security on `index_payloads`/`index_snapshots` scoped by a per-transaction tenant GUC (migration 0016); `backend/privacy.py::purge_project` — the documented full-tenant deletion workflow (all project rows, RLS-scoped source payloads, refcount-aware artifact objects, bare clones); `docs/security/TENANT_DATA_PROTECTION.md` — threat model, private-code data-flow inventory, verified controls matrix, GitHub-token posture, Anthropic processing posture, retention gaps, and the enterprise isolation future option.
+ 
+ - Functional-reviewer evaluation report (`code-review/eval/REVIEWER_EVAL_2026-10-24.md`): executed corpus results (10/10 labels proven), functional-vs-security performance table on the live 45-case set, before/after test evidence, supported scope and honest gaps. Scorer's `source_span` path fallback locked by `security-agents/tests/test_eval_score_api.py`.
+diff --git a/backend/backend/api/routes.py b/backend/backend/api/routes.py
+index 37e928c9..e9d20af4 100644
+--- a/backend/backend/api/routes.py
++++ b/backend/backend/api/routes.py
+@@ -1510,6 +1510,77 @@ def list_rl_evaluations(project_id: str, request: Request) -> dict[str, Any]:
+         }
+ 
+ 
++@router.get("/projects/{project_id}/jobs")
++def list_project_jobs(
++    project_id: str,
++    request: Request,
++    status: str | None = Query(None, description="comma-separated statuses, e.g. 'dead,failed'"),
++    limit: int = Query(200, ge=1, le=200),
++) -> dict[str, Any]:
++    """Failed-job / dead-letter visibility for operators. Members read jobs whose
++    payload names the project (or whose assessment belongs to it); ``status``
++    filters, e.g. ``?status=dead,failed``. Newest first. ``last_error`` is
++    secret-scrubbed at read time — worker failure messages are raw exception
++    text and may embed credentials or connection strings."""
++    from backend.db import jobs as jobs_t
++    from backend.redaction import redact
++
++    with transaction() as conn:
++        _, role = require_project(conn, _user(conn, request), project_id)
++        q = (
++            sa.select(
++                jobs_t.c.id,
++                jobs_t.c.kind,
++                jobs_t.c.status,
++                jobs_t.c.attempts,
++                jobs_t.c.max_attempts,
++                jobs_t.c.last_error,
++                jobs_t.c.created_at,
++                jobs_t.c.updated_at,
++            )
++            .where(
++                sa.or_(
++                    jobs_t.c.payload["project_id"].astext == project_id,
++                    jobs_t.c.payload["assessment_id"].astext.in_(
++                        sa.select(assessments.c.id).where(assessments.c.project_id == project_id)
++                    ),
++                )
++            )
++            .order_by(jobs_t.c.created_at.desc())
++            .limit(limit)
++        )
++        if status:
++            q = q.where(jobs_t.c.status.in_([s.strip() for s in status.split(",") if s.strip()]))
++        items = [
++            {
++                "id": r["id"],
++                "kind": r["kind"],
++                "status": r["status"],
++                "attempts": r["attempts"],
++                "max_attempts": r["max_attempts"],
++                # owners get the secret-scrubbed error; other members get a
++                # coarse {code, category} so infra internals stay out of reach
++                "last_error": (
++                    redact({k: v for k, v in (r["last_error"] or {}).items() if k != "trace"})
++                    if role is MemberRole.owner
++                    else {
++                        "code": (r["last_error"] or {}).get("code"),
++                        "category": str((r["last_error"] or {}).get("code") or "")
++                        .split("_")[0]
++                        .lower()
++                        or "unknown",
++                    }
++                )
++                if r["last_error"]
++                else None,
++                "created_at": r["created_at"],
++                "updated_at": r["updated_at"],
++            }
++            for r in conn.execute(q).mappings()
++        ]
++        return {"items": items, "next_cursor": None}
++
++
+ @router.get("/jobs/{job_id}")
+ def get_job(job_id: str, request: Request) -> dict[str, Any]:
+     from backend.db import jobs as jobs_t
+diff --git a/backend/backend/jobs.py b/backend/backend/jobs.py
+index d2506fb0..72380b7f 100644
+--- a/backend/backend/jobs.py
++++ b/backend/backend/jobs.py
+@@ -16,6 +16,7 @@ import sqlalchemy as sa
+ from sqlalchemy.engine import Connection
+ 
+ from backend.db import jobs, worker_heartbeats
++from backend.redaction import redact
+ from shared.base import utcnow
+ from shared.errors import ErrorCode
+ from shared.ids import IdPrefix, new_id
+@@ -112,10 +113,12 @@ def claim(conn: Connection, owner: str, lease_s: int, kinds: list[str] | None =
+                 status="dead",
+                 lease_owner=None,
+                 updated_at=sa.func.now(),
+-                last_error={
+-                    "code": ErrorCode.JOB_LEASE_EXPIRED.value,
+-                    "message": "attempts exhausted (lease expired or repeated failure)",
+-                },
++                last_error=redact(
++                    {
++                        "code": ErrorCode.JOB_LEASE_EXPIRED.value,
++                        "message": "attempts exhausted (lease expired or repeated failure)",
++                    }
++                ),
+             )
+         )
+         return None
+@@ -182,7 +185,7 @@ def fail(
+         .values(
+             status=status,
+             run_after=run_after,
+-            last_error=error,
++            last_error=redact(error),
+             lease_owner=None,
+             lease_expires_at=None,
+             updated_at=sa.func.now(),
+diff --git a/backend/backend/redaction.py b/backend/backend/redaction.py
+index 4f658277..88eff61d 100644
+--- a/backend/backend/redaction.py
++++ b/backend/backend/redaction.py
+@@ -16,8 +16,24 @@ _PATTERNS: list[tuple[re.Pattern[str], str]] = [
+         "[REDACTED:private_key]",
+     ),
+     (re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._\-]{16,}"), r"\1 [REDACTED:bearer]"),
++    # credentials inside connection strings: scheme://user:pass@host -> scheme://[REDACTED]@host
++    (
++        re.compile(
++            r"(?i)\b(postgres(?:ql)?|mysql(?:\+\w+)?|mongodb(?:\+srv)?|redis|amqp)://[^\s:/@]+:[^\s@]+@"
++        ),
++        r"\1://[REDACTED:dsn_credentials]@",
++    ),
++    # generic secret key=value / key: value pairs (password=hunter2, token: xyz, ...)
++    (
++        re.compile(r"(?i)\b(password|passwd|pwd|api_key|apikey|secret|token)\s*[=:]\s*[^\s'\"]+"),
++        r"\1=[REDACTED:kv]",
++    ),
+ ]
+ 
++# Deliberately NOT scrubbed: absolute paths and internal hostnames. They aid
++# debugging and are bounded to project members; revisit if members must be
++# isolated from infra internals (see docs/release/RELEASE_GATE_2026-10-24.md).
++
+ _SENSITIVE_KEYS = re.compile(
+     r"(?i)^(password|passwd|secret|client_secret|token|access_token|refresh_token|api_key|"
+     r"private_key|authorization|cookie|set-cookie|x-hub-signature(-256)?)$"
+diff --git a/backend/tests/test_job_status_api.py b/backend/tests/test_job_status_api.py
+index 23641953..a4dcf467 100644
+--- a/backend/tests/test_job_status_api.py
++++ b/backend/tests/test_job_status_api.py
+@@ -20,3 +20,157 @@ def test_assessment_job_is_readable_only_by_its_project_members(client_factory):
+         assert job["kind"] == "run_assessment" and job["status"] == "queued"
+     assert eve.get(url).status_code == 404
+     assert client_factory().get(url).status_code == 401
++
++
++def test_project_jobs_list_surfaces_dead_and_failed(client_factory):
++    """Dead-letter visibility: members can list a project's jobs filtered by status."""
++    import sqlalchemy as sa
++
++    from backend import jobs as jobq
++    from backend.db import jobs as jobs_t
++    from backend.db import transaction
++
++    alice, bob = client_factory("alice"), client_factory("bob")
++    eve = client_factory("eve")
++    ids = setup_project(alice, bob)
++    with transaction() as conn:
++        dead_id, _ = jobq.enqueue(
++            conn, "probe_dead", {"project_id": ids["project"]}, dedupe_key="vis-dead"
++        )
++        conn.execute(sa.update(jobs_t).where(jobs_t.c.id == dead_id).values(status="dead"))
++        ok_id, _ = jobq.enqueue(
++            conn, "probe_ok", {"project_id": ids["project"]}, dedupe_key="vis-ok"
++        )
++        jobq.enqueue(conn, "probe_other", {"project_id": "proj_other"}, dedupe_key="vis-other")
++
++    url = f"/api/v1/projects/{ids['project']}/jobs"
++    all_jobs = alice.get(url).json()["items"]
++    got_ids = {j["id"] for j in all_jobs}
++    assert {dead_id, ok_id} <= got_ids
++    assert all(j["kind"] != "probe_other" for j in all_jobs)
++
++    dead_only = alice.get(url, params={"status": "dead,failed"}).json()["items"]
++    assert {j["id"] for j in dead_only} == {dead_id}
++    assert dead_only[0]["status"] == "dead"
++
++    assert eve.get(url).status_code == 404
++    assert client_factory().get(url).status_code == 401
++
++
++def test_project_jobs_list_scrubs_secret_values_in_last_error(client_factory):
++    """A secret embedded in last_error.message must never surface via the list."""
++    import sqlalchemy as sa
++
++    from backend import jobs as jobq
++    from backend.db import jobs as jobs_t
++    from backend.db import transaction
++
++    alice, bob = client_factory("alice"), client_factory("bob")
++    ids = setup_project(alice, bob)
++    marker = "ghp_" + "secretmarker" + "0" * 20
++    with transaction() as conn:
++        jid, _ = jobq.enqueue(
++            conn, "probe_leak", {"project_id": ids["project"]}, dedupe_key="vis-leak"
++        )
++        conn.execute(
++            sa.update(jobs_t)
++            .where(jobs_t.c.id == jid)
++            .values(
++                status="dead",
++                last_error={
++                    "code": "TOOL_ERROR",
++                    "message": f"call failed: {marker} rejected",
++                    "trace": "full traceback",
++                },
++            )
++        )
++
++    items = alice.get(f"/api/v1/projects/{ids['project']}/jobs", params={"status": "dead"}).json()[
++        "items"
++    ]
++    err = next(j["last_error"] for j in items if j["id"] == jid)
++    assert marker not in err["message"]
++    assert "[REDACTED:github_token]" in err["message"]
++    assert "trace" not in err
++
++
++def test_fail_scrubs_secrets_at_write_time(client_factory):
++    """Secrets in a failure message never persist in jobs.last_error."""
++    import sqlalchemy as sa
++
++    from backend import jobs as jobq
++    from backend.db import jobs as jobs_t
++    from backend.db import transaction
++
++    alice, bob = client_factory("alice"), client_factory("bob")
++    ids = setup_project(alice, bob)
++    key = "sk-ant-api03-" + "secretmarker" + "0" * 40
++    dsn = "post" + "gresql://svc_user" + ":" + "hunter2pass" + "@db.internal:5432/app"
++    kv = "pass" + "word=" + "hunter" + "2"
++    with transaction() as conn:
++        jid, _ = jobq.enqueue(
++            conn, "probe_leak", {"project_id": ids["project"]}, dedupe_key="wr-leak"
++        )
++        job = jobq.claim(conn, owner="w1", lease_s=60, kinds=["probe_leak"])
++        assert job and job.id == jid
++        jobq.fail(
++            conn,
++            jid,
++            "w1",
++            {"code": "TOOL_ERROR", "message": f"connect {dsn} failed: {key} ({kv})"},
++            retryable=False,
++        )
++        row = (
++            conn.execute(sa.select(jobs_t.c.last_error).where(jobs_t.c.id == jid))
++            .mappings()
++            .first()
++        )
++    msg = row["last_error"]["message"]
++    for marker in (key, "hunter2pass", "hunter2"):
++        assert marker not in msg
++    assert "[REDACTED:anthropic_key]" in msg and "[REDACTED:dsn_credentials]" in msg
++
++    items = alice.get(
++        f"/api/v1/projects/{ids['project']}/jobs", params={"status": "failed"}
++    ).json()["items"]
++    api_msg = next(j["last_error"]["message"] for j in items if j["id"] == jid)
++    for marker in (key, "hunter2pass", "hunter2"):
++        assert marker not in api_msg
++
++
++def test_jobs_list_member_sees_coarse_error_owner_sees_sanitized(client_factory):
++    """Members get {code, category}; owners get the sanitized message."""
++    import sqlalchemy as sa
++    from helpers import add_member
++
++    from backend import jobs as jobq
++    from backend.db import jobs as jobs_t
++    from backend.db import transaction
++
++    alice, bob = client_factory("alice"), client_factory("bob")
++    carol = client_factory("carol")
++    ids = setup_project(alice, bob)
++    org_id = alice.me["memberships"][0]["organization"]["id"]
++    add_member(org_id, carol.me["user"]["id"], role="member")
++    with transaction() as conn:
++        jid, _ = jobq.enqueue(
++            conn, "probe_coarse", {"project_id": ids["project"]}, dedupe_key="vis-coarse"
++        )
++        conn.execute(
++            sa.update(jobs_t)
++            .where(jobs_t.c.id == jid)
++            .values(
++                status="dead",
++                last_error={
++                    "code": "TOOL_ERROR",
++                    "message": "connect post" + "gresql://u:p" + "@db.internal failed",
++                    "trace": "tb",
++                },
++            )
++        )
++    url = f"/api/v1/projects/{ids['project']}/jobs?status=dead"
++    member_err = next(j["last_error"] for j in carol.get(url).json()["items"] if j["id"] == jid)
++    assert member_err == {"code": "TOOL_ERROR", "category": "tool"}
++    owner_err = next(j["last_error"] for j in alice.get(url).json()["items"] if j["id"] == jid)
++    assert "db.internal" in owner_err["message"] and "u:p@" not in owner_err["message"]
++    assert "trace" not in owner_err
+diff --git a/code-intelligence/code_intelligence/extract.py b/code-intelligence/code_intelligence/extract.py
+index e09f5281..07d8843e 100644
+--- a/code-intelligence/code_intelligence/extract.py
++++ b/code-intelligence/code_intelligence/extract.py
+@@ -376,10 +376,31 @@ class PythonExtractor:
+                 "api_route",
+             }:
+                 continue
+-            if not decorator.args or not isinstance(decorator.args[0], ast.Constant):
++            arg = decorator.args[0] if decorator.args else None
++            if arg is None or not (isinstance(arg, ast.Constant) and isinstance(arg.value, str)):
++                self.issues.append(
++                    IndexIssue(
++                        path=symbol.path,
++                        reason=(
++                            f"Route decorator @{verb} at line {decorator.lineno} on "
++                            f"{symbol.qualified_name} uses a non-literal path"
++                            + (f" ({ast.unparse(arg)[:200]})" if arg is not None else "")
++                            + "; route not indexed"
++                        ),
++                    )
++                )
+                 continue
+-            path = decorator.args[0].value
+-            if not isinstance(path, str) or len(path) > 500:
++            path = arg.value
++            if len(path) > 500:
++                self.issues.append(
++                    IndexIssue(
++                        path=symbol.path,
++                        reason=(
++                            f"Route decorator @{verb} at line {decorator.lineno} on "
++                            f"{symbol.qualified_name} has an overlong path; route not indexed"
++                        ),
++                    )
++                )
+                 continue
+             methods = [verb.upper()] if verb not in {"route", "api_route"} else ["GET"]
+             dependencies = list(auth)
+diff --git a/code-intelligence/code_intelligence/privacy.py b/code-intelligence/code_intelligence/privacy.py
+index 8aefbd57..caa12234 100644
+--- a/code-intelligence/code_intelligence/privacy.py
++++ b/code-intelligence/code_intelligence/privacy.py
+@@ -9,15 +9,19 @@ _KNOWN = re.compile(
+     r"sk-ant-[A-Za-z0-9_-]{8,}|sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}"
+     r"|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}"
+ )
+-# Replace only the assigned value: a string literal's contents, or a bare token ending the
+-# line. Never the rest of the line, so `secret_configured=bool(` stays parseable Python.
++# Replace only the assigned value: a string literal's contents, or a bare token that
++# ends at a line/clause boundary — EOL/comment (any token), or a mid-line `,`/`;`/
++# closing bracket (token must contain a digit, so identifiers like `secret: bytes,`
++# or `api_key=key` keep their references). Never the rest of the line and never a
++# token followed by `(` or an operator, so `secret_configured=bool(` stays parseable.
+ _ASSIGN = re.compile(
+     r"(?im)([\w.-]*(?:secret|password|passwd|api_key|access_token|private_key|auth_token)"
+     r"[\w.-]*[\"']?[ \t]*[:=][ \t]*)"
+     r"(?:([rbuf]{0,2})(\"\"\"[\s\S]*?\"\"\"|'''[\s\S]*?'''"
+     r"|\"(?:[^\"\\\n]|\\.)*\"|'(?:[^'\\\n]|\\.)*')(?![\w\"'])"
+     r"|[^\s\"'#,;()\[\]{}=](?:[^\n\"'#,;()\[\]{}=]*[^\s\"'#,;()\[\]{}=])?"
+-    r"(?=[ \t]*[,;]?[ \t]*(?:#[^\n]*)?$))"
++    r"(?=[ \t]*[,;]?[ \t]*(?:#[^\n]*)?$)"
++    r"|[^\s\"'#,;()\[\]{}=0-9]*[0-9][^\n\"'#,;()\[\]{}=]*(?=[ \t]*[,;)\]}]))"
+ )
+ 
+ 
+diff --git a/code-intelligence/evidence/index_benchmark.py b/code-intelligence/evidence/index_benchmark.py
+new file mode 100644
+index 00000000..06eb2f05
+--- /dev/null
++++ b/code-intelligence/evidence/index_benchmark.py
+@@ -0,0 +1,120 @@
++"""Index a real checkout through IntelligenceService and measure coverage + cost.
++
++Ground truth is an independent `ast` walk over the same files `GitReader`
++selects, so retained-coverage numbers reflect what the index kept rather than
++what the source tree contains. Route decorators counted in ground truth that
++are missing from the index must be matched by an `IndexIssue` — silently
++dropped routes are a finding, not a statistic.
++
++Usage (run from the repo root, uv workspace venv):
++
++    PYTHONPATH=code-intelligence:shared \\
++        .venv/bin/python code-intelligence/evidence/index_benchmark.py \\
++        <repo_path> <full_40_char_commit_sha> [path_prefix]
++
++Writes the measured JSON to stdout.
++"""
++
++from __future__ import annotations
++
++import ast
++import json
++import resource
++import sys
++import time
++import tracemalloc
++from collections import Counter
++from pathlib import Path
++
++from code_intelligence.api import IntelligenceService, RepositoryBinding
++from code_intelligence.store import SQLiteIndexStore
++
++ROUTE_VERBS = {"get", "post", "put", "patch", "delete", "head", "options", "route", "api_route"}
++
++
++def ground_truth(files) -> dict[str, int]:
++    stats = {"py_files": 0, "defs": 0, "classes": 0, "imports": 0, "calls": 0, "route_decs": 0}
++    for f in files:
++        if f.language != "python":
++            continue
++        stats["py_files"] += 1
++        try:
++            tree = ast.parse(f.content)
++        except (SyntaxError, ValueError, RecursionError):
++            continue
++        for node in ast.walk(tree):
++            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
++                stats["defs"] += 1
++                for d in node.decorator_list:
++                    if (
++                        isinstance(d, ast.Call)
++                        and isinstance(d.func, ast.Attribute)
++                        and d.func.attr.lower() in ROUTE_VERBS
++                    ):
++                        stats["route_decs"] += 1
++            elif isinstance(node, ast.ClassDef):
++                stats["classes"] += 1
++            elif isinstance(node, (ast.Import, ast.ImportFrom)):
++                stats["imports"] += len(node.names)
++            elif isinstance(node, ast.Call):
++                stats["calls"] += 1
++    return stats
++
++
++def main() -> None:
++    path, sha = Path(sys.argv[1]), sys.argv[2]
++    prefix = sys.argv[3] if len(sys.argv) > 3 else ""
++    db = Path(sys.argv[4]) if len(sys.argv) > 4 else Path("benchmark.sqlite")
++    if db.exists():
++        db.unlink()
++
++    store = SQLiteIndexStore(db)
++    binding = RepositoryBinding("prj_benchmark00", "rep_benchmark00", "owned/bench", path, prefix)
++    service = IntelligenceService(store, [binding])
++    tracemalloc.start()
++    rss0 = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
++    t0 = time.perf_counter()
++    ref = service.index_repository("prj_benchmark00", "rep_benchmark00", sha)
++    elapsed = time.perf_counter() - t0
++    _, peak = tracemalloc.get_traced_memory()
++    tracemalloc.stop()
++    rss1 = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
++
++    index = store.get(ref)
++    gt = ground_truth(index.files)
++    route_issues = sum(1 for i in index.issues if i.reason.startswith("Route decorator"))
++    routes = index.snapshot.stats.entry_points
++    if routes + route_issues != gt["route_decs"]:
++        print(
++            f"WARNING: {gt['route_decs'] - routes - route_issues} route decorators "
++            "neither indexed nor flagged",
++            file=sys.stderr,
++        )
++    out = {
++        "target": str(path),
++        "prefix": prefix,
++        "sha": sha,
++        "index_version": ref.index_version,
++        "elapsed_s": round(elapsed, 2),
++        "py_heap_peak_mb": round(peak / 1e6, 1),
++        "rss_delta_mb": round((rss1 - rss0) / 1e6, 1),
++        "store_bytes": db.stat().st_size,
++        "stats": index.snapshot.stats.model_dump(mode="json"),
++        "ground_truth": gt,
++        "issues_by_reason": dict(Counter(i.reason for i in index.issues)),
++        "retained": {
++            "py_files": f"{gt['py_files']} parsed of {index.snapshot.stats.files} stored",
++            "symbols_vs_defs+classes": (
++                f"{index.snapshot.stats.symbols}/{gt['defs'] + gt['classes']}"
++            ),
++            "imports": f"{len(index.imports)}/{gt['imports']}",
++            "call_edges_vs_raw_calls": f"{index.snapshot.stats.call_edges}/{gt['calls']}",
++            "routes": f"{routes}/{gt['route_decs']} (+{route_issues} flagged)",
++            "expectations": index.snapshot.stats.expectations,
++        },
++    }
++    print(json.dumps(out, indent=2))
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/code-intelligence/evidence/m2-index-retrieval-audit.json b/code-intelligence/evidence/m2-index-retrieval-audit.json
+new file mode 100644
+index 00000000..232b91cd
+--- /dev/null
++++ b/code-intelligence/evidence/m2-index-retrieval-audit.json
+@@ -0,0 +1,343 @@
++{
++  "audit_date": "2026-10-24",
++  "commit_sha": "7a5b329fe03314e89ebd60ccb40ef6a92ae1c825",
++  "redaction_reproduction": {
++    "main": {
++      "broken_after_redact": 38,
++      "line_count_changes": 2,
++      "corpus": "582 tracked .py files at 64bb24a2"
++    },
++    "pr_441": {
++      "broken_after_redact": 0,
++      "line_count_changes": 0
++    },
++    "missed_literal_secrets_on_pr": 0,
++    "over_redaction_delta_lines": 104
++  },
++  "indexes": {
++    "payments_lite": {
++      "target": "/Users/devin/repos/ari-ai",
++      "prefix": "examples/payments-lite/target",
++      "sha": "7a5b329fe03314e89ebd60ccb40ef6a92ae1c825",
++      "index_version": "python-ast-ts/0.3.1+profile.20ff1265a23bc3ee167eefc2f5eff2ac",
++      "snapshot_id": "snp_dfcdae989fa7b0d59c4b9d921c97a40b",
++      "elapsed_s": 0.32,
++      "py_heap_peak_mb": 2.2,
++      "rss_delta_mb": 4.5,
++      "store_bytes": 135168,
++      "stats": {
++        "files": 8,
++        "symbols": 45,
++        "call_edges": 114,
++        "entry_points": 8,
++        "expectations": 49
++      },
++      "ground_truth": {
++        "py_files": 6,
++        "defs": 30,
++        "classes": 9,
++        "imports": 25,
++        "calls": 109,
++        "route_decs": 8
++      },
++      "issues_count": 1,
++      "issues_by_reason": {
++        "unsupported format": 1
++      },
++      "retained": {
++        "files": "8/6+text",
++        "symbols_vs_defs+classes+modules": "45/39",
++        "imports": "25/25",
++        "call_edges": "114/109 raw calls",
++        "routes": "8/8 route decorators",
++        "expectations": 49
++      }
++    },
++    "backend_prefix": {
++      "target": "/Users/devin/repos/ari-ai",
++      "prefix": "backend",
++      "sha": "7a5b329fe03314e89ebd60ccb40ef6a92ae1c825",
++      "index_version": "python-ast-ts/0.3.1+profile.34a20310fd53ad5befd024bbb7e107e7",
++      "snapshot_id": "snp_6e00cb4f262ff6fc7db79460a78e798a",
++      "elapsed_s": 4.11,
++      "py_heap_peak_mb": 81.6,
++      "rss_delta_mb": 145.3,
++      "store_bytes": 4079616,
++      "stats": {
++        "files": 127,
++        "symbols": 1147,
++        "call_edges": 7445,
++        "entry_points": 97,
++        "expectations": 780
++      },
++      "ground_truth": {
++        "py_files": 123,
++        "defs": 956,
++        "classes": 68,
++        "imports": 2010,
++        "calls": 10823,
++        "route_decs": 99
++      },
++      "issues_count": 4,
++      "issues_by_reason": {
++        "unsupported format": 2,
++        "Route decorator @get at line 296 on backend.live_defense.owned_test_app.create_app.fixture_payment uses a non-literal path (FIXTURE_ROUTE); route not indexed": 1,
++        "Route decorator @post at line 300 on backend.live_defense.owned_test_app.create_app.control uses a non-literal path (CONTROL_PATH); route not indexed": 1
++      },
++      "retained": {
++        "files": "127/123+text",
++        "symbols_vs_defs+classes+modules": "1147/1024",
++        "imports": "2010/2010",
++        "call_edges": "7445/10823 raw calls",
++        "routes": "97/99 route decorators",
++        "expectations": 780
++      }
++    },
++    "ari_ai_full": {
++      "target": "/Users/devin/repos/ari-ai",
++      "prefix": "",
++      "sha": "7a5b329fe03314e89ebd60ccb40ef6a92ae1c825",
++      "index_version": "python-ast-ts/0.3.1",
++      "snapshot_id": "snp_95ea8bf1ec50f68ea02b580af01c5c92",
++      "elapsed_s": 92.41,
++      "py_heap_peak_mb": 617.3,
++      "rss_delta_mb": 836.7,
++      "store_bytes": 38600704,
++      "stats": {
++        "files": 1798,
++        "symbols": 5585,
++        "call_edges": 26844,
++        "entry_points": 107,
++        "expectations": 10963
++      },
++      "ground_truth": {
++        "py_files": 563,
++        "defs": 4324,
++        "classes": 698,
++        "imports": 7901,
++        "calls": 37383,
++        "route_decs": 109
++      },
++      "issues_count": 1048,
++      "issues_by_reason": {
++        "unsupported format": 963,
++        "sensitive or generated file": 3,
++        "binary or generated content": 4,
++        "oversized file": 60,
++        "ignored at pinned SHA": 18
++      },
++      "retained": {
++        "files": "1798/563+text",
++        "symbols_vs_defs+classes+modules": "5585/5022",
++        "imports": "7901/7901",
++        "call_edges": "26844/37383 raw calls",
++        "routes": "107/109 route decorators",
++        "expectations": 10963
++      }
++    }
++  },
++  "labeled_retrieval": {
++    "payments-lite": [
++      {
++        "focus": [
++          "read payment by id",
++          "/payments/{payment_id}"
++        ],
++        "required": 2,
++        "recalled": 2,
++        "missing": [],
++        "chunks": 11,
++        "token_count": 22751,
++        "budget": 24000
++      },
++      {
++        "focus": [
++          "create refund",
++          "/refunds"
++        ],
++        "required": 2,
++        "recalled": 1,
++        "missing": [
++          "payments_lite.app.create_app.require_owner"
++        ],
++        "chunks": 11,
++        "token_count": 23510,
++        "budget": 24000
++      },
++      {
++        "focus": [
++          "bearer token authentication",
++          "current_customer"
++        ],
++        "required": 1,
++        "recalled": 1,
++        "missing": [],
++        "chunks": 11,
++        "token_count": 23701,
++        "budget": 24000
++      },
++      {
++        "focus": [
++          "list my payments",
++          "list_payments"
++        ],
++        "required": 2,
++        "recalled": 1,
++        "missing": [
++          "payments_lite.app.create_app.payment_out"
++        ],
++        "chunks": 12,
++        "token_count": 23935,
++        "budget": 24000
++      },
++      {
++        "focus": [
++          "amount positive two decimals",
++          "PaymentIn"
++        ],
++        "required": 2,
++        "recalled": 2,
++        "missing": [],
++        "chunks": 11,
++        "token_count": 23222,
++        "budget": 24000
++      },
++      {
++        "focus": [
++          "own profile only",
++          "/customers/{customer_id}"
++        ],
++        "required": 2,
++        "recalled": 2,
++        "missing": [],
++        "chunks": 11,
++        "token_count": 23531,
++        "budget": 24000
++      },
++      {
++        "focus": [
++          "health endpoint",
++          "/health"
++        ],
++        "required": 1,
++        "recalled": 1,
++        "missing": [],
++        "chunks": 3,
++        "token_count": 6372,
++        "budget": 24000
++      },
++      {
++        "focus": [
++          "refund visible to owner",
++          "get_refund"
++        ],
++        "required": 2,
++        "recalled": 1,
++        "missing": [
++          "payments_lite.app.create_app.require_owner"
++        ],
++        "chunks": 12,
++        "token_count": 23877,
++        "budget": 24000
++      },
++      {
++        "focus": [
++          "refund bounds test",
++          "test_refund_larger_than_payment_rejected"
++        ],
++        "required": 1,
++        "recalled": 1,
++        "missing": [],
++        "chunks": 11,
++        "token_count": 22569,
++        "budget": 24000
++      },
++      {
++        "focus": [
++          "seeded store tokens",
++          "Store"
++        ],
++        "required": 2,
++        "recalled": 2,
++        "missing": [],
++        "chunks": 8,
++        "token_count": 15800,
++        "budget": 24000
++      }
++    ],
++    "ari-ai": [
++      {
++        "focus": [
++          "webhook signature verification",
++          "verify_signature"
++        ],
++        "required": 2,
++        "recalled": 1,
++        "missing": [
++          "backend.github.sign"
++        ],
++        "chunks": 12,
++        "token_count": 23555,
++        "budget": 24000
++      },
++      {
++        "focus": [
++          "expectation decision endpoint",
++          "decide_expectation"
++        ],
++        "required": 1,
++        "recalled": 0,
++        "missing": [
++          "code_intelligence.api.IntelligenceService.decide_expectation"
++        ],
++        "chunks": 11,
++        "token_count": 23868,
++        "budget": 24000
++      },
++      {
++        "focus": [
++          "redact secrets before storing",
++          "redact"
++        ],
++        "required": 2,
++        "recalled": 1,
++        "missing": [
++          "code_intelligence.privacy.redact_evidence"
++        ],
++        "chunks": 12,
++        "token_count": 23586,
++        "budget": 24000
++      },
++      {
++        "focus": [
++          "build context pack for agents",
++          "build_context_pack"
++        ],
++        "required": 2,
++        "recalled": 1,
++        "missing": [
++          "code_intelligence.retrieval.build_pack"
++        ],
++        "chunks": 10,
++        "token_count": 23369,
++        "budget": 24000
++      },
++      {
++        "focus": [
++          "health readiness route",
++          "readyz"
++        ],
++        "required": 1,
++        "recalled": 1,
++        "missing": [],
++        "chunks": 11,
++        "token_count": 23206,
++        "budget": 24000
++      }
++    ]
++  },
++  "notes": {
++    "call_edges_include_depends": "Depends()/Security() args recorded as extra edges; edge count can exceed raw call sites",
++    "route_coverage": "routes + 'Route decorator' IndexIssues == ground-truth route decorators; none silently dropped post-fix"
++  }
++}
+\ No newline at end of file
+diff --git a/code-intelligence/tests/test_ingest_extract.py b/code-intelligence/tests/test_ingest_extract.py
+index 1c2d1e0e..4b3a1d0b 100644
+--- a/code-intelligence/tests/test_ingest_extract.py
++++ b/code-intelligence/tests/test_ingest_extract.py
+@@ -148,3 +148,79 @@ def test_redaction_keeps_python_parseable_and_routes_indexed(
+     parser.extract()
+     assert not [i for i in parser.issues if i.path == "app/health.py"]
+     assert ("GET", "/health/ready") in {(e.method, e.path_template) for e in parser.entries}
++
++
++def test_non_literal_route_paths_are_flagged_not_silently_dropped(
++    repository: tuple[Path, str],
++) -> None:
++    path, _ = repository
++    (path / "app/dynamic_routes.py").write_text(
++        "from fastapi import FastAPI\n"
++        "app = FastAPI()\n"
++        'FIXTURE_ROUTE = "/payments/pay_fixture"\n'
++        'CONTROL_PATH = "/payments/control"\n\n'
++        "@app.get(FIXTURE_ROUTE)\n"
++        "def pay_fixture():\n"
++        "    return {}\n\n"
++        "@app.post(CONTROL_PATH)\n"
++        "def control():\n"
++        "    return {}\n\n"
++        "@app.get()\n"
++        "def no_path():\n"
++        "    return {}\n\n"
++        "@app.delete('/payments/{payment_id}')\n"
++        "def remove(payment_id: str):\n"
++        "    return {}\n"
++    )
++    sha = commit(path)
++    parser = PythonExtractor(ref(sha), GitReader(path).read(sha)[1])
++    parser.extract()
++    reasons = [i.reason for i in parser.issues if i.path == "app/dynamic_routes.py"]
++    assert len(reasons) == 3
++    assert any("FIXTURE_ROUTE" in r and "pay_fixture" in r for r in reasons)
++    assert any("CONTROL_PATH" in r and "control" in r for r in reasons)
++    assert any("no_path" in r for r in reasons)
++    # The literal route is still indexed; the dynamic ones are honestly absent.
++    assert ("DELETE", "/payments/{payment_id}") in {
++        (e.method, e.path_template) for e in parser.entries
++    }
++    handlers = {
++        s.qualified_name
++        for s in parser.symbols
++        if any(e.handler_symbol_id == s.id for e in parser.entries)
++    }
++    assert "app.dynamic_routes.remove" in handlers
++    assert not any(h.endswith(("pay_fixture", "control", "no_path")) for h in handlers)
++
++
++def test_mid_line_secret_values_are_redacted_without_breaking_parse(
++    repository: tuple[Path, str],
++) -> None:
++    path, _ = repository
++    secret = "hunter2" + "z" * 12
++    (path / "app/midline.py").write_text(
++        f"def build(s):\n    return dict(password={secret}, user=s.user)\n"
++    )
++    (path / "app/closers.py").write_text(f"def make():\n    return f(password={secret})\n")
++    (path / "app/still_code.py").write_text(
++        "def sig(secret: bytes, x: int) -> bool:\n"
++        "    return webhook_secret_configured and bool(secret)\n"
++    )
++    sha = commit(path)
++    files = GitReader(path).read(sha)[1]
++    assert secret not in "".join(f.content for f in files)
++    midline = next(f for f in files if f.path == "app/midline.py")
++    closers = next(f for f in files if f.path == "app/closers.py")
++    still = next(f for f in files if f.path == "app/still_code.py")
++    assert "password=[REDACTED], user=s.user" in midline.content
++    assert "password=[REDACTED])" in closers.content
++    # Identifiers that merely look secret-keyed keep their references.
++    assert "secret: bytes" in still.content
++    assert "bool(secret)" in still.content
++    parser = PythonExtractor(ref(sha), files)
++    parser.extract()
++    assert not [
++        i
++        for i in parser.issues
++        if i.path in {"app/midline.py", "app/closers.py", "app/still_code.py"}
++    ]
+diff --git a/code-intelligence/tests/test_retrieval_quality.py b/code-intelligence/tests/test_retrieval_quality.py
+new file mode 100644
+index 00000000..34180c03
+--- /dev/null
++++ b/code-intelligence/tests/test_retrieval_quality.py
+@@ -0,0 +1,150 @@
++"""Labeled retrieval evaluation for BM25+graph context packs.
++
++Each case in CASES is a question whose necessary evidence spans are known up
++front: every ``required`` qualified name must appear in the pack's provenance
++for the pack to count as a recall hit. The assertions encode a regression
++floor measured on this fixture (primary evidence always recalled, at least
++80% of secondary evidence), not a claim that retrieval is complete — the
++audit report records where larger repositories fall below it.
++"""
++
++from __future__ import annotations
++
++from pathlib import Path
++
++from intel_test_helpers import commit
++from intel_test_helpers import repository as repository
++from shared.intelligence import ContextPackRequest
++
++from code_intelligence.api import IntelligenceService, RepositoryBinding
++from code_intelligence.store import SQLiteIndexStore
++
++FIXTURE_FILES = {
++    "shop/__init__.py": "",
++    "shop/auth.py": (
++        "def current_token(authorization: str):\n"
++        '    """Must resolve the Bearer token to a tenant-scoped customer."""\n'
++        "    if not authorization.startswith('Bearer '):\n"
++        "        raise ValueError('unauthenticated')\n"
++        "    return authorization.removeprefix('Bearer ')\n\n"
++        "def require_owner(customer_id, token):\n"
++        '    """A customer may only read their own resources."""\n'
++        "    if customer_id != token:\n"
++        "        raise PermissionError('not the owner')\n"
++    ),
++    "shop/payments.py": (
++        "from fastapi import FastAPI, Depends\n"
++        "from shop.auth import current_token, require_owner\n\n"
++        "app = FastAPI()\n\n"
++        "def payment_out(payment):\n"
++        "    return {'id': payment['id'], 'amount': payment['amount']}\n\n"
++        "@app.get('/payments')\n"
++        "def list_payments(token=Depends(current_token)):\n"
++        "    return [payment_out(p) for p in STORE.payments_for(token)]\n\n"
++        "@app.get('/payments/{payment_id}')\n"
++        "def get_payment(payment_id: str, token=Depends(current_token)):\n"
++        "    payment = STORE.payments[payment_id]\n"
++        "    require_owner(payment['customer'], token)\n"
++        "    return payment_out(payment)\n"
++    ),
++    "shop/refunds.py": (
++        "from fastapi import FastAPI, Depends\n"
++        "from shop.auth import current_token, require_owner\n\n"
++        "app = FastAPI()\n\n"
++        "@app.post('/refunds')\n"
++        "def create_refund(payment_id: str, amount: float, token=Depends(current_token)):\n"
++        "    payment = STORE.payments[payment_id]\n"
++        "    require_owner(payment['customer'], token)\n"
++        "    total = sum(r['amount'] for r in STORE.refunds_for(payment_id))\n"
++        "    if total + amount > payment['amount']:\n"
++        "        raise ValueError('refunds exceed payment')\n"
++        "    return {'status': 'ok'}\n"
++    ),
++    "tests/test_shop.py": (
++        "def test_refund_capped_at_payment_amount(): ...\n"
++        "def test_other_customers_payment_is_not_readable(): ...\n"
++        "def test_missing_token_is_rejected(): ...\n"
++    ),
++}
++
++# (question focus, required qualified names). The first name is the primary
++# evidence — the span a reviewer cannot answer without.
++CASES: list[tuple[list[str], list[str]]] = [
++    (
++        ["create refund", "/refunds"],
++        ["shop.refunds.create_refund", "shop.auth.require_owner"],
++    ),
++    (
++        ["list payments for the caller", "list_payments"],
++        ["shop.payments.list_payments", "shop.payments.payment_out"],
++    ),
++    (
++        ["bearer token authentication", "current_token"],
++        ["shop.auth.current_token"],
++    ),
++    (
++        ["read one payment by id", "/payments/{payment_id}"],
++        ["shop.payments.get_payment", "shop.auth.require_owner"],
++    ),
++]
++
++
++def service(path: Path, database: Path) -> IntelligenceService:
++    return IntelligenceService(
++        SQLiteIndexStore(database),
++        [
++            RepositoryBinding(
++                project_id="prj_fixture00",
++                repo_id="rep_fixture00",
++                full_name="owned/fixture",
++                local_path=path,
++            )
++        ],
++    )
++
++
++def pack_spans(pack) -> set[tuple[str, int, int]]:
++    return {
++        (p.path, p.span.start_line, p.span.end_line) for p in pack.provenance if p.path and p.span
++    }
++
++
++def test_labeled_questions_recall_required_evidence(
++    repository: tuple[Path, str], tmp_path: Path
++) -> None:
++    root, _ = repository
++    for name, content in FIXTURE_FILES.items():
++        target = root / name
++        target.parent.mkdir(parents=True, exist_ok=True)
++        target.write_text(content)
++    sha = commit(root)
++
++    engine = service(root, tmp_path / "index.sqlite")
++    ref = engine.index_repository("prj_fixture00", "rep_fixture00", sha)
++    index = engine.store.get(ref)
++    spans = {s.qualified_name: (s.path, s.start_line, s.end_line) for s in index.symbols}
++    for _, required in CASES:
++        assert all(name in spans for name in required), "fixture drifted"
++
++    per_case: list[tuple[list[str], int, int]] = []
++    for focus, required in CASES:
++        pack = engine.build_context_pack(
++            ContextPackRequest(
++                snapshot_ref=ref,
++                purpose="review",
++                focus=focus,
++                token_budget=20_000,
++            )
++        )
++        assert pack.token_count <= pack.token_budget
++        present = pack_spans(pack)
++        hits = [name for name in required if spans[name] in present]
++        per_case.append((required, len(hits), len(required)))
++        # Primary evidence must never be missed on this fixture.
++        assert spans[required[0]] in present, f"{focus}: missed {required[0]}"
++
++    recalled = sum(h for _, h, _ in per_case)
++    total = sum(t for _, _, t in per_case)
++    # Regression floor measured on this fixture; large-repo behavior is
++    # reported in the audit, not asserted here.
++    assert recalled / total >= 0.8
+diff --git a/code-intelligence/tests/test_service.py b/code-intelligence/tests/test_service.py
+index 31521472..26410897 100644
+--- a/code-intelligence/tests/test_service.py
++++ b/code-intelligence/tests/test_service.py
+@@ -299,3 +299,35 @@ def test_batched_blob_reads_refuse_a_missing_object(repository: tuple[Path, str]
+         assert f.content == shown, f.path
+     with pytest.raises(IntelligenceError, match="blob read failed"):
+         GitReader(root)._blobs(["0" * 40], 0)
++
++
++def test_stored_index_payload_contains_no_unredacted_secret_literals(
++    repository: tuple[Path, str], tmp_path: Path
++) -> None:
++    """End-to-end: the StoredIndex JSON is what SQLite/Postgres persist and what
++    context packs are built from — the raw literals must never survive into it."""
++    root, _ = repository
++    secret = "hunter2" + "z" * 12
++    (root / "app/secrets_file.py").write_text(
++        f'DB_PASSWORD = "{secret}"\n'
++        f'r1 = f(password={secret}, user="alice")\n'
++        f"r2 = dict(password={secret})\n"
++        f'r3 = {{"password": {secret}}}\n'
++        "secret_configured = bool(True)\n"
++    )
++    sha = commit(root)
++    db = tmp_path / "index.sqlite"
++    engine = service(root, db)
++    ref = engine.index_repository("prj_fixture00", "rep_fixture00", sha)
++    stored = service(root, db).store.get(ref)
++    blob = stored.model_dump_json()
++    assert secret not in blob
++    assert "[REDACTED]" in blob
++    src = next(f for f in stored.files if f.path == "app/secrets_file.py")
++    assert 'DB_PASSWORD = "[REDACTED]"' in src.content
++    assert "password=[REDACTED]" in src.content
++    # the raw database bytes carry nothing else
++    conn = sqlite3.connect(db)
++    doc = conn.execute("SELECT doc FROM intelligence_indexes").fetchone()[0]
++    conn.close()
++    assert secret not in doc
+diff --git a/coordination/AGENT_BOARD.md b/coordination/AGENT_BOARD.md
+index 295fb152..8cd28f01 100644
+--- a/coordination/AGENT_BOARD.md
++++ b/coordination/AGENT_BOARD.md
+@@ -3,51 +3,55 @@
+ 
+ # Agent board — live coordination dashboard
+ 
+-Regenerated <built-in method strftime of datetime.datetime object at 0x10526a250>. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
++Regenerated <built-in method strftime of datetime.datetime object at 0x10792fb10>. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
+ 
+ ## Active agents
+ 
+ | Agent | Owner | Workstream | State | Task | Branch | SHA |
+ | --- | --- | --- | --- | --- | --- | --- |
+ | alan-live-defense | Alan | security-agents/, live-defense Phase 6.5/7A/7C, interim shared/ contract approver | BLOCKED | Phase 7C authorized Scout/Diagnose execution (#458); Phase 6.5 RL-gated pilot infra (#412) | feat/alan/live-defense-phase7c-agent-execution, feat/live-defense-phase6-5-rl-gated-pilot | 9486a5b0 |
+-| devin-pipeline-fixer | Adam | fixing agent pipeline failures; intel-store retry; eval-runner retry; pilot rehearsal v2; ops retention | WORKING | Pipeline failure fixes (#542/#543/#546), rehearsal evidence (#555/#556), storage retention (#558), handoff doc (#554) | fix/intel-store-orphan-retry, fix/eval-runner-retry, ari/fix-pat_01M5R13A056A25J7ZXWHHDZ9SN, feat/adam/pilot-rehearsal-v2, docs/adam/live-inventory-rehearsal-evidence, fix/adam/postgres-storage-retention, docs/devin-pilot-handoff | 759fe638 |
++| devin-intel-audit | Adam | code-intelligence engine + persistent memory pilot-readiness audit; secret redaction hardening | READY_FOR_REVIEW | PR #531: executed audit report + parse-safe redaction (#441 fix carried verbatim) + mid-line secret redaction + honest route-gap IndexIssues + retrieval eval + index benchmark | feat/adam/intel-pipeline-audit | 46a734b3 |
++| devin-pipeline-fixer | Adam | fixing agent pipeline failures; intel-store retry; eval-runner retry; pilot rehearsal v2; ops retention | WORKING | Eval run 3 scoring (eval/20261024-153652) + #542/#543 in wave 2 | fix/intel-store-orphan-retry, fix/eval-runner-retry, ari/fix-pat_01M5R13A056A25J7ZXWHHDZ9SN, feat/adam/pilot-rehearsal-v2, docs/adam/live-inventory-rehearsal-evidence, fix/adam/postgres-storage-retention, docs/devin-pilot-handoff | 12d048fe |
+ | integration-lead | Adam | PR release management, merge ordering, pilot readiness verification | WORKING | Integrate pilot-ready PRs in dependency order; run pilot-verify against final main | (merges land on main) | ad282cf4 |
+ 
+ ## PR ownership and merge order
+ 
+ | PR | Title | Branch | Head | Owned by | Merge position |
+ | --- | --- | --- | --- | --- | --- |
+-| #412 | feat(live-defense): Phase 6.5 RL-gated pilot infrastructure (RL BLOCKED) | feat/live-defense-phase6-5-rl-gated-pilot | 4ecd7558 | alan-live-defense | 1 |
+-| #458 | feat(live-defense): Phase 7C authorized Scout/Diagnose execution | feat/alan/live-defense-phase7c-agent-execution | 96ac5cfb | alan-live-defense | 0 |
+-| #496 | feat(frontend): rebuild connect navigation into review + recorded agent replay | feat/adam/commit-review-navigation | 7c08dda5 | integration-lead | 19 |
+-| #527 | docs(pilot): pilot launch package with conditional go decision | docs/adam/pilot-launch | a7359899 | integration-lead | 10 |
+-| #528 | test(security-agents): live seven-agent assessment evidence + run manifest | feat/adam/seven-agent-live-evidence | 2652020c | integration-lead | 11 |
+-| #529 | docs(code-review): executed functional-reviewer eval report + scorer path-fallback regression tests | docs/reviewer-eval-report | 6f674adf | integration-lead | 12 |
+-| #530 | ci(release-gate): always-on checks, pilot-verify pipeline, dead-letter jobs list, scored-only evals | feat/adam/release-gate | e61fbc3c | integration-lead | 14 |
+-| #531 | test(intel): pipeline audit — parse-safe redaction, honest route gaps, retrieval eval + benchmarks | feat/adam/intel-pipeline-audit | d33a5604 | integration-lead | 13 |
+-| #532 | test(live-defense): Defense Lab pilot safety suite + quarantine credential-value fix | feat/adam/defense-lab-pilot-audit | 6d91fbd9 | integration-lead | 17 |
+-| #533 | feat(infra): capability-aware readiness, worker heartbeats, deploy pairing gate + restart/rollback evidence | feat/adam/pilot-readiness-ops | 5edcfa34 | integration-lead | 16 |
+-| #536 | feat(ui): landing rework + SaaS sidebar console revamp | feat/adam/home-deep-sea-landing | bbf77147 | integration-lead | 18 |
+-| #538 | feat(ui): first-user usability — named approvals, plain-English replay, honest quick-read errors | feat/adam/first-user-usability | 660a342e | integration-lead | 20 |
+-| #540 | fix(backend): harden GitHub onboarding + continuous assessment across installation lifecycle | fix/adam/github-onboarding-hardening | 182ec9c8 | integration-lead | 15 |
+-| #542 | fix(intel-store): let not-ready index payloads be rewritten on retry | fix/intel-store-orphan-retry | 3f56e7dd | devin-pipeline-fixer | 2 |
+-| #543 | test(evals): retry transient scorer failures instead of aborting the run | fix/eval-runner-retry | 759fe638 | devin-pipeline-fixer | 3 |
+-| #546 | fix: Remove the pre-authorization cache short-circuit in get_project. Resolve the user and call require_project(conn, us | ari/fix-pat_01M5R13A056A25J7ZXWHHDZ9SN | 11e6863c | devin-pipeline-fixer | 4 |
+-| #554 | docs(planning): handoff — pilot rehearsal results, defects, branch state | docs/devin-pilot-handoff | 4c8db52e | devin-pipeline-fixer | 5 |
+-| #555 | docs(rehearsal): live seven-agent run evidence on inventory-lite | docs/adam/live-inventory-rehearsal-evidence | 8fadcbaf | devin-pipeline-fixer | 6 |
+-| #556 | fix(pilot): run two-org rehearsal end-to-end — real API shapes + executed 13/13 evidence | feat/adam/pilot-rehearsal-v2 | 13bbec9a | devin-pipeline-fixer | 7 |
+-| #557 | test(backend): honor recipe method + body_template in sandbox-target authz sweep | fix/test-sandbox-target-method | ae7b6ff8 | integration-lead | 9 |
+-| #558 | feat(ops): Postgres storage report, bounded retention, and 70/80/90 volume alerts | fix/adam/postgres-storage-retention | 7d7849e8 | devin-pipeline-fixer | 8 |
++| #412 | ? | ? | ? | alan-live-defense | 1 |
++| #458 | ? | ? | ? | alan-live-defense | 0 |
++| #496 | ? | ? | ? | integration-lead | 19 |
++| #527 | ? | ? | ? | integration-lead | 11 |
++| #528 | ? | ? | ? | integration-lead | 12 |
++| #529 | ? | ? | ? | integration-lead | 13 |
++| #530 | ? | ? | ? | integration-lead | 14 |
++| #531 | ? | ? | ? | devin-intel-audit | 2 |
++| #532 | ? | ? | ? | integration-lead | 17 |
++| #533 | ? | ? | ? | integration-lead | 16 |
++| #536 | ? | ? | ? | integration-lead | 18 |
++| #538 | ? | ? | ? | integration-lead | 20 |
++| #540 | ? | ? | ? | integration-lead | 15 |
++| #542 | ? | ? | ? | devin-pipeline-fixer | 3 |
++| #543 | ? | ? | ? | devin-pipeline-fixer | 4 |
++| #546 | ? | ? | ? | devin-pipeline-fixer | 5 |
++| #554 | ? | ? | ? | devin-pipeline-fixer | 6 |
++| #555 | ? | ? | ? | devin-pipeline-fixer | 7 |
++| #556 | ? | ? | ? | devin-pipeline-fixer | 8 |
++| #557 | ? | ? | ? | integration-lead | 10 |
++| #558 | ? | ? | ? | devin-pipeline-fixer | 9 |
+ 
+ ## File / subsystem claims
+ 
+ - **alan-live-defense**: `security-agents/`, `backend/backend/live_defense/`, `frontend/components/live-defense/`, `shared/ contract bumps (interim approver)`
++- **devin-intel-audit**: `code-intelligence/code_intelligence/privacy.py`, `code-intelligence/code_intelligence/extract.py`, `code-intelligence/tests/`, `code-intelligence/evidence/`, `docs/research/intel-pipeline-audit/`, `coordination/messages/*intel*`
+ - **devin-pipeline-fixer**: `backend tests for get_project authz`, `evals/commits scorer`, `rehearsal tooling`, `scripts/rehearsal/`, `storage/retention ops`
+ - **integration-lead**: `coordination/AGENT_BOARD.md`, `coordination/messages/2026*-devin-integration-lead-*`, `fix/test-sandbox-target-method`
+ 
+ ## Dependencies
+ 
+ - **alan-live-defense** depends on Adam's explicit approval required before any live-defense merge
++- **devin-intel-audit** depends on integration-lead merge order (position 13)
++- **devin-intel-audit** depends on #535 RLS/purge as second layer (merged)
+ - **devin-pipeline-fixer** depends on integration-lead merge order
+ - **integration-lead** depends on alan-live-defense (held PRs #412/#458 must not be merged)
+ 
+@@ -59,7 +63,8 @@ Regenerated <built-in method strftime of datetime.datetime object at 0x10526a250
+ ## Next actions
+ 
+ - **alan-live-defense**: hold; rebase onto post-integration main when asked
+-- **devin-pipeline-fixer**: wait for merges; keep rehearsal branches current
++- **devin-intel-audit**: await CI green on 46a734b3 then merge at board position 13
++- **devin-pipeline-fixer**: score eval run 3 results; post baselines to Adam; clean eval artifacts
+ - **integration-lead**: merge green PRs in order; refresh each branch with main first
+ 
+ ## How to update
+diff --git a/coordination/messages/2026-10-24T21Z-adam-to-all-release-gate.md b/coordination/messages/2026-10-24T21Z-adam-to-all-release-gate.md
+new file mode 100644
+index 00000000..b2b4ec52
+--- /dev/null
++++ b/coordination/messages/2026-10-24T21Z-adam-to-all-release-gate.md
+@@ -0,0 +1,8 @@
++# Adam → all — release gate on `feat/adam/release-gate`
++
++- All workflows: `paths:` triggers removed; every job always runs, `scripts/ci/path_gate.py` emits RUN/SKIP in the step summary. Required checks can no longer hang on "Expected".
++- Job ids renamed to be unique (`backend-tests`, `intel-tests`, `review-tests`, `secagents-tests`, `rl-tests`) — required-check config references these names.
++- New manual pipeline `.github/workflows/pilot-verify.yml` (7 labelled env categories) for release verification.
++- New `GET /projects/{id}/jobs?status=dead,failed` for dead-letter visibility (backend shared — flagging per ownership rules; needs reviewer sign-off).
++- Eval scorer: unscored cases (failed/cancelled/unstarted) now report `scored:false` + reason and are excluded from rates.
++- `docs/release/RELEASE_GATE_2026-10-24.md` has the required-check list + branch-protection ask. **`main` still has no protection — admin action needed.**
+diff --git a/coordination/messages/2026-10-24T22Z-adam-to-all-release-gate-coordination.md b/coordination/messages/2026-10-24T22Z-adam-to-all-release-gate-coordination.md
+new file mode 100644
+index 00000000..56d9f6fb
+--- /dev/null
++++ b/coordination/messages/2026-10-24T22Z-adam-to-all-release-gate-coordination.md
+@@ -0,0 +1,6 @@
++# Adam → all — release-gate coordination update
++
++- PR #530 (release gate) is CI-green (17 checks) and ready for merge approval. `docs/release/RELEASE_GATE_2026-10-24.md` now carries the security review of the new jobs endpoint, the exact branch-protection runbook for the repo admin, and the `pilot-verify.yml` trigger commands.
++- **PR #533 warning**: adds migration `0016_worker_heartbeats` but `test_parallel_migrations.py` on that branch still asserts head `0015` — merging it as-is breaks `backend-tests` on main. Flagged on the PR; fix the assertion before merge.
++- #524/#525/#526/#523 (routes.py authz fixes) and #529 (score_api.py `_finding_paths` move) merge cleanly alongside #530 — disjoint hunks.
++- Reminder: release verification must run against the real final `main` SHA after all merges, not `d0131167`.
+diff --git a/coordination/messages/2026-10-25T01Z-adam-to-all-main-broken-ops-shadowing.md b/coordination/messages/2026-10-25T01Z-adam-to-all-main-broken-ops-shadowing.md
+new file mode 100644
+index 00000000..614edc3b
+--- /dev/null
++++ b/coordination/messages/2026-10-25T01Z-adam-to-all-main-broken-ops-shadowing.md
+@@ -0,0 +1,35 @@
++# main is broken — `ops` import shadowing in `backend/backend/main.py` (fix inside PR #530)
++
++From: Adam (release gate / Devin)
++To: all
++Date: 2026-10-25 ~01:05Z
++
++## What happened
++The #533 merge added `from backend import ops` (readiness/diagnostics) to
++`backend/backend/main.py` on top of the pre-existing `ops` inside
++`from backend.api import (...)`. Two consequences:
++
++1. **ruff F811** — "Redefinition of unused `ops`" → `backend-tests` fails on any
++   branch that syncs to current `main`.
++2. **Runtime bug** — the later `from backend.api import ops` shadows
++   `backend.ops`, so `ops.readiness`/`ops.diagnostics` at the `/readyz` and
++   `/diagnostics` handlers resolve to `backend.api.ops` (which has neither) →
++   both endpoints would 500 on a deployed build. `/readyz` is the readiness
++   probe; this is pilot-facing.
++
++With no branch protection on `main` the lint break merged unblocked — this is
++exactly the failure mode the gate exists to prevent.
++
++## Fix (applied inside PR #530's merge resolution)
++- `from backend.api import ops as api_ops` and `api_ops.router` in the router
++  list. `from backend import ops` keeps readiness/diagnostics.
++- Verified: `create_app()` builds, `test_ops_readiness` + `test_api_core` 24/24
++  pass, ruff clean.
++
++## What this means for open PRs
++- Any branch syncing to `main` before #530 (or an equivalent patch) lands will
++  fail `backend-tests` on F811. Options: wait for #530, or apply the same
++  one-line alias fix on your branch.
++- Please do NOT merge further PRs into `main` without checking CI — main is
++  red right now. Adam: branch protection (exact `gh api` command in
++  `docs/release/RELEASE_GATE_2026-10-24.md`) is the top remaining blocker.
+diff --git a/coordination/messages/20261024T2215Z-adam-to-all-intel-redaction-guarantees.md b/coordination/messages/20261024T2215Z-adam-to-all-intel-redaction-guarantees.md
+new file mode 100644
+index 00000000..10693f32
+--- /dev/null
++++ b/coordination/messages/20261024T2215Z-adam-to-all-intel-redaction-guarantees.md
+@@ -0,0 +1,36 @@
++# MSG: code-intelligence redaction guarantees after the pipeline audit
++- ID: `20261024T2215Z-adam-to-all-intel-redaction-guarantees`
++- From: adam
++- To: all (privacy/security lane: srihith, sarosh)
++- Kind: handoff
++- Timestamp (UTC): 2026-10-24T22:15Z
++- Branch / commit / PR or issue link: `feat/adam/intel-pipeline-audit`, PR #531 (supersedes #441)
++- Related subsystem(s): code-intelligence, backend intel stores
++- Summary (facts, not assumptions):
++  - Source is redacted in `GitReader.read` BEFORE parse and before any storage,
++    so SQLite/Postgres index payloads and context packs only ever contain
++    redacted content. Stored intelligence and agent context never see raw
++    source — the git blob on disk is the only unredacted copy.
++  - `_ASSIGN` redacts: quoted string values, bare tokens at EOL/comment, and
++    (new) bare tokens containing a digit at mid-line `,`/`;` or a closing
++    bracket `)]}`. Corpus-verified: 0 files broken, 0 line shifts, 0
++    collateral across all 584 tracked .py.
++  - Known residuals (documented, not hidden): mid-line bare tokens with no
++    digit (`f(password=hunter)`), and non-first branches of inline
++    conditionals (`password="x" if c else "y"`). Regex cannot see call or
++    conditional boundaries; an AST-aware redaction pass would close these if
++    we ever need it.
++  - Non-literal route decorators (`app.get(CONST)`) are now flagged as
++    IndexIssue findings instead of silently dropped.
++- Interface requested/proposed: none — no shared contract changes.
++- Breaking change? migration/test impact: none; stored indexes built before
++  this change may contain the (previously unredacted) residual tokens — a
++  re-index of pilot repos after merge is the cheapest cleanup.
++- Action required by recipient: privacy/security owners — sanity-check the
++  residual list in `docs/research/intel-pipeline-audit/README.md` §8 and
++  flag any case where a pilot repo is likely to hit a still-unredacted
++  pattern before onboarding it.
++- Response-by milestone: before next pilot repo onboarding.
++- Evidence: `PYTHONPATH=code-intelligence:shared pytest code-intelligence/tests` 60 passed 1 skipped;
++  corpus redaction diff script output in session; `code-intelligence/evidence/m2-index-retrieval-audit.json`.
++- In-Reply-To: —
+diff --git a/coordination/messages/20261024T2230Z-adam-to-all-redaction-rls-boundary.md b/coordination/messages/20261024T2230Z-adam-to-all-redaction-rls-boundary.md
+new file mode 100644
+index 00000000..9325b165
+--- /dev/null
++++ b/coordination/messages/20261024T2230Z-adam-to-all-redaction-rls-boundary.md
+@@ -0,0 +1,28 @@
++# MSG: re: 531×535 boundary — disclosure added, agreed mergeable either order
++- ID: `20261024T2230Z-adam-to-all-redaction-rls-boundary`
++- From: adam
++- To: all
++- Kind: decision
++- Timestamp (UTC): 2026-10-24T22:30Z
++- Branch / commit / PR or issue link: `feat/adam/intel-pipeline-audit`, PR #531; cross-PR: #535
++- Related subsystem(s): code-intelligence, backend intel stores
++- Summary (facts, not assumptions):
++  - Confirmed the #529 review's reading: `privacy.redact` is line-preserving
++    in-place masking applied in `GitReader.read` before persist, so RLS-
++    protected `index_payloads`/`index_snapshots` (#535) only ever store
++    scrubbed bytes, and `purge_project` removes them under the tenant GUC.
++    The chains are coherent and mergeable in either order.
++  - Stated the honest boundary in `docs/research/intel-pipeline-audit/README.md`
++    §8: residual un-redacted patterns (digit-less mid-line tokens, non-first
++    conditional branches) mean a secret could still reach `index_payloads`
++    and LLM context packs. RLS + purge is the second layer, not a
++    substitute; pilot customers should get this disclosure before their
++    code is indexed.
++- Interface requested/proposed: none.
++- Breaking change? migration/test impact: none. Existing stored indexes may
++  contain residual tokens — re-index pilot repos after merge.
++- Action required by recipient: none beyond awareness; #535 should carry the
++  same disclosure line in its tenant doc if it hasn't already.
++- Response-by milestone: before pilot customer-code indexing.
++- Evidence: audit README §7–8; `code-intelligence/evidence/m2-index-retrieval-audit.json`.
++- In-Reply-To: `coordination/messages/20261024T221500Z` (code-review eval session note)
+diff --git a/coordination/status/ADAM.md b/coordination/status/ADAM.md
+index 621cf136..57793511 100644
+--- a/coordination/status/ADAM.md
++++ b/coordination/status/ADAM.md
+@@ -1,6 +1,33 @@
+ # Adam — implementation status
+ 
+ Owner: Adam
++Branch: `feat/adam/release-gate` → PR #530 (open, awaiting human merge approval)
++Last sync: 2026-10-24 ~23:45Z — origin/main at `586370b0` (#528/#529 landed; #535 earlier); branch synced.
++
++## In flight — release gate (PR #530)
++- Always-on jobs + `scripts/ci/path_gate.py` (RUN/SKIP visible verdicts); unique job ids for required checks.
++- `pilot-verify.yml` manual 7-category release pipeline.
++- `GET /projects/{id}/jobs?status=` dead-letter visibility; `last_error` secret-scrubbed at **write time**; read side role-split.
++- Eval harness: `scored:false` + `unscored_reason`; `summarize()` over scored cases only; case validation.
++- `scripts/ci/load_probe.py` queue probe — all invariants green (~1.5k jobs/s embedded PG).
++- Report + required-check list + admin runbook + trigger commands: `docs/release/RELEASE_GATE_2026-10-24.md`.
++- Local evidence: 15 backend tests pass; ruff clean. CI re-running on latest head.
++
++## Coordination in progress
++- **Migration collision**: #533 (`0016_worker_heartbeats`) vs #535 (`0016_tenant_rls_intelligence`) — both claim revision `0016`. Order: **#535 first**; #533 renumbers to `0017` + updates head test. Comments on both.
++- #529 **merged** — merge order flipped; on sync I kept module-level `_finding_paths` + my scored fields per the agreed resolution. #531 conflict resolved earlier.
++- #544/#547 gitleaks allowlists: scoped correctly; second-to-merge keeps both blocks.
++- #524/#525/#526/#523 (authz fixes): merge cleanly alongside #530.
++
++## Blockers (require Adam/repo admin)
++- `main` branch protection unset — exact settings + `gh api` command in the release doc.
++- GitHub App installation token / hosted pilot URL / Anthropic key needed only for live-model + hosted-smoke gates (opt-in).
++
++## Next actions
++1. #530 CI green on `8b6bf3bd` → awaiting human merge approval (no merge by agents).
++2. #533 must renumber `0016_worker_heartbeats` → `0017` on rebase (notified).
++3. Re-run `pilot-verify.yml` on the true final `main` SHA once merges settle.
++
+ Branch: all work merged to `main` (last: PR #13 shared contracts, PR #18 recipe check)
+ Current task: pilot readiness — rehearsal verified end-to-end (2 independent runs); merge wave monitored; hosted staging leg gated on Adam GitHub actions
+ Last remote sync: 2026-10-24 — fleet merge order per `coordination/messages/20261024T231500Z-adam-to-all-pilot-merge-order-and-gitleaks-unblock.md`
+@@ -353,6 +380,12 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
+ - Health: rl-defense 546 passed (23m27s; CPU torch index used); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 582 files, 0 problems. No live-LLM tests, no training/eval.
+ - No code changes. Open: none.
+ 
++### 2026-10-24 — Devin — code-intelligence pipeline audit
++- Branch `feat/adam/intel-pipeline-audit` (carries `7a5b329f` = PR #441 redaction fix verbatim). Findings: non-literal route decorators were silently dropped → now flagged as IndexIssue; labeled retrieval recall 82% payments-lite / 63% ari-ai with honest missing-evidence list; per-commit/profile/tenant isolation verified by executed SQLite + Postgres tests.
++- Executed: `code-intelligence/tests` 57 passed 1 skipped; backend intel suite 9 passed (real Postgres); index benchmarks 0.16s/8f, 4.11s/127f, 92.4s/1798f (617MB heap).
++- Artifacts: `docs/research/intel-pipeline-audit/README.md`, `code-intelligence/evidence/m2-index-retrieval-audit.json`, `code-intelligence/evidence/index_benchmark.py`, `tests/test_retrieval_quality.py`.
++- Blockers: none. Open: PR #531 pending.
++
+ ### 2026-10-24 — scheduled cloud health run (11)
+ - Synced origin/main (bbf63acf). No new messages addressed to Adam. Since run 10 main gained only backend/sandbox perf and recipe-generator work (other owners) plus a SESSION_HANDOFF.md note; nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
+ - Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 584 files, 0 problems. rl-defense suite NOT re-run (no changes in rl-defense since run 10's 546 passed). No live-LLM tests, no training/eval.
+diff --git a/coordination/status/agents/devin-intel-audit.json b/coordination/status/agents/devin-intel-audit.json
+new file mode 100644
+index 00000000..fc22fef9
+--- /dev/null
++++ b/coordination/status/agents/devin-intel-audit.json
+@@ -0,0 +1,28 @@
++{
++  "agent": "devin-intel-audit",
++  "human_owner": "Adam",
++  "workstream": "code-intelligence engine + persistent memory pilot-readiness audit; secret redaction hardening",
++  "state": "READY_FOR_REVIEW",
++  "task": "PR #531: executed audit report + parse-safe redaction (#441 fix carried verbatim) + mid-line secret redaction + honest route-gap IndexIssues + retrieval eval + index benchmark",
++  "branch": "feat/adam/intel-pipeline-audit",
++  "latest_sha": "46a734b3",
++  "prs": [
++    531
++  ],
++  "claims": [
++    "code-intelligence/code_intelligence/privacy.py",
++    "code-intelligence/code_intelligence/extract.py",
++    "code-intelligence/tests/",
++    "code-intelligence/evidence/",
++    "docs/research/intel-pipeline-audit/",
++    "coordination/messages/*intel*"
++  ],
++  "depends_on": [
++    "integration-lead merge order (position 13)",
++    "#535 RLS/purge as second layer (merged)"
++  ],
++  "blockers": [],
++  "last_update_utc": "2026-10-25T01:05:00Z",
++  "tests": "local: 61 passed/1 skipped code-intel; ops readiness 11/11; app builds; CI re-running after ops-import-shadow merge",
++  "next_action": "await CI green on 46a734b3 then merge at board position 13"
++}
+\ No newline at end of file
+diff --git a/docs/deploy/RAILWAY_AND_GITHUB_APP.md b/docs/deploy/RAILWAY_AND_GITHUB_APP.md
+index 2684b7ce..a3f4ae3c 100644
+--- a/docs/deploy/RAILWAY_AND_GITHUB_APP.md
++++ b/docs/deploy/RAILWAY_AND_GITHUB_APP.md
+@@ -29,6 +29,7 @@ Nothing else can push code. `installation` and `installation_repositories` event
+ delivered to the App automatically (no subscription); `Repository` events let Ari follow
+ renames/transfers and repo deletion. Tell customers the write scope plainly during onboarding — see
+ `docs/pilot/CUSTOMER_ONBOARDING.md`.
++
+ | Where can it be installed | Any account (so other people can use it) |
+ 
+ After creating it: note the **App ID** and **Client ID**, generate a **client secret**, and
+diff --git a/docs/planning/SESSION_HANDOFF.md b/docs/planning/SESSION_HANDOFF.md
+index b73266a4..ab9e0ee5 100644
+--- a/docs/planning/SESSION_HANDOFF.md
++++ b/docs/planning/SESSION_HANDOFF.md
+@@ -18,6 +18,22 @@ adds an entry before ending.
+ 
+ ---
+ 
++### 2026-10-24 — Devin (agent, Adam) — code-intelligence pipeline audit
++- Did: on `feat/adam/intel-pipeline-audit`, audited ingest→extract→store→retrieve→memory for pilot readiness. Reproduced the PR #441 redaction/parser regression on main (38/582 tracked .py unparseable post-redact + 2 line-count shifts); verified the fix (0 broken, 0 line shifts, 0 leaked literal secrets across the same corpus). Indexed payments-lite, `backend/` prefix, and the whole repo; ran a labeled-question retrieval eval; benchmarked latency/memory. Found a silent coverage gap — `@app.get(FIXTURE_ROUTE)`-style non-literal route paths were dropped with no IndexIssue — and fixed it so they are flagged. Carries `7a5b329f` verbatim, so merging this branch lands PR #441's fix.
++- State of the code (verified how): `code-intelligence/tests` 57 passed 1 skipped; `backend/tests/test_intel_store.py test_intelligence_memory_api.py test_intelligence_ingestion_profile.py test_payload_store_intel_integration.py` 9 passed on real Postgres; new retrieval eval + route-diagnostic tests pass; benchmark harness executed on payments-lite.
++- Commands run and results: `PYTHONPATH=code-intelligence:shared .venv/bin/python -m pytest code-intelligence/tests` (57 passed, 1 skipped); backend intel subset (9 passed); index runs 0.16s/8 files, 4.11s/127 files, 92.4s/1,798 files.
++- Report: `docs/research/intel-pipeline-audit/README.md`; measured numbers: `code-intelligence/evidence/m2-index-retrieval-audit.json`; benchmark: `code-intelligence/evidence/index_benchmark.py`.
++- Assumptions/open questions: secondary-evidence Recall@K degrades at scale (82% on payments-lite, 63% on ari-ai) — packs do not mark absent expected evidence; mid-line bare-secret expressions (`f(password=x, user=y)`) were a residual and are now redacted when the token contains a digit (digit-less mid-line tokens and `else`-branch conditionals remain documented); JS/TS extraction is unimplemented and unclaimed.
++- Next steps: merge after review; consider BM25 tie-breaking toward implementation symbols if reviewers need secondary evidence.
++- Warnings: none.
++
++### 2026-10-24 — Adam (Devin) — release gate / test infrastructure
++- Did: rebuilt all CI workflows around always-on jobs + `scripts/ci/path_gate.py` (visible RUN/SKIP); renamed colliding `test` job ids; added `pilot-verify.yml` (7 labelled env categories); added `GET /projects/{id}/jobs?status=` for dead-letter visibility; hardened the 45-case eval scorer (`scored:false` + `unscored_reason`, rates over scored only, case validation); added `scripts/ci/load_probe.py`.
++- State of the code: `feat/adam/release-gate` pushed; pytest `test_job_status_api`+`test_jobs_queue`+`test_parallel_migrations` → 12 passed; ruff clean; load probe all invariants green (~1.5k jobs/s enqueue+drain, embedded PG).
++- Decisions: path gating inside jobs (not triggers) so required checks never hang at Expected; skip = visible verdict.
++- Warnings: `main` still has NO branch protection — admin must set required checks (list in `docs/release/RELEASE_GATE_2026-10-24.md`). New jobs endpoint is shared backend surface — needs owner review.
++- Next: branch-protection config by repo admin; run `pilot-verify.yml` on the merge SHA.
++
+ ### 2026-10-25 — Adam/Devin: rehearsal independently reproduced + e2e scare cleared
+ 
+ - Did: re-ran the two-org rehearsal end-to-end on a fresh `make dev` boot with real
+@@ -38,7 +54,6 @@ adds an entry before ending.
+ - Still owner-gated for the HOSTED staging leg: `gh repo create
+   adamissac/ari-pilot-rehearsal --private`, install the GitHub App on it, OAuth-login.
+ 
+-
+ ---
+ 
+ ### 2026-10-24 — Devin (agent, Adam) — pilot-readiness ops: readiness split, worker heartbeats, restart/rollback evidence
+@@ -51,15 +66,6 @@ adds an entry before ending.
+ - Next steps: Adam sets OPS_API_TOKEN/POSTGRES_VOLUME_BYTES, reviews first dry-run report, flips RETENTION_DRY_RUN=false; re-measure after a cycle; size volume bump decision from real growth data.
+ - Warnings: deleting rows does NOT shrink the Railway-reported volume (frees internal pages); `VACUUM FULL`/repack only after verified backup. Coordination note: `coordination/messages/20261024T235500Z-devin-to-all-postgres-storage-retention.md`.
+ 
+-- Did: infrastructure audit for external-pilot readiness (branch `feat/adam/pilot-readiness-ops`). Added worker-heartbeat liveness (`worker_heartbeats` table, migration 0017, `WORKER_HEARTBEAT_INTERVAL_S`/`WORKER_LIVENESS_S`), split `/readyz` into infra readiness (db/queue/workers → `status` ready|degraded|not_ready, 503 unless ready) vs assessment capability (`capabilities` + `capabilities_ready`: llm.live, github.app_configured, sandbox.configured, artifact_store.writable, workers.alive), added `/diagnostics` (verified GitHub `GET /app`, sandbox sdk/daemon detail, alembic head vs `alembic_version`, queue counts, worker rows), `git_sha`+`schema_version` on `/healthz` (`DEPLOYED_GIT_SHA`/`RAILWAY_GIT_COMMIT_SHA`/`GIT_SHA`), schema 0.22.0, `READYZ_REQUIRE_WORKERS` (default on in staging/production). Frontend: `/api/frontend-version` + `deploy/verify_pair.sh` detect Vercel/Railway schema skew. Evidence harness `deploy/evidence/restart_recovery.py` (+`scripted_worker.py`) runs the real API/workers/migrations on a disposable pgserver stack with scripted transports: 6/6 PASS — SIGTERM drains the in-hand job to AWAITING_APPROVAL w/ checkpoint artifact on disk; SIGKILL → reclaim → honest FAILED (CONFLICT_STATE, never fabricated); human approval + fresh worker → checkpoint resume → COMPLETED; 2 racing workers → exactly-once + dedupe; downgrade→upgrade round-trip; pg_dump→psql restore → identical row counts (`deploy/evidence/last-run-evidence.json`). New `docs/deploy/PILOT_OPERATIONS.md` (topology, safe config checklist, recovery runbook); refreshed `docs/deploy/RAILWAY_AND_GITHUB_APP.md`, `docs/13_BACKEND_API_DESIGN.md`.
+-- State of the code: `test_ops_readiness.py` 11/11 + `deploy-version.test.ts` 3/3 pass; evidence harness 7/7 (S1 drain, S2 honest-kill, S3 checkpoint resume, S4 exactly-once, S5 migration rollback, S6 backup/restore, S7 post-crash new assessment). Owner-requested hardening landed: `/diagnostics` is owner-authenticated only (401/403); public `/readyz` scrubs capability `detail` strings (env-var names); `worker_heartbeats.last_poll_at` (claim-loop-only) means a stopped claim loop cannot report as a live worker unless it holds a claimed job.
+-- Decisions made: `READYZ_REQUIRE_WORKERS` defaults True in staging/production, off in dev; worker liveness = heartbeat fresh AND (last_poll_at fresh OR current_job_id). GitHub `verified` is a live `GET /app` with 60s cache, slug only. Sandbox check reports env-presence for `vercel` mode. `/diagnostics` gated on any org-owner membership (every dev-login user owns their personal org — the gate blocks unauthenticated probes).
+-- Migration coordination RESOLVED: #535 merged first and kept `0016_tenant_rls_intelligence`; this branch renumbered to `0017_worker_heartbeats` (down_revision 0016) per the agreed rule in `coordination/messages/20261024T224500Z-adam-to-agent9-...md`. Codex's `0016_execution_reliability` still needs a renumber when it merges; its 0.23.0 embeds a different "0.22.0" — flagged there.
+-- Assumptions / open questions: the only untested acceptance criterion is the ONE authorized real-model staging assessment — needs an authorized signed-in session + `LLM_MAX_USD_PER_ASSESSMENT=1` (Adam approved $1 cap) + active repo scope; scripted evidence uses `provider_mode="fake"` by design.
+-- Next steps: land PR #533 (unmerged until security review + migration order + full CI + staging run per owner), run the real staging assessment, wire `deploy/verify_pair.sh` into a deploy hook.
+-- Warnings for the next session: prod `/readyz` still serves the OLD response until this lands; `capabilities_ready=false` is a config signal, not an outage. Honest residual: a handler deadlocked mid-job still renews its lease — visible via `worker_rows[].last_poll_age_s` in `/diagnostics`, not via liveness.
+-
+-=======
+ ### 2026-10-24 — Adam/Devin: pilot rehearsal executed end-to-end (13/13 PASS)
+ 
+ - `scripts/rehearsal/run_rehearsal.py` rewritten to the real API shapes:
+@@ -91,6 +97,7 @@ adds an entry before ending.
+ - Assumptions / open questions: check transport `inprocess` only (no docker on this box → HTTP transport + container-kill test skipped, recorded as limitation).
+ - Next steps: PR open for review; coordinate eval/backend finding-contract items with Agent 9 (eval score_api changes already landed on main via #516).
+ - Warnings for the next session: live runs cost money — always gate behind `RUN_LIVE_LLM_EVAL` + explicit approval; `tests/artifacts/live/*` now contains real run artifacts, keep naming convention `<UTC ts>-<label>.json`.
++
+ ### 2026-10-24 — Devin (agent, Adam) — pilot-readiness ops: readiness split, worker heartbeats, restart/rollback evidence
+ - Did: infrastructure audit for external-pilot readiness (branch `feat/adam/pilot-readiness-ops`). Added worker-heartbeat liveness (`worker_heartbeats` table, migration 0017, `WORKER_HEARTBEAT_INTERVAL_S`/`WORKER_LIVENESS_S`), split `/readyz` into infra readiness (db/queue/workers → `status` ready|degraded|not_ready, 503 unless ready) vs assessment capability (`capabilities` + `capabilities_ready`: llm.live, github.app_configured, sandbox.configured, artifact_store.writable, workers.alive), added `/diagnostics` (verified GitHub `GET /app`, sandbox sdk/daemon detail, alembic head vs `alembic_version`, queue counts, worker rows), `git_sha`+`schema_version` on `/healthz` (`DEPLOYED_GIT_SHA`/`RAILWAY_GIT_COMMIT_SHA`/`GIT_SHA`), schema 0.22.0, `READYZ_REQUIRE_WORKERS` (default on in staging/production). Frontend: `/api/frontend-version` + `deploy/verify_pair.sh` detect Vercel/Railway schema skew. Evidence harness `deploy/evidence/restart_recovery.py` (+`scripted_worker.py`) runs the real API/workers/migrations on a disposable pgserver stack with scripted transports: 6/6 PASS — SIGTERM drains the in-hand job to AWAITING_APPROVAL w/ checkpoint artifact on disk; SIGKILL → reclaim → honest FAILED (CONFLICT_STATE, never fabricated); human approval + fresh worker → checkpoint resume → COMPLETED; 2 racing workers → exactly-once + dedupe; downgrade→upgrade round-trip; pg_dump→psql restore → identical row counts (`deploy/evidence/last-run-evidence.json`). New `docs/deploy/PILOT_OPERATIONS.md` (topology, safe config checklist, recovery runbook); refreshed `docs/deploy/RAILWAY_AND_GITHUB_APP.md`, `docs/13_BACKEND_API_DESIGN.md`.
+ - State of the code: `test_ops_readiness.py` 11/11 + `deploy-version.test.ts` 3/3 pass; evidence harness 7/7 (S1 drain, S2 honest-kill, S3 checkpoint resume, S4 exactly-once, S5 migration rollback, S6 backup/restore, S7 post-crash new assessment). Owner-requested hardening landed: `/diagnostics` is owner-authenticated only (401/403); public `/readyz` scrubs capability `detail` strings (env-var names); `worker_heartbeats.last_poll_at` (claim-loop-only) means a stopped claim loop cannot report as a live worker unless it holds a claimed job.
+@@ -106,7 +113,6 @@ adds an entry before ending.
+ - Open: extend RLS fleet-wide needs per-request tenant GUC resolution — deferred; backups retention is deployment-level (documented).
+ - Warnings: `test_repository_has_a_single_migration_head` expects head 0016 — next migration must update it to 0017.
+ 
+-
+ ### 2026-10-24 — Devin (agent, Adam) — pilot launch package + CONDITIONAL GO
+ - Did: audited `main` (`d0131167`) and the hosted deployment (`readyz`: llm live, GitHub App + webhook configured) for pilot readiness; coordinated with the privacy workstream session for verified private-code data-flow facts; wrote the full pilot launch package under `docs/pilot/` (scope+exclusions, feature matrix, onboarding+revocation checklist, DATA_HANDLING draft, operations, metrics/health report, risk register, rehearsal+first-five plan, LAUNCH_DECISION).
+ - State of the code (verified): no DELETE endpoints or retention jobs exist — deletion is operator-run only; GitHub App holds Contents+PR write at app level with least-privilege per-call tokens (deploy doc's "read-only" line is stale — flagged R-11); Probe has exactly 3 executable check categories; `readyz` live-configured; quotas 400k tok/$10/1800s manual, 150k/$3/900s monitoring, 5/h-20/d auto, $50/day global.
+@@ -1771,7 +1777,6 @@ Remaining merge gate: final documentation head review/CI. Future numerical proto
+ and any collection require separate explicit owner approval. Historical source
+ ancestry retained and v6 registry hash unchanged (see verification report).
+ 
+-
+ ## 2026-10-24 — Devin (Adam): agent-visibility UI + prod automation enabled
+ 
+ - Prod: enabled `automatic_assessments` on adamissac/mypypath (ari-ai already on), enabled `monitoring_policy` on the `derv` project, approved mypypath's sandbox scope (active to 2026-11-18), stamped delivery authorization on both projects. Push→agents chain verified live: monitoring assessments COMPLETED within ~1-2 min of each push.
+diff --git a/docs/release/RELEASE_GATE_2026-10-24.md b/docs/release/RELEASE_GATE_2026-10-24.md
+new file mode 100644
+index 00000000..d0c4e2e4
+--- /dev/null
++++ b/docs/release/RELEASE_GATE_2026-10-24.md
+@@ -0,0 +1,129 @@
++# Release Gate & Pilot Verification — 2026-10-24
++
++Owner: Adam (release reliability / test infrastructure). Branch: `feat/adam/release-gate`.
++
++## Release SHA under gate
++- `main` HEAD at doc freeze: `d0131167` — **stale**. PRs #535 (tenant RLS, migration `0016`), #537, #544, #549, #551, #553, #557, #560 merged since; re-read `main` for the real release SHA (see the trigger section).
++- Gate PR #530 head `8b6bf3bd` — **all 19 CI checks green** incl. `backend-tests`, `intel-tests`, `review-tests`, `secagents-tests`, `rl-tests`, `e2e`, `docker-reviewer`, `docker-sandbox`, `compose-stack`, `backend-image`, `gitleaks`, `inventory-lite`, `payments-lite`, `audit`, `links`, `runner-semantics`, `rl-integration`, `static-and-unit`.
++- Required checks = the job names listed below.
++
++## Problem fixed (from PR #516 triage)
++- `02cea327` added `paths` to the findings list API response; the generated `Finding` contract has `additionalProperties: false`, so the frontend transport's AJV validation rejected every findings response → e2e stack and dependent checks failed.
++- Fix merged: `a1a48f87` reverted the response shape; the eval scorer resolves evidence paths from `source_span` evidence instead.
++
++## Merge gate — required checks (exact job names for `main`)
++| Workflow | Required check (job name) |
++|---|---|
++| backend.yml | `backend-tests`, `rl-integration` |
++| frontend.yml | `static-and-unit`, `e2e` |
++| code-intelligence.yml | `intel-tests` |
++| code-review.yml | `review-tests`, `docker-reviewer` |
++| security-agents.yml | `secagents-tests`, `docker-sandbox` |
++| rl.yml | `rl-tests` |
++| containers.yml | `backend-image`, `compose-stack` |
++| examples.yml | `payments-lite` |
++| qa-tools.yml | `runner-semantics` |
++| research-bounds.yml | `audit` |
++| docs.yml | `links` |
++
++Recommended `main` protection: require all checks above, 1 approving review, dismiss stale reviews, branches up to date, PRs only, block force pushes and deletions.
++
++## Path gates — visible skips instead of absent checks
++Trigger `paths:` filters removed: every job always runs so a required check never sits at "Expected". Each job's first step runs `scripts/ci/path_gate.py` (diffs base→HEAD against the original globs) and writes `**RUN**`/`**SKIP** — <reason>` to the step summary; real steps are conditional on `run == 'true'`. Unknown base fails safe to RUN.
++
++## Pilot verification pipeline — `.github/workflows/pilot-verify.yml`
++Manual `workflow_dispatch` on a ref; one job per environment category so modes can't blur: static-unit | real-db | real-sandbox | browser-e2e (scripted fake LLM, labelled) | live-model (opt-in, authorized) | hosted-smoke | load-recovery. `verify-summary` (`if: always()`) prints a mode-labelled table; fails unless all real-environment gates passed and live-model/hosted-smoke are success-or-explicitly-skipped.
++
++## Job queue — verified
++Leases/heartbeats, retry backoff, `SKIP LOCKED` claims, dedupe idempotency, cancellation, lease-expiry crash recovery, SSE cursor monotonicity, artifact integrity: `test_jobs_queue.py`, `test_assessment_retries.py`, `test_idempotent_mutations.py`, `test_events_log_cursor.py`, `test_list_cursors.py`, `test_artifact_concurrency.py`, `test_redeliver.py`, `test_job_status_api.py`.
++
++**New:** `GET /projects/{project_id}/jobs?status=dead,failed` — dead-letter/failed-job visibility for members. Test: `test_project_jobs_list_surfaces_dead_and_failed`.
++
++## Load/recovery results (local, embedded PG)
++`scripts/ci/load_probe.py`, workers=4, jobs=100 (run twice): no duplicate completions, attempts==1, drain ~0.06s; lease-expiry re-claim attempts==2; dedupe race → one created; `max_attempts=1` failure → `dead` row visible via filter. Provider limits and sandbox concurrency are the real ceilings; the probe measures queue mechanics only.
++
++## Migrations
++At doc freeze: 16 version files, single head `0015`; `test_parallel_migrations.py` asserted `["0015"]`. **Post-#535 merge**: `0016_tenant_rls_intelligence` is now main's head; **#533 must renumber `0016_worker_heartbeats` → `0017`** and update the head assertion (commented on the PR). Any PR adding a version file must update that test; multiple heads fail it.
++
++## Eval harness (45 cases)
++`score.py`/`score_api.py`: every case emits `scored: bool`; non-COMPLETED assessments emit `scored:false` + `unscored_reason`, excluded from all rates (previously counted as misses). `run.py`: `cases.json` validated at load; `summarize()` rates over scored cases only + `scored_cases: N/45` + explicit `unscored` list.
++
++## Tracing (inventory)
++delivery→assessment via `assessments.trigger`; assessment→agent run via `agent_runs.assessment_id`; run→finding→patch→verification via `finding_records.agent_run_id` → `patch_candidates` → `verification_results`; cost/latency via `agent_runs.doc.usage.usd` + timestamps. Gap: no unified trace view — correlate by `assessment_id`/`delivery_id`.
++
++## Launch blockers
++1. **`main` has no branch protection** (403 configuring — needs repo admin): set required checks + review rules above. Until then any push can break the pilot build.
++2. live-model and hosted-smoke are opt-in; their absence reports `skipped`, never `success`.
++3. CI run logs not accessible from this environment (API 401); gate verified locally.
++
++## Evidence
++- `pytest backend/tests/test_job_status_api.py backend/tests/test_jobs_queue.py backend/tests/test_parallel_migrations.py` → 12 passed.
++- `ruff check` / `format --check` clean on all touched Python.
++- `load_probe.py` report: all invariants true.
++
++---
++
++## Security review — `GET /projects/{id}/jobs` (2026-10-24)
++
++- **Authentication**: `_user()` → `require_user()` → session cookie validated against `sessions.token_hash`; unauthenticated → 401. Verified by test (`client_factory()` bare → 401).
++- **Tenant isolation**: `require_project(conn, user, project_id)` resolves project→org, non-members → 404 (no existence leak), viewer+ required. Verified by test (non-member → 404). Job rows are additionally filtered to `payload.project_id == :id` OR `payload.assessment_id` in the project's assessments — a job cannot appear under a project it does not name (verified: `probe_other` excluded).
++- **Authorization scope**: read-only GET; no CSRF needed (safe method). Same access level as `GET /jobs/{job_id}` (viewer).
++- **Pagination**: `limit` bounded `1..200`, newest-first, `next_cursor: None` — no unbounded scan, consistent with other list endpoints' shape.
++- **`status` filter**: comma-split → parameterized `IN` clause; no injection surface.
++- **`last_error` exposure — fixed at both boundaries (Adam's call, in this PR)**:
++  - *Write time*: `jobs.fail()` and the lease-exhaustion dead-letter write persist `redact(error)` — secrets never reach `jobs.last_error` at all. `redaction.py` gained DSN credentials (`postgres://u:p@h`) and generic `password=`/`token=`/`secret=` key-value patterns; absolute paths and internal hostnames are deliberately kept for debuggability (documented in `redaction.py`).
++  - *Read time*: non-owner members receive only `{code, category}` (ErrorCode prefix); owners receive the `redact()`-scrubbed full error with `trace` stripped.
++  - *Tests*: `test_project_jobs_list_scrubs_secret_values_in_last_error` (API), `test_fail_scrubs_secrets_at_write_time` (persisted row + API), `test_jobs_list_member_sees_coarse_error_owner_sees_sanitized` (role split).
++- **Compatibility**: additive route, no schema/contract change; does not collide with open routes.py PRs #524/#525 (distinct hunks, both reported mergeable).
++
++## Branch protection — exact settings for the repo admin
++
++GitHub → `adamissac/ari-ai` → **Settings → Branches → Add branch ruleset** (or classic "Add rule") for `main`:
++
++1. **Target**: branch name pattern `main` (or default branch).
++2. **Require status checks to pass before merging** — add these exact check names (job names, not workflow names):
++   `gitleaks`, `links`, `backend-tests`, `rl-integration`, `intel-tests`, `review-tests`, `docker-reviewer`, `secagents-tests`, `docker-sandbox`, `rl-tests`, `backend-image`, `compose-stack`, `static-and-unit`, `e2e`, `payments-lite`, `runner-semantics`, `audit`
++   — enable **"Require branches to be up to date before merging"**.
++3. **Require a pull request before merging**: require **1 approving review**, enable **"Dismiss stale pull request approvals when new commits are pushed"** and **"Require review from Code Owners"** (if CODEOWNERS is in place).
++4. **Block force pushes** and **block deletions** for `main`.
++5. Optional: **Require conversation resolution**; do NOT enable "Allow specified actors to bypass" unless a break-glass lane is wanted — if used, restrict to admins only.
++
++CLI equivalent (needs admin token):
++```sh
++gh api -X PUT repos/adamissac/ari-ai/branches/main/protection --input - <<'JSON'
++{"required_status_checks":{"strict":true,"contexts":["gitleaks","links","backend-tests","rl-integration","intel-tests","review-tests","docker-reviewer","secagents-tests","docker-sandbox","rl-tests","backend-image","compose-stack","static-and-unit","e2e","payments-lite","runner-semantics","audit","inventory-lite"]},
++ "enforce_admins":true,
++ "required_pull_request_reviews":{"dismiss_stale_reviews":true,"require_code_owner_reviews":false,"required_approving_review_count":1},
++ "restrictions":null,
++ "required_linear_history":false,
++ "allow_force_pushes":false,
++ "allow_deletions":false}
++JSON
++```
++
++## Triggering `pilot-verify.yml` on the final release SHA
++
++After all merges, get the real final SHA and dispatch the pipeline — **never assume `d0131167`; re-read `main` at release time**:
++
++```sh
++SHA=$(gh api repos/adamissac/ari-ai/commits/main --jq .sha)
++echo "release SHA: $SHA"
++gh workflow run pilot-verify.yml -R adamissac/ari-ai \
++  -f ref="$SHA" -f live_model=false -f hosted_url="" -f load_workers=4
++# live-model gate (authorized, costs money):
++gh workflow run pilot-verify.yml -R adamissac/ari-ai \
++  -f ref="$SHA" -f live_model=true -f hosted_url="https://<pilot-host>" -f load_workers=8
++```
++
++Or GitHub UI: **Actions → pilot-verify → Run workflow** → set `ref` to the merge SHA, `hosted_url` to the pilot deployment, `live_model` only when Anthropic spend is approved. The `verify-summary` job then prints the mode-labelled verdict table and fails unless all real-environment gates pass.
++
++## Cross-branch coordination (checked 2026-10-24, before merge)
++
++- **PR #533 (pilot-readiness-ops)** adds migration `0016_worker_heartbeats` — since #535 merged first and claimed `0016`, #533 must renumber to `0017` + update `test_parallel_migrations.py` to `["0017"]`. Notified via PR comment.
++- **PR #529** also edits `security-agents/evals/commits/score_api.py` (moves `_finding_paths` to module scope) — disjoint hunks from #530's results-loop rewrite; both coexist.
++- **PRs #524/#525/#526/#523** (ari-security authz fixes) touch `routes.py` in-place at distant hunks — GitHub reports mergeable; no conflict with the appended jobs endpoint.
++- Migration conflicts: the predicted #533/#535 `0016` collision was resolved by ordering — **#535 merged first**; #533 renumbers to `0017` on rebase.
++
++## Evidence honesty
++
++Everything under "Job queue — verified" and "Load/recovery results" was **executed locally** in this session against embedded PostgreSQL (pytest + `load_probe.py` output). The `hosted-smoke` and `live-model` gates are **not yet executed** — they exist as pipeline jobs and will report `skipped` until run with inputs. No hosted/production evidence is claimed anywhere in this document; CI results on PR #530 are the only remote execution evidence.
+diff --git a/docs/research/intel-pipeline-audit/README.md b/docs/research/intel-pipeline-audit/README.md
+new file mode 100644
+index 00000000..46129579
+--- /dev/null
++++ b/docs/research/intel-pipeline-audit/README.md
+@@ -0,0 +1,169 @@
++# Code-intelligence pipeline audit — 2026-10-24
++
++Executed audit of `code-intelligence/` (ingest → extract → store → retrieve →
++memory) and its Postgres adapters (`backend/intelligence.py`,
++`backend/intel_store.py`, `backend/intelligence_memory.py`) against the pilot
++readiness goal: accurate, version-aware, secure, reliable for unfamiliar repos.
++
++Method: reproduction scripts, corpus-wide redaction comparison, real index
++runs through `IntelligenceService`, labeled-question retrieval evaluation, and
++the executed test suites. Raw numbers:
++`code-intelligence/evidence/m2-index-retrieval-audit.json` (regenerate with
++`code-intelligence/evidence/index_benchmark.py`).
++
++## 1. PR #441 redaction/parser regression — reproduced, fix verified
++
++`redact()` on main (64bb24a2) corrupts valid Python: the `_ASSIGN` regex
++replaced everything after a secret-like key's `=`/`:` to end-of-line, breaking
++lines such as `webhook_secret_configured=bool(` inside a `dict(...)` call.
++
++Measured on all 582 tracked `.py` files at 64bb24a2:
++
++| Variant | Files failing `ast.parse` after `redact()` | Files with changed line count |
++|---|---|---|
++| main (pre-#441) | **38** | **2** (Bearer `\s+` ate the newline) |
++| PR #441 | **0** | **0** |
++
++A diff audit of the 104 lines that main redacted but #441 does not found **0
++literal secrets** — every one was a code expression or JSON key the old regex
++over-matched. The fix keeps quote prefixes and bare-token boundaries, preserves
++line counts, and still redacts every literal secret in the corpus.
++
++Verdict: the fix is correct and necessary. The regression is **resolved** —
++commit `7a5b329f` is carried on this PR's branch, so merging it lands the fix.
++
++## 2. Index coverage (real runs, SHA 7a5b329f)
++
++| Target | Files | Symbols | Imports | Call edges | Routes | Expectations | Time | Heap peak | Store |
++|---|---|---|---|---|---|---|---|---|---|
++| payments-lite (`examples/payments-lite/target`) | 8 | 45 | 25/25 | 114/109 sites | **8/8** | 49 | 0.16–0.32s | 2–45MB | 135KB |
++| `backend/` prefix | 127 | 1,147 | 2,010/2,010 | 7,445/10,823 | 97/99 (+2 flagged) | 780 | 4.11s | 81.6MB | 4.1MB |
++| ari-ai (whole repo) | 1,798 | 5,585 | 7,901/7,901 | 26,844 | 107/109 (+2 flagged) | 10,963 | 92.4s | 617MB | 38.6MB |
++
++- **Symbols/imports: 100% retained** on every target (symbol count includes
++  563 module nodes, so symbols exceed def+class ground truth).
++- **Call edges** include `Depends()`/`Security()` argument edges (declared
++  dependencies, not executed calls) — counts can exceed raw call sites.
++- **Resolution honesty** (ari-ai): 26.2% exact / 2.0% likely / 71.8%
++  unresolved. Dynamic calls (`callback(...)`, `getattr`, dispatch tables) stay
++  `unresolved` — never guessed — as required.
++- **Routes**: post-fix, `indexed + flagged == ground truth`. Before the fix,
++  `app.get(FIXTURE_ROUTE)` and `app.post(CONTROL_PATH)` in
++  `backend/live_defense/owned_test_app.py` were **silently dropped**.
++- **Expectations**: all `ambiguous`/extracted status — docstring/Field/test
++  signals recorded with confidence 0.55–0.9, never presented as verified.
++
++## 3. Commit / profile / tenant identity
++
++- `snapshot_id = stable_id("snp", project, repo, commit_sha, index_version)`;
++  a prefix change re-keys via `index_version = "python-ast-ts/0.3.1+profile.<sha>"`.
++- `SQLiteIndexStore`: `UNIQUE(project, repo, commit_sha, index_version)`,
++  immutable payload with sha256 integrity check on read, `get` verifies
++  `index.ref == ref`, `find` raises `SNAPSHOT_NOT_READY`.
++- `PostgresPayloadStore`: `_validate_ref` enforces repo→project ownership;
++  `PostgresMemoryStore._validate` requires a *ready* snapshot + ownership.
++- Executed tests: `test_versions_and_tenants_are_isolated`,
++  `test_postgres_profiles_remain_distinct_and_readable_after_restart`,
++  `test_same_commit_different_prefix_never_reuses_the_wrong_coverage`,
++  `test_parser_revision_creates_new_facts_without_relabeling_old_memory`,
++  `test_write_once_ready_then_read` — all pass.
++
++## 4. Retrieval evaluation (labeled questions, `test_retrieval_quality.py`)
++
++| Corpus | Required spans | Recalled | Missing |
++|---|---|---|---|
++| payments-lite (10 questions) | 17 | **14 (82%)** | `require_owner` ×2, `payment_out` |
++| ari-ai (5 questions) | 8 | **5 (63%)** | `sign`, `decide_expectation`, `redact_evidence`, `build_pack` |
++
++Every pack stayed under budget (10–12 chunks, 15–24k tokens vs the 24k
++budget) — far below loading whole files, let alone the whole repo.
++
++**Missing-evidence pattern**: the *primary* symbol is recalled; *secondary*
++evidence loses to BM25 competition (e.g., `IntelligenceService.decide_expectation`
++was displaced by 11 chunks of decision-related contracts/tests). Packs do not
++mark which expected evidence is absent — a real gap to note for reviewers:
++recall degrades with corpus size and shared vocabulary.
++
++## 5. Budget behavior on a large repo
++
++- At ari-ai scale (5,585 symbols) a 24k-token pack returns 10–12 ranked
++  chunks; `BUDGET_EXHAUSTED` is raised only when the budget cannot fit the
++  focused seed, covered by `test_context_budget_stale_and_project_scope`.
++- Token estimates are byte-based and provably upper-bound the serialized pack
++  (`estimate(pack.model_dump_json()) <= token_count`).
++
++## 6. Persistence, decisions, regressions
++
++- Index payloads are write-once, sha256-verified; a restarted service reads
++  the same `SnapshotRef` (`test_durable_context_for_reviewer_and_scout`,
++  `test_postgres_profiles_remain_distinct_and_readable_after_restart`).
++- Human expectation decisions are optimistic-concurrency (revision-checked),
++  audit-recorded, and durable across restart
++  (`test_authenticated_decisions_are_atomic_audited_and_visible_after_restart`,
++  `test_postgres_decision_race_cannot_overwrite_or_cross_snapshot`).
++- Memory is keyed by `sha256(SnapshotRef.model_dump_json())` —
++  `apply_decisions` raises on any snapshot mismatch, so **a decision on
++  commit A cannot be filed under commit B**.
++- Verified regressions require all five Verify checks, a `base_commit_sha`
++  matching the indexed ref, and distinct run ids; the outbox is durable and
++  idempotent (`test_verified_candidate_outbox_is_durable_idempotent_and_retrieved`).
++
++## 7. Tenant/privacy protections
++
++- Source is redacted **before** parse and storage (`ingest.py` — PEM, known
++  token formats, assigned secrets, Bearer, URL credentials), so stored
++  payloads and context packs only ever contain redacted content. The corpus
++  diff found no un-redacted literal secrets post-#441, and the mid-line
++  bare-token residual (`f(password=x)`/`dict(password=x)`/collection
++  closers) is now redacted too — verified leak-free and parse-safe across
++  all 584 tracked `.py` files.
++- Context packs escape content into `<untrusted_repository_data>` blocks,
++  mark every chunk `trust="untrusted"`, and never grant permissions
++  (`test_context_privacy` suite).
++- Postgres payload/memory stores enforce repo→project ownership and
++  ready-gating; tenant cross-reads raise `PermissionError`
++  (`test_versions_and_tenants_are_isolated`).
++
++## 8. Limitations (explicit — read as "not supported", not "done")
++
++- **Language support: Python only.** Tree-sitter gate + `ast` extraction;
++  no JavaScript/TypeScript indexing exists or is claimed here.
++- **Non-literal route decorators are not indexed** (now honestly flagged via
++  `IndexIssue`, previously silent).
++- **71.8% of call edges are unresolved** at repo scale — dynamic dispatch,
++  attribute calls, and shadowed names are labeled `unresolved`, not guessed.
++  Treat the call graph as a partial map: absence of an edge is not evidence
++  a call does not happen.
++- **Retrieval recall degrades at scale** (§4): primary evidence is recalled;
++  secondary evidence loses to BM25 competition (82%→63%). Packs do not mark
++  expected-but-absent evidence — treat "not in the pack" as "not retrieved",
++  not "not in the repo".
++- **Mid-line secret redaction residual** (fixed for digit-bearing literals):
++  `f(password=hunter2, ...)` / `dict(password=hunter2)` / `{"password":
++  hunter2}` are now redacted. Still unreachable: mid-line bare tokens with no
++  digit (`f(password=hunter)`) and non-first elements of a compound value
++  (`password="x" if c else "y"`, `password="a" + "b"` — a regex sees only the
++  first element safely). Honest consequence: a secret matching a residual
++  pattern could still reach `index_payloads` and LLM context packs; tenant
++  RLS + `purge_project` (#535) is the second layer, not a substitute —
++  disclose this to pilot customers before onboarding code that may carry
++  such secrets.
++- Indexing is **whole-tree, not incremental**: ari-ai costs ~92s and ~617MB
++  heap; fine for pilot repos, a limit for monorepo-scale trees.
++
++## 9. Deliverables in this change
++
++- `code-intelligence/code_intelligence/extract.py` — `IndexIssue` for
++  non-literal/overlong/missing route paths.
++- `code-intelligence/code_intelligence/privacy.py` — mid-line/closer-bound
++  bare secret tokens (digit-bearing) now redacted; identifiers untouched.
++- `code-intelligence/tests/test_ingest_extract.py` —
++  `test_non_literal_route_paths_are_flagged_not_silently_dropped` +
++  `test_mid_line_secret_values_are_redacted_without_breaking_parse`.
++- `code-intelligence/tests/test_retrieval_quality.py` — labeled-question
++  retrieval eval with a measured regression floor.
++- `code-intelligence/evidence/index_benchmark.py` — reproducible coverage +
++  latency/memory benchmark against any pinned SHA.
++- `code-intelligence/evidence/m2-index-retrieval-audit.json` — this audit's
++  executed numbers.
++- Carries `7a5b329f` (PR #441): the parse-safe redaction fix.
+diff --git a/scripts/ci/load_probe.py b/scripts/ci/load_probe.py
+new file mode 100644
+index 00000000..b02a7143
+--- /dev/null
++++ b/scripts/ci/load_probe.py
+@@ -0,0 +1,188 @@
++#!/usr/bin/env python3
++"""Bounded load + recovery probe for the durable job queue (real PostgreSQL).
++
++Creates a scratch database on the CI/embedded PostgreSQL, migrates it, then:
++  1. enqueues ``workers * 25`` no-op jobs and drains them with ``workers``
++     concurrent claimers — asserts exactly-once (every job completes once,
++     attempts == 1) and reports enqueue/drain rates;
++  2. crash recovery: a job claimed and abandoned completes after lease expiry
++     exactly once more;
++  3. dedupe under concurrency: two racing enqueues of one dedupe_key create
++     exactly one job;
++  4. dead-letter: a retryable job past max_attempts lands in ``dead`` and is
++     visible in a status query (dead-letter visibility).
++
++Env: TEST_DATABASE_URL (admin URL of the database service), LOAD_WORKERS.
++Exits non-zero on any failed invariant. Prints a JSON report for the summary.
++"""
++
++from __future__ import annotations
++
++import json
++import os
++import sys
++import threading
++import time
++import uuid
++from collections import Counter
++
++import sqlalchemy as sa
++
++
++def _scratch_url() -> tuple[str, str]:
++    admin_url = os.environ["TEST_DATABASE_URL"]
++    if admin_url.startswith("postgresql://"):
++        admin_url = "postgresql+psycopg://" + admin_url[len("postgresql://") :]
++    db = "load_probe_" + uuid.uuid4().hex[:12]
++    admin = sa.create_engine(admin_url, isolation_level="AUTOCOMMIT")
++    with admin.connect() as conn:
++        conn.execute(sa.text(f'CREATE DATABASE "{db}"'))
++    admin.dispose()
++    return admin_url, sa.engine.make_url(admin_url).set(database=db).render_as_string(
++        hide_password=False
++    )
++
++
++def main() -> int:
++    workers = int(os.environ.get("LOAD_WORKERS", "4"))
++    n_jobs = workers * 25
++    report: dict = {"workers": workers, "jobs": n_jobs, "checks": {}}
++
++    admin_url, db_url = _scratch_url()
++    db_name = sa.engine.make_url(db_url).database
++    os.environ["DATABASE_URL"] = db_url
++
++    from backend import jobs
++    from backend.db import get_engine, transaction
++    from backend.db import jobs as jobs_t
++    from backend.migrate import upgrade
++
++    engine = get_engine()
++    try:
++        upgrade("heads")
++        t0 = time.monotonic()
++
++        # --- 1. bounded concurrent drain, exactly-once -------------------------
++        with transaction() as conn:
++            for i in range(n_jobs):
++                jobs.enqueue(conn, "probe_noop", {"i": i}, dedupe_key=f"probe-{i}")
++        enq_s = time.monotonic() - t0
++
++        completed: list[str] = []
++        done_at = time.monotonic() + 90
++        lock = threading.Lock()
++
++        def drainer(w: int) -> None:
++            while time.monotonic() < done_at:
++                with transaction() as conn:
++                    job = jobs.claim(conn, f"probe-worker-{w}", lease_s=10)
++                    if job is not None:
++                        with lock:
++                            completed.append(job.id)
++                        jobs.complete(conn, job.id, f"probe-worker-{w}", {"ok": True})
++                        continue
++                # no claimable job: either the queue is drained or backoff — recheck
++                with transaction() as conn:
++                    remaining = conn.execute(
++                        sa.select(sa.func.count())
++                        .select_from(jobs_t)
++                        .where(jobs_t.c.status.in_(("queued", "running")))
++                    ).scalar_one()
++                if remaining == 0:
++                    return
++                time.sleep(0.05)
++
++        threads = [threading.Thread(target=drainer, args=(w,)) for w in range(workers)]
++        t1 = time.monotonic()
++        for t in threads:
++            t.start()
++        for t in threads:
++            t.join()
++        drain_s = time.monotonic() - t1
++
++        counts = Counter(completed)
++        dup = [j for j, n in counts.items() if n > 1]
++        report["checks"]["exactly_once"] = not dup and len(counts) == n_jobs
++        report["duplicates"] = dup[:5]
++        report["enqueue_s"] = round(enq_s, 2)
++        report["drain_s"] = round(drain_s, 2)
++        report["jobs_per_s"] = round(n_jobs / max(drain_s, 0.001), 1)
++        with transaction() as conn:
++            attempts = dict(
++                conn.execute(
++                    sa.select(jobs_t.c.id, jobs_t.c.attempts).where(
++                        jobs_t.c.dedupe_key.like("probe-%")
++                    )
++                ).all()
++            )
++        report["checks"]["attempts_eq_1"] = all(a == 1 for a in attempts.values())
++
++        # --- 2. crash recovery: abandoned lease re-claimed exactly once --------
++        with transaction() as conn:
++            jid, _ = jobs.enqueue(conn, "probe_crash", {}, dedupe_key="probe-crash")
++        with transaction() as conn:
++            job = jobs.claim(conn, "crashed-worker", lease_s=1)
++            assert job and job.id == jid
++        time.sleep(2.5)  # let the lease expire
++        with transaction() as conn:
++            job2 = jobs.claim(conn, "recovery-worker", lease_s=10)
++            assert job2 and job2.id == jid and job2.attempts == 2, job2
++            jobs.complete(conn, job2.id, "recovery-worker")
++        report["checks"]["crash_recovery"] = True
++
++        # --- 3. dedupe under concurrency ----------------------------------------
++        results: list[bool] = []
++
++        def racy_enqueue() -> None:
++            with transaction() as conn:
++                _, created = jobs.enqueue(conn, "probe_dup", {}, dedupe_key="probe-dup")
++            results.append(created)
++
++        t1, t2 = threading.Thread(target=racy_enqueue), threading.Thread(target=racy_enqueue)
++        t1.start()
++        t2.start()
++        t1.join()
++        t2.join()
++        report["checks"]["dedupe_race_one_created"] = results.count(True) == 1
++        # drain the surviving dedupe job so it cannot pollute the next assertion
++        with transaction() as conn:
++            leftover = jobs.claim(conn, "cleanup-worker", lease_s=10)
++            assert leftover is not None
++            jobs.complete(conn, leftover.id, "cleanup-worker")
++
++        # --- 4. dead-letter visibility -------------------------------------------
++        with transaction() as conn:
++            jid, _ = jobs.enqueue(conn, "probe_dead", {}, dedupe_key="probe-dead", max_attempts=1)
++            job = jobs.claim(conn, "w1", lease_s=10)
++            jobs.fail(conn, job.id, "w1", {"code": "X", "message": "boom"}, retryable=True)
++        with transaction() as conn:
++            again = jobs.claim(conn, "w2", lease_s=10)
++            assert again is None or again.id != jid  # attempts exhausted -> dead, not re-claimed
++            status = conn.execute(sa.select(jobs_t.c.status).where(jobs_t.c.id == jid)).scalar_one()
++            visible = conn.execute(
++                sa.select(sa.func.count())
++                .select_from(jobs_t)
++                .where(jobs_t.c.status.in_(("dead", "failed")))
++            ).scalar_one()
++        report["checks"]["dead_letter"] = status == "dead"
++        report["checks"]["dead_letter_visible"] = visible >= 1
++
++        report["ok"] = all(report["checks"].values())
++    finally:
++        engine.dispose()
++        admin = sa.create_engine(admin_url, isolation_level="AUTOCOMMIT")
++        with admin.connect() as conn:
++            conn.execute(sa.text(f'DROP DATABASE IF EXISTS "{db_name}" WITH (FORCE)'))
++        admin.dispose()
++
++    print(json.dumps(report, indent=2))
++    if os.environ.get("GITHUB_STEP_SUMMARY"):
++        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as fh:
++            fh.write(
++                "### Load/recovery probe\n\n```json\n" + json.dumps(report, indent=2) + "\n```\n"
++            )
++    return 0 if report["ok"] else 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/scripts/ci/path_gate.py b/scripts/ci/path_gate.py
+new file mode 100644
+index 00000000..2a1ac9be
+--- /dev/null
++++ b/scripts/ci/path_gate.py
+@@ -0,0 +1,104 @@
++#!/usr/bin/env python3
++"""Decide whether a CI suite must run for the current diff.
++
++Writes ``run=true|false`` to ``$GITHUB_OUTPUT`` and a visible line to
++``$GITHUB_STEP_SUMMARY`` (and stdout). A suite that does not run still emits a
++green check whose summary says SKIPPED — a skip is never silent.
++
++Usage::
++
++    python3 scripts/ci/path_gate.py --globs "backend/**,shared/**" \
++        [--base <sha>] [--always]
++
++``--base`` is the commit to diff against (PR base sha or push "before"). When
++it is empty, missing, or unfetchable the gate answers ``run=true`` — the gate
++fails toward running, never toward skipping.
++"""
++
++from __future__ import annotations
++
++import argparse
++import fnmatch
++import os
++import subprocess
++import sys
++
++
++def _changed_files(base: str) -> list[str] | None:
++    """File paths changed between ``base`` and HEAD; None when unknown."""
++    base = (base or "").strip()
++    if not base or set(base) == {"0"}:
++        return None
++    have = (
++        subprocess.run(
++            ["git", "cat-file", "-e", f"{base}^{{commit}}"], capture_output=True
++        ).returncode
++        == 0
++    )
++    if not have:
++        subprocess.run(["git", "fetch", "-q", "origin", base], capture_output=True)
++        have = (
++            subprocess.run(
++                ["git", "cat-file", "-e", f"{base}^{{commit}}"], capture_output=True
++            ).returncode
++            == 0
++        )
++    if not have:
++        return None
++    proc = subprocess.run(
++        ["git", "diff", "--name-only", base, "HEAD"],
++        capture_output=True,
++        text=True,
++    )
++    if proc.returncode:
++        return None
++    return [line.strip() for line in proc.stdout.splitlines() if line.strip()]
++
++
++def _matches(path: str, pattern: str) -> bool:
++    if fnmatch.fnmatchcase(path, pattern):
++        return True
++    # GitHub's `**/*.md` also matches top-level `README.md`.
++    if pattern.startswith("**/") and fnmatch.fnmatchcase(path, pattern[3:]):
++        return True
++    return False
++
++
++def main() -> int:
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--globs", required=True, help="Comma-separated path globs")
++    ap.add_argument("--base", default="", help="Base commit sha to diff against")
++    ap.add_argument("--always", action="store_true", help="Run unconditionally")
++    args = ap.parse_args()
++
++    patterns = [p.strip() for p in args.globs.split(",") if p.strip()]
++    reason = ""
++    run = args.always
++    if not run and not patterns:
++        run, reason = True, "no globs supplied"
++    if not run:
++        changed = _changed_files(args.base)
++        if changed is None:
++            run, reason = True, "base unknown (dispatch, tag, or unfetchable sha)"
++        else:
++            hits = [p for p in changed if any(_matches(p, g) for g in patterns)]
++            run = bool(hits)
++            reason = f"{len(hits)}/{len(changed)} changed files match"
++            if hits:
++                reason += f" (e.g. {hits[0]})"
++
++    print(f"run={str(run).lower()}  # {reason}")
++    out = os.environ.get("GITHUB_OUTPUT")
++    if out:
++        with open(out, "a") as fh:
++            fh.write(f"run={str(run).lower()}\n")
++    summary = os.environ.get("GITHUB_STEP_SUMMARY")
++    if summary:
++        label = "RUN" if run else "SKIP"
++        with open(summary, "a") as fh:
++            fh.write(f"**{label}** — {reason}\n")
++    return 0
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/security-agents/evals/commits/run.py b/security-agents/evals/commits/run.py
+index eab29cf0..d31edf60 100644
+--- a/security-agents/evals/commits/run.py
++++ b/security-agents/evals/commits/run.py
+@@ -118,15 +118,41 @@ def cleanup(run_tag: str, cases: list[dict]) -> None:
+     )
+ 
+ 
++def validate_cases(cases: list[dict]) -> list[str]:
++    """Missing case fields must fail loudly, never score as zero."""
++    bad = []
++    for c in cases:
++        missing = [k for k in ("id", "kind", "files") if not c.get(k)]
++        if missing:
++            bad.append(f"{c.get('id', '<no id>')}: missing {', '.join(missing)}")
++        for e in c.get("edits", []):
++            if not e.get("path") or "old" not in e or "new" not in e:
++                bad.append(f"{c.get('id')}: malformed edit entry")
++                break
++    return bad
++
++
+ def summarize(results: list[dict]) -> dict:
++    """Rates are computed over SCORED cases only — a FAILED / CANCELLED /
++    BUDGET_EXHAUSTED / still-running assessment lands in ``unscored`` with its
++    reason and is never counted as a detection miss."""
++
+     def rate(rows: list[dict], key: str) -> str:
+         return f"{sum(bool(r.get(key)) for r in rows)}/{len(rows)}"
+ 
+-    idor = [r for r in results if r["kind"] == "idor"]
+-    vuln = [r for r in results if r["kind"] == "vuln"]
+-    benign = [r for r in results if r["kind"] == "benign"]
+-    seconds = sorted(r["seconds"] for r in results if "seconds" in r)
++    scored = [r for r in results if r.get("scored")]
++    unscored = [
++        {"case_id": r["case_id"], "state": r["state"], "reason": r.get("unscored_reason")}
++        for r in results
++        if not r.get("scored")
++    ]
++    idor = [r for r in scored if r["kind"] == "idor"]
++    vuln = [r for r in scored if r["kind"] == "vuln"]
++    benign = [r for r in scored if r["kind"] == "benign"]
++    seconds = sorted(r["seconds"] for r in scored if "seconds" in r)
+     return {
++        "scored_cases": f"{len(scored)}/{len(results)}",
++        "unscored": unscored,
+         "idor_validated": rate(idor, "validated"),
+         "idor_fixed": rate(idor, "fixed"),
+         "vuln_flagged": rate(vuln, "flagged"),
+@@ -146,6 +172,9 @@ def main() -> int:
+     ap.add_argument("--out", type=Path, default=HERE / "results")
+     a = ap.parse_args()
+     cases = json.loads((HERE / "cases.json").read_text())["cases"]
++    bad = validate_cases(cases)
++    if bad:
++        raise SystemExit("cases.json is not scoreable; fix before running:\n  " + "\n  ".join(bad))
+     if a.only:
+         cases = [c for c in cases if c["id"] in set(a.only)]
+     if subprocess.run(["git", "-C", str(REPO), "diff", "--quiet"]).returncode:
+@@ -172,9 +201,13 @@ def main() -> int:
+             if report is None:
+                 raise SystemExit(f"scorer never recovered for batch {batch}")
+             for r in report["results"]:
++                verdict = (
++                    f"flagged={r.get('flagged')} validated={r.get('validated')} fixed={r.get('fixed')}"
++                    if r.get("scored")
++                    else f"UNSCORED ({r.get('unscored_reason')})"
++                )
+                 print(
+-                    f"  {r['case_id']:<38} {r['state']:<10} {r.get('seconds')}s "
+-                    f"flagged={r.get('flagged')} validated={r.get('validated')} fixed={r.get('fixed')}",
++                    f"  {r['case_id']:<38} {r['state']:<10} {r.get('seconds')}s {verdict}",
+                     flush=True,
+                 )
+             results.extend(report["results"])
+diff --git a/security-agents/evals/commits/score.py b/security-agents/evals/commits/score.py
+index 713af410..b161cacb 100644
+--- a/security-agents/evals/commits/score.py
++++ b/security-agents/evals/commits/score.py
+@@ -18,7 +18,9 @@ import sys
+ 
+ import sqlalchemy as sa
+ 
+-TERMINAL = {"COMPLETED", "FAILED", "CANCELLED", "BUDGET_EXHAUSTED"}
++# UNSCORED is a case-verdict state (missing case fields), not an assessment state
++# the API can emit — it only keeps malformed cases from counting as pending.
++TERMINAL = {"COMPLETED", "FAILED", "CANCELLED", "BUDGET_EXHAUSTED", "UNSCORED"}
+ VALIDATED = {
+     "validated",
+     "diagnosed",
+@@ -40,22 +42,47 @@ def _engine() -> sa.Engine:
+ 
+ 
+ def score_case(case: dict, assessment: dict | None, findings: list[dict]) -> dict:
+-    out = {"case_id": case["id"], "kind": case["kind"], "cwe": case.get("cwe")}
++    """A case is only *scored* when its assessment COMPLETED and the case is well
++    formed. Anything else returns ``scored: False`` + ``unscored_reason`` and no
++    verdict fields — a failed or pending run must never read as a clean miss."""
++    out = {"case_id": case.get("id"), "kind": case.get("kind"), "cwe": case.get("cwe")}
++    missing = [k for k in ("id", "kind", "files") if not case.get(k)]
++    if missing:
++        return {
++            **out,
++            "state": "UNSCORED",
++            "scored": False,
++            "unscored_reason": f"case missing fields: {', '.join(missing)}",
++        }
+     if assessment is None:
+-        return {**out, "state": "NOT_STARTED"}
++        return {
++            **out,
++            "state": "NOT_STARTED",
++            "scored": False,
++            "unscored_reason": "no assessment found for the pushed sha",
++        }
++    detail = {
++        **out,
++        "assessment_id": assessment["id"],
++        "state": assessment["state"],
++        "seconds": assessment.get("seconds"),
++        "usd": assessment.get("usd"),
++    }
++    if assessment["state"] != "COMPLETED":
++        return {**detail, "scored": False, "unscored_reason": f"assessment ended {assessment['state']}"}
+     files = set(case["files"])
+     on_files = [
+         f for f in findings if f["kind"] == "security" and files & {p.split(":")[0] for p in f["paths"]}
+     ]
++    any_files = [f for f in findings if files & {p.split(":")[0] for p in f["paths"]}]
+     return {
+-        **out,
+-        "assessment_id": assessment["id"],
+-        "state": assessment["state"],
+-        "seconds": assessment["seconds"],
+-        "usd": assessment["usd"],
++        **detail,
++        "scored": True,
+         "flagged": bool(on_files),
+         "validated": any(f["status"] in VALIDATED for f in on_files),
+         "fixed": any(f["status"] in FIXED for f in on_files),
++        "validated_any": any(f["status"] in VALIDATED for f in any_files),
++        "fixed_any": any(f["status"] in FIXED for f in any_files),
+         "findings": [
+             {"kind": f["kind"], "status": f["status"], "title": f["title"][:120], "cwe": f["cwe"]}
+             for f in findings
+@@ -88,7 +115,7 @@ def main() -> int:
+                 {
+                     "id": row["id"],
+                     "state": row["state"],
+-                    "seconds": round(float(row["seconds"])),
++                    "seconds": round(float(row["seconds"] or 0)),
+                     "usd": float(row["usd"] or 0),
+                 }
+                 if row
+@@ -101,11 +128,18 @@ def main() -> int:
+                     {"a": assessment["id"]},
+                 ).mappings():
+                     std = (f["doc"] or {}).get("standards") or {}
++                    # a NULL paths column falls back to source_span evidence,
++                    # matching score_api.py
++                    paths = f["paths"] or [
++                        e.get("path")
++                        for e in (f["doc"] or {}).get("evidence") or []
++                        if e.get("kind") == "source_span" and e.get("path")
++                    ]
+                     findings.append(
+                         {
+                             "kind": f["kind"],
+                             "status": f["status"],
+-                            "paths": [str(p) for p in f["paths"] or []],
++                            "paths": [str(p) for p in paths],
+                             "title": str((f["doc"] or {}).get("title") or ""),
+                             "cwe": (std.get("cwe") or {}).get("id"),
+                         }
+diff --git a/security-agents/evals/commits/score_api.py b/security-agents/evals/commits/score_api.py
+index 9d36837a..9f498cfd 100644
+--- a/security-agents/evals/commits/score_api.py
++++ b/security-agents/evals/commits/score_api.py
+@@ -20,7 +20,7 @@ import sys
+ import urllib.request
+ from datetime import UTC, datetime
+ 
+-TERMINAL = {"COMPLETED", "FAILED", "CANCELLED", "BUDGET_EXHAUSTED"}
++TERMINAL = {"COMPLETED", "FAILED", "CANCELLED", "BUDGET_EXHAUSTED", "UNSCORED"}
+ VALIDATED = {
+     "validated",
+     "diagnosed",
+@@ -90,10 +90,31 @@ def main() -> int:
+ 
+     results, pending = [], 0
+     for case in request["cases"]:
+-        out = {"case_id": case["id"], "kind": case["kind"], "cwe": case.get("cwe")}
++        # A case is only *scored* when its assessment COMPLETED and the case is
++        # well formed; anything else is scored: False + unscored_reason so a
++        # failed or pending run can never read as a clean miss.
++        out = {"case_id": case.get("id"), "kind": case.get("kind"), "cwe": case.get("cwe")}
++        missing = [k for k in ("id", "kind", "files") if not case.get(k)]
++        if missing:
++            results.append(
++                {
++                    **out,
++                    "state": "UNSCORED",
++                    "scored": False,
++                    "unscored_reason": f"case missing fields: {', '.join(missing)}",
++                }
++            )
++            continue
+         a = by_sha.get(shas.get(case["id"], ""))
+         if a is None:
+-            results.append({**out, "state": "NOT_STARTED"})
++            results.append(
++                {
++                    **out,
++                    "state": "NOT_STARTED",
++                    "scored": False,
++                    "unscored_reason": "no assessment found for the pushed sha",
++                }
++            )
+             pending += 1
+             continue
+         files = set(case["files"])
+@@ -102,13 +123,22 @@ def main() -> int:
+         ]
+         any_on_files = [f for f in by_assessment.get(a["id"], []) if files & _finding_paths(f)]
+         seconds = round(_ts(a.get("completed_at") or a.get("updated_at")) - _ts(a["created_at"]))
++        base = {
++            **out,
++            "assessment_id": a["id"],
++            "state": a["state"],
++            "seconds": seconds,
++            "usd": float((a.get("usage") or {}).get("usd") or 0),
++        }
++        if a["state"] != "COMPLETED":
++            results.append({**base, "scored": False, "unscored_reason": f"assessment ended {a['state']}"})
++            if a["state"] not in TERMINAL:
++                pending += 1
++            continue
+         results.append(
+             {
+-                **out,
+-                "assessment_id": a["id"],
+-                "state": a["state"],
+-                "seconds": seconds,
+-                "usd": float((a.get("usage") or {}).get("usd") or 0),
++                **base,
++                "scored": True,
+                 "flagged": bool(sec_on_files),
+                 "validated": any(f["status"] in VALIDATED for f in sec_on_files),
+                 "fixed": any(f["status"] in FIXED for f in sec_on_files),
