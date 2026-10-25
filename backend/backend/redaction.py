@@ -80,7 +80,12 @@ def redact_code(text: str) -> str:
 
 
 def find_high_confidence_secret(text: str) -> str | None:
-    for pattern, replacement in _HIGH_CONFIDENCE_PATTERNS:
+    # Labeling checks the most specific transport-DSN pattern before the generic
+    # URI-password pattern; substitution order in _PATTERNS is the reverse.
+    ordered = sorted(
+        _HIGH_CONFIDENCE_PATTERNS, key=lambda pair: "uri_password" in pair[1]
+    )
+    for pattern, replacement in ordered:
         match = re.search(r"\[REDACTED:([a-z0-9_]+)\]", replacement)
         if match is None:
             continue
