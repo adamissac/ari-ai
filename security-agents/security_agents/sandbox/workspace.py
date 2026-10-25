@@ -36,6 +36,28 @@ def recipe_test_roots(root: Path) -> tuple[str, ...]:
     return ("tests/",)
 
 
+def recipe_protected_tests(root: Path) -> tuple[str, ...]:
+    """repo-declared tests Verify must find unmodified by a patch."""
+    try:
+        protected = json.loads((root / "build_recipe.json").read_text(encoding="utf-8")).get(
+            "protected_tests"
+        )
+        if not isinstance(protected, list) or not all(isinstance(path, str) for path in protected):
+            return ()
+        roots = recipe_test_roots(root)
+        valid: set[str] = set()
+        for path in protected:
+            try:
+                rel = safe_rel_path(path)
+            except PlatformError:
+                continue
+            if under_test_roots(rel, roots):
+                valid.add(rel)
+        return tuple(sorted(valid))
+    except (OSError, ValueError, AttributeError, TypeError, PlatformError):
+        return ()
+
+
 def under_test_roots(rel: str, roots: tuple[str, ...]) -> bool:
     return any(rel.startswith(r) for r in roots)
 

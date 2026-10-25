@@ -62,6 +62,7 @@ from ..runtime import AgentSpec, StepOutcome, StepRecord, run_agent
 from ..sandbox.driver import SandboxDriver
 from ..sandbox.workspace import (
     fresh_checkout,
+    recipe_protected_tests,
     recipe_test_roots,
     resolve_under,
     tree_digest,
@@ -1461,6 +1462,7 @@ class Orchestrator:
     def _protected_tests(self) -> list[str]:
         """Tests encoding confirmed expectations (configured + expectation sources)."""
         protected = set(self.config.protected_tests)
+        protected.update(recipe_protected_tests(self.intel.snapshot.root))
         for expectation in self.intel.expectations():
             if expectation.status != "confirmed":
                 continue
