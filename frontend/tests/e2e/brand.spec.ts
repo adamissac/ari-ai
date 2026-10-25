@@ -63,8 +63,9 @@ test('supplied logo loads on sign-in, scrolled header and projects on desktop/mo
   await page.evaluate(() => window.scrollTo(0, 120));
   await settledHeader(page);
   await screenshot(page, 'desktop-scrolled-header');
-  await page.getByRole('link', { name: 'Projects', exact: true }).click();
-  // Projects opens the connected-organization drill-down at /connect.
+  const desktopProjectsLink = page.locator('.hero-full').getByRole('link', { name: 'Go to projects', exact: true });
+  await expect(desktopProjectsLink).toHaveAttribute('href', '/projects');
+  await desktopProjectsLink.click();
   await expect(page).toHaveURL(/\/connect$/);
   await loadedMark(page, 'header [data-testid="ari-logo"]');
   await expect(page.getByRole('heading', { name: 'Organizations', exact: true })).toBeVisible();
@@ -80,6 +81,11 @@ test('supplied logo loads on sign-in, scrolled header and projects on desktop/mo
   expect(headerMark!.x).toBeGreaterThanOrEqual(0);
   expect(headerMark!.x + headerMark!.width).toBeLessThanOrEqual(390);
   await screenshot(page, 'mobile-scrolled-header');
+  const mobileProjectsLink = page.locator('.hero-full').getByRole('link', { name: 'Go to projects', exact: true });
+  await expect(mobileProjectsLink).toHaveAttribute('href', '/projects');
+  await mobileProjectsLink.click();
+  await expect(page).toHaveURL(/\/connect$/);
+  await expect(page.getByRole('heading', { name: 'Organizations', exact: true })).toBeVisible();
   await expect(page.locator('nextjs-portal')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
