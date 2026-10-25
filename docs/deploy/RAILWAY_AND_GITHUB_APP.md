@@ -17,8 +17,18 @@ person, never committed and never pasted into chat.
 | Setup URL | `https://ari-ai-lake.vercel.app/projects` (redirect on update: on) |
 | Webhook URL | `https://ari-ai-production-76d4.up.railway.app/api/v1/webhooks/github` |
 | Webhook secret | a long random string (also goes into Railway, below) |
-| Repository permissions | Contents: **Read-only**, Metadata: **Read-only** |
-| Subscribe to events | Push |
+| Repository permissions | Contents: **Read and write**, Pull requests: **Read and write**, Metadata: **Read-only** |
+| Subscribe to events | Push, Pull requests, Repository |
+
+Write access is the explicit, separately-established authorization: the App declares
+read+write so a recipe/fix PR can be opened, but every routine read (fetch, compare,
+commit lookup, recipe inspection) mints a **read-only** installation token, and a write
+token is minted **only inside the delivery/recipe paths** and only scoped to the single
+repository (`backend.github.GitHubApp.installation_token(write=True, repository=...)`).
+Nothing else can push code. `installation` and `installation_repositories` events are
+delivered to the App automatically (no subscription); `Repository` events let Ari follow
+renames/transfers and repo deletion. Tell customers the write scope plainly during onboarding — see
+`docs/pilot/CUSTOMER_ONBOARDING.md`.
 | Where can it be installed | Any account (so other people can use it) |
 
 After creating it: note the **App ID** and **Client ID**, generate a **client secret**, and
@@ -79,15 +89,15 @@ monitoring budget remains for the impact-policy path when this rollout is disabl
 ### Automatic/manual repository mode and Haiku 5.5 (#380)
 
 Each connected repository has a persisted `automatic_assessments` switch, default
-ON. ON queues every eligible new commit in the background without a browser visit
-or Run click. OFF prevents unstarted automatic work and exposes manual Run on
-selected commits; active runs and history remain intact. GET/PATCH
+OFF (opt-in since #385). ON queues every eligible new commit in the background
+without a browser visit or Run click. OFF prevents unstarted automatic work and
+exposes manual Run on selected commits; active runs and history remain intact. GET/PATCH
 `/api/v1/repositories/{repo_id}` returns Repository; PATCH requires a project owner
 and is audited. Migration 0009 adds the flag; schema 0.15.0 adds RepositoryUpdate
 and regenerates JSON/TypeScript. Deploy the backend and frontend together.
 
 The rollout requires both the signed push sender and GitHub-attributed commit
-author to match `GITHUB_AUTO_COMMIT_AUTHORS` (initially adamissac). Attribution
+author to match `GITHUB_AUTO_COMMIT_AUTHORS` (`*` in the Railway entrypoint). Attribution
 alone is email-derived, not authorization. Project start limits default to 5/hour
 and 20/day (`AUTOMATIC_ASSESSMENTS_PER_HOUR`, `AUTOMATIC_ASSESSMENTS_PER_DAY`). Excess
 commits are durably deferred, not dropped. Full runs use the normal project budget,
