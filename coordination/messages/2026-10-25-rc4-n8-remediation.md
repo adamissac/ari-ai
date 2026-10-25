@@ -177,3 +177,76 @@ the split read/write limit control all passed.
 
 **GO FOR INDEPENDENT REVIEW** on `86a5f846` — not customer GO. Nothing merged,
 deployed, or enforcement-enabled.
+
+---
+
+## RC5 final addendum — canonical `edfa9b8b` incorporated (#629 reconciliation)
+
+Codex's RC5 check (upstream PR #639) confirmed N9 fixed and all original
+controls passing, but found the reviewed candidate predated upstream #629.
+Current canonical main `edfa9b8b` is now incorporated into the candidate and
+the full verification matrix re-executed on the merged tree.
+
+**Upstream range incorporated:** `e41c9dc2..edfa9b8b`
+- `59cd0b62` #629 — `fix(verify): detect hook attribute writes and symlinked
+  rootdir config changes` (security-agents `tools/services.py` +214,
+  `tests/test_e2e_replay.py` +379, README +19). Composes cleanly: Codex's
+  "192 pass / 2 fail" was the pre-merge tree running the new upstream tests;
+  post-merge all 59 hook/rootdir/symlink tests pass with no adaptation.
+- `2b87e32c` #630 — frontend sandbox scope duration (console page, setup,
+  `lib/real-assessment.ts` + unit tests).
+- `7df9f655` #632, `1639bab0` #633 — review docs. `c5bc50a4` + `edfa9b8b`
+  (#637) — handoff docs.
+- Only conflict across integration + all 8 stack branches:
+  `docs/planning/SESSION_HANDOFF.md` — union-resolved per convention
+  (pure additions on both sides). **No production-code conflict existed.**
+
+**Merge commits:** integration `53bd8d0f`; stack S1 `8f2390f3`,
+S2 `27077358`, S3 `07fcec56`, S4 `e726c2d5`, S5 `e7a35cc1`, S6 `d4da9f43`,
+S7 `d3c0da49`, S8 `34261c36` (+ S8 workflow alignment `e04ce68d`).
+
+**Gate/pipeline:** PR #8 base retargeted to `ci/upstream-edfa9b8b` (exact
+mirror of canonical `edfa9b8b`); review-gate `base_sha` now resolves from the
+PR's `base.sha` via API so future retargets stay correct (`e019eff0`).
+
+**Transfer stack — all eight steps on canonical `edfa9b8b`, merge-only:**
+
+| Step | Branch | Tip |
+|---|---|---|
+| 1 | `transfer/01-pr412` | `8f2390f3a0113afa70e0e6aaac3c28c1ada1c1d7` |
+| 2 | `transfer/02-pr458` | `27077358fe6b906269025f4d77f8285172e4772a` |
+| 3 | `transfer/execution-reliability` | `07fcec56372badad357114feb6a3c42d1ca5734c` |
+| 4 | `transfer/investigation-observability` | `e726c2d5423387825cf8af15a64c2026b5099751` |
+| 5 | `transfer/pilot-security-hardening` | `e7a35cc1dd52a543e55d98ce3bbd913173c3d85d` |
+| 6 | `transfer/customer-onboarding` | `d4da9f43997cedcc3c4828f59919d63224d84c3c` |
+| 7 | `transfer/pilot-deployment-ops` | `d3c0da4959cf7f8a2d82171ed6e4564d69f59531` |
+| 8 | `transfer/release-validation` | `e04ce68d` |
+
+- `test_rc2_transfer_manifest.py` repinned to these tips (`8ba36956`);
+  N6 monotonic-order assertion unchanged and passing.
+- S8 vs candidate: **zero diffs** outside docs/coordination/results paths.
+
+**Strict matrix on the merged tree (`8ba36956`):**
+- backend 843 pass / 9 skip / 0 fail
+- security-agents **828 pass / 24 skip** — includes `test_e2e_replay.py`
+  **213/213** (all 59 upstream hook-attribute + symlinked-rootdir tests)
+- e2e + manifest + independent-review + N9 probes 10/10 (earlier suites:
+  58/1 incl. F1–F10 + N1–N9)
+- shared 13/3 · migrations 2/2 head 0019 · transport 36/36
+- frontend **405 pass** (#630 tests included) + lint + typecheck + build clean
+- `make check` + mypy clean · contracts regen 0-changed
+
+**GitHub CI:** run on `8ba36956` — 22 pass / 1 pending (rl-tests) /
+2 skipped (codex-audit no key; live opt-in) / 2 "failures" both judged
+non-product:
+- `report` exits 2 by design — surfaces the honest NO-GO (no OPENAI_API_KEY)
+  after posting + committing the audit (`6ece2484`). Working as intended.
+- `e2e` journey spec timed out while snapshot indexing retried
+  (`SNAPSHOT_NOT_READY` → retry → ready); **identical spec passes locally
+  3/3 in 34.7s on the exact merged tree** — timing flake, not regression.
+  Zero backend code changed in this merge.
+
+**Verdict (RC5 final):** candidate SHA **`8ba3695615d0639aa36a2e58667fe414424d4cd8`**
+(branch tip `6ece2484` = report commits only). GO FOR INDEPENDENT REVIEW on
+the selected tested landing security suite; release merge remains HOLD per
+Codex — nothing merged, deployed, or enforcement-enabled.
