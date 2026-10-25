@@ -20,11 +20,43 @@ Branch: `feat/alan/live-defense-phase7c-agent-execution`
 Current task: Phase 7C live authorized first-responder agent execution (not Codex Phase 7B; no RL training; no AUTO-EXECUTE)
 Last remote sync: 2026-10-24, `origin/main` @ `d1864e9a` (merged into this branch; #412 still OPEN; do not merge #458)
 API/contract dependencies: `shared` 0.22.0 first-responder execution records (0.21.0 is merged 7A; 0.20.0 reserved for open #412); Alembic stays 0015; seven AgentSpecs
+Last remote sync: 2026-10-25, `origin/main` `f8ab19e7` merged; 7C schema **0.23.0**; Codex P1 R2 disconnect checks; #412 still OPEN; do not merge #458
+API/contract dependencies: `shared` 0.23.0 first-responder execution records (main 0.22.0 is ops-readiness; 0.20.0 reserved for open #412); inherits main Alembic 0017; Devin Hardening owns repository disconnect column/endpoint
 Recent PR/commit: https://github.com/adamissac/ari-ai/pull/458 on `feat/alan/live-defense-phase7c-agent-execution` (leave open for security review of execution trust boundary)
 Blockers: live Anthropic Scout/Diagnose (issue #10, key optional); human/security approval of the Phase 7C PR (do not merge from this agent); Probe still needs AuthorizedScope and is not expanded
-Next action: independent security re-review of MERGEABLE #458 (six findings intact); leave PR open; do not merge; do not train RL; do not expand Probe/Patch; do not merge Devin fork PRs into #458
+Next action: independent re-review of F1/F7/F8 + R2 on #458; leave PR open; do not merge; do not train RL; do not expand Probe/Patch; do not merge Devin Hardening into #458
 
 ## Session entries
+
+### 2026-10-24 (Codex F1/F7/F8 on existing #458; do not merge)
+
+- Durable provider-attempt ledger; overall `deadline_at` not reset on retry; OFF/job-cancel persist committed before `JobCancelled`. Six original findings preserved. Schema **0.22.0**; #412 keeps **0.20.0**; Alembic **0015**; Devin keeps **0016**. Did not rewrite `jobs.py`.
+- Executed: `make check` pass (156 files); mypy 40 files; focused 7A+7C+review+jobs+llm **76 passed** / 1 skipped. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Re-review GO for F1/F7/F8 + six findings. Merge NO-GO.
+
+### 2026-10-25 (Codex P1 R2 repository disconnect; do not merge #458)
+
+- First-responder checks mapping revocation and optional `repositories.disconnected_at` before each provider `complete()` and before persist. `apply_repository_disconnect_to_investigations` is the 7C hook for Devin Hardening. Did **not** add the disconnect HTTP route or Alembic column. Schema **0.23.0**. Probe/Patch not expanded.
+- Executed: `make check` pass (157 files, 0.23.0); focused 7A+7C **80 passed** / 1 skipped; Codex `test_repository_disconnect_stops_next_provider_turn` **passed**; `uv run pytest -q` **952 passed** / 16 skipped. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Merge NO-GO.
+
+### 2026-10-24 (merge origin/main so Actions can run; do not merge #458)
+
+- `96ac5cfb` never got GitHub Actions: #458 was DIRTY vs `origin/main` `ad282cf4`. Merged main (tenant RLS 0016, inventory-lite, ledgerlite, #551). Conflicts only changelog + handoff; kept both. Schema **0.22.0**; inherit 0016; #412 keeps **0.20.0**. Probe/Patch not expanded.
+- Executed: `make check` pass (156 files); focused 7A+7C+tenant **96 passed** / 1 skipped; `uv run pytest -q` **833 passed** / 15 skipped. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Merge NO-GO.
+
+### 2026-10-24 (backend test after main merge; do not merge #458)
+
+- `backend / test` failed on `9486a5b0`: `AssessmentState.completed` vs `COMPLETED`; recipe POST hit with GET. Fixed sandbox seed + recipe-method test. Cleaned merge markers. Schema **0.22.0**; no 0016. Probe/Patch not expanded.
+- Executed: `uv run pytest -q backend/tests/test_sandbox_target.py` — 1 passed.
+- Leave #458 **open**. Merge NO-GO.
+
+### 2026-10-24 (Codex F1/F7/F8 on existing #458; do not merge)
+
+- Durable provider-attempt ledger; overall `deadline_at` not reset on retry; OFF/job-cancel persist committed before `JobCancelled`. Six original findings preserved. Schema **0.22.0**; #412 keeps **0.20.0**; Alembic **0015**; Devin keeps **0016**. Did not rewrite `jobs.py`.
+- Executed: `make check` pass (156 files); mypy 40 files; focused 7A+7C+review+jobs+llm **76 passed** / 1 skipped. FakeLLM ≠ live Anthropic.
+- Leave #458 **open**. Re-review GO for F1/F7/F8 + six findings. Merge NO-GO.
 
 ### 2026-10-24 (MERGEABLE head + Devin compatibility review; do not merge #458)
 

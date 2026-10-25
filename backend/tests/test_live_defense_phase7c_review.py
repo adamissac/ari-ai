@@ -1549,3 +1549,61 @@ def test_job_cancel_during_final_submit_cannot_upgrade_cancelled_invocation(
     assert scout["execution"]["evidence_verified"] is False
     decisions = alice.get(f"/api/v1/projects/{pid}/first-responder/decisions").json()["items"]
     assert decisions[0]["executed"] is False
+
+
+def test_repository_disconnect_stops_next_provider_turn(
+    client_factory, settings_override, monkeypatch, tmp_path
+) -> None:
+    """Codex P1 R2: disconnecting the mapped repo must not send another provider turn."""
+    from backend.live_defense.first_responder import apply_repository_disconnect_to_investigations
+
+    repo, sha = _owned_repo(tmp_path)
+    inner = _scripted_gateway(repo)
+    seen = {"n": 0, "tools": False}
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    pid, rid = ids["project"], ids["repo"]
+
+    class DisconnectAfterFirstTurn:
+        mode = "fake"
+
+        def model_for(self, agent):  # type: ignore[no-untyped-def]
+            return inner.model_for(agent)
+
+        def complete(self, request):  # type: ignore[no-untyped-def]
+            seen["n"] += 1
+            response = inner.complete(request)
+            uses = response.tool_uses() if hasattr(response, "tool_uses") else []
+            if seen["n"] == 1:
+                assert uses, "scout must have a later provider turn for this regression"
+                seen["tools"] = True
+                with transaction() as conn:
+                    apply_repository_disconnect_to_investigations(conn, rid)
+            return response
+
+        def cost_usd(self, model, usage):  # type: ignore[no-untyped-def]
+            return inner.cost_usd(model, usage)
+
+    _bind_and_fake(tmp_path, repo, rid, settings_override, monkeypatch)
+    monkeypatch.setattr(agent_execution, "GATEWAY_OVERRIDE", lambda: DisconnectAfterFirstTurn())
+    _ready_snapshot(rid, sha)
+    app = _register(alice, pid)
+    _arm_first_responder(alice, pid, rid, sha, app["id"])
+    worker.drain(max_jobs=40, kinds=["live_defense_shadow", *FIRST_RESPONDER_JOB_KINDS])
+    assert seen["tools"]
+    assert seen["n"] == 1, "disconnect must stop the next billable complete()"
+    scout = next(
+        item
+        for item in alice.get(f"/api/v1/projects/{pid}/first-responder/invocations").json()["items"]
+        if item["agent"] == "scout"
+    )
+    assert scout["status"] == AgentInvocationStatus.cancelled.value
+    assert scout["execution"]
+    assert scout["execution"]["evidence_verified"] is False
+    assert scout["execution"]["confirmation"] == "unverified"
+    assert scout["execution"].get("cost_usd") is not None or scout["execution"].get(
+        "provider_attempts"
+    )
+    decisions = alice.get(f"/api/v1/projects/{pid}/first-responder/decisions").json()["items"]
+    assert decisions[0]["executed"] is False

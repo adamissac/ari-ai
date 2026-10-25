@@ -20,7 +20,7 @@ merge from this agent. This is still an execution trust-boundary expansion.
 | What executed for real | Scout and Diagnose run `security_agents.runtime.run_agent` against an owner-attested mapped snapshot when FakeLLM (tests/e2e) or a live Anthropic key is present |
 | Skipped / gated | Probe is not expanded (AuthorizedScope eligibility stays `completed_unverified`, `provider_mode=none`). Patch worktree-only, never deployed. Verify eligibility is not verification. Trace waits for confirmed Probe. Fortify waits for independently executed `verification_results` |
 | Confirmation | Always `unverified`. `executed` on the decision stays `false` (no LiveControl). `predicted_probability` stays null |
-| Schema | **0.22.0** additive. Open PR #412 keeps **0.20.0**. Alembic stays **0015** (execution lives in existing invocation JSONB) |
+| Schema | **0.23.0** additive (main claimed 0.22.0 for ops readiness). Open PR #412 keeps **0.20.0**. Inherits main Alembic **0017**; no competing repository-disconnect migration |
 | Orchestrator | `7c.1.0` |
 | RL | Decision-time records include genuine cost/latency/tools/transcript. **Do not train** |
 
@@ -92,11 +92,14 @@ faked success. Missing snapshot → honest `skipped_no_snapshot`.
 
 | Branch | SCHEMA_VERSION | Alembic |
 | main after #439 | 0.21.0 | 0015 |
-| this PR (Phase 7C) | **0.22.0** additive | **0015** (no 0016) |
+|---|---|---|
+| main (ops readiness) | 0.22.0 | 0017 |
+| this PR (Phase 7C) | **0.23.0** additive | **0017** (no competing disconnect migration) |
+| integration after repository disconnect | 0.26.0 | 0019 |
 | open #412 | 0.20.0 reserved | none |
 
-#412 must rebase to **0.23.0** (or later unused) if it lands after this PR, not
-overwrite 0.22.0. This PR does not claim 0.20.0.
+#412 must rebase past **0.23.0** if it lands after this PR, not overwrite 0.23.0.
+This PR does not claim 0.20.0.
 
 ## RL-data readiness
 
@@ -160,5 +163,4 @@ Codex combined-release follow-up (existing branch, not merged; six findings abov
 
 | `make check` | pass (schema 0.22.0, 156 files) |
 | focused 7A+7C+review+jobs+llm | **76 passed**, 1 skipped (opt-in live smoke) |
-
 

@@ -123,14 +123,14 @@ def _bind_and_fake(
     llm.TRANSPORT_OVERRIDE = lambda: AlanScriptTransport(repo / "target")
 
 
-def test_schema_keeps_0_22_without_claiming_0_20() -> None:
+def test_schema_keeps_0_23_without_claiming_0_20() -> None:
     from shared import SCHEMA_VERSION
     from shared.live_defense import ORCHESTRATOR_VERSION
 
     # F9: additive contract bumps (observability, onboarding, disconnect) must
     # not be blocked by an exact version pin — assert a floor, not equality.
     major, minor, _patch = (int(part) for part in SCHEMA_VERSION.split("."))
-    assert (major, minor) >= (0, 22)
+    assert (major, minor) >= (0, 23)
     assert ORCHESTRATOR_VERSION == "7c.1.0"
 
 
