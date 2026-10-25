@@ -6,6 +6,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { BeforeAfter } from '@/components/before-after';
 import { ExpectationLinks } from '@/components/expectation-links';
 import { ArtifactPeek, EvidenceList } from '@/components/evidence';
+import { PatchDeliveryStatus } from '@/components/patch-delivery-status';
 import { useParam, useProject } from '@/components/project';
 import { useSession } from '@/components/session';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, PageTitle, Panel, Tag, Time } from '@/components/ui';
@@ -295,6 +296,7 @@ function PatchCard({ view }: { view: PatchView }) {
         <span className="text-sm font-semibold">Attempt {patch.attempt} · <Mono>{patch.id}</Mono></span>
         {verification ? <Badge view={VERDICT[verification.verdict]} /> : <Badge view={{ label: 'Not yet verified', tone: 'warn', glyph: '…' }} />}
       </header>
+      <PatchDeliveryStatus patchId={patch.id} delivery={view.delivery} />
       <p className="mt-1 text-sm text-muted">{patch.rationale}</p>
       <p className="mt-1 text-xs text-muted">
         base <Mono>{shortSha(patch.base_commit_sha)}</Mono> · worktree <Mono>{patch.worktree_ref}</Mono> · files {patch.files_changed.join(', ') || '—'}

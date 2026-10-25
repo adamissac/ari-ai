@@ -10,7 +10,7 @@ import { findingStory, repoFullNameForEvidence } from '@/lib/finding-story';
 import { latestAssessmentEvent, projectJourney, statesFromLog } from '@/lib/journey';
 import { projectOverview } from '@/lib/overview';
 import { SCOPE_CHECK_CATEGORIES } from '@/lib/scope';
-import { AGENTS, ASSESSMENT_STATE, FINDING_STATUS, agentRunSummary, handoffNote, providerLabel, railSteps } from '@/lib/status';
+import { AGENTS, ASSESSMENT_STATE, effectiveScopeStatus, FINDING_STATUS, agentRunSummary, handoffNote, providerLabel, railSteps } from '@/lib/status';
 
 describe('lab episode story', () => {
   it('uses only the recorded actions and outcome', () => {
@@ -319,6 +319,30 @@ describe('scope check categories', () => {
       notes: null,
     };
     expect(body.allowed_check_categories).toHaveLength(5);
+  });
+});
+
+describe('effective scope status', () => {
+  const now = new Date('2026-10-26T00:00:00Z');
+
+  it('expires an active scope whose expiry has passed', () => {
+    expect(effectiveScopeStatus({ status: 'active', expires_at: '2026-10-25T23:59:59Z' }, now)).toBe('expired');
+  });
+
+  it('keeps an active scope whose expiry is in the future', () => {
+    expect(effectiveScopeStatus({ status: 'active', expires_at: '2026-10-26T00:00:01Z' }, now)).toBe('active');
+  });
+
+  it('expires a pending scope whose expiry has passed', () => {
+    expect(effectiveScopeStatus({ status: 'pending', expires_at: '2026-10-25T23:59:59Z' }, now)).toBe('expired');
+  });
+
+  it('leaves revoked scopes revoked regardless of expiry', () => {
+    expect(effectiveScopeStatus({ status: 'revoked', expires_at: '2026-10-25T23:59:59Z' }, now)).toBe('revoked');
+  });
+
+  it('leaves the stored status unchanged when expiry is unparseable', () => {
+    expect(effectiveScopeStatus({ status: 'active', expires_at: 'not-a-date' }, now)).toBe('active');
   });
 });
 

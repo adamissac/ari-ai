@@ -133,6 +133,24 @@ class GitHubApp:
         r.raise_for_status()
         return str(r.json()["html_url"])
 
+    def post_pull_request_review(
+        self, installation_id: int, full_name: str, number: int, body: str
+    ) -> None:
+        """Post one top-level review comment without inline review comments."""
+        token = self.installation_token(
+            installation_id, write=True, repository=full_name.split("/", 1)[1]
+        )
+        r = self._client.post(
+            f"/repos/{full_name}/pulls/{number}/reviews",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            json={"event": "COMMENT", "body": body},
+        )
+        r.raise_for_status()
+
     def _app_headers(self) -> dict[str, str]:
         return {
             "Authorization": f"Bearer {self._app_jwt()}",

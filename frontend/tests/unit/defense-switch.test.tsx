@@ -12,6 +12,11 @@ const settings: ProjectSettings = {
     ignore_paths_only: ['tests/**', 'docs/**'],
     monitoring_budget: { max_tokens: 150_000, max_usd: 3, max_wall_clock_s: 900 },
   },
+  review: {
+    review_pushes: true, review_pull_requests: true, review_draft_prs: false,
+    include_branches: [], exclude_branches: [], include_authors: [], exclude_authors: ['*[bot]'],
+    strictness: 2, comment_on_pull_requests: true, max_reviews_per_hour: null,
+  },
   languages: ['python', 'typescript'],
   delivery_mode: 'manual',
   delivery_authorized_by: null,

@@ -80,9 +80,10 @@ For strictly manual operation, switch `automatic_assessments` OFF per repository
 (or disable project monitoring). Manual Run remains available when the repository
 switch is OFF.
 
-Eligible pushed commits are assessed subject to the shared project quota of 10 starts
-per rolling hour and 50 per rolling day, plus the $50 global rolling-day spend cap.
-Over-quota commits are recorded as skipped and are not deferred or retried.
+Eligible pushed commits use the automatic project quota, counting all project triggers
+against 10 starts per rolling hour and 50 per rolling day. Manual starts count only
+manual-trigger assessments against those limits; the $50 global rolling-day spend cap
+applies across all triggers and projects. Over-quota commits are skipped, not retried.
 `WORKER_PROCESSES` (default 12, ~80 MB each) runs that many commits at once; jobs are
 claimed with `SKIP LOCKED`. Signed webhooks are never rate limited: GitHub does not
 retry a 429, and the durable queue absorbs bursts.
@@ -110,10 +111,12 @@ and regenerates JSON/TypeScript. Deploy the backend and frontend together.
 Per-commit full runs require a nonempty `GITHUB_AUTO_COMMIT_AUTHORS` allowlist; both
 the signed push sender and GitHub-attributed commit author must match it. With the
 empty Railway default, enabled repositories use the legacy monitoring policy above.
-Attribution alone is email-derived, not authorization. All assessment triggers share a project
-quota of 10 per rolling hour and 50 per rolling day, with a $50/day spend cap across
-all projects and triggers. Over-quota automatic requests are recorded as skipped,
-not deferred. Full runs use the normal project budget, clamped to operator caps.
+Attribution alone is email-derived, not authorization. Automatic starts count all
+project triggers toward 10 assessments per rolling hour and 50 per rolling day;
+manual starts count only manual-trigger assessments against those limits. A $50/day
+spend cap applies globally across all projects and triggers. Over-quota automatic
+requests are recorded as skipped, not deferred. Full runs use the normal project
+budget, clamped to operator caps.
 Monitoring and approved sandbox scope remain prerequisites; repair approvals remain
 required.
 

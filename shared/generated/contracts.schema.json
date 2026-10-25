@@ -10360,9 +10360,107 @@
       "title": "PatchCandidate",
       "type": "object"
     },
+    "PatchDelivery": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "At"
+        },
+        "branch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Branch"
+        },
+        "commit_sha": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commit Sha"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "pr_opened",
+            "pushed",
+            "failed",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "required": [
+        "status",
+        "reason",
+        "url",
+        "branch",
+        "commit_sha",
+        "at"
+      ],
+      "title": "PatchDelivery",
+      "type": "object"
+    },
     "PatchView": {
       "additionalProperties": false,
       "properties": {
+        "delivery": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PatchDelivery"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "patch": {
           "$ref": "#/$defs/PatchCandidate"
         },
@@ -10380,7 +10478,8 @@
       },
       "required": [
         "patch",
-        "verification"
+        "verification",
+        "delivery"
       ],
       "title": "PatchView",
       "type": "object"
@@ -11263,7 +11362,7 @@
         },
         "delivery_mode": {
           "$ref": "#/$defs/DeliveryMode",
-          "default": "auto"
+          "default": "pull_request"
         },
         "languages": {
           "items": {
@@ -11275,11 +11374,15 @@
         },
         "monitoring_policy": {
           "$ref": "#/$defs/TriggerPolicy"
+        },
+        "review": {
+          "$ref": "#/$defs/ReviewerSettings"
         }
       },
       "required": [
         "default_budget",
         "monitoring_policy",
+        "review",
         "languages",
         "delivery_mode",
         "delivery_authorized_by"
@@ -12291,6 +12394,101 @@
         "generated_tests"
       ],
       "title": "ReviewResult",
+      "type": "object"
+    },
+    "ReviewerSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "comment_on_pull_requests": {
+          "default": true,
+          "title": "Comment On Pull Requests",
+          "type": "boolean"
+        },
+        "exclude_authors": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Exclude Authors",
+          "type": "array"
+        },
+        "exclude_branches": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Exclude Branches",
+          "type": "array"
+        },
+        "include_authors": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Include Authors",
+          "type": "array"
+        },
+        "include_branches": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Include Branches",
+          "type": "array"
+        },
+        "max_reviews_per_hour": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Reviews Per Hour"
+        },
+        "review_draft_prs": {
+          "default": false,
+          "title": "Review Draft Prs",
+          "type": "boolean"
+        },
+        "review_pull_requests": {
+          "default": true,
+          "title": "Review Pull Requests",
+          "type": "boolean"
+        },
+        "review_pushes": {
+          "default": true,
+          "title": "Review Pushes",
+          "type": "boolean"
+        },
+        "strictness": {
+          "default": 2,
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Strictness",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "review_pushes",
+        "review_pull_requests",
+        "review_draft_prs",
+        "include_branches",
+        "exclude_branches",
+        "include_authors",
+        "exclude_authors",
+        "strictness",
+        "comment_on_pull_requests",
+        "max_reviews_per_hour"
+      ],
+      "title": "ReviewerSettings",
       "type": "object"
     },
     "RlCategoryResult": {

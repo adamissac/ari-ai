@@ -76,14 +76,18 @@ def main(argv: list[str]) -> int:
     if not argv:
         return 2
     mode, args = argv[0], argv[1:]
+    if mode == "pytest":
+        import pluggy
+        import pytest
+
+        _ = pluggy.PluginManager
+
     sys.path[:0] = [WORKSPACE, HERE]
     sys.dont_write_bytecode = True
     _install_network_guard()
     code = 2
     try:
         if mode == "pytest":
-            import pytest
-
             code = int(pytest.main(["-p", "no:cacheprovider", *args]))
         elif mode == "check":
             import harness  # type: ignore[import-not-found]
