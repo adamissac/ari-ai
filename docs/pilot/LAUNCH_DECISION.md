@@ -1,6 +1,16 @@
 # Launch decision — first five pilot customers
 
-**Decision: NO-GO for customer onboarding** (owner, 2026-10-25) — remains NO-GO until production fix-PR delivery, database isolation under a least-privilege app role, and the final hosted customer journey are verified.
+**Decision: NO-GO**
+
+## Blocking conditions (2026-10-25)
+
+- No fix PR has been delivered on production. Hosted run `asm_01M5RCVC20ZMYH8EKTZQP40W73` completed all seven roles on the planted IDOR, but `deliver_verified_patch` failed closed ("the stored diff was redacted; Verify tested different bytes"). Fixes: `fix/adam/redaction-code-safe`, `fix/adam/sealed-verified-diff`, `fix/adam/patch-fixture-reuse`.
+- Both production assessments were started by the synthetic account `rehearsal-alice`, not a real customer identity.
+- The production application connects to PostgreSQL as a superuser with BYPASSRLS, so row-level security is inert.
+- No genuine user has completed the intended end-to-end flow through the website.
+
+Evidence: `docs/pilot/PILOT_FINAL_READINESS.md` on `docs/adam/pilot-final-readiness`.
+
 Signed: Adam Issac, pilot launch owner — 2026-10-24; re-affirmed after the
 production rehearsal leg 2026-10-25.
 Code basis: production `readyz.git_sha` = `main` @ `0f311913` (schema 0.22.0,
@@ -13,7 +23,7 @@ leg through independent Verify, tenant isolation (34/34 → 404 on prod), RLS
 delivery failed closed (REHEARSAL_REPORT.md Leg 7, D1) and C9–C12 below are
 open. GO requires every Yes-blocking row to be closed with evidence.
 
-## Why GO is defensible for the narrow scope
+## Rehearsal evidence retained under this NO-GO decision
 
 - Onboarding, push→assessment, monitoring, opt-outs, scope approval/revoke,
   cancel, budgets, audit and tenant membership checks are all implemented
@@ -23,7 +33,7 @@ open. GO requires every Yes-blocking row to be closed with evidence.
   deferred work is queued-not-dropped, inconclusive findings are labelled.
 - No claim in this package exceeds executed evidence.
 
-## Why not an unconditional GO
+## Outstanding launch conditions
 
 Binding conditions — each maps to a documented gap. Customer 1 may not
 start until every row marked Yes is done; C7–C8 are standing rules for the whole pilot.
@@ -60,7 +70,7 @@ start until every row marked Yes is done; C7–C8 are standing rules for the who
   chains complete end-to-end; broad CWE validation does not. Disclosed.
 - Support is founder-led with response *targets*, not SLAs.
 
-## What would change this to NO-GO
+## Additional criteria for reconsidering the NO-GO decision
 
 Rehearsal step failures; any cross-tenant access observed; deletion runbook
 not delivered; the live eval materially regressing (re-run the 45-case set
