@@ -2,7 +2,7 @@
   "agent": "devin-pipeline-fixer",
   "human_owner": "Adam",
   "workstream": "fixing agent pipeline failures; intel-store retry; eval-runner retry; pilot rehearsal v2; ops retention",
-  "state": "HANDOFF",
+  "state": "BLOCKED",
   "task": "Eval run 3 done (queue-starved during merge wave); prod outage diagnosed + hedge PR'd; #538 resolved for lead",
   "branch": "fix/intel-store-orphan-retry, fix/eval-runner-retry, ari/fix-pat_01M5R13A056A25J7ZXWHHDZ9SN, feat/adam/pilot-rehearsal-v2, docs/adam/live-inventory-rehearsal-evidence, fix/adam/postgres-storage-retention, docs/devin-pilot-handoff",
   "latest_sha": "0f311913",
@@ -19,8 +19,11 @@
   "depends_on": [
     "integration-lead merge order"
   ],
-  "blockers": [],
-  "last_update_utc": "2026-10-25T00:20:00Z",
+  "blockers": [
+    "Adam: fresh hackatl_session cookie for eval3 rescore",
+    "Adam: private ari-pilot-rehearsal repo/org for the 2-org leg"
+  ],
+  "last_update_utc": "2026-10-25T05:00:00Z",
   "tests": "#538 resolution: typecheck + vitest green; eval3: 3/45 COMPLETED, 42 NOT_STARTED (worker-queue starvation); prod readyz=ready, 386-job queue draining under 60/hr quota",
-  "next_action": "BLOCKED on Adam: fresh hackatl_session for eval3 rescore + private ari-pilot-rehearsal repo/org for the 2-org leg"
+  "next_action": "Waiting on Adam-supplied blockers above; all engineering work handed off"
 }
