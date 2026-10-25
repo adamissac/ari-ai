@@ -46,7 +46,7 @@ export function OptionalSession({ children }: { children: ReactNode }) {
   const refresh = useCallback(() => { api().session().then(setMe, () => setMe(null)); }, []);
   const signOut = useCallback(async () => {
     await api().logout();
-    notifySessionChanged();
+    notifySessionChanged(null);
     try { window.sessionStorage.removeItem(INTRO_KEY); } catch { /* storage unavailable */ }
     setMe(null);
   }, []);
@@ -84,7 +84,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await api().logout();
-    notifySessionChanged();
+    notifySessionChanged(null);
     try { window.sessionStorage.removeItem(INTRO_KEY); } catch { /* storage unavailable */ }
     setState({ status: 'signed-out' });
   }, []);
@@ -99,7 +99,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
   }
   if (state.status === 'signed-out') return <SignIn onSignedIn={me => {
     setState({ status: 'signed-in', me });
-    notifySessionChanged();
+    notifySessionChanged(me);
   }} />;
   return <SessionContext.Provider value={{ me: state.me, refresh, signOut }}>{children}</SessionContext.Provider>;
 }

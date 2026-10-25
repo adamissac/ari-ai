@@ -7,7 +7,7 @@ import { RollText } from '@/components/ui';
 import { api } from '@/lib/api';
 import { DEMO_USER } from '@/lib/demo/data';
 import { DEMO_ONLY } from '@/lib/deployment';
-import { SESSION_CHANGED_EVENT } from '@/lib/session-events';
+import { SESSION_CHANGED_EVENT, type SessionChangedEventDetail } from '@/lib/session-events';
 
 const DEMO_HOME_PATH = '/demo/lumen-pay';
 
@@ -23,43 +23,40 @@ export function AccountLink() {
   const [href, setHref] = useState('/projects');
 
   useEffect(() => {
-    let controller: AbortController | undefined;
-    const fetchSession = () => {
-      controller?.abort();
-      const c = new AbortController();
-      controller = c;
-      const demoAccount = () =>
-        fetch('/api/demo-session', { signal: c.signal, cache: 'no-store' })
-          .then(r => r.json() as Promise<{ signedIn?: boolean }>)
-          .then(body => {
-            if (c.signal.aborted) return;
-            setLogin(body.signedIn ? DEMO_USER.login : null);
-            setHref(DEMO_HOME_PATH);
-          });
-      const backend = DEMO_ONLY ? Promise.reject(new Error('no backend')) : api().session({ signal: c.signal });
-      backend.then(
-        me => {
+    const c = new AbortController();
+    const demoAccount = () =>
+      fetch('/api/demo-session', { signal: c.signal, cache: 'no-store' })
+        .then(r => r.json() as Promise<{ signedIn?: boolean }>)
+        .then(body => {
           if (c.signal.aborted) return;
-          setLogin(me.user.github_login);
-          setHref('/projects');
-        },
-        () => {
+          setLogin(body.signedIn ? DEMO_USER.login : null);
+          setHref(DEMO_HOME_PATH);
+        });
+    const backend = DEMO_ONLY ? Promise.reject(new Error('no backend')) : api().session({ signal: c.signal });
+    backend.then(
+      me => {
+        if (c.signal.aborted) return;
+        setLogin(me.user.github_login);
+        setHref('/projects');
+      },
+      () => {
+        if (c.signal.aborted) return;
+        demoAccount().catch(() => {
           if (c.signal.aborted) return;
           setLogin(null);
-          setHref('/projects');
-          demoAccount().catch(() => {
-            if (c.signal.aborted) return;
-            setLogin(null);
-            setHref('/projects');
-          });
-        },
-      );
+        });
+      },
+    );
+    const onSessionChanged = (event: Event) => {
+      c.abort();
+      const { me } = (event as CustomEvent<SessionChangedEventDetail>).detail;
+      setLogin(me?.user.github_login ?? null);
+      setHref('/projects');
     };
-    fetchSession();
-    window.addEventListener(SESSION_CHANGED_EVENT, fetchSession);
+    window.addEventListener(SESSION_CHANGED_EVENT, onSessionChanged);
     return () => {
-      window.removeEventListener(SESSION_CHANGED_EVENT, fetchSession);
-      controller?.abort();
+      window.removeEventListener(SESSION_CHANGED_EVENT, onSessionChanged);
+      c.abort();
     };
   }, [pathname]);
 
