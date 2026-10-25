@@ -75,7 +75,7 @@ def authors() -> set[str]:
         entry = clean(value)
         if entry:
             allowed.add(entry.lower())
-    return allowed
+    return set() if allowed == {"*"} else allowed
 
 
 def _matches(patterns: list[str], value: str) -> bool:
@@ -85,6 +85,42 @@ def _matches(patterns: list[str], value: str) -> bool:
         or (pattern.casefold() == "*[bot]" and normalized.endswith("[bot]"))
         for pattern in patterns
     )
+
+
+def reviewer_ignore_reason(
+    conn: Connection, repo: Any, payload: dict[str, Any], change: Any
+) -> str | None:
+    reviewer = project_settings(conn, repo["project_id"]).review
+    actor = (change.pr_author if change.event == "pull_request" else change.sender) or ""
+
+    if change.event == "push" and not reviewer.review_pushes:
+        return "skipped: push reviews disabled by reviewer settings"
+    if change.event == "pull_request" and not reviewer.review_pull_requests:
+        return "skipped: pull request reviews disabled by reviewer settings"
+    if change.event == "pull_request" and change.draft and not reviewer.review_draft_prs:
+        return "skipped: draft pull requests disabled by reviewer settings"
+
+    branch = (
+        change.pr_base_ref
+        if change.event == "pull_request"
+        else (change.ref or "").removeprefix("refs/heads/")
+    ) or ""
+    if reviewer.include_branches and not _matches(reviewer.include_branches, branch):
+        return "skipped: branch excluded by reviewer settings"
+    if (
+        change.event == "push"
+        and not reviewer.include_branches
+        and branch.casefold() != repo["default_branch"].casefold()
+    ):
+        return "skipped: push is not on the default branch"
+    if reviewer.exclude_branches and _matches(reviewer.exclude_branches, branch):
+        return "skipped: branch excluded by reviewer settings"
+
+    if reviewer.include_authors and not _matches(reviewer.include_authors, actor):
+        return "skipped: author is outside reviewer settings"
+    if reviewer.exclude_authors and _matches(reviewer.exclude_authors, actor):
+        return "skipped: author excluded by reviewer settings"
+    return None
 
 
 def _record_schedule_ignore(
@@ -159,8 +195,6 @@ def schedule(
     conn: Connection, repo: Any, delivery: Any, payload: dict[str, Any], change: Any
 ) -> dict[str, Any]:
     actor = (change.pr_author if change.event == "pull_request" else change.sender) or ""
-    settings = project_settings(conn, repo["project_id"])
-    reviewer = settings.review
 
     def ignored(reason: str) -> dict[str, Any]:
         _record_schedule_ignore(conn, repo, delivery, change, reason, actor)
@@ -168,35 +202,11 @@ def schedule(
 
     if not repo["automatic_assessments"]:
         return ignored("skipped: repository automatic assessments disabled")
-    if change.event == "push" and not reviewer.review_pushes:
-        return ignored("skipped: push reviews disabled by reviewer settings")
-    if change.event == "pull_request" and not reviewer.review_pull_requests:
-        return ignored("skipped: pull request reviews disabled by reviewer settings")
-    if change.event == "pull_request" and change.draft and not reviewer.review_draft_prs:
-        return ignored("skipped: draft pull requests disabled by reviewer settings")
-
-    branch = (
-        change.pr_base_ref
-        if change.event == "pull_request"
-        else (change.ref or "").removeprefix("refs/heads/")
-    ) or ""
-    if reviewer.include_branches and not _matches(reviewer.include_branches, branch):
-        return ignored("skipped: branch excluded by reviewer settings")
-    if (
-        change.event == "push"
-        and not reviewer.include_branches
-        and branch.casefold() != repo["default_branch"].casefold()
-    ):
-        return ignored("skipped: push is not on the default branch")
-    if reviewer.exclude_branches and _matches(reviewer.exclude_branches, branch):
-        return ignored("skipped: branch excluded by reviewer settings")
+    reason = reviewer_ignore_reason(conn, repo, payload, change)
+    if reason:
+        return ignored(reason)
 
     actor = actor.lower()
-    if reviewer.include_authors and not _matches(reviewer.include_authors, actor):
-        return ignored("skipped: author is outside reviewer settings")
-    if reviewer.exclude_authors and _matches(reviewer.exclude_authors, actor):
-        return ignored("skipped: author excluded by reviewer settings")
-
     allowed = authors()
     if allowed and "*" not in allowed and actor not in allowed:
         return ignored("skipped: author is outside the global automatic-review allowlist")

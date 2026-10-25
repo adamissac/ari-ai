@@ -6,6 +6,10 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Restored impact-gated monitoring for a blank, quoted-empty, or standalone `*`
+  `GITHUB_AUTO_COMMIT_AUTHORS` value. Project reviewer filters now gate both the
+  impact path and per-commit rollout scheduling; impact-path PR assessments can
+  also post comments using the pull request number on their triggering event.
 - Added project Code reviewer controls for push/PR eligibility, branch and author filters, finding strictness, PR comments, and an optional hourly cap. Empty or `*` `GITHUB_AUTO_COMMIT_AUTHORS` no longer blocks reviewer scheduling.
 - Railway defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, which adds no global author restriction; project reviewer settings determine eligibility. Repository `automatic_assessments` remains an explicit opt-in, and manual Run remains available.
 - Shared assessment quotas now apply per project across every trigger (10 per rolling hour, 50 per rolling day), with a global $50 rolling-day spend cap. Manual starts receive a 429 with the quota reset time; automatic requests over quota are recorded as skipped and are not requeued.

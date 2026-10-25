@@ -5,6 +5,7 @@ import sqlalchemy as sa
 from helpers import BASE, HEAD, post_webhook, push_payload, setup_project
 
 from backend import worker
+from backend.auto_commits import authors
 from backend.db import (
     assessments,
     jobs,
@@ -661,7 +662,10 @@ def test_legacy_deferred_job_is_skipped_under_quota_without_new_job(automatic):
     assert len(records()) == 10
 
 
-def test_reviewer_pipeline_obeys_shared_quota(automatic, settings_override):
+def test_legacy_monitoring_pipeline_obeys_shared_quota(automatic, settings_override, monkeypatch):
+    from monitoring.api import Action, Decision
+    from shared.monitoring import ReassessmentScope
+
     alice, bob, ids, _ = automatic
     settings_override(github_auto_commit_authors="")
     assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
@@ -669,6 +673,16 @@ def test_reviewer_pipeline_obeys_shared_quota(automatic, settings_override):
         alice,
         ids,
         [AssessmentTrigger.manual] * 6 + [AssessmentTrigger.monitoring] * 4,
+    )
+    monkeypatch.setattr(
+        "backend.pipeline._impact_provider",
+        lambda: (None, "test impact provider"),
+    )
+    monkeypatch.setattr(
+        "backend.pipeline.decide",
+        lambda *args, **kwargs: Decision(
+            Action.assess, "test assessment", scope=ReassessmentScope.full
+        ),
     )
     pushed_sha = "d" * 40
     push(alice, pushed_sha)
@@ -708,11 +722,28 @@ def test_reviewer_pipeline_obeys_shared_quota(automatic, settings_override):
             {"include_branches": ["release/*"]},
             "adamissac",
             "main",
+            "pull_request",
+            False,
+            "branch excluded",
+        ),
+        (
+            {"exclude_branches": ["m*"]},
+            "adamissac",
+            "main",
+            "pull_request",
+            False,
+            "branch excluded",
+        ),
+        (
+            {"include_branches": ["release/*"]},
+            "adamissac",
+            "main",
             "push",
             False,
             "branch excluded",
         ),
         ({"exclude_branches": ["m*"]}, "adamissac", "main", "push", False, "branch excluded"),
+        ({}, "adamissac", "feature", "push", False, "not on the default branch"),
         (
             {"include_authors": ["teammate*"]},
             "adamissac",
@@ -721,13 +752,24 @@ def test_reviewer_pipeline_obeys_shared_quota(automatic, settings_override):
             False,
             "author is outside",
         ),
+        (
+            {"include_authors": ["teammate*"]},
+            "adamissac",
+            "main",
+            "pull_request",
+            False,
+            "author is outside",
+        ),
         ({}, "adamissac[bot]", "main", "push", False, "author excluded"),
+        ({}, "adamissac[bot]", "main", "pull_request", False, "author excluded"),
     ],
 )
+@pytest.mark.parametrize("global_authors", ["adamissac", '""'])
 def test_reviewer_filters_record_ignored_reason(
-    automatic, settings, author, branch, event, draft, reason
+    automatic, settings_override, settings, author, branch, event, draft, reason, global_authors
 ):
     alice, _, ids, _ = automatic
+    settings_override(github_auto_commit_authors=global_authors)
     if event == "pull_request":
         payload = {
             "repository": {"full_name": "acme/payments-lite"},
@@ -753,6 +795,7 @@ def test_reviewer_filters_record_ignored_reason(
         event_doc = conn.execute(sa.select(monitoring_events.c.doc)).scalar_one()
     assert event_doc["status"] == "ignored"
     assert reason in event_doc["status_reason"]
+    assert event_doc.get("impact") is None
 
 
 @pytest.mark.parametrize(
@@ -762,12 +805,33 @@ def test_reviewer_filters_record_ignored_reason(
         ({"include_branches": ["MA*"]}, "adamissac", "main", "push", False),
         ({"exclude_branches": ["release/*"]}, "adamissac", "main", "push", False),
         ({"include_authors": ["ADA*"]}, "adamissac", "main", "push", False),
+        ({"include_branches": ["MA*"]}, "adamissac", "main", "pull_request", False),
+        ({"exclude_branches": ["release/*"]}, "adamissac", "main", "pull_request", False),
+        ({"include_authors": ["ADA*"]}, "adamissac", "main", "pull_request", False),
         ({}, "adamissac", "main", "pull_request", False),
         ({"review_draft_prs": True}, "adamissac", "main", "pull_request", True),
     ],
 )
-def test_reviewer_filters_allow_matching_events(automatic, settings, author, branch, event, draft):
+@pytest.mark.parametrize("global_authors", ["adamissac", '""'])
+def test_reviewer_filters_allow_matching_events(
+    automatic,
+    settings_override,
+    monkeypatch,
+    settings,
+    author,
+    branch,
+    event,
+    draft,
+    global_authors,
+):
     alice, _, ids, _ = automatic
+    settings_override(github_auto_commit_authors=global_authors)
+    if not authors():
+        monkeypatch.setattr(
+            "backend.github.GitHubApp.compare_paths",
+            lambda *args: (["app.py"], True),
+        )
+        monkeypatch.setattr("backend.pipeline._impact_provider", lambda: (None, "test provider"))
     if event == "pull_request":
         payload = {
             "repository": {"full_name": "acme/payments-lite"},
@@ -790,26 +854,60 @@ def test_reviewer_filters_allow_matching_events(automatic, settings, author, bra
         payload["commits"][0]["id"] = HEAD
     reviewer_webhook(alice, ids, settings=settings, payload=payload, event=event)
     with transaction() as conn:
-        job = conn.execute(
-            sa.select(jobs.c.id).where(jobs.c.kind == "assess_github_commit")
-        ).scalar_one()
-    assert job
+        commit_jobs = (
+            conn.execute(sa.select(jobs.c.id).where(jobs.c.kind == "assess_github_commit"))
+            .scalars()
+            .all()
+        )
+    if authors():
+        assert len(commit_jobs) == 1
+    else:
+        with transaction() as conn:
+            event_doc = conn.execute(sa.select(monitoring_events.c.doc)).scalar_one()
+        assert not commit_jobs
+        assert event_doc.get("impact") is not None
+        assert "reviewer settings" not in event_doc["status_reason"]
 
 
 @pytest.mark.parametrize(
-    "allowlist",
-    ["", '""', "''", "  ", "*", "adamissac,teammate", '"adamissac","teammate"'],
+    ("allowlist", "uses_scheduler"),
+    [
+        ("", False),
+        ('""', False),
+        ("''", False),
+        ("  ", False),
+        ("*", False),
+        ("adamissac,teammate", True),
+        ('"adamissac","teammate"', True),
+    ],
 )
 def test_empty_star_and_comma_global_author_allowlist_semantics(
-    automatic, settings_override, allowlist
+    automatic, settings_override, monkeypatch, allowlist, uses_scheduler
 ):
     alice, _, ids, _ = automatic
     settings_override(github_auto_commit_authors=allowlist)
+
+    if not uses_scheduler:
+        monkeypatch.setattr(
+            "backend.github.GitHubApp.compare_paths",
+            lambda *args: (["app.py"], True),
+        )
+        monkeypatch.setattr("backend.pipeline._impact_provider", lambda: (None, "test provider"))
     reviewer_webhook(alice, ids)
     with transaction() as conn:
-        assert conn.execute(
-            sa.select(jobs.c.id).where(jobs.c.kind == "assess_github_commit")
-        ).scalar_one()
+        commit_jobs = (
+            conn.execute(sa.select(jobs.c.id).where(jobs.c.kind == "assess_github_commit"))
+            .scalars()
+            .all()
+        )
+    assert bool(authors()) is uses_scheduler
+    if uses_scheduler:
+        assert len(commit_jobs) == 1
+    else:
+        with transaction() as conn:
+            event_doc = conn.execute(sa.select(monitoring_events.c.doc)).scalar_one()
+        assert not commit_jobs
+        assert event_doc.get("impact") is not None
 
 
 def test_comma_global_allowlist_rejects_unlisted_sender(automatic, settings_override):
@@ -1050,17 +1148,113 @@ def test_pr_review_job_noops_when_comments_are_disabled(automatic, monkeypatch):
     assert calls == []
 
 
-def test_wildcard_runs_any_pusher_and_unlinked_author(automatic, settings_override):
+def test_impact_path_pull_request_posts_review_from_monitoring_event(
+    automatic, settings_override, monkeypatch
+):
+    from backend.host import AssessmentHost
+    from monitoring.api import Action, Decision
+    from shared.assessment import AssessmentState
+    from shared.monitoring import ReassessmentScope
+
+    alice, bob, ids, _ = automatic
+    settings_override(github_auto_commit_authors="")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    monkeypatch.setattr("backend.pipeline._impact_provider", lambda: (None, "test provider"))
+    monkeypatch.setattr(
+        "backend.pipeline.decide",
+        lambda *args, **kwargs: Decision(
+            Action.assess, "test assessment", scope=ReassessmentScope.full
+        ),
+    )
+    monkeypatch.setattr(
+        "backend.github.GitHubApp.compare_paths",
+        lambda *args: (["app.py"], True),
+    )
+    payload = {
+        "repository": {"full_name": "acme/payments-lite"},
+        "installation": {"id": 99},
+        "sender": {"login": "adamissac"},
+        "action": "synchronize",
+        "number": 7,
+        "pull_request": {
+            "head": {"sha": HEAD, "ref": "feature"},
+            "base": {"sha": BASE, "ref": "main"},
+            "user": {"login": "adamissac"},
+            "updated_at": "2026-10-17T01:02:03Z",
+            "draft": False,
+        },
+    }
+    reviewer_webhook(alice, ids, payload=payload, event="pull_request")
+    with transaction() as conn:
+        event_doc = conn.execute(sa.select(monitoring_events.c.doc)).scalar_one()
+        request_doc = conn.execute(
+            sa.select(reassessment_requests.c.doc).where(
+                reassessment_requests.c.doc["head_sha"].astext == HEAD
+            )
+        ).scalar_one()
+        assessment_id = request_doc["assessment_id"]
+        assert request_doc["event_ids"] == [event_doc["id"]]
+        assert event_doc["pr_number"] == 7
+        assessment_doc = conn.execute(
+            sa.select(assessments.c.doc).where(assessments.c.id == assessment_id)
+        ).scalar_one()
+        assessment_doc["state"] = "REPORTING"
+        conn.execute(
+            sa.update(assessments)
+            .where(assessments.c.id == assessment_id)
+            .values(state="REPORTING", doc=assessment_doc)
+        )
+
+    AssessmentHost(assessment_id).transition(AssessmentState.COMPLETED, "test completion")
+    with transaction() as conn:
+        job = (
+            conn.execute(sa.select(jobs).where(jobs.c.dedupe_key == f"prreview:{assessment_id}"))
+            .mappings()
+            .one()
+        )
+    assert job["payload"]["assessment_id"] == assessment_id
+
+    calls = []
+
+    class GitHub:
+        def post_pull_request_review(self, *args):
+            calls.append(args)
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+    worker.drain(kinds=["post_pr_review"])
+    assert len(calls) == 1
+    assert calls[0][2] == 7
+    assert "Ari security review" in calls[0][3]
+    assert "No findings at this strictness." in calls[0][3]
+
+
+def test_wildcard_uses_impact_path_for_any_pusher_and_unlinked_author(
+    automatic, settings_override, monkeypatch
+):
     alice, bob, ids, identity = automatic
     identity["login"] = ""  # commit email maps to no GitHub account
     settings_override(github_auto_commit_authors="*")
+    assert authors() == set()
+    monkeypatch.setattr(
+        "backend.github.GitHubApp.compare_paths",
+        lambda *args: (["app.py"], True),
+    )
+    monkeypatch.setattr("backend.pipeline._impact_provider", lambda: (None, "test provider"))
     bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
     p = push_payload(["app.py"])
     p["commits"][0]["id"] = HEAD
     p["sender"] = {"login": "teammate"}
-    post_webhook(alice, p)
+    assert post_webhook(alice, p).status_code == 202
     worker.drain(kinds=["process_github_delivery", "assess_github_commit"])
-    assert records() == [HEAD]
+    with transaction() as conn:
+        event_doc = conn.execute(sa.select(monitoring_events.c.doc)).scalar_one()
+        commit_jobs = (
+            conn.execute(sa.select(jobs.c.id).where(jobs.c.kind == "assess_github_commit"))
+            .scalars()
+            .all()
+        )
+    assert event_doc.get("impact") is not None
+    assert not commit_jobs
 
 
 def test_missing_commit_records_skipped_instead_of_dead_lettering(automatic, monkeypatch):
