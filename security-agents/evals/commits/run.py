@@ -118,15 +118,41 @@ def cleanup(run_tag: str, cases: list[dict]) -> None:
     )
 
 
+def validate_cases(cases: list[dict]) -> list[str]:
+    """Missing case fields must fail loudly, never score as zero."""
+    bad = []
+    for c in cases:
+        missing = [k for k in ("id", "kind", "files") if not c.get(k)]
+        if missing:
+            bad.append(f"{c.get('id', '<no id>')}: missing {', '.join(missing)}")
+        for e in c.get("edits", []):
+            if not e.get("path") or "old" not in e or "new" not in e:
+                bad.append(f"{c.get('id')}: malformed edit entry")
+                break
+    return bad
+
+
 def summarize(results: list[dict]) -> dict:
+    """Rates are computed over SCORED cases only — a FAILED / CANCELLED /
+    BUDGET_EXHAUSTED / still-running assessment lands in ``unscored`` with its
+    reason and is never counted as a detection miss."""
+
     def rate(rows: list[dict], key: str) -> str:
         return f"{sum(bool(r.get(key)) for r in rows)}/{len(rows)}"
 
-    idor = [r for r in results if r["kind"] == "idor"]
-    vuln = [r for r in results if r["kind"] == "vuln"]
-    benign = [r for r in results if r["kind"] == "benign"]
-    seconds = sorted(r["seconds"] for r in results if "seconds" in r)
+    scored = [r for r in results if r.get("scored")]
+    unscored = [
+        {"case_id": r["case_id"], "state": r["state"], "reason": r.get("unscored_reason")}
+        for r in results
+        if not r.get("scored")
+    ]
+    idor = [r for r in scored if r["kind"] == "idor"]
+    vuln = [r for r in scored if r["kind"] == "vuln"]
+    benign = [r for r in scored if r["kind"] == "benign"]
+    seconds = sorted(r["seconds"] for r in scored if "seconds" in r)
     return {
+        "scored_cases": f"{len(scored)}/{len(results)}",
+        "unscored": unscored,
         "idor_validated": rate(idor, "validated"),
         "idor_fixed": rate(idor, "fixed"),
         "vuln_flagged": rate(vuln, "flagged"),
@@ -146,6 +172,9 @@ def main() -> int:
     ap.add_argument("--out", type=Path, default=HERE / "results")
     a = ap.parse_args()
     cases = json.loads((HERE / "cases.json").read_text())["cases"]
+    bad = validate_cases(cases)
+    if bad:
+        raise SystemExit("cases.json is not scoreable; fix before running:\n  " + "\n  ".join(bad))
     if a.only:
         cases = [c for c in cases if c["id"] in set(a.only)]
     if subprocess.run(["git", "-C", str(REPO), "diff", "--quiet"]).returncode:
@@ -172,9 +201,13 @@ def main() -> int:
             if report is None:
                 raise SystemExit(f"scorer never recovered for batch {batch}")
             for r in report["results"]:
+                verdict = (
+                    f"flagged={r.get('flagged')} validated={r.get('validated')} fixed={r.get('fixed')}"
+                    if r.get("scored")
+                    else f"UNSCORED ({r.get('unscored_reason')})"
+                )
                 print(
-                    f"  {r['case_id']:<38} {r['state']:<10} {r.get('seconds')}s "
-                    f"flagged={r.get('flagged')} validated={r.get('validated')} fixed={r.get('fixed')}",
+                    f"  {r['case_id']:<38} {r['state']:<10} {r.get('seconds')}s {verdict}",
                     flush=True,
                 )
             results.extend(report["results"])
