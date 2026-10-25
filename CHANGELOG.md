@@ -17,6 +17,7 @@ All notable changes are documented here. Format follows
 - Rebuilt the public landing page around a commit-to-verify signal field, six visible stages, and explicit scope and control disclosures.
 - Added a guided repository setup walkthrough (`/projects/<id>/setup?repo=<repoId>`): connecting a repository now lands there, and it walks through authorizing testing, tuning the code reviewer, choosing fix delivery (pull request is preselected), and starting the first review.
 - Setup now distinguishes repository automatic reviews from push/PR review preferences and searches up to 2,000 audit events before reporting no build-recipe result.
+- Verify permits genuinely new recipe-declared tests while rejecting protected-test and runner-configuration tampering; it binds evidence to the candidate patch, protects pinned plugin modules and runner-shadow paths, scans changed application modules for new pytest hooks, rejects unsupported or quoted diff headers, and runs its project suite with the pinned test roots.
 - Added an hourly GitHub Actions storage watchdog for Railway volume usage and backup freshness, with idempotent issue alerts.
 - Live commit analysis no longer needs a `GITHUB_TOKEN` PAT on Vercel: `POST /api/analyze`
   reads the commit diff through the new backend route `GET /api/v1/github/commit`, which

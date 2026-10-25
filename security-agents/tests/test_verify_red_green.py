@@ -15,7 +15,14 @@ from .test_e2e_replay import build
 from .test_verify_followups import ADDED, _ev
 
 GREEN = [
-    {"selection": "added_tests", "passed": 1, "failing_tests": [], "sandbox_run_id": "sbx_g"},
+    {
+        "selection": "added_tests",
+        "passed": 1,
+        "failing_tests": [],
+        "pytest_args": ["-q", ADDED],
+        "workspace_role": "patched",
+        "sandbox_run_id": "sbx_g",
+    },
     {"selection": "project_suite", "passed": 5, "failing_tests": [], "sandbox_run_id": "sbx_s"},
 ]
 RED = {
@@ -80,8 +87,17 @@ def test_unpatched_run_that_could_not_execute_fails_closed():
 
 
 def test_every_added_test_file_must_fail_on_unpatched():
+    base = _ev(GREEN)
+    patched_runs = list(base.test_runs)
+    patched_runs[0] = {
+        **patched_runs[0],
+        "pytest_args": ["-q", ADDED, "tests/test_second.py"],
+    }
     two = dataclasses.replace(
-        _ev(GREEN), tests_added=[ADDED, "tests/test_second.py"], unpatched_added_runs=[RED]
+        base,
+        tests_added=[ADDED, "tests/test_second.py"],
+        unpatched_added_runs=[RED],
+        test_runs=patched_runs,
     )
     verdict, _, reasons = verify_agent.compute_verdict(two)
     assert verdict == "rejected" and any("not every added test file fails" in r for r in reasons)
@@ -120,3 +136,4 @@ def test_orchestrator_runs_added_tests_on_the_unpatched_snapshot(intel, driver, 
     detail = next(c.detail for c in verification.checks if c.name.value == "generated_tests_pass")
     assert "fail on the unpatched code" in detail
     assert "tests.added_on_unpatched" in [e.action for e in result.audit]
+    assert "tests.added_on_patched" in [e.action for e in result.audit]
