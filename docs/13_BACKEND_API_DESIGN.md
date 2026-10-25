@@ -40,6 +40,9 @@ by FastAPI is the source for frontend client generation.
 | POST | `/repositories/{repo_id}/snapshots` | Request indexing at `commit_sha` |
 | GET | `/repositories/{repo_id}/snapshots?status=&limit=&cursor=` | List, newest first (`status=ready` for usable indexes) |
 | GET | `/snapshots/{snapshot_id}` | Status and stats |
+| GET | `/github/repositories` | Repos the caller can reach through App installations |
+| GET | `/repositories/{repo_id}/commits` | Recent commits, read live via the installation token |
+| GET | `/github/commit?repo=owner/name&sha=` | One commit + per-file diff via the requester's installation (used by live analysis) |
 
 ### Intelligence (read)
 | Method | Path | Purpose |

@@ -34,6 +34,15 @@ adds an entry before ending.
 - Next steps: open a PR and handle CI separately.
 - Warnings for the next session: Railway `sizeMB` is decimal; 10,000 MB = 10,000,000,000 bytes and 5,000 MB = 5,000,000,000 bytes.
 
+### 2026-10-25 — Devin (agent, Adam) — live-analysis via App token, settings save UX, deploy overlap
+- Did: (1) `POST /api/analyze` no longer calls `api.github.com` from Vercel — it now reads the commit diff through the new backend route `GET /api/v1/github/commit?repo=owner/name&sha=`, which resolves the caller's own `github_repo_access` installation token (401 unauthenticated, 403 when the repo is not reachable through the caller's installations, 404 when GitHub has no such commit). The `GITHUB_TOKEN` requirement on Vercel is gone; `frontend/.env.example` updated. (2) Project Settings renders the Save/Discard action row at the top of the form too — the "Default assessment budget" save button no longer sits only below the fold. (3) Prod deploy hardening: `serviceInstanceUpdate` set `overlapSeconds=30` on the ari-ai service (was null); `healthcheckPath=/readyz`, `healthcheckTimeout=300`, `drainingSeconds=600`, `ON_FAILURE`×10 were already configured and verified via the Railway GraphQL API.
+- State of the code: new route in `backend/backend/api/github_repos.py`; `frontend/lib/live-analysis.ts` `fetchCommit` maps the trimmed backend payload into the existing `GitHubCommit` shape (consumer code unchanged); `liveAnalysis(fullName, sha, cookie)` takes the caller's session cookie.
+- Commands run and results: `pytest backend/tests/test_github_repo_access.py -k live_commit` → 3 new tests pass (7 incl. neighbours); `npm run typecheck`, `npm run lint`, `npm test` → clean / 355 pass; `make check` → all checks passed.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: PR + CI; verify live commit analysis on the deployed site after merge.
+- Warnings for the next session: the earlier `BUDGET_EXHAUSTED` staging run (cap 0.002) was a stale unsaved default, not an enforcement bug — cap enforcement itself is verified live on prod.
+
 ### 2026-10-25 — Devin (agent, Adam) — correction: empty auto-commit allowlist behavior
 - Did: corrected the deployment, storage and coordination guidance to distinguish the empty per-commit allowlist from strictly manual operation.
 - State of the code: empty `GITHUB_AUTO_COMMIT_AUTHORS` disables per-commit full runs, but pushes from repositories with `automatic_assessments` ON fall back to the legacy impact-gated, coalesced monitoring policy. That policy applies project `monitoring_policy`, active scope and the monitoring budget, with at most one open monitoring assessment per repository. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.
