@@ -16,6 +16,7 @@ from backend.db import (
     defense_recommendations,
     findings,
     monitoring_events,
+    reassessment_requests,
     repositories,
     snapshots,
     transaction,
@@ -24,18 +25,33 @@ from backend.db import (
 from backend.host import AssessmentHost, HostError
 from backend.integrations import load_factory
 from backend.llm import LLMError
+from backend.quota import check_project_quota, skipped_reason
 from backend.services import (
+    active_scope_for_repo,
+    create_assessment,
+    monitoring_assessment_state,
     project_org,
+    project_settings,
+    verified_finding_paths,
 )
 from backend.settings import get_settings
 from backend.worker import JobCancelled, JobContext, PermanentJobError, handler
-from monitoring.api import Ignored, normalize_github
+from monitoring.api import Action, Ignored, correlate, decide, normalize_github
 from shared.assessment import TERMINAL_STATES, AssessmentState, AssessmentTrigger
 from shared.audit import ActorType
+from shared.base import utcnow
 from shared.errors import ErrorCode
 from shared.findings import FindingKind
+from shared.ids import IdPrefix, new_id
 from shared.monitoring import (
+    CommitRange,
+    EventSource,
     EventStatus,
+    EventType,
+    MonitoringEvent,
+    ReassessmentRequest,
+    ReassessmentScope,
+    ReassessmentStatus,
 )
 from shared.rl import DefenseRecommendation, PlatformFacts, RLExplanation
 
@@ -43,6 +59,13 @@ log = logging.getLogger("backend.pipeline")
 
 
 # ----------------------------------------------------------- GitHub deliveries
+
+
+def _impact_provider() -> tuple[Any | None, str | None]:
+    loaded = load_factory(get_settings().code_intelligence_factory)
+    if loaded.obj is None or not hasattr(loaded.obj, "affected_by_diff"):
+        return None, loaded.reason or "code_intelligence service lacks affected_by_diff"
+    return loaded.obj, None
 
 
 @handler("process_github_delivery")
@@ -98,7 +121,167 @@ def process_github_delivery(ctx: JobContext) -> dict[str, Any]:
     if not repo["automatic_assessments"]:
         return {"ignored": "repository automatic assessments disabled"}
     with transaction() as conn:
-        return auto_commits.schedule(conn, repo, d, payload, change)
+        reason = auto_commits.reviewer_ignore_reason(conn, repo, payload, change)
+        if reason:
+            actor = (change.pr_author if change.event == "pull_request" else change.sender) or ""
+            auto_commits._record_schedule_ignore(conn, repo, d, change, reason, actor)
+            return {"ignored": reason}
+    if auto_commits.authors():
+        with transaction() as conn:
+            return auto_commits.schedule(conn, repo, d, payload, change)
+
+    paths_complete = change.paths_complete
+    changed_paths = list(change.changed_paths)
+    notes = list(change.notes)
+    if not paths_complete and change.base_sha and repo["installation_id"]:
+        try:
+            from backend.github import GitHubApp
+
+            changed_paths, paths_complete = GitHubApp().compare_paths(
+                repo["installation_id"], repo["full_name"], change.base_sha, change.head_sha
+            )
+            notes.append("changed paths fetched via GitHub compare API")
+        except Exception as exc:  # degrade to full reassessment, never guess
+            notes.append(
+                f"compare API unavailable ({type(exc).__name__}); treating path list as incomplete"
+            )
+    if changed_paths != list(change.changed_paths):
+        from dataclasses import replace
+
+        change = replace(change, changed_paths=tuple(changed_paths), paths_complete=paths_complete)
+
+    ctx.check_cancelled()
+    provider, why = _impact_provider()
+    impact, degraded = correlate(repo["id"], change, provider)
+    for n in (why if provider is None else None, degraded):
+        if n:
+            notes.append(n)
+
+    with transaction() as conn:
+        project_id = repo["project_id"]
+        policy = project_settings(conn, project_id).monitoring_policy
+        scope = active_scope_for_repo(conn, project_id, repo["id"])
+        open_, since = monitoring_assessment_state(conn, repo["id"])
+        decision = decide(
+            impact,
+            policy=policy,
+            paths_complete=paths_complete,
+            has_active_scope=scope is not None,
+            verified_finding_paths=verified_finding_paths(conn, project_id),
+            seconds_since_last_monitoring_assessment=since,
+            open_monitoring_assessment=open_,
+        )
+        now = utcnow()
+        quota = (
+            check_project_quota(conn, project_id, now)
+            if decision.action is Action.assess and scope is not None
+            else None
+        )
+        reason = skipped_reason(quota) if quota is not None else decision.reason
+        request_status = None
+        if quota is not None:
+            request_status = ReassessmentStatus.skipped
+        elif decision.action is not Action.record_only:
+            request_status = {
+                Action.assess: ReassessmentStatus.started,
+                Action.blocked_no_scope: ReassessmentStatus.blocked_no_scope,
+                Action.coalesced: ReassessmentStatus.coalesced,
+            }[decision.action]
+        event = MonitoringEvent(
+            id=new_id(IdPrefix.evt),
+            project_id=project_id,
+            repo_id=repo["id"],
+            source=EventSource.github,
+            type=EventType(change.event),
+            occurred_at=change.occurred_at,
+            received_at=d["received_at"],
+            dedupe_key=dedupe,
+            payload_artifact_id=d["payload_artifact_id"],
+            commit_range=CommitRange(base_sha=change.base_sha, head_sha=change.head_sha),
+            ref=change.ref,
+            pr_number=change.pr_number,
+            simulated=bool(ctx.job.payload.get("simulated", False)),
+            status=EventStatus.ignored
+            if quota is not None or decision.action is Action.record_only
+            else EventStatus.processed,
+            status_reason=(reason + ("; " + "; ".join(notes) if notes else ""))[:500],
+            impact=impact,
+        )
+        inserted = conn.execute(
+            sa.dialects.postgresql.insert(monitoring_events)
+            .values(
+                id=event.id,
+                project_id=project_id,
+                repo_id=repo["id"],
+                dedupe_key=dedupe,
+                status=event.status.value,
+                doc=event.model_dump(mode="json"),
+            )
+            .on_conflict_do_nothing(index_elements=[monitoring_events.c.dedupe_key])
+            .returning(monitoring_events.c.id)
+        ).scalar()
+        if inserted is None:
+            return {"idempotent_replay": True}
+        result: dict[str, Any] = {
+            "monitoring_event_id": event.id,
+            "decision": "skipped" if quota is not None else decision.action.value,
+            "reason": reason,
+        }
+        if decision.action is not Action.record_only:
+            assert request_status is not None
+            rrq = ReassessmentRequest(
+                id=new_id(IdPrefix.rrq),
+                project_id=project_id,
+                repo_id=repo["id"],
+                event_ids=[event.id],
+                scope=decision.scope or ReassessmentScope.targeted,
+                head_sha=change.head_sha,
+                targets=list(decision.targets or decision.regression_finding_ids),
+                status=request_status,
+                reason=reason,
+                created_at=now,
+            )
+            if decision.action is Action.assess and scope is not None and quota is None:
+                asm, _ = create_assessment(
+                    conn,
+                    project_id=project_id,
+                    repo_id=repo["id"],
+                    scope_id=scope.id,
+                    commit_sha=change.head_sha,
+                    trigger=AssessmentTrigger.monitoring,
+                    budget=None,
+                    created_by=None,
+                    reassessment_request_id=rrq.id,
+                )
+                rrq = rrq.model_copy(update={"assessment_id": asm.id})
+                result["assessment_id"] = asm.id
+            conn.execute(
+                sa.insert(reassessment_requests).values(
+                    id=rrq.id,
+                    project_id=project_id,
+                    repo_id=repo["id"],
+                    status=rrq.status.value,
+                    doc=rrq.model_dump(mode="json"),
+                )
+            )
+            result["reassessment_request_id"] = rrq.id
+        audit.record(
+            conn,
+            org_id=project_org(conn, project_id),
+            project_id=project_id,
+            actor_type=ActorType.github,
+            actor_id=change.sender or "github",
+            action="monitoring.event_processed",
+            subject_type="monitoring_event",
+            subject_id=event.id,
+            details={
+                "delivery_id": delivery_id,
+                "decision": result["decision"],
+                "head_sha": change.head_sha,
+                "impact_resolution": impact.resolution.value,
+            },
+        )
+    return result
 
 
 # ------------------------------------------------------------------ assessments

@@ -78,7 +78,10 @@ the RL system consumes these as observations in simulation only.
 ## Project code reviewer settings
 
 When a repository's `automatic_assessments` switch is ON, GitHub pushes and pull
-requests use the per-commit reviewer scheduler. Owners configure `review_pushes`,
+requests first pass the project's reviewer eligibility filters. A blank, quoted-empty,
+or standalone `*` `GITHUB_AUTO_COMMIT_AUTHORS` value uses the impact-gated monitoring
+pipeline; a nonempty comma-separated value selects the per-commit reviewer scheduler.
+Both paths apply `review_pushes`,
 `review_pull_requests`, `review_draft_prs`, branch globs, author globs, finding
 strictness, PR comments and an optional hourly cap in Project Settings. Branch
 and author globs are case-insensitive. Empty push include-branches means the
@@ -86,12 +89,12 @@ default branch; empty PR include-branches means every base branch. Empty author
 includes means everyone; `*[bot]` is excluded by default. Strictness filters only
 the PR comment; all findings remain stored.
 
-`GITHUB_AUTO_COMMIT_AUTHORS` is an optional global restriction: empty or `*`
-adds no restriction, while a comma-separated list restricts eligible GitHub
-authors. The repository opt-in, project monitoring enablement, active approved
-scope, project budget, worker/model availability and the global daily spend cap
-still apply. The server allows 10 assessments per rolling hour and 50 per rolling
-day across triggers; a project may lower, but not raise, its hourly limit.
+For the per-commit path, `GITHUB_AUTO_COMMIT_AUTHORS` restricts the signed push
+sender and GitHub-attributed commit author. The repository opt-in, project
+monitoring enablement, active approved scope, project budget, worker/model
+availability and the global daily spend cap still apply. The server allows 10
+assessments per rolling hour and 50 per rolling day across triggers; a project
+may lower, but not raise, its hourly limit.
 
 
 ### Automatic/manual repository mode and Haiku 5.5 (#380)
