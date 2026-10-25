@@ -1794,6 +1794,24 @@ ancestry retained and v6 registry hash unchanged (see verification report).
   test_redact_code/test_redact_text_gaps 14 passed; +5 new regressions in
   test_execution_reliability.py (file now 65). Suite: 397 passed, 7 skipped.
 
+## 2026-10-25 — Devin (Alan): execution reliability — Codex repeat-review fix N9
+
+- Repeat review (adamissac#633, `codex/rc4-n8-repeat`): N8 resolved, new N9
+  (P2) — the annotated-assignment alternative's `[^=\n]+?` span accepted `;`
+  (and `#`), so `password: str; notice = "public notice"` redacted the *next*
+  statement's literal — artifact corruption, not disclosure.
+- Fix: annotation span is now `[^=\n;#]+?` — can't cross a statement
+  separator or comment. `password: str == "x"` (comparison) also correctly
+  stays untouched. Real annotated/quoted-key/subscript literals still redact;
+  N7 nonliteral expressions byte-identical; sealed-diff bytes, `redacted=`
+  labeling, viewer-200/outsider-404 unchanged.
+- Verified: Codex's 2 N9 redaction probes run in place pass (direct
+  redact_code byte-identical + diff put/get roundtrip); the third file test
+  (`test_split_read_and_write_limits_are_enforced`) is the ops workstream's
+  split-rate-limit control — `rate_limit_read_per_minute` isn't wired on this
+  branch, not my scope. N7 (4/4) + N8 (4/4) probes re-run green; +4 new
+  regressions (file now 69); suite: 401 passed, 7 skipped.
+
 ## 2026-10-24 — Devin (Adam): specialist eval-brain + live eval harness
 
 - `specialists/data/evalcommits.py`: eval cases become minimal pairs (planted edit = CWE/vuln_other positive, original = hard negative), splits pinned by case id; `scout()` merges the 60 rows.
