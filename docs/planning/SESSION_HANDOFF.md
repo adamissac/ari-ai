@@ -16,6 +16,25 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-25 — Devin (agent, Adam) — correction: empty auto-commit allowlist behavior
+- Did: corrected the deployment, storage and coordination guidance to distinguish the empty per-commit allowlist from strictly manual operation.
+- State of the code: empty `GITHUB_AUTO_COMMIT_AUTHORS` disables per-commit full runs, but pushes from repositories with `automatic_assessments` ON fall back to the legacy impact-gated, coalesced monitoring policy. That policy applies project `monitoring_policy`, active scope and the monitoring budget, with at most one open monitoring assessment per repository. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.
+- Operational observation: after the owner set an empty allowlist, `AUTOMATIC_ASSESSMENTS_PER_HOUR=5` and `AUTOMATIC_ASSESSMENTS_PER_DAY=20` on 2026-10-25 at about 02:03Z, the deferred queue drained 386 → 0 and only one new assessment completed in the following ~10 minutes.
+- Commands run and results: `sh -n deploy/railway/start.sh` and `git diff --check` passed; no tests or Python files changed, so pytest/ruff were not run.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: Adam opens the PR; CI follow-up will be handled separately.
+- Warnings for the next session: the empty allowlist is not a manual-only mode; disable per-repository automatic assessments (or project monitoring) for a strictly manual pilot.
+
+### 2026-10-25 — Devin (agent, Adam) — default Railway automatic assessments to manual-only
+- Did: changed the Railway `GITHUB_AUTO_COMMIT_AUTHORS` default to empty while keeping explicit `*` and comma-separated GitHub-login opt-ins; updated deployment/storage guidance with measured database growth and pilot limits.
+- State of the code: Railway pushes are outside the automatic rollout by default; manual runs remain available. An empty allowlist leaves per-repository `automatic_assessments` untouched.
+- Commands run and results: `sh -n deploy/railway/start.sh` passed. No tests or Python files were changed, so pytest and ruff were not run; no test asserts the startup default.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: commit and push `fix/adam/manual-only-auto-assess-default`; owner handles PR and CI.
+- Warnings for the next session: production automatic assessments should remain disabled until retention is enabled and the daily limit is at most 20.
+
 ### 2026-10-24 — Devin (agent, Adam) — first-user usability pass on commit review (feat/adam/first-user-usability)
 - Did: walked the real first-user flow end-to-end on `tests/e2e/stack_manual.py` (dev login → org → repo → commit → scripted run → recorded replay → approvals). Fixed: approval cards resolve remediation-plan `rmp_` subjects to the owning finding by scanning `api().finding(id)` records once per subject (ref-guarded so polling can't starve it); cards get a two-step confirm that says exactly what approval will/won't do ("never merges or deploys"); `agent-map` normalizes persisted `ns__tool` names (`code__read_span` → `code.read_span`) so recorded runs speak plain English; quick-read failure explains "no model API key configured" instead of a raw error.
 - State of the code: verified live — both pending approvals render "Fix request · <finding title>" with severity/kind/path; `tests/unit/approval-gate.test.tsx` covers fnd_ + rmp_ subjects and the fallback. 340 unit tests pass; typecheck/lint clean; build green.

@@ -292,24 +292,25 @@ jobs:
       REF: ${{ inputs.ref }}
       LIVE: ${{ inputs.live_model }}
       HOSTED: ${{ inputs.hosted_url }}
-    run: |
-      {
-        echo "## Pilot verification — $REF"
-        echo ""
-        echo "| Category | Mode | Result |"
-        echo "|---|---|---|"
-        echo "| static-unit | static analysis + unit (no DB/model) | $R1 |"
-        echo "| real-db | real PostgreSQL | $R2 |"
-        echo "| real-sandbox | real Docker sandbox | $R3 |"
-        echo "| browser-e2e | real stack + browser; scripted (fake) model | $R4 |"
-        echo "| live-model | authorized live provider | $R5 (live_model=$LIVE) |"
-        echo "| hosted-smoke | live deployed environment | $R6 (hosted_url=${HOSTED:-none}) |"
-        echo "| load-recovery | bounded load + crash recovery, real DB | $R7 |"
-      } | tee -a "$GITHUB_STEP_SUMMARY"
-      for r in "$R1" "$R2" "$R3" "$R4" "$R7"; do
-        [ "$r" = "success" ] || { echo "required category failed/cancelled"; exit 1; }
-      done
-      # live-model and hosted-smoke may legitimately skip; failure is still fatal.
-      for r in "$R5" "$R6"; do
-        case "$r" in success|skipped) ;; *) echo "optional category failed: $r"; exit 1;; esac
-      done
+    steps:
+      - run: |
+          {
+            echo "## Pilot verification — $REF"
+            echo ""
+            echo "| Category | Mode | Result |"
+            echo "|---|---|---|"
+            echo "| static-unit | static analysis + unit (no DB/model) | $R1 |"
+            echo "| real-db | real PostgreSQL | $R2 |"
+            echo "| real-sandbox | real Docker sandbox | $R3 |"
+            echo "| browser-e2e | real stack + browser; scripted (fake) model | $R4 |"
+            echo "| live-model | authorized live provider | $R5 (live_model=$LIVE) |"
+            echo "| hosted-smoke | live deployed environment | $R6 (hosted_url=${HOSTED:-none}) |"
+            echo "| load-recovery | bounded load + crash recovery, real DB | $R7 |"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          for r in "$R1" "$R2" "$R3" "$R4" "$R7"; do
+            [ "$r" = "success" ] || { echo "required category failed/cancelled"; exit 1; }
+          done
+          # live-model and hosted-smoke may legitimately skip; failure is still fatal.
+          for r in "$R5" "$R6"; do
+            case "$r" in success|skipped) ;; *) echo "optional category failed: $r"; exit 1;; esac
+          done

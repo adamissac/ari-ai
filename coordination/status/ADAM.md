@@ -1,5 +1,13 @@
 # Adam — implementation status
 
+## 2026-10-25 — correction: empty auto-commit allowlist behavior
+- Branch: `fix/adam/manual-only-auto-assess-default`; prior commit `163e6247` set the empty allowlist default.
+- Corrected the deployment and storage docs: an empty `GITHUB_AUTO_COMMIT_AUTHORS` disables per-commit full runs, but pushes from repositories with `automatic_assessments` ON fall back to the legacy impact-gated, coalesced monitoring policy.
+- Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.
+- Operational observation: after the owner set an empty allowlist plus the 5/hour and 20/day limits at about 02:03Z, the deferred queue drained 386 → 0 and one new assessment completed in the following ~10 minutes.
+- Verification: shell syntax and diff checks; no tests or Python files changed.
+- Adam will open the PR; CI follow-up will be handled separately.
+
 Owner: Adam
 Branch: `feat/adam/release-gate` → PR #530 (open, awaiting human merge approval)
 Last sync: 2026-10-24 ~23:45Z — origin/main at `586370b0` (#528/#529 landed; #535 earlier); branch synced.
@@ -476,3 +484,8 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - #572 open (test-only): cross-org isolation regression for `GET /projects/{id}/jobs` (org-B member → 404; payload OR-clause arms covered) — the commander's remaining #530-review ask. Driver-DSN/kv scrub test deliberately dropped (redundant with #570's suite).
 - Parked branch `fix/adam/redaction-dsn-kv` superseded — redaction regex fixes now live in #570 (integration-lead owns them per commander stand-down). Commander's pilot-verify label map filed in `coordination/messages/2026-10-25T01Z-adam-to-commander-pilot-verify-labels.md` (riding #572).
 - Open fleet: #570, #572 (mine), #540, #538, #536, #532, #458, #412. Still needs Adam: branch protection on `main` (second unprotected breakage today), hosted URL + Anthropic key for live-model/hosted-smoke gates, merge sign-offs.
+
+### 2026-10-25 — scheduled cloud health run (22)
+- Synced origin/main (c65a8ed0). No new messages addressed to Adam. Since run 21 nothing changed in rl-defense/ or examples/payments-lite; `.github/workflows/rl.yml` gained the path-gate (release-gate lane, #530). `gh` not authenticated; used git only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 645 files, 0 problems. rl-defense suite started (installed with default CUDA torch, not CI's CPU wheel) but exceeded the time-box after ~21 CPU-min and was killed, so NOT confirmed this run; last full pass remains run 13's 569 passed. Next run: install torch from the CPU index as rl.yml does.
+- No code changes. No live-LLM tests, no training/eval. Open: none.

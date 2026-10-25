@@ -94,11 +94,11 @@
 @media (max-width: 1023px) {
   .project-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .project-rail { position: static; max-height: none; overflow: visible; }
-  .rail-nav { flex-direction: row; flex-wrap: nowrap; gap: 20px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; }
-  .rail-nav::-webkit-scrollbar { display: none; }
-  .rail-group { flex: none; }
+  /* Wrap instead of a hidden-scrollbar row: every destination (incl. Settings) stays visible. */
+  .rail-nav { flex-direction: row; flex-wrap: wrap; gap: 10px 20px; padding-bottom: 8px; }
+  .rail-group { flex: 0 1 auto; min-width: 0; }
   .rail-group > * { flex: none; }
-  .rail-group { flex-direction: row; align-items: center; gap: 4px; }
+  .rail-group { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px; }
   .rail-group-label { margin: 0 4px 0 0; }
   .rail-foot { margin-top: 0; }
 }
