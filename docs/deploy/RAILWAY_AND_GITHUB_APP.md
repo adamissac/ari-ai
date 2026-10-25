@@ -45,6 +45,7 @@ generate a **private key** (downloads a `.pem`).
 | `GITHUB_OAUTH_CLIENT_SECRET` | the App's client secret |
 | `GITHUB_WEBHOOK_SECRET` | the webhook secret from step 1 |
 | `ANTHROPIC_API_KEY` | your key (set a monthly spend limit in the Anthropic console) |
+| `MIGRATION_DATABASE_URL` | Optional migration-only database role; defaults to `DATABASE_URL` |
 
 Already set (non-secret): `DATABASE_URL` (reference to Postgres), `APP_ENV=production`,
 `ARTIFACT_STORE_URI=file:///data/artifacts`, `SECURITY_WORKDIR=/data/work`,

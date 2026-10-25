@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+_HIGH_CONFIDENCE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"sk-ant-[A-Za-z0-9_\-]{8,}"), "[REDACTED:anthropic_key]"),
     (re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b"), "[REDACTED:github_token]"),
     (re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"), "[REDACTED:github_token]"),
@@ -25,16 +25,15 @@ _PATTERNS: list[tuple[re.Pattern[str], str]] = [
         ),
         r"\1://[REDACTED:dsn_credentials]@",
     ),
-    # generic secret key=value / key: value pairs (password=hunter2, token: xyz,
-    # password='quoted Pw1', refresh_token: "r3fr3sh", ...)
-    (
-        re.compile(
-            r"(?i)\b\w*(?:password|passwd|pwd|api_key|apikey|secret|token)\w*"
-            r"\s*[=:]\s*(?:'[^'\n]*'|\"[^\"\n]*\"|[^\s'\"]+)"
-        ),
-        "[REDACTED:kv]",
-    ),
 ]
+
+_KV_KEY = r"\w*(?:password|passwd|pwd|api_key|apikey|secret|token)\w*"
+_KV_PATTERN = re.compile(r"(?i)\b" + _KV_KEY + r"\s*[=:]\s*(?:'[^'\n]*'|\"[^\"\n]*\"|[^\s'\"]+)")
+_CODE_KV_PATTERN = re.compile(
+    r"(?i)(?P<prefix>\b" + _KV_KEY + r"\s*[=:]\s*)"
+    r"(?P<literal>'(?:\\.|[^'\\\n])+'|\"(?:\\.|[^\"\\\n])+\")"
+)
+_PATTERNS = [*_HIGH_CONFIDENCE_PATTERNS, (_KV_PATTERN, "[REDACTED:kv]")]
 
 # Deliberately NOT scrubbed: absolute paths and internal hostnames. They aid
 # debugging and are bounded to project members; revisit if members must be
@@ -50,6 +49,21 @@ def redact_text(text: str) -> str:
     for pattern, replacement in _PATTERNS:
         text = pattern.sub(replacement, text)
     return text
+
+
+def redact_code(text: str) -> str:
+    """Redact source and diffs without rewriting unquoted code expressions."""
+    for pattern, replacement in _HIGH_CONFIDENCE_PATTERNS:
+        text = pattern.sub(replacement, text)
+
+    def redact_quoted_value(match: re.Match[str]) -> str:
+        literal = match.group("literal")
+        quote = literal[0]
+        return f"{match.group('prefix')}{quote}[REDACTED:kv]{quote}"
+
+    return "".join(
+        _CODE_KV_PATTERN.sub(redact_quoted_value, line) for line in text.splitlines(keepends=True)
+    )
 
 
 def redact(value: Any) -> Any:

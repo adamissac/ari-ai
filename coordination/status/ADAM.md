@@ -484,3 +484,8 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - #572 open (test-only): cross-org isolation regression for `GET /projects/{id}/jobs` (org-B member → 404; payload OR-clause arms covered) — the commander's remaining #530-review ask. Driver-DSN/kv scrub test deliberately dropped (redundant with #570's suite).
 - Parked branch `fix/adam/redaction-dsn-kv` superseded — redaction regex fixes now live in #570 (integration-lead owns them per commander stand-down). Commander's pilot-verify label map filed in `coordination/messages/2026-10-25T01Z-adam-to-commander-pilot-verify-labels.md` (riding #572).
 - Open fleet: #570, #572 (mine), #540, #538, #536, #532, #458, #412. Still needs Adam: branch protection on `main` (second unprotected breakage today), hosted URL + Anthropic key for live-model/hosted-smoke gates, merge sign-offs.
+
+### 2026-10-25 — scheduled cloud health run (22)
+- Synced origin/main (c65a8ed0). No new messages addressed to Adam. Since run 21 nothing changed in rl-defense/ or examples/payments-lite; `.github/workflows/rl.yml` gained the path-gate (release-gate lane, #530). `gh` not authenticated; used git only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 645 files, 0 problems. rl-defense suite started (installed with default CUDA torch, not CI's CPU wheel) but exceeded the time-box after ~21 CPU-min and was killed, so NOT confirmed this run; last full pass remains run 13's 569 passed. Next run: install torch from the CPU index as rl.yml does.
+- No code changes. No live-LLM tests, no training/eval. Open: none.
