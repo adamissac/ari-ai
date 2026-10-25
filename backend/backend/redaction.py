@@ -16,7 +16,23 @@ _PATTERNS: list[tuple[re.Pattern[str], str]] = [
         "[REDACTED:private_key]",
     ),
     (re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._\-]{16,}"), r"\1 [REDACTED:bearer]"),
+    # credentials inside connection strings: scheme://user:pass@host -> scheme://[REDACTED]@host
+    (
+        re.compile(
+            r"(?i)\b(postgres(?:ql)?|mysql(?:\+\w+)?|mongodb(?:\+srv)?|redis|amqp)://[^\s:/@]+:[^\s@]+@"
+        ),
+        r"\1://[REDACTED:dsn_credentials]@",
+    ),
+    # generic secret key=value / key: value pairs (password=hunter2, token: xyz, ...)
+    (
+        re.compile(r"(?i)\b(password|passwd|pwd|api_key|apikey|secret|token)\s*[=:]\s*[^\s'\"]+"),
+        r"\1=[REDACTED:kv]",
+    ),
 ]
+
+# Deliberately NOT scrubbed: absolute paths and internal hostnames. They aid
+# debugging and are bounded to project members; revisit if members must be
+# isolated from infra internals (see docs/release/RELEASE_GATE_2026-10-24.md).
 
 _SENSITIVE_KEYS = re.compile(
     r"(?i)^(password|passwd|secret|client_secret|token|access_token|refresh_token|api_key|"

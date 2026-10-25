@@ -18,6 +18,22 @@ adds an entry before ending.
 
 ---
 
+### 2026-10-24 — Devin (agent, Adam) — code-intelligence pipeline audit
+- Did: on `feat/adam/intel-pipeline-audit`, audited ingest→extract→store→retrieve→memory for pilot readiness. Reproduced the PR #441 redaction/parser regression on main (38/582 tracked .py unparseable post-redact + 2 line-count shifts); verified the fix (0 broken, 0 line shifts, 0 leaked literal secrets across the same corpus). Indexed payments-lite, `backend/` prefix, and the whole repo; ran a labeled-question retrieval eval; benchmarked latency/memory. Found a silent coverage gap — `@app.get(FIXTURE_ROUTE)`-style non-literal route paths were dropped with no IndexIssue — and fixed it so they are flagged. Carries `7a5b329f` verbatim, so merging this branch lands PR #441's fix.
+- State of the code (verified how): `code-intelligence/tests` 57 passed 1 skipped; `backend/tests/test_intel_store.py test_intelligence_memory_api.py test_intelligence_ingestion_profile.py test_payload_store_intel_integration.py` 9 passed on real Postgres; new retrieval eval + route-diagnostic tests pass; benchmark harness executed on payments-lite.
+- Commands run and results: `PYTHONPATH=code-intelligence:shared .venv/bin/python -m pytest code-intelligence/tests` (57 passed, 1 skipped); backend intel subset (9 passed); index runs 0.16s/8 files, 4.11s/127 files, 92.4s/1,798 files.
+- Report: `docs/research/intel-pipeline-audit/README.md`; measured numbers: `code-intelligence/evidence/m2-index-retrieval-audit.json`; benchmark: `code-intelligence/evidence/index_benchmark.py`.
+- Assumptions/open questions: secondary-evidence Recall@K degrades at scale (82% on payments-lite, 63% on ari-ai) — packs do not mark absent expected evidence; mid-line bare-secret expressions (`f(password=x, user=y)`) were a residual and are now redacted when the token contains a digit (digit-less mid-line tokens and `else`-branch conditionals remain documented); JS/TS extraction is unimplemented and unclaimed.
+- Next steps: merge after review; consider BM25 tie-breaking toward implementation symbols if reviewers need secondary evidence.
+- Warnings: none.
+
+### 2026-10-24 — Adam (Devin) — release gate / test infrastructure
+- Did: rebuilt all CI workflows around always-on jobs + `scripts/ci/path_gate.py` (visible RUN/SKIP); renamed colliding `test` job ids; added `pilot-verify.yml` (7 labelled env categories); added `GET /projects/{id}/jobs?status=` for dead-letter visibility; hardened the 45-case eval scorer (`scored:false` + `unscored_reason`, rates over scored only, case validation); added `scripts/ci/load_probe.py`.
+- State of the code: `feat/adam/release-gate` pushed; pytest `test_job_status_api`+`test_jobs_queue`+`test_parallel_migrations` → 12 passed; ruff clean; load probe all invariants green (~1.5k jobs/s enqueue+drain, embedded PG).
+- Decisions: path gating inside jobs (not triggers) so required checks never hang at Expected; skip = visible verdict.
+- Warnings: `main` still has NO branch protection — admin must set required checks (list in `docs/release/RELEASE_GATE_2026-10-24.md`). New jobs endpoint is shared backend surface — needs owner review.
+- Next: branch-protection config by repo admin; run `pilot-verify.yml` on the merge SHA.
+
 ### 2026-10-25 — Adam/Devin: rehearsal independently reproduced + e2e scare cleared
 
 - Did: re-ran the two-org rehearsal end-to-end on a fresh `make dev` boot with real
@@ -38,7 +54,6 @@ adds an entry before ending.
 - Still owner-gated for the HOSTED staging leg: `gh repo create
   adamissac/ari-pilot-rehearsal --private`, install the GitHub App on it, OAuth-login.
 
-
 ---
 
 ### 2026-10-24 — Devin (agent, Adam) — pilot-readiness ops: readiness split, worker heartbeats, restart/rollback evidence
@@ -51,15 +66,6 @@ adds an entry before ending.
 - Next steps: Adam sets OPS_API_TOKEN/POSTGRES_VOLUME_BYTES, reviews first dry-run report, flips RETENTION_DRY_RUN=false; re-measure after a cycle; size volume bump decision from real growth data.
 - Warnings: deleting rows does NOT shrink the Railway-reported volume (frees internal pages); `VACUUM FULL`/repack only after verified backup. Coordination note: `coordination/messages/20261024T235500Z-devin-to-all-postgres-storage-retention.md`.
 
-- Did: infrastructure audit for external-pilot readiness (branch `feat/adam/pilot-readiness-ops`). Added worker-heartbeat liveness (`worker_heartbeats` table, migration 0017, `WORKER_HEARTBEAT_INTERVAL_S`/`WORKER_LIVENESS_S`), split `/readyz` into infra readiness (db/queue/workers → `status` ready|degraded|not_ready, 503 unless ready) vs assessment capability (`capabilities` + `capabilities_ready`: llm.live, github.app_configured, sandbox.configured, artifact_store.writable, workers.alive), added `/diagnostics` (verified GitHub `GET /app`, sandbox sdk/daemon detail, alembic head vs `alembic_version`, queue counts, worker rows), `git_sha`+`schema_version` on `/healthz` (`DEPLOYED_GIT_SHA`/`RAILWAY_GIT_COMMIT_SHA`/`GIT_SHA`), schema 0.22.0, `READYZ_REQUIRE_WORKERS` (default on in staging/production). Frontend: `/api/frontend-version` + `deploy/verify_pair.sh` detect Vercel/Railway schema skew. Evidence harness `deploy/evidence/restart_recovery.py` (+`scripted_worker.py`) runs the real API/workers/migrations on a disposable pgserver stack with scripted transports: 6/6 PASS — SIGTERM drains the in-hand job to AWAITING_APPROVAL w/ checkpoint artifact on disk; SIGKILL → reclaim → honest FAILED (CONFLICT_STATE, never fabricated); human approval + fresh worker → checkpoint resume → COMPLETED; 2 racing workers → exactly-once + dedupe; downgrade→upgrade round-trip; pg_dump→psql restore → identical row counts (`deploy/evidence/last-run-evidence.json`). New `docs/deploy/PILOT_OPERATIONS.md` (topology, safe config checklist, recovery runbook); refreshed `docs/deploy/RAILWAY_AND_GITHUB_APP.md`, `docs/13_BACKEND_API_DESIGN.md`.
-- State of the code: `test_ops_readiness.py` 11/11 + `deploy-version.test.ts` 3/3 pass; evidence harness 7/7 (S1 drain, S2 honest-kill, S3 checkpoint resume, S4 exactly-once, S5 migration rollback, S6 backup/restore, S7 post-crash new assessment). Owner-requested hardening landed: `/diagnostics` is owner-authenticated only (401/403); public `/readyz` scrubs capability `detail` strings (env-var names); `worker_heartbeats.last_poll_at` (claim-loop-only) means a stopped claim loop cannot report as a live worker unless it holds a claimed job.
-- Decisions made: `READYZ_REQUIRE_WORKERS` defaults True in staging/production, off in dev; worker liveness = heartbeat fresh AND (last_poll_at fresh OR current_job_id). GitHub `verified` is a live `GET /app` with 60s cache, slug only. Sandbox check reports env-presence for `vercel` mode. `/diagnostics` gated on any org-owner membership (every dev-login user owns their personal org — the gate blocks unauthenticated probes).
-- Migration coordination RESOLVED: #535 merged first and kept `0016_tenant_rls_intelligence`; this branch renumbered to `0017_worker_heartbeats` (down_revision 0016) per the agreed rule in `coordination/messages/20261024T224500Z-adam-to-agent9-...md`. Codex's `0016_execution_reliability` still needs a renumber when it merges; its 0.23.0 embeds a different "0.22.0" — flagged there.
-- Assumptions / open questions: the only untested acceptance criterion is the ONE authorized real-model staging assessment — needs an authorized signed-in session + `LLM_MAX_USD_PER_ASSESSMENT=1` (Adam approved $1 cap) + active repo scope; scripted evidence uses `provider_mode="fake"` by design.
-- Next steps: land PR #533 (unmerged until security review + migration order + full CI + staging run per owner), run the real staging assessment, wire `deploy/verify_pair.sh` into a deploy hook.
-- Warnings for the next session: prod `/readyz` still serves the OLD response until this lands; `capabilities_ready=false` is a config signal, not an outage. Honest residual: a handler deadlocked mid-job still renews its lease — visible via `worker_rows[].last_poll_age_s` in `/diagnostics`, not via liveness.
-
-=======
 ### 2026-10-24 — Adam/Devin: pilot rehearsal executed end-to-end (13/13 PASS)
 
 - `scripts/rehearsal/run_rehearsal.py` rewritten to the real API shapes:
@@ -100,6 +106,7 @@ adds an entry before ending.
 - Assumptions / open questions: check transport `inprocess` only (no docker on this box → HTTP transport + container-kill test skipped, recorded as limitation).
 - Next steps: PR open for review; coordinate eval/backend finding-contract items with Agent 9 (eval score_api changes already landed on main via #516).
 - Warnings for the next session: live runs cost money — always gate behind `RUN_LIVE_LLM_EVAL` + explicit approval; `tests/artifacts/live/*` now contains real run artifacts, keep naming convention `<UTC ts>-<label>.json`.
+
 ### 2026-10-24 — Devin (agent, Adam) — pilot-readiness ops: readiness split, worker heartbeats, restart/rollback evidence
 - Did: infrastructure audit for external-pilot readiness (branch `feat/adam/pilot-readiness-ops`). Added worker-heartbeat liveness (`worker_heartbeats` table, migration 0017, `WORKER_HEARTBEAT_INTERVAL_S`/`WORKER_LIVENESS_S`), split `/readyz` into infra readiness (db/queue/workers → `status` ready|degraded|not_ready, 503 unless ready) vs assessment capability (`capabilities` + `capabilities_ready`: llm.live, github.app_configured, sandbox.configured, artifact_store.writable, workers.alive), added `/diagnostics` (verified GitHub `GET /app`, sandbox sdk/daemon detail, alembic head vs `alembic_version`, queue counts, worker rows), `git_sha`+`schema_version` on `/healthz` (`DEPLOYED_GIT_SHA`/`RAILWAY_GIT_COMMIT_SHA`/`GIT_SHA`), schema 0.22.0, `READYZ_REQUIRE_WORKERS` (default on in staging/production). Frontend: `/api/frontend-version` + `deploy/verify_pair.sh` detect Vercel/Railway schema skew. Evidence harness `deploy/evidence/restart_recovery.py` (+`scripted_worker.py`) runs the real API/workers/migrations on a disposable pgserver stack with scripted transports: 6/6 PASS — SIGTERM drains the in-hand job to AWAITING_APPROVAL w/ checkpoint artifact on disk; SIGKILL → reclaim → honest FAILED (CONFLICT_STATE, never fabricated); human approval + fresh worker → checkpoint resume → COMPLETED; 2 racing workers → exactly-once + dedupe; downgrade→upgrade round-trip; pg_dump→psql restore → identical row counts (`deploy/evidence/last-run-evidence.json`). New `docs/deploy/PILOT_OPERATIONS.md` (topology, safe config checklist, recovery runbook); refreshed `docs/deploy/RAILWAY_AND_GITHUB_APP.md`, `docs/13_BACKEND_API_DESIGN.md`.
 - State of the code: `test_ops_readiness.py` 11/11 + `deploy-version.test.ts` 3/3 pass; evidence harness 7/7 (S1 drain, S2 honest-kill, S3 checkpoint resume, S4 exactly-once, S5 migration rollback, S6 backup/restore, S7 post-crash new assessment). Owner-requested hardening landed: `/diagnostics` is owner-authenticated only (401/403); public `/readyz` scrubs capability `detail` strings (env-var names); `worker_heartbeats.last_poll_at` (claim-loop-only) means a stopped claim loop cannot report as a live worker unless it holds a claimed job.
@@ -115,7 +122,6 @@ adds an entry before ending.
 - Decisions: RLS scoped to the two source-content tables only (documented in doc §6); purge is operator-invoked, no TTL scheduler (documented gap).
 - Open: extend RLS fleet-wide needs per-request tenant GUC resolution — deferred; backups retention is deployment-level (documented).
 - Warnings: `test_repository_has_a_single_migration_head` expects head 0016 — next migration must update it to 0017.
-
 
 ### 2026-10-24 — Devin (agent, Adam) — pilot launch package + CONDITIONAL GO
 - Did: audited `main` (`d0131167`) and the hosted deployment (`readyz`: llm live, GitHub App + webhook configured) for pilot readiness; coordinated with the privacy workstream session for verified private-code data-flow facts; wrote the full pilot launch package under `docs/pilot/` (scope+exclusions, feature matrix, onboarding+revocation checklist, DATA_HANDLING draft, operations, metrics/health report, risk register, rehearsal+first-five plan, LAUNCH_DECISION).
@@ -1780,7 +1786,6 @@ No collection, first-responder training, promotion or enforcement follows merge.
 Remaining merge gate: final documentation head review/CI. Future numerical protocol
 and any collection require separate explicit owner approval. Historical source
 ancestry retained and v6 registry hash unchanged (see verification report).
-
 
 ## 2026-10-24 — Devin (Adam): agent-visibility UI + prod automation enabled
 
