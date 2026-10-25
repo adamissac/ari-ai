@@ -82,11 +82,13 @@ test('one real assessment from scope approval to verified patch', async ({ brows
   await expect(alice.getByTestId('stream-state')).toContainText('terminal state');
   // Honest provider labelling: scripted model turns are never presented as live.
   await expect(alice.getByTestId('provider-summary')).toContainText('Not a live-provider run');
-  // review + seven agents + the reviewer's functional repair + its independent Verify
-  await expect(alice.getByTestId('provider-summary')).toContainText('Test provider (scripted) × 9, Deterministic (no model call) × 1');
   for (const agent of ['reviewer', 'scout', 'probe', 'trace', 'diagnose', 'patch', 'verify', 'fortify']) {
     await expect(alice.getByTestId(`relay-${agent}`)).toHaveAttribute('data-status', 'done');
   }
+  // review + seven agents + the reviewer's functional repair + its independent Verify.
+  // Assert the full count only after every relay is done — the summary lags the
+  // final deterministic turn by a moment, so asserting earlier races it.
+  await expect(alice.getByTestId('provider-summary')).toContainText('Test provider (scripted) × 9, Deterministic (no model call) × 1');
   await expect(alice.getByTestId('relay-gate')).toHaveAttribute('data-status', 'passed');
   await expect(alice.getByTestId('relay-scout')).toContainText('Passed 1 suspicion to Probe.');
   // Selecting a relay tile opens that agent's recorded runs.
