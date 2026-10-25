@@ -1956,3 +1956,12 @@ selected run is still loading.
 - Merge waves belong to the integration lead; wave 2 includes my #542/#543.
 - Prod queue depth (~88 items) makes 45-case live eval slow — some cases may return `pending`/NOT_STARTED; rerun stragglers or extend deadlines.
 - Second-org real-provider leg needs owner's private repo + second GitHub org (account actions).
+
+## 2026-10-25 — Devin pilot-readiness lane: production rehearsal leg
+
+### Done
+- Production journey on `adamissac/pilot-rehearsal-target` (prod `git_sha` `0f311913`): live 9-agent assessment `asm_01M5RCVC20ZMYH8EKTZQP40W73` ($0.0294, 29.2 s sandbox) validated → patched → independently verified the planted IDOR; prod tenant isolation 34/34 → 404; non-superuser RLS drill; cancel, budget, scope-revoke drills pass; monitoring opt-out toggle persisted. Recorded in `docs/pilot/REHEARSAL_REPORT.md` Leg 7 + `LAUNCH_DECISION.md` (CONDITIONAL GO, customer 1 not yet recommended).
+
+### Outstanding
+- C9: `deliver_verified_patch` refuses redacted stored diffs (D1) — serve-time redaction fix with the delivery/redaction lane (session 2c9458c9), needs Adam's review; then re-run the repair leg to an open PR.
+- C10–C12: pilot automatic limits in Railway env, sandbox plan capacity, rotate Postgres password + disable public networking. Delete rehearsal users/orgs/sessions after the C9 re-run.

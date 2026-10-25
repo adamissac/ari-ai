@@ -1,7 +1,7 @@
 # Staging Rehearsal Report
 
-- **Rehearsal date:** 2026-10-24
-- **Code under test:** `adamissac/ari-ai` `main` @ `d0131167` (+ rehearsal test file on `docs/adam/pilot-launch` @ `c297b033` and later)
+- **Rehearsal date:** 2026-10-24 (local legs); production leg 2026-10-25 01:26–02:14 UTC
+- **Code under test:** local legs `main` @ `d0131167`; production leg Railway `readyz.git_sha` = `0f311913` (`main`, schema 0.22.0, migration head 0017)
 - **Environments:** (a) production — Railway API `ari-ai-production-76d4.up.railway.app` + Vercel frontend `ari-ai-lake.vercel.app` + real GitHub App + live Anthropic; (b) local real stack — FastAPI TestClient + real PostgreSQL + in-process worker + scripted `FakeTransport`.
 - **Honesty rule (per Adam):** each stage is labelled `live Claude` / `scripted` / `sandbox` / `real I/O`. Nothing skipped is claimed as passed.
 
@@ -11,12 +11,13 @@
 |---|---|---|---|
 | 1 | Tenant isolation (cross-org ID substitution) | Local real stack | **PASS** — 34 probes, uniform 404, no existence leak |
 | 2 | Real execution / labelling | Local + prod | **PASS** — live leg executed: every agent run `provider_mode=live`; scripted stages labelled |
-| 3 | GitHub safety (PR/manual only, scoped write tokens, no auto-merge) | Code audit + prod | **PASS (code-verified)**; prod fix-PR delivery pending |
-| 4 | Monitoring: opt-in controls, limits, cancel, budget caps | Local + code | **PASS** |
+| 3 | GitHub safety (PR/manual only, scoped write tokens, no auto-merge) | Code audit + prod | **PASS for no-merge/no-deploy** (prod `main` unchanged after the repair leg). **FAIL for fix-PR delivery** — delivery refused, see Leg 7 D1 |
+| 4 | Monitoring: opt-in controls, limits, cancel, budget caps | Local + prod | **PASS** — prod cancel, budget, scope-revoke drills; opt-out toggle persisted (no push event landed in the window — behaviour evidence is the local leg) |
 | 5 | Defense Lab: recommendation-only | Code + tests | **PASS** |
-| 6 | Data privacy: storage, provider processing, artifacts, deletion | Local + code | **PASS (documented)** — operator-run procedure verified |
-| 7 | Reliability: failure recovery, persistence, restarts, UI errors | Local + suite | **PASS** |
-| P1 | Prod journey: install → connect → index → live assessment → fix PR → verify | Prod | **BLOCKED — awaiting rehearsal repo + owner browser sign-in** |
+| 6 | Data privacy: storage, provider processing, artifacts, deletion | Local + code + prod RLS | **PASS (documented)** — prod RLS verified with a non-superuser role |
+| 7 | Reliability: failure recovery, persistence, restarts, UI errors | Local + prod | **PASS with findings** — prod outage recovered; UI showed accurate `SUBSYSTEM_UNAVAILABLE`; see D2–D4 |
+| P1 | Prod journey: install → connect → index → live assessment → findings → repair → verify → results | Prod | **PASS through independent Verify; FAIL at fix-PR delivery (D1, pilot-blocking)** |
+| P2 | Prod tenant isolation (org B substitutes org A's real IDs) | Prod | **PASS** — 34/34 reads+mutations → 404 |
 
 ## Leg 1 — Two-org isolation (real stack, scripted LLM)
 
@@ -125,33 +126,110 @@ transcript artifact of the live run. Known caveat: live runs need
 `VERCEL_TOKEN` + `VERCEL_PROJECT_ID` + `VERCEL_TEAM_ID` env for the sandbox
 driver (prod supplies these; the test documents the requirement).
 
-## Leg 7 — Production journey (LIVE)
+## Leg 7 — Production journey (LIVE, executed 2026-10-25)
 
-**Status: blocked pending owner setup** (requested 2026-10-24; session-cookie
-sharing declined by owner — replaced with the authenticated-browser path below).
+**Environment:** Railway API `ari-ai-production-76d4.up.railway.app`
+(`readyz`: database ✓ queue ✓ 12 workers, llm `live` `claude-haiku-5-5`,
+sandbox `vercel`, artifact store writable, GitHub App + webhook secret
+configured, `git_sha` `0f311913`). Target: private
+`adamissac/pilot-rehearsal-target` (ledgerlite, planted CWE-639), Ari GitHub
+App installed with Contents RW + Pull requests RW + Metadata read.
 
-Prepared target (ready to push): `ledgerlite` FastAPI service with a planted
-access-control defect (`GET /accounts/{id}` lacks the ownership check) so the
-`access_control.ownership` template can validate end-to-end; 6 unit tests pass
-locally at `/Users/devin/repos/pilot-rehearsal-target`.
+**Identities (owner-approved plan B):** the owner's browser session could not
+be used (Desktop tab not interactive), so two rehearsal users/orgs were minted
+server-side in the production DB using the same session-row mechanism OAuth
+uses — `rehearsal-alice` (org A, added as owner of the project's org) and
+`rehearsal-eve` (independent org B). No owner cookie or credential was
+requested or used. Requests sent `X-CSRF-Token` from `GET /api/v1/me`.
 
-**Owner setup actions (unchanged):**
-1. Create GitHub repo `adamissac/pilot-rehearsal-target` — private, empty (no
-   README/license).
-2. Install the Ari GitHub App on it (or confirm the install already covers it).
-   Minimum permissions for the full journey: **Contents read+write** (indexing +
-   fix-PR delivery), **Pull requests read+write** (fix PR), **Metadata read**.
-   A read-only install (Contents read + Metadata read) supports only the
-   index/assess legs — the fix-PR leg would be skipped and reported untested.
-3. Authenticate the rehearsal browser: open this session's **Desktop tab** and
-   click SIGN IN → GitHub OAuth on the live VM browser. The session cookie
-   stays inside the browser; it is never typed, extracted, or stored as text.
-   (Alternative: an approved test-user GitHub login, same flow.)
-4. Then the rehearsal drives the real UI journey in-browser — connect repo →
-   index → live assessment → findings → approval → fix PR → verify → results.
-   API-level probes (cancel, cross-ID checks) run via in-page `fetch` so the
-   cookie never leaves the browser. Org-B probes on prod need a second GitHub
-   login; without one, cross-tenant evidence remains the local leg's.
+### Journey
+
+| Step | Evidence | Result |
+|---|---|---|
+| App install + connect | repo `rep_01M5R7RNZCJP4NVF6MRC0RC46M`, project `prj_01M55VPRZP4SY423ETVF3K3TBW` | PASS |
+| Build-recipe PR | Ari opened [pilot-rehearsal-target#1](https://github.com/adamissac/pilot-rehearsal-target/pull/1) (`build_recipe.json`, drafted with Claude, flagged the planted route honestly). Merged 00:40:38Z under the App identity (`ari-security[bot]`) by a development-agent session holding the App key — **not** product code (no merge API call exists in `backend/` or `security-agents/`). Which session is not provable from GitHub; installation-token issuance is the audit trail | PASS (operator action recorded) |
+| Scope | `scp_01M5R7S1M769KA3ZESGXRZSWVK` active, `sandbox_build`, 3 check categories, owner-approved | PASS |
+| Index @ `53851a4` (first try) | `snp_01M5RATJZT1HG804SVAFM6BJRY` FAILED `SUBSYSTEM_UNAVAILABLE: code_intelligence.api:build_service failed to initialize … Set INTELLIGENCE_REPOSITORIES_FILE …` during the outage window (D3) | FAIL → recovered |
+| Assessment @ `53851a4` (pre-recipe commit) | `asm_01M5RCNXY6CTM8S8S3MDQ6ZFBD` COMPLETED, 4 live runs, **$0.014881**, 3.3 s sandbox. Planted IDOR reported `inconclusive`: Probe stated the recipe's route ids/identities were unavailable and "I did not guess parameter values" | PASS (honest inconclusive) |
+| Assessment @ `7cf48de` (recipe merged) | `asm_01M5RCVC20ZMYH8EKTZQP40W73` COMPLETED; **9 runs, all `provider_mode=live`** (scout, reviewer, probe×2, trace, diagnose, patch, verify, fortify); **$0.029415**, 30 LLM calls, 59 tool calls, **29.2 s real Vercel sandbox** | PASS |
+| Finding lifecycle | `fnd_01M5RCVZQ51J9XM65P4VM6BVNZ`: hypothesis → **validated** ("probe confirmed via access_control.ownership") → diagnosed → patch_proposed → **verified** ("independent Verify accepted") → hardened. Four other findings stay `hypothesis`/`inconclusive` and are labelled so | PASS |
+| Repair | `pat_01M5RCXK2DXWZZCZ7NEC91KVFE`: one-condition ownership check in `ledgerlite/app.py` + new `tests/test_get_account_ownership.py` | PASS |
+| Independent Verify | `ver_01M5RCY0DX9CTXZTFZCM04MXDZ` verdict **accepted**: `diff_scope_ok`, `no_test_tampering`, `original_check_now_fails_to_reproduce`, `functional_suite_passes`, `generated_tests_pass` — each with a sandbox/tool artifact | PASS |
+| Approval | `apv_01M5RCX247KZGRRK43F6G8TZQY` "auto delivery: pre-approved by the project owner" — this owner project runs `delivery_mode=auto`; pilot orgs must not (C2) | PASS (as configured) |
+| Fix-PR delivery | `job_01M5RCY0HPR2EE47YVK8VSMXKK` `deliver_verified_patch` **FAILED** `CONFLICT_STATE: the stored diff was redacted; Verify tested different bytes` — see **D1**. No PR opened; `main` still `7cf48de`; nothing merged or deployed | **FAIL (fail-closed)** |
+| Result retrieval | `/assessments/{id}/report`, `/projects/{id}/findings`, `/findings/{id}/patches`, `/artifacts/{id}` all 200 for org A | PASS |
+
+### Tenant isolation on production (org B → org A)
+
+`rehearsal-eve` replayed 34 reads and mutations using org A's **real** IDs
+(project, repo, scope, snapshot, assessments, runs, events, report, findings,
+patches, artifacts, jobs, approvals) plus fabricated IDs, including
+`POST …/assessments`, `…/cancel`, `/scopes/{id}/revoke`: **34/34 → 404
+`NOT_FOUND`** (no existence leak). `GET /audit?project_id=<A>` as Eve → 404.
+Org A's scope remained `active` after Eve's revoke attempt.
+
+### RLS on production (non-superuser)
+
+Migration head `0017`. `index_payloads` and `index_snapshots` have `FORCE ROW
+LEVEL SECURITY` + policy `tenant_isolation` on `ari.project_id`. A throwaway
+non-superuser role saw 0 rows without tenant context, only the scoped
+project's rows with it, 0 rows for a fake project, and writes were denied.
+Probe role revoked and dropped afterwards.
+
+### Operations drills on production
+
+| Drill | Evidence | Result |
+|---|---|---|
+| Cancel running assessment | `asm_01M5RD308T0RER91FNMQ0JGP0Q` cancelled in RECON → `CANCELLED`, $0.00, no runs; second cancel → 409 `CONFLICT_STATE` | PASS |
+| Budget enforcement | `asm_01M5RD406NQC4GRRT48N64ANNY` with `max_usd=0.002` → `BUDGET_EXHAUSTED` "USD budget 0.002 exceeded" at $0.002388 (overshoot = one in-flight call) | PASS |
+| Scope revoke | `scp_01M5RD3YN9JH9V652ATKS93GKV` created → approved → revoked; new assessment on it → 403 `SCOPE_DENIED` | PASS |
+| Monitoring opt-out / opt-in | `monitoring_policy.enabled` false 02:10:07Z → true 02:13:27Z, settings restored byte-identical; 0 monitoring assessments in the window, but no push to a connected repo arrived in it, so the suppression path itself is evidenced by the local leg only | PARTIAL |
+| Automatic limits | 499 monitoring assessments / 24 h on `adamissac/ari-ai` (the team's own repo), every one a distinct SHA; per-hour count plateaus at exactly 60 → hourly cap enforced, but at a value above the code default (5/h, 20/day) — **inferred** env override (D4) | PASS (enforced) / config finding |
+| Cost | Rehearsal total **$0.0443** (2 assessments) + $0.0024 budget drill. Org-wide monitoring spend last 24 h: **$17.16** (499 runs, max $0.40/run, cap $3/run) | Recorded |
+
+### Production findings
+
+- **D1 — Verified fix cannot be delivered when the diff contains credential-shaped text (pilot-blocking for fix delivery).**
+  Patch's generated test inlined the fixture bearer tokens; the stored diff
+  (`art_01M5RCXK2V4Q6WXAHDCB87CG9Y`) is redacted to `[REDACTED:bearer]`;
+  Verify records `redacted: true` with differing hashes (`host_adapter.py`),
+  and `delivery._unverified_bytes` refuses. The refusal is correct (never
+  deliver bytes Verify did not test, never persist secrets), but the journey
+  ends without a PR. Fix direction is a trust-boundary decision — handed to
+  the delivery/redaction lane for authorized review.
+- **D2 — Outage 01:26–~02:00Z.** Postgres restarted cleanly at 01:26:51Z and
+  was ready in 3 s; the API/worker returned 502/503 until redeployed. The
+  frontend showed the accurate "The API is restarting" error throughout.
+  Root cause of the API not reconnecting is **not established** (Agent-service
+  logs not captured). Separately, 14 assessments between 2026-10-23 11:12Z
+  and 2026-10-24 18:14Z failed `CONFLICT_STATE: paused orchestrator state was
+  lost (worker restarted…)` — honest, but a paused run does not survive a
+  worker restart.
+- **D3 — Code-intelligence configuration undocumented for Railway.** The
+  failed snapshot shows `build_service` running without
+  `INTELLIGENCE_REPOSITORIES_FILE` + a persistence option. After recovery,
+  indexing worked, so the running deployment evidently has a valid
+  configuration, but `deploy/railway/start.sh` and
+  `docs/deploy/RAILWAY_AND_GITHUB_APP.md` do not set or list these variables.
+  Not reproduced; recorded so the next redeploy is checked.
+- **D4 — Production automatic-assessment limits above pilot values (inferred).**
+  Set `AUTOMATIC_ASSESSMENTS_PER_HOUR`/`_PER_DAY`/`AUTOMATIC_USD_PER_DAY` to
+  pilot values before customer 1.
+- **D5 — Sandbox plan quota.** 19 earlier assessments failed
+  `SandboxApiError: HTTP 402: Hobby plan usage limit exceeded` (snapshot
+  storage / usage). Pilot capacity needs a paid sandbox plan or a hard cap.
+- **D6 — Credential hygiene.** The production Postgres public URL was pasted
+  into chat during setup; rotate the password and disable public networking
+  after the rehearsal. The rehearsal users/orgs/sessions (and Alice's
+  membership in the owner org) were written directly to the production DB —
+  delete them (sessions → memberships → users) once C9's re-run is done, and
+  confirm `APP_ENV=production` with dev-login disabled.
+
+Evidence files (operator machine, not committed — contain tenant IDs):
+`prod_report.json`, `prod_asm2_report.json`, `prod_findings.json`,
+`prod_patch_diff.txt`, `prod_patch_verification.json`, `prod_eve_probes.txt`,
+`prod_drill_cancel_revoke.txt`, `prod_drill_monitoring_optout.txt`,
+`prod_cost_ops.txt`.
 
 ## Open findings for the launch decision
 
@@ -168,15 +246,9 @@ locally at `/Users/devin/repos/pilot-rehearsal-target`.
    ID-substitution drill.
 4. **Assistant-role turns are re-sent unredacted** to the provider (thinking-block
    signature constraint) — disclosed; mitigated by inbound redaction.
-5. **Prod leg not yet executed** — this report is CONDITIONAL until Leg 7 lands.
-6. **PR #535 (RLS + `purge_project`) MERGED to `main` (08114692)** — RLS +
-   `purge_project` are now on `main`; verify the Railway deploy picked up
-   migration 0016 (`readyz` + a tenant drill post-deploy) before relying on
-   them in prod. Post-deploy drill note: RLS verification needs a
-   **non-superuser** DB role — superusers bypass FORCE policies;
-   `test_rls_blocks_reads_without_tenant_context` is the probe-role pattern.
-7. **`jobs.last_error.message` leaks raw exception text to project members**
-   (Agent-2 finding): `f"{type(exc).__name__}: {exc}"[:500]` is served via
-   `GET /projects/{id}/jobs` — could carry secret fragments. The #530 agent is
-   landing storage-boundary sanitization in `backend/redaction.py`; pilot
-   condition until merged.
+5. **Prod leg executed (Leg 7)** — journey passes through independent Verify;
+   fix-PR delivery fails closed (D1). D2–D6 recorded above.
+6. **PR #535 (RLS + `purge_project`)** — merged and verified on production
+   (migration head 0017, non-superuser RLS drill passed).
+7. **`jobs.last_error` redaction** — #530 merged; `jobs.py` stores
+   `last_error=redact(...)` on `main` @ `0f311913`, which production runs.
