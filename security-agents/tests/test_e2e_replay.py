@@ -2070,6 +2070,63 @@ def test_unmappable_pinned_pytest_config_path_fails_closed(
             id="pytest-hook-name-in-tuple-target",
         ),
         pytest.param(
+            "ordinary, *(pytest_x,) = (None, drop)\n",
+            True,
+            id="hook-name-starred-tuple-target",
+        ),
+        pytest.param(
+            "if True:\n    pytest_x.__code__ = drop.__code__\n",
+            True,
+            id="hook-attribute-write-in-if",
+        ),
+        pytest.param("(pytest_x := drop)\n", True, id="hook-walrus-target"),
+        pytest.param(
+            "for pytest_x in [drop]:\n    pass\n",
+            True,
+            id="hook-for-target",
+        ),
+        pytest.param(
+            "with manager as pytest_x:\n    pass\n",
+            True,
+            id="hook-with-target",
+        ),
+        pytest.param(
+            "try:\n    pass\nexcept Exception as pytest_x:\n    pass\n",
+            True,
+            id="hook-except-target",
+        ),
+        pytest.param("del pytest_x\n", True, id="hook-name-delete"),
+        pytest.param(
+            "from pkg.impl import drop as pytest_x\n",
+            True,
+            id="hook-import-alias",
+        ),
+        pytest.param(
+            "object.__setattr__(pytest_x, '__code__', drop.__code__)\n",
+            True,
+            id="object-setattr-hook",
+        ),
+        pytest.param(
+            "def _install():\n    pytest_x.__code__ = drop.__code__\n_install()\n",
+            True,
+            id="hook-attribute-write-in-called-function",
+        ),
+        pytest.param(
+            "def _install():\n    setattr(pytest_x, '__code__', drop.__code__)\n_install()\n",
+            True,
+            id="setattr-hook-in-called-function",
+        ),
+        pytest.param(
+            "def _install():\n    global pytest_x\n    pytest_x = drop\n_install()\n",
+            True,
+            id="global-hook-binding-in-function",
+        ),
+        pytest.param(
+            "match value:\n    case _:\n        pytest_x = drop\n",
+            True,
+            id="hook-binding-in-match-body",
+        ),
+        pytest.param(
             "pytest_collection_modifyitems.__code__ = drop.__code__\n",
             True,
             id="hook-code-attribute-write",
@@ -2118,6 +2175,21 @@ def test_unmappable_pinned_pytest_config_path_fails_closed(
             "import importlib\nimportlib.import_module('_pytest_support')\n",
             False,
             id="dynamic-pytest-support-import",
+        ),
+        pytest.param(
+            "cache[pytest_key] = 1\n",
+            False,
+            id="pytest-name-used-only-as-subscript-index",
+        ),
+        pytest.param(
+            "def f():\n    pytest_local = 1\n",
+            False,
+            id="local-pytest-name",
+        ),
+        pytest.param(
+            "C.pytest_like = 1\n",
+            False,
+            id="ordinary-attribute-root",
         ),
         pytest.param("obj.attr = 1\n", False, id="ordinary-attribute-write"),
         pytest.param("runner = __import__('pluggy')\n", True, id="builtin-pluggy-import"),
@@ -2272,42 +2344,68 @@ def test_rootdir_subdirectory_uses_tox_pytest_section_checks(tmp_path: Path) -> 
 def test_rootdir_symlinked_pyproject_checks_resolved_target(
     patched_text: str,
     expected_tampered: bool,
+    intel: LocalIntel,
+    tmp_path: Path,
+) -> None:
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+
+    variant = _variant_intel(
+        intel,
+        tmp_path,
+        recipe_changes={"test_command": ["-q", "--rootdir", "sub", "tests"]},
+    )
+    snapshot_root = variant.snapshot.root
+    target = snapshot_root / "settings" / "project-settings.toml"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    original_text = '[tool.pytest.ini_options]\naddopts = "-q"\n[project]\ndependencies = ["base"]\n'
+    target.write_text(original_text, encoding="utf-8")
+    pyproject = snapshot_root / "sub" / "pyproject.toml"
+    pyproject.parent.mkdir(parents=True, exist_ok=True)
+    pyproject.symlink_to("../settings/project-settings.toml")
+    candidate_root = fresh_checkout(variant.snapshot, tmp_path / "candidate")
+    (candidate_root / "settings" / "project-settings.toml").write_text(
+        patched_text,
+        encoding="utf-8",
+    )
+    changed_path = "settings/project-settings.toml"
+    diff = unified_diff(snapshot_root, candidate_root, [changed_path])
+
+    facts, ctx = _apply_fresh_diff(variant, tmp_path, diff, [changed_path])
+
+    if expected_tampered:
+        assert changed_path in facts["tampered_protected_tests"]
+        _assert_apply_fresh_tampering_rejected(facts, ctx)
+    else:
+        assert facts["tampered_protected_tests"] == []
+
+
+@pytest.mark.boundary
+def test_root_conftest_is_flagged_when_section_checked_config_is_symlink_target(
     tmp_path: Path,
 ) -> None:
     from security_agents.sandbox.workspace import unified_diff
     from security_agents.tools import PatchApplier
 
     snapshot_root = tmp_path / "snapshot"
-    (snapshot_root / "sub").mkdir(parents=True)
-    (snapshot_root / "settings").mkdir()
+    snapshot_root.mkdir()
     (snapshot_root / "build_recipe.json").write_text(
-        json.dumps(
-            {
-                "test_roots": ["tests"],
-                "test_command": ["-q", "--rootdir", "sub", "tests"],
-            }
-        ),
+        json.dumps({"test_roots": ["tests"], "test_command": ["-q", "tests"]}),
         encoding="utf-8",
     )
-    target = snapshot_root / "settings" / "project-settings.toml"
-    original_text = '[tool.pytest.ini_options]\naddopts = "-q"\n[project]\ndependencies = ["base"]\n'
-    target.write_text(original_text, encoding="utf-8")
-    (snapshot_root / "sub" / "pyproject.toml").symlink_to("../settings/project-settings.toml")
+    (snapshot_root / "conftest.py").write_text(
+        'pytest_plugins = ["company_checks"]\n',
+        encoding="utf-8",
+    )
+    (snapshot_root / "pyproject.toml").symlink_to("conftest.py")
+
     patched_root = tmp_path / "patched"
-    shutil.copytree(snapshot_root, patched_root, symlinks=True)
-    (patched_root / "settings" / "project-settings.toml").write_text(
-        patched_text,
-        encoding="utf-8",
-    )
-    changed_path = "settings/project-settings.toml"
-    diff = unified_diff(snapshot_root, patched_root, [changed_path])
+    shutil.copytree(snapshot_root, patched_root, symlinks=False)
+    (patched_root / "conftest.py").write_text("pytest_plugins = []\n", encoding="utf-8")
+    diff = unified_diff(snapshot_root, patched_root, ["conftest.py"])
 
     tampered = PatchApplier._tampered_runner_config(diff, snapshot_root, patched_root)
 
-    if expected_tampered:
-        assert changed_path in tampered
-    else:
-        assert tampered == []
+    assert "conftest.py" in tampered
 
 
 @pytest.mark.boundary

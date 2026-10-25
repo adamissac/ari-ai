@@ -16,6 +16,63 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-25 — Devin (agent, Adam) — Verify hook binding and symlink follow-ups (#629)
+- Did: replaced the pytest target walker with a context-aware binding scan for
+  `pytest_*` names, imports, global stores, and hook-rooted attribute/subscript
+  writes, `setattr`, and `del`. Kept local names and index-only reads accepted.
+  Continued Python/conftest checks for section-config targets and compared
+  linked config target contents using the logical config parser through
+  `apply_fresh`.
+- State of the code: `origin/main` through `e41c9dc2` is integrated. Its
+  `security_agents/intel/host_service.py` snapshot retry change is unrelated to
+  the Verify changes; the later main update to `coordination/status/ADAM.md` is
+  also retained. The only merge conflict was `SESSION_HANDOFF.md`; retained
+  main's handoff entries and the branch's Verify entry.
+- Commands run and results: baseline at `99f9ebf9` — 11 failed, 22 passed,
+  175 deselected (`/Users/devin/.devin-files/verify-hook-binding-symlink-red-99f9ebf9.log`);
+  narrow replay suite — 211 passed; backend selector — 123 passed, 4 skipped,
+  689 deselected; full security-agents suite — 792 passed, 24 skipped;
+  Ruff check and format check passed.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: create one canonical no-trailer merge commit, audit identity, and
+  push `fix/adam/verify-hook-attribute-writes`; do not monitor CI until re-briefed.
+- Warnings for the next session: no PR was opened and no post-push CI checks were run.
+
+### 2026-10-26 — Devin (agent, Adam) — protect retention references and destructive ops
+- Did: expanded snapshot protection to findings, memory, decisions, active assessments/jobs, and (by default) all assessment references; added per-snapshot locking/rechecks, assessment binding locks, plan digests, and a separate destructive-maintenance token.
+- State of the code: implemented on `fix/adam/retention-protect-references`; production `RETENTION_DRY_RUN=true` is unchanged. No PR was opened.
+- Commands run and results: `uv run pytest -q backend/tests/test_maintenance.py` — 25 passed;
+  the related backend selection — 48 passed, 4 skipped, 498 deselected, with one
+  existing SQLAlchemy deprecation warning; Ruff check passed and 8 files are formatted.
+  Targeted mypy reports 8 diagnostics in `backend/host.py`, `backend/maintenance.py`,
+  and `backend/api/routes.py`; it reports none in the new settings, ops, binding helper,
+  or host-service retry paths.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: review the pushed branch and handle CI separately.
+- Warnings for the next session: production measurements in the storage runbook are owner-provided (“measured 2026-10-25”), not independently re-read.
+
+### 2026-10-25 — Devin (agent, Adam) — console commit-history overlay and assessment-count accessibility
+- Did: diagnosed the “2 Issues” Next dev badge on commit history as nested anchors: the whole commit row was a `Link`, and `CommitAssessmentChip` rendered another `Link` inside it. Restructured the row so commit details, SHA navigation, and assessment navigation are sibling links. The additional-assessment count now has singular/plural title and accessible name; unknown assessment states omit the chip.
+- State of the code: the console page now has no hydration warnings or Next overlay issues on `:3102`; comparing `:3101` confirmed the warnings were caused by this branch's nested link.
+- Commands run and results: the two affected unit files passed — 2 files, 10 tests; `npm run typecheck --prefix frontend` passed; `npm run lint --prefix frontend` passed with the existing `first-responder.tsx:173` warning. Playwright on `:3102` verified zero commit-history console errors and `data-error=false` at both viewports. Commit-detail on both `:3101` and `:3102` produced the same pre-existing `POST /api/analyze` 503 and no overlay issue.
+- Screenshots: refreshed `/home/ubuntu/research/console/shots/commit-history-1440x900.png` and `/home/ubuntu/research/console/shots/commit-history-390x844.png`; both show no issues badge.
+- Decisions made (ADR links): none.
+- Assumptions / open questions: the identical `POST /api/analyze` 503 on both worktrees is outside this change; left it untouched as requested.
+- Next steps: commit, run synchronization checks, confirm the outgoing commit has zero co-author trailers, then push.
+- Warnings for the next session: do not confuse the Next dev toolbar “N” icon with an issues badge.
+
+### 2026-10-25 — Devin (agent, Adam) — console refinement (`feat/adam/console-graphite`)
+- Did: replaced the redundant non-home user bar with a keyboard-accessible real-session account menu; added mobile project-rail disclosure, CSS status marks, compact action radii and assessment metadata; linked connected-repository commit rows to matching assessments; kept `UserBar` on the landing page and made reveal content visible for reduced motion.
+- State of the code: implementation is on `feat/adam/console-graphite`; no backend, shared, or transport files changed. Section 6 investigation found a reveal/screenshot-capture artifact: below-fold project Runs & Replay and assessment phases/steps were hidden before scrolling and populated after scrolling, with no persistent layout-height defect. Reduced-motion `Reveal` now skips observation.
+- Commands run and results: `npm run lint --prefix frontend` — 0 errors, 1 pre-existing warning in `components/live-defense/first-responder.tsx:173`; `npm run typecheck --prefix frontend` passed; `npm test --prefix frontend` — 91 files, 391 tests passed; `NEXT_PUBLIC_DEV_LOGIN=1 BACKEND_ORIGIN=http://127.0.0.1:59039 npm run build --prefix frontend` passed. E2E: `E2E_SKIP_BUILD=1 /home/ubuntu/repos/ari-ai/.venv/bin/python tests/e2e/stack.py tests/e2e/journey.spec.ts tests/e2e/interface.spec.ts tests/e2e/commit-workspace.spec.ts tests/e2e/honesty.spec.ts tests/e2e/pages.spec.ts tests/e2e/brand.spec.ts --workers=1` — 20 passed, 1 failed. `brand.spec.ts` timed out clicking the hidden landing nav link “Projects”; current landing contract exposes “Go to projects” and the link was absent from the page snapshot. The console change does not touch the landing or site-navigation implementation.
+- Screenshots: Section 6 before-scroll evidence is in `/home/ubuntu/research/console/shots/section6-{project-runs-area,assessment-phases-area,assessment-steps-area}-{1440x900,390x844}-before.png`. Console after screenshots (10 routes × 2 viewports) are in `/home/ubuntu/research/console/shots/`.
+- Decisions made (ADR links): none.
+- Assumptions / open questions: the single brand E2E failure appears to be a stale landing selector, but was not changed as part of console refinement.
+- Next steps: review the pushed branch; resolve the stale `brand.spec.ts` selector separately if desired.
+- Warnings for the next session: the local `:3102` console dev server uses the seeded scripted-transport stack; assessment records are not live-model results. The onboarding `:3101` and existing stack shells were left untouched.
+
 ### 2026-10-26 — Devin (agent, Adam) — preserve impact-gated reviewer monitoring (#593)
 - Did: restored `origin/main`'s impact/correlation/quota/reassessment path while adding one shared reviewer-eligibility gate before either impact processing or the per-commit scheduler. Quoted-empty and sole `*` global settings route to impact monitoring. Added filter coverage for both routes and an impact-path pull-request comment test using the reassessment request's event IDs.
 - State of the code: both routes use `reviewer_ignore_reason`; ignored events are recorded before impact work. Impact-created PR assessments enqueue a deduplicated review and resolve the PR number from their triggering monitoring event.
@@ -2074,3 +2131,16 @@ remains OFF pending manual installation and protected credential/session setup.
   full security-agents suite: 775 passed, 24 skipped.
 - Ruff check, Ruff format check, and `git diff --check` passed.
 - No PR was opened and CI was not monitored, as requested.
+
+## 2026-10-25 — Adam: onboarding readiness and setup clarity
+
+- On `feat/adam/onboarding-graphite`, recipe readiness now validates and scans up to four
+  500-event audit pages, distinguishing a complete no-result from a truncated 2,000-event
+  search. Step 7 now separates repository automatic assessments from push/PR event filters,
+  and completed stepper entries show a DONE marker.
+- Verification: transport tests 36/36; frontend tests 89 files / 375 tests; lint (0 errors,
+  one existing warning); typecheck; production build; and stack.py interface,
+  commit-workspace, and journey specs (5/5). The stepper test and typecheck also passed
+  after a final strict-TypeScript assertion refinement.
+- Recaptured setup steps 3 and 7 at 1440×900 and 390×844 in
+  `~/research/onboarding/shots/`. The existing `:3101` development server remained available.

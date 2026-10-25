@@ -146,11 +146,14 @@ sandbox environment is scrubbed and transcripts pass through the redactor.
   named by pinned literal `pytest_plugins` declarations in conftests and Python
   files under test roots, `-p` addopts, or pytest11 entry points are also
   protected. Changed non-test-root Python files are checked for new or modified
-  pytest hook definitions, hookimpl decorators, module-level `pytest_*`
-  assignments, `_pytest` / pluggy imports including literal dynamic imports,
-  and `pytest_plugins` assignments. Packaging settings in `setup.py` are not
-  semantically inspected, but `setup.py` is covered by the changed-Python-file
-  hook, import, and `pytest_plugins` scan.
+  pytest hook definitions, hookimpl decorators, context-aware `pytest_*`
+  bindings (including imports and global stores), writes rooted at `pytest_*`
+  attributes or subscripts, `_pytest` / pluggy imports including literal
+  dynamic imports, and `pytest_plugins` assignments. Function-local names and
+  subscript index names are not treated as bindings. Attribute/subscript writes
+  and `setattr` roots are checked throughout function bodies. Packaging settings
+  in `setup.py` are not semantically inspected, but `setup.py` is covered by
+  the changed-Python-file hook, import, and `pytest_plugins` scan.
 - **Known limitation:** a pre-existing path under a recipe test root longer
   than 400 characters is rejected by `safe_rel_path`; Verify fails closed and
   rejects every patch for that repository. The longest tracked paths currently

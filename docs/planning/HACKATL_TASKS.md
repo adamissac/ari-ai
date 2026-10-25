@@ -71,7 +71,7 @@ acceptance criteria are the minimum for `DONE` in addition to
 | SEC-007 | Probe agent | security-agents/ | FR-2-02 | SEC-001, SEC-005 | Alan | IN_REVIEW | Confirms planted, refutes non-planted fixture hypothesis |
 | SEC-008 | Trace agent + deterministic severity function | security-agents/ | FR-2-03 | SEC-001 | Alan | IN_REVIEW | All steps labeled; severity factors cited |
 | SEC-009 | Diagnose agent | security-agents/ | FR-2-04 | SEC-001 | Alan | IN_REVIEW | Root cause span matches fixture label |
-| SEC-010 | Verify agent + deterministic verdict rules | security-agents/ | FR-2-06 | SEC-001, SEC-003, SEC-004 | Alan | IN_REVIEW | SB-08, SB-09 pass; detects planted bad patches; #626 follow-up covers hook-rooted attribute/subscript writes, inert invalid fixtures, symlink-target config sections, and fail-closed read/walk errors |
+| SEC-010 | Verify agent + deterministic verdict rules | security-agents/ | FR-2-06 | SEC-001, SEC-003, SEC-004 | Alan | IN_REVIEW | SB-08, SB-09 pass; detects planted bad patches; #626 follow-up covers hook-rooted attribute/subscript writes, inert invalid fixtures, symlink-target config sections, and fail-closed read/walk errors; #629 follow-up adds context-aware binding collection and checks linked config target content through fresh checkouts |
 | SEC-011 | Patch agent (worktree) | security-agents/ | FR-2-05 | SEC-001, SEC-003 | Alan | IN_REVIEW | Produces diff within plan scope; local tests run |
 | SEC-012 | Orchestrator state machine + gates (IC-2 with fake agents) | security-agents/, backend/ | FR-P-05 | CORE-006, CORE-007, SEC-001 | Alan | IN_REVIEW | All transitions tested incl. cancel/fail/budget; SB-07 passes |
 | SEC-013 | Fortify agent + regression test promotion | security-agents/ | FR-2-07 | SEC-001 | Alan | IN_REVIEW | Every verified finding gets ≥ 1 RegressionTest |
@@ -97,7 +97,7 @@ acceptance criteria are the minimum for `DONE` in addition to
 
 | ID | Title | Dir | Reqs | Depends on | Owner | Status | Acceptance criteria |
 |---|---|---|---|---|---|---|---|
-| UI-002 | Project/repo connect + scope request/approve screens | frontend/ | FR-P-02, FR-P-03 | UI-001, CORE-005, CORE-007 | UNASSIGNED | BLOCKED | Flows work against local API |
+| UI-002 | Project/repo connect + scope request/approve screens | frontend/ | FR-P-02, FR-P-03 | UI-001, CORE-005, CORE-007 | Adam | IN_REVIEW | Seven-step onboarding works against the local API; recipe readiness pages through audit events; automatic-review settings are distinguished from push/PR filters |
 | UI-003 | Live assessment timeline (SSE) | frontend/ | — | UI-001, CORE-006 | UNASSIGNED | BLOCKED | Reflects real states; reconnects |
 | UI-004 | Finding detail with evidence chain | frontend/ | NFR-03 | UI-003 | UNASSIGNED | BLOCKED | Every claim links to evidence; status badges |
 | UI-005 | Approval inbox | frontend/ | FR-2-05 | UI-002 | UNASSIGNED | BLOCKED | Approve/decline remediation with summary |
@@ -105,6 +105,7 @@ acceptance criteria are the minimum for `DONE` in addition to
 | UI-007 | Monitoring feed + RL recommendation panel | frontend/ | FR-3-06 | UI-001, MON-003, RL-005 | UNASSIGNED | BLOCKED | Caveat text always shown |
 | UI-008 | Project 24/7 defense switch | frontend/ | FR-3-06 | — | Adam | DONE | Owners can toggle automatic re-checks from Monitoring and the Defense Lab without changing other project settings; the switch has contrast for light panels and dark headers, and the Defense Lab stays available offline |
 | UI-009 | Live Defense dashboard (overview, investigation, RL explainability) | frontend/ | FR-3-06 | UI-007, UI-008 | Alan (interim UI) | Phase 1–6 DONE; Phase 7A first-responder on `cursor/live-defense-first-responder-0044` | Shadow-pilot recommendation-only; owned-test controls separate; first-responder OFF/MONITOR/ASSISTED with no AUTO-EXECUTE. Analyst accept still does not execute. Phase 7A: `docs/LIVE_DEFENSE_PHASE7A_FIRST_RESPONDER.md`. Phase 7B not started. |
+| UI-010 | Console account, navigation, status, and assessment-history refinement | frontend/ | UI-001 | UI-001 | Adam | IN_PROGRESS | Accessible account menu; mobile project disclosure; compact status marks; assessment metadata and commit-history links |
 | TEST-005 | Demo-scenario e2e (`e2e.yml`) | tests/e2e | — | IC-1…IC-8 tasks, UI-006 | UNASSIGNED | BLOCKED | IC-9 green on clean stack |
 | DEMO-002 | Demo rehearsal + offline fallback | — | — | TEST-005 | UNASSIGNED | BLOCKED | Checklist in [20](../20_DEMO_SCRIPT.md) complete |
 | DEMO-003 | Pitch slides with traceable numbers | — | — | RL-004, TEST-005 | UNASSIGNED | BLOCKED | Every number cites a run ID or eval summary |
