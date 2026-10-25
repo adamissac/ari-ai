@@ -76,8 +76,15 @@ def seed_assessments(alice, ids, triggers, *, created_at=None, spend=None):
                 sa.select(assessments.c.doc).where(assessments.c.id == assessment.id)
             ).scalar_one()
             doc["state"] = "FAILED"
-            if spend is not None and index == 0:
-                doc.setdefault("usage", {})["usd"] = spend
+            if spend is not None:
+                if isinstance(spend, list):
+                    row_spend = spend[index]
+                elif index == 0:
+                    row_spend = spend
+                else:
+                    row_spend = None
+                if row_spend is not None:
+                    doc.setdefault("usage", {})["usd"] = row_spend
             values = {"state": "FAILED", "doc": doc}
             if created_at is not None:
                 values["created_at"] = (
@@ -574,6 +581,84 @@ def test_global_spend_from_any_trigger_blocks_automatic_and_manual(automatic):
     response = manual_start(alice, ids, "f" * 40)
     assert response.status_code == 429
     assert response.json()["error"]["message"].startswith("daily spend cap reached; resets at ")
+
+
+def test_over_limit_spend_quota_resets_when_spend_falls_below_cap(automatic, settings_override):
+    from datetime import timedelta
+
+    from backend.quota import check_project_quota
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(assessments_usd_per_day="10")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    now = utcnow()
+    row_times = [now - timedelta(hours=hours) for hours in (3, 2, 1)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * len(row_times),
+        created_at=row_times,
+        spend=[6.0, 6.0, 6.0],
+    )
+
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], now)
+
+    assert decision is not None and decision.reason == "spend"
+    assert decision.resets_at == row_times[1] + timedelta(days=1)
+
+
+def test_fractional_spend_resets_only_after_total_falls_below_cap(automatic, settings_override):
+    from datetime import timedelta
+
+    from backend.quota import check_project_quota
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(assessments_usd_per_day="50")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    now = utcnow()
+    row_times = [now - timedelta(hours=hours) for hours in (4, 3, 2, 1)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * len(row_times),
+        created_at=row_times,
+        spend=[0.1, 0.2, 25.0, 25.0],
+    )
+
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], now)
+
+    assert decision is not None and decision.reason == "spend"
+    assert decision.resets_at == row_times[2] + timedelta(days=1)
+
+
+def test_at_limit_spend_quota_resets_when_oldest_usage_expires(automatic, settings_override):
+    from datetime import timedelta
+
+    from backend.quota import check_project_quota
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    settings_override(assessments_usd_per_day="10")
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    now = utcnow()
+    row_times = [now - timedelta(hours=hours) for hours in (3, 2)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * len(row_times),
+        created_at=row_times,
+        spend=[6.0, 4.0],
+    )
+
+    with transaction() as conn:
+        decision = check_project_quota(conn, ids["project"], now)
+
+    assert decision is not None and decision.reason == "spend"
+    assert decision.resets_at == row_times[0] + timedelta(days=1)
 
 
 def test_reuses_inflight_manual_assessment(automatic):
