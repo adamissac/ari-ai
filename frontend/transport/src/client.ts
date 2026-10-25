@@ -112,6 +112,24 @@ export class ApiClient {
   approvals(projectId: string, options?: RequestOptions): Promise<Page<C.Approval>> {
     return this.list(`/projects/${segment(projectId)}/approvals`, 'Approval', options);
   }
+  async auditEvents(projectId: string, options?: RequestOptions): Promise<{ items: Array<Pick<C.AuditEvent, 'action' | 'subject_id' | 'at' | 'details'>> }> {
+    const record = object(await this.request(`/audit?project_id=${segment(projectId)}&limit=100`, RAW, options), 'audit event list');
+    if (!Array.isArray(record.items)) throw new ProtocolError('Invalid audit event list');
+    const items = record.items.map(raw => {
+      const event = object(raw, 'audit event');
+      if (typeof event.action !== 'string' || typeof event.subject_id !== 'string' || typeof event.at !== 'string'
+        || !event.details || typeof event.details !== 'object' || Array.isArray(event.details)) {
+        throw new ProtocolError('Invalid audit event list');
+      }
+      return {
+        action: event.action,
+        subject_id: event.subject_id,
+        at: event.at,
+        details: event.details as Record<string, unknown>,
+      };
+    });
+    return { items };
+  }
   project(id: string, options?: RequestOptions): Promise<C.Project> {
     return this.request(`/projects/${segment(id)}`, 'Project', options) as Promise<C.Project>;
   }

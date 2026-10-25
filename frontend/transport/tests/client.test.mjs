@@ -90,3 +90,29 @@ test('incident methods keep scoped paths, typed envelopes and explicit CSRF muta
   assert.equal(JSON.parse(calls.at(-1).init.body).target_state, 'containment');
   assert.throws(() => client.incident('../escape'), ProtocolError);
 });
+
+test('auditEvents requests the bounded project trail and validates recipe fields', async () => {
+  const calls = [];
+  const event = { action: 'recipe.skipped', subject_id: 'rep_12345678', at: '2026-10-17T03:00:00Z', details: { reason: 'No build recipe' } };
+  const api = new ApiClient({ baseUrl: 'http://localhost/api/v1', fetch: async (url, init) => {
+    calls.push({ url, init });
+    return json({ items: [event], chain_verified: true, chain_events_checked: 1, next_cursor: null });
+  }});
+  const signal = new AbortController().signal;
+  assert.deepEqual(await api.auditEvents('prj_12345678', { signal }), { items: [event] });
+  assert.equal(calls[0].url, 'http://localhost/api/v1/audit?project_id=prj_12345678&limit=100');
+  assert.equal(calls[0].init.method, 'GET');
+  assert.equal(calls[0].init.signal, signal);
+
+  for (const body of [
+    {},
+    { items: [{}] },
+    { items: [{ ...event, action: 1 }] },
+    { items: [{ ...event, subject_id: null }] },
+    { items: [{ ...event, at: 1 }] },
+    { items: [{ ...event, details: [] }] },
+  ]) {
+    const invalid = new ApiClient({ baseUrl: 'http://localhost', fetch: async () => json(body) });
+    await assert.rejects(invalid.auditEvents('prj_12345678'), ProtocolError);
+  }
+});
