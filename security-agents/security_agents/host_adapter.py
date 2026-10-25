@@ -625,7 +625,9 @@ class HostSink(AssessmentSink):
         return mapped.model_copy(update={"evidence": [*mapped.evidence, ref]})
 
     def on_patch(self, finding: FindingRecord, candidate: Any, diff: str) -> None:
-        artifact = self.host.store_text(diff)
+        from shared.evidence import ArtifactKind
+
+        artifact = self.host.store_text(diff, kind=ArtifactKind.diff)
         artifact_id = getattr(artifact, "id", None) or str(artifact)
         # Verify executes the in-memory diff; the store may hold a redacted copy (#155).
         self.stored_diffs[candidate.id] = (
