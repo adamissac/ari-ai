@@ -1,0 +1,208 @@
+........................................................................ [ 38%]
+........................................................................ [ 75%]
+....................................FFFF..F                              [ 98%]fatal: not a git repository: /home/runner/work/ari-ai/ari-ai/candidate/.git/worktrees/independent-suite
+
+=================================== FAILURES ===================================
+_ test_literal_secret_is_not_stored_in_redacted_diff[settings = {"password": "review-only-dict-password"}\n] _
+
+source = 'settings = {"password": "review-only-dict-password"}\n'
+tmp_path = PosixPath('/tmp/pytest-of-unknown/pytest-0/test_literal_secret_is_not_sto0')
+
+    @pytest.mark.parametrize('source', [
+        'settings = {"password": "review-only-dict-password"}\n',
+        'password: str = "review-only-typed-password"\n',
+    ])
+    def test_literal_secret_is_not_stored_in_redacted_diff(source, tmp_path):
+        secret = 'review-only-dict-password' if 'dict-password' in source else 'review-only-typed-password'
+        store = ArtifactStore(tmp_path.as_uri())
+        with transaction() as conn:
+            ref = store.put_text(conn, source, kind=ArtifactKind.diff, project_id=None)
+        with transaction() as conn:
+            row, body = store.get(conn, ref.id)
+        assert row['redacted'] is True
+>       assert secret not in body.decode(), 'literal credential retained in artifact labeled redacted'
+E       AssertionError: literal credential retained in artifact labeled redacted
+E       assert 'review-only-dict-password' not in 'settings = ...password"}\n'
+E         
+E         'review-only-dict-password' is contained here:
+E           settings = {"password": "review-only-dict-password"}
+
+/suite/backend/tests/test_rc4_additional.py:19: AssertionError
+_ test_literal_secret_is_not_stored_in_redacted_diff[password: str = "review-only-typed-password"\n] _
+
+source = 'password: str = "review-only-typed-password"\n'
+tmp_path = PosixPath('/tmp/pytest-of-unknown/pytest-0/test_literal_secret_is_not_sto1')
+
+    @pytest.mark.parametrize('source', [
+        'settings = {"password": "review-only-dict-password"}\n',
+        'password: str = "review-only-typed-password"\n',
+    ])
+    def test_literal_secret_is_not_stored_in_redacted_diff(source, tmp_path):
+        secret = 'review-only-dict-password' if 'dict-password' in source else 'review-only-typed-password'
+        store = ArtifactStore(tmp_path.as_uri())
+        with transaction() as conn:
+            ref = store.put_text(conn, source, kind=ArtifactKind.diff, project_id=None)
+        with transaction() as conn:
+            row, body = store.get(conn, ref.id)
+        assert row['redacted'] is True
+>       assert secret not in body.decode(), 'literal credential retained in artifact labeled redacted'
+E       AssertionError: literal credential retained in artifact labeled redacted
+E       assert 'review-only-typed-password' not in 'password: s...-password"\n'
+E         
+E         'review-only-typed-password' is contained here:
+E           password: str = "review-only-typed-password"
+
+/suite/backend/tests/test_rc4_additional.py:19: AssertionError
+_ test_redacted_diff_literal_secret_not_disclosed_by_artifact_api[+settings = {"password": "review-only-dict-password"}\n-review-only-dict-password] _
+
+source = '+settings = {"password": "review-only-dict-password"}\n'
+secret = 'review-only-dict-password'
+client_factory = <function client_factory.<locals>.make at 0x7f35b52e6f20>
+
+    @pytest.mark.parametrize('source,secret', [
+        ('+settings = {"password": "review-only-dict-password"}\n', 'review-only-dict-password'),
+        ('+password: str = "review-only-typed-password"\n', 'review-only-typed-password'),
+    ])
+    def test_redacted_diff_literal_secret_not_disclosed_by_artifact_api(source, secret, client_factory):
+        from helpers import add_member, setup_project
+        alice, bob, viewer = (client_factory(n) for n in ('alice', 'bob', 'viewer'))
+        ids = setup_project(alice, bob)
+        org = alice.me['memberships'][0]['organization']['id']
+        add_member(org, viewer.me['user']['id'], role='viewer')
+        diff = '--- a/settings.py\n+++ b/settings.py\n@@ -0,0 +1 @@\n' + source
+        with transaction() as conn:
+            ref = ArtifactStore().put_text(conn, diff, kind=ArtifactKind.diff, project_id=ids['project'])
+        outsider = client_factory('unrelated-artifact-outsider')
+        assert outsider.get(f'/api/v1/artifacts/{ref.id}').status_code == 404
+        response = viewer.get(f'/api/v1/artifacts/{ref.id}')
+        assert response.status_code == 200
+        assert ref.redacted is True
+>       assert secret not in response.text, 'viewer received credential bytes from a redacted diff artifact'
+E       AssertionError: viewer received credential bytes from a redacted diff artifact
+E       assert 'review-only-dict-password' not in '--- a/setti...password"}\n'
+E         
+E         'review-only-dict-password' is contained here:
+E           ssword": "review-only-dict-password"}
+
+/suite/backend/tests/test_rc4_additional.py:39: AssertionError
+_ test_redacted_diff_literal_secret_not_disclosed_by_artifact_api[+password: str = "review-only-typed-password"\n-review-only-typed-password] _
+
+source = '+password: str = "review-only-typed-password"\n'
+secret = 'review-only-typed-password'
+client_factory = <function client_factory.<locals>.make at 0x7f35b84fd1c0>
+
+    @pytest.mark.parametrize('source,secret', [
+        ('+settings = {"password": "review-only-dict-password"}\n', 'review-only-dict-password'),
+        ('+password: str = "review-only-typed-password"\n', 'review-only-typed-password'),
+    ])
+    def test_redacted_diff_literal_secret_not_disclosed_by_artifact_api(source, secret, client_factory):
+        from helpers import add_member, setup_project
+        alice, bob, viewer = (client_factory(n) for n in ('alice', 'bob', 'viewer'))
+        ids = setup_project(alice, bob)
+        org = alice.me['memberships'][0]['organization']['id']
+        add_member(org, viewer.me['user']['id'], role='viewer')
+        diff = '--- a/settings.py\n+++ b/settings.py\n@@ -0,0 +1 @@\n' + source
+        with transaction() as conn:
+            ref = ArtifactStore().put_text(conn, diff, kind=ArtifactKind.diff, project_id=ids['project'])
+        outsider = client_factory('unrelated-artifact-outsider')
+        assert outsider.get(f'/api/v1/artifacts/{ref.id}').status_code == 404
+        response = viewer.get(f'/api/v1/artifacts/{ref.id}')
+        assert response.status_code == 200
+        assert ref.redacted is True
+>       assert secret not in response.text, 'viewer received credential bytes from a redacted diff artifact'
+E       AssertionError: viewer received credential bytes from a redacted diff artifact
+E       assert 'review-only-typed-password' not in '--- a/setti...-password"\n'
+E         
+E         'review-only-typed-password' is contained here:
+E           d: str = "review-only-typed-password"
+
+/suite/backend/tests/test_rc4_additional.py:39: AssertionError
+_____ test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test ______
+
+intel = <security_agents.intel.port.LocalIntel object at 0x7f35b7485e20>
+driver = <security_agents.sandbox.driver.LocalProcessDriver object at 0x7f35b77f9400>
+library = CheckLibrary(templates={'access_control.ownership@1': CheckTemplateMeta(template_id='access_control.ownership', versio...meters=('route_id', 'restricted_identity', 'permitted_identity'), reviewed_by='security-owner:pending-human-signoff')})
+tmp_path = PosixPath('/tmp/pytest-of-unknown/pytest-0/test_verify_rejects_a_planted_0')
+
+    @pytest.mark.boundary
+    def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(intel, driver, library, tmp_path):
+        """A diff authored outside the worktree guard is still rejected by Verify (SB-09).
+    
+        This is the `examples/fixtures/bad-patches` case: a patch that makes the
+        failing expectation pass by weakening the test that encodes it.
+        """
+        from security_agents.agents import verify as verify_agent
+        from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+        from security_agents.tools import AuditSink, PatchApplier, ToolContext
+    
+        recipe_path = intel.snapshot.root / "build_recipe.json"
+        recipe_path.chmod(0o644)
+        recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
+        recipe["protected_tests"] = ["tests/test_api.py"]
+        recipe_path.write_text(json.dumps(recipe), encoding="utf-8")
+        recipe_path.chmod(0o444)
+        orchestrator, _ = build(intel, driver, library, tmp_path)
+        protected_tests = orchestrator._protected_tests()
+        assert "tests/test_api.py" in protected_tests
+    
+        work = tmp_path / "bad"
+        wt = fresh_checkout(intel.snapshot, work / "wt")
+        protected = wt / "tests" / "test_api.py"
+        protected.write_text(protected.read_text().replace("== 404", "in (200, 404)"))
+        diff = unified_diff(intel.snapshot.root, wt, ["tests/test_api.py"])
+        assert "tests/test_api.py" in diff
+    
+        applier = PatchApplier(
+            intel=intel,
+            artifacts={
+                "pat_bad": {
+                    "diff": diff,
+                    "plan_files": ["payments_lite/app.py"],
+                    "protected_tests": protected_tests,
+                }
+            },
+            workdir=work,
+        )
+        ctx = ToolContext(
+            assessment_id="asm_bad",
+            agent=AgentName.VERIFY,
+            run_id="run_bad",
+            step_key="verify",
+            read_root=intel.snapshot.root,
+            audit=AuditSink(),
+        )
+        facts = applier.apply_fresh(ctx, "pat_bad")
+        assert facts["applied"] is True
+        assert facts["tampered_protected_tests"] == ["tests/test_api.py"]
+        # editing an existing test is both tampering and outside the plan's file set
+        assert facts["out_of_scope_files"] == ["tests/test_api.py"]
+        assert facts["new_test_files"] == []
+    
+>       evidence = verify_agent.VerifyEvidence(
+            apply_facts=dict(ctx.artifacts["verify_facts"]),
+            recheck_runs=[],
+            test_runs=[],
+            baseline_failing=[],
+            tests_added=[],
+            protected_tests=protected_tests,
+            original_check_ref="access_control.ownership@1",
+            original_check_params={},
+            candidate_id="pat_bad",
+        )
+E       TypeError: VerifyEvidence.__init__() got an unexpected keyword argument 'candidate_id'
+
+/suite/security-agents/tests/test_ari_latest_protected.py:2703: TypeError
+=============================== warnings summary ===============================
+::test_compat_per_project_concurrency_is_fair
+  /suite/backend/tests/conftest.py:182: PytestWarning: Value of environment variable JOB_MAX_RUNNING_PER_PROJECT type should be str, but got 1 (type: int); converted to str implicitly
+    monkeypatch.setenv(k.upper(), v)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+------------------- generated xml file: /evidence/pytest.xml -------------------
+=========================== short test summary info ============================
+FAILED ../config::test_literal_secret_is_not_stored_in_redacted_diff[settings = {"password": "review-only-dict-password"}\n]
+FAILED ../config::test_literal_secret_is_not_stored_in_redacted_diff[password: str = "review-only-typed-password"\n]
+FAILED ../config::test_redacted_diff_literal_secret_not_disclosed_by_artifact_api[+settings = {"password": "review-only-dict-password"}\n-review-only-dict-password]
+FAILED ../config::test_redacted_diff_literal_secret_not_disclosed_by_artifact_api[+password: str = "review-only-typed-password"\n-review-only-typed-password]
+FAILED ../config::test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test
+5 failed, 182 passed, 1 warning in 32.87s
