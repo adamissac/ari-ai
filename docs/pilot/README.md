@@ -37,7 +37,7 @@ Ari does **not** have, and pilot material must not claim:
 - Autonomous defense (the Defense Lab ships simulation-derived and
   rules-based *recommendations*; enforcement is not offered to pilot
   customers).
-- Security coverage beyond the three executable check categories
-  (`access_control.ownership`, `input_validation.bounds`,
-  `access_control.authentication`). Other weakness classes are *flagged*,
-  not *validated*.
+- Security coverage beyond the four executable check categories
+  (`access_control.ownership`, `access_control.authentication`,
+  `access_control.role`, `input_validation.bounds`). Other weakness classes
+  are *flagged*, not *validated*.

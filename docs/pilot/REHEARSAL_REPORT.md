@@ -205,8 +205,10 @@ Probe role revoked and dropped afterwards.
   Root cause of the API not reconnecting is **not established** (Agent-service
   logs not captured). Separately, 14 assessments between 2026-10-23 11:12Z
   and 2026-10-24 18:14Z failed `CONFLICT_STATE: paused orchestrator state was
-  lost (worker restarted…)` — honest, but a paused run does not survive a
-  worker restart.
+  lost (worker restarted…)` — honest for runs without a recoverable
+  checkpoint. `HostOrchestrator` can restore an `AWAITING_APPROVAL`
+  checkpoint on a fresh worker; interrupted active runs without a
+  checkpoint still end as `CONFLICT_STATE` and need a new start.
 - **D3 — Code-intelligence configuration undocumented for Railway.** The
   failed snapshot shows `build_service` running without
   `INTELLIGENCE_REPOSITORIES_FILE` + a persistence option. After recovery,

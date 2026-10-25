@@ -66,7 +66,11 @@ succeeded and `/healthz` reported `git_sha` `a85885aa`. After the revocation,
 `pg_stat_activity` showed 14 app connections as `ari_app`. The ops endpoint
 `GET /api/v1/ops/storage` returned 200 with `wal_bytes: null` and `alerts: []`;
 WAL bytes are no longer reported for the app role because #610's savepoint
-skips the denied WAL probe. `/readyz` was ready with 24 workers and 0 queued.
+skips the denied WAL probe. Revoking `pg_monitor` also means disk-use alerts
+treat missing WAL as zero, so WAL growth alone will not trip a warning until
+an admin-role probe or external monitor covers it; keep that gap in ops
+runbooks (`docs/deploy/POSTGRES_STORAGE.md` still describes WAL-inclusive
+disk use for admin probes). `/readyz` was ready with 24 workers and 0 queued.
 
 In the least-privilege test harness, tests that fail only as `ari_app` are
 test- or operator-path cases: DDL in `test_automation_opt_in`;
