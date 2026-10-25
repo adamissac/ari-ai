@@ -1,0 +1,56 @@
+{
+  "candidate_sha": "6a72949efa7c0a2d3233eb6884bb7a23dfe71ced",
+  "pr_head_sha": "cdf9231be4320810701675cfe469fe4c65d85b50",
+  "upstream_sha": "e41c9dc22e6536463cdab9be6a2a4cd76302c866",
+  "known_findings": {
+    "F1": "PASS",
+    "F2": "PASS",
+    "F3": "PASS",
+    "F4": "PASS",
+    "F5": "PASS",
+    "F6": "PASS",
+    "F7": "PASS",
+    "F8": "PASS",
+    "F9": "PASS",
+    "F10": "PASS",
+    "N1": "PASS",
+    "N2": "PASS",
+    "N3": "PASS",
+    "N4": "PASS",
+    "N5": "PASS",
+    "N6": "PASS",
+    "N7": "PASS"
+  },
+  "new_findings": [
+    {
+      "id": "N8",
+      "severity": "P2",
+      "title": "Literal credentials retained in redacted diff artifacts and disclosed to project viewers",
+      "file": "backend/backend/redaction.py",
+      "line": 44,
+      "status": "FAIL",
+      "scope": "Same-project viewer; unrelated user denied; pre-existing gap, not established as introduced by RC4"
+    }
+  ],
+  "independent_tests": {
+    "passed": 182,
+    "failed": 5,
+    "skipped": 0,
+    "run_id": 40202085130,
+    "product_failures": 4,
+    "compatibility_failures": 1,
+    "cleanup_integrity_error": true
+  },
+  "candidate_ci": {
+    "success": 21,
+    "skipped": 1
+  },
+  "old_base_equivalence": "PASS",
+  "latest_main_equivalence": "FAIL: conflict at S1",
+  "verdicts": {
+    "known_F1_F10_N1_N7": "GO on pinned candidate only",
+    "upstream_merge": "NO-GO",
+    "isolated_staging": "HOLD for release signoff; synthetic fixture debugging acceptable",
+    "customer_deployment": "NO-GO"
+  }
+}

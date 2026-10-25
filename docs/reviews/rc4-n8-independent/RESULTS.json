@@ -1,0 +1,38 @@
+{
+  "candidate_sha": "4fdcf10cc2320b0eb499a177e3b8bea847de8e73",
+  "upstream_sha": "e41c9dc22e6536463cdab9be6a2a4cd76302c866",
+  "pr_head_sha": "0098f1d5ffedd2b0a27f881fb5af15296693af93",
+  "known_original_regressions": "F1\u2013F10 / N1\u2013N8 PASS; original N7 cases pass, extended source integrity fails N9",
+  "new_findings": [
+    {
+      "id": "N9",
+      "priority": "P2",
+      "title": "Annotation regex crosses statement boundary and corrupts non-secret diff content",
+      "file": "backend/backend/redaction.py",
+      "line": 52,
+      "status": "FAIL"
+    }
+  ],
+  "independent_tests": {
+    "passed": 187,
+    "failed": 3,
+    "skipped": 0,
+    "errors": 0,
+    "run_id": 40210138609,
+    "failure_classification": {
+      "N9": 2,
+      "stale_legacy_read_limit_setting": 1
+    },
+    "positive_split_rate_limit_control": "PASS",
+    "cleanup_error": true
+  },
+  "current_main_merge": "PASS",
+  "eight_step_stack": "PASS runtime/contract tree; evidence and SHA-only test differences documented",
+  "candidate_ci": {
+    "success": 24,
+    "failure": 1,
+    "skipped": 2,
+    "failure_reason": "Paid Codex audit unavailable; not a product vulnerability"
+  },
+  "verdict": "NO-GO pending N9; former upstream composition and N8 blockers closed"
+}

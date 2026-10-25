@@ -1,0 +1,10 @@
+[
+  {
+    "path": "backend/tests/test_rc2_latest_quota.py",
+    "same_ast_except_sha_literals": true
+  },
+  {
+    "path": "backend/tests/test_rc2_transfer_manifest.py",
+    "same_ast_except_sha_literals": true
+  }
+]
