@@ -13,6 +13,7 @@ import { SmoothScroll } from '@/components/smooth-scroll';
 import './tokens.css';
 import './globals.css';
 import './interface.css';
+import './marketing.css';
 
 // Packaged OFL fonts: no external font service is needed at build or runtime.
 const inter = localFont({ src: './fonts/inter-latin-wght-normal.woff2', weight: '400 600', display: 'swap', variable: '--font-inter' });
