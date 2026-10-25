@@ -172,3 +172,36 @@ Every upstream-bound PR must rebase past `ee8b91e2`: our migration numbers (0018
 - Independent security re-review on 7bcf1b56 (pending).
 - Devin Bot readiness re-run on 7bcf1b56 (requested).
 - Verdict: **GO for review + staging validation; NO-GO for customer deploy** until re-review + readiness pass.
+
+---
+
+## Reconciliation pass — upstream/main 580d2f67 (final RC, 2026-10-24 late UTC)
+
+Merged upstream/main `ee8b91e2..580d2f67` (material delta: #540 backend onboarding lifecycle + continuous assessment, #530 CI release-gate + dead-letter jobs list + scored-only evals, #531 intel pipeline audit + secret redaction at write time, #567 `ops as ops_api` alias — same fix we made). User-requested base was `2c8ad50d`; upstream moved further — merged the actual tip `580d2f67`.
+
+### Conflicts resolved
+- `main.py` — upstream #567 applied the same `ops as ops_api` fix we made; kept ours (identical semantics) + our extra routers.
+- `jobs.py` — union: our lifecycle-recorded `claim()`/`fail()` + upstream's `redact()` wrapping of every persisted `last_error` (write-time secret scrubbing). **Two real integration defects introduced by the merge, both caught by upstream's new tests and fixed** (`be4d746f`):
+  1. `auto_commits.assess_commit` — union duplicated the `github_client().commit()` call ahead of the try/except, so 404s propagated instead of routing to `_permanent_failure` → `policy_exit`. Deduped; upstream `test_missing_commit_records_skipped_instead_of_dead_lettering` green.
+  2. `jobs.fail()`/`claim()` — upstream's `redact(error)` lived inside the conflict region and was dropped; persisted `last_error` kept secrets. Re-applied `redact()` on all 4 sites; upstream `test_fail_scrubs_secrets_at_write_time` green.
+- `routes.py` — unioned all three imports (`_refresh_personal_installation_repositories`, `can_connect`, `verify_installation_access` — both new upstream functions coexist with ours).
+- `auto_commits.py` — our `disconnected_at` guard first, then upstream's `_permanent_failure` try/except (complementary).
+- Docs — union/appended (CHANGELOG, SESSION_HANDOFF).
+
+### #458 status
+Confirmed **still open, not merged** on upstream/main — `provider_ledger.py` absent. Our branch carries it at `9486a5b0` merge-point.
+
+### Migration graph
+No new upstream migrations in this delta. Chain unchanged: `0015 → 0016 tenant_rls → 0017 worker_heartbeats → 0018 execution_reliability → 0019 repository_disconnect`. Single head `0019`; `test_parallel_migrations` + `test_ops_readiness` green inside the backend run.
+
+### Results on e27b6a43 (post-merge tip)
+- backend: **610 passed, 9 skipped, 0 failed** (upstream added ~52 tests since 558)
+- security-agents: 604/23 after regenerating `CHECK_TEMPLATE_REVIEW.md` for upstream template changes (`e27b6a43`)
+- shared: 115/1 · make check + mypy clean · contracts regenerated, 180 files fresh
+- frontend: 355 unit + lint + typecheck + `NEXT_PUBLIC_DEV_LOGIN=1` build
+- transport: 35/35
+- Codex F1–F10: zero xfails; all 17 independent/compat assertions strict — all green inside backend run
+- Playwright real-stack: see below (running at time of note)
+
+### Freeze
+Release-candidate SHA = tip after Playwright verification; handed to Codex re-review + Devin Bot readiness re-run.
