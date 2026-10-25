@@ -63,7 +63,7 @@ export default function ProjectOverview() {
             <p className="mt-2 max-w-3xl text-sm text-muted">{summary.detail}</p>
             {refreshFailed && <p role="status" className="mt-3 text-xs text-warn" data-testid="summary-stale">Could not refresh the latest records. The numbers above are from the last successful load and may be out of date.</p>}
             <div className="mt-4">
-              <a href={summary.action.href} className="inline-flex items-center rounded-full bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-deep">{summary.action.label}</a>
+              <a href={summary.action.href} className="inline-flex items-center rounded-[var(--radius-2)] bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-deep">{summary.action.label}</a>
             </div>
           </>
         ) : <p className="text-sm text-muted">Loading the current project records…</p>}
