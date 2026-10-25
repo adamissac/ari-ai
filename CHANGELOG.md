@@ -9,6 +9,7 @@ All notable changes are documented here. Format follows
 - Restored the pre-redesign look and fixed background, overflow and spacing bugs.
 - Setup now shows the actual expiry of the sandbox scope being approved; landing copy states the default and maximum authorization durations.
 - Refined the console account menu, mobile project navigation, status marks, assessment headers, and commit-to-assessment links.
+- Findings and assessment history now use mobile cards; setup review links open the project assessment-history section.
 - Added opt-in bounded exact-SHA release review automation with isolated strict
   regressions, signed evidence, existing-owner routing and a protected cost ledger.
   No automatic merge, deployment or customer enforcement.

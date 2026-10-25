@@ -2177,3 +2177,9 @@ Pinned product 6a72949efa7c0a2d3233eb6884bb7a23dfe71ced; upstream e41c9dc22e6536
 ### Repeat RC4/N8 independent review — 2026-10-25
 
 Pin 4fdcf10c vs main e41c9dc2; tip 0098f1d5 report-only. Original F1–F10/N1–N8 pass; upstream composition and VerifyEvidence blockers closed. New N9/P2: annotation regex crosses semicolon into another statement and corrupts non-secret source/stored diff. Final isolated run 40210138609: 187 pass, 3 fail, zero skip (two N9 checks and retained stale legacy GET/write-limit test); independent split-limit control passes. Collector cleanup error retained. Product CI succeeds; missing paid Codex audit is not a product finding. NO-GO pending N9 and final gates. No production edits/merge/deploy/approval. Report: docs/reviews/rc4-n8-independent/REPORT.md.
+
+### Mobile findings and assessment history — 2026-10-25
+
+- Findings and project assessment history render stacked cards below 640px while keeping desktop tables at `sm` and up. Setup's “See your reviews” link targets the project page's `#assessments` section; project-scoped links were checked against existing routes.
+- Verification passed: lint (0 errors; one existing unused-variable warning), typecheck, setup-resume unit tests (5), build, and journey + pages E2E (9).
+- 390px screenshots: `/home/ubuntu/classic-audit/after3/findings-390.png` and `/home/ubuntu/classic-audit/after3/project-overview-390.png`. Local review server: `http://localhost:3204`.

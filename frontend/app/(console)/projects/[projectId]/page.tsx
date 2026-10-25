@@ -72,7 +72,7 @@ export default function ProjectOverview() {
     <div className="flex min-w-0 flex-col gap-6">
       <div className="flex min-w-0 flex-col gap-6">
         <StartAssessment onStarted={assessments.reload} />
-        <Panel title="Runs & replay">
+        <Panel title="Runs & replay" id="assessments" className="scroll-mt-24">
           <Async resource={assessments} label="assessments">
             {page => <AssessmentList projectId={project.id} page={page} />}
           </Async>
@@ -265,22 +265,36 @@ function AssessmentList({ projectId, page }: { projectId: string; page: Page<Ass
   };
   if (items.length === 0) return <Empty>No assessments yet. Approve a scope, then start a check above.</Empty>;
   return (
-    <div className="min-w-0 overflow-x-auto" data-testid="assessment-history-table-scroll">
-      <table className="w-full min-w-[520px] text-left text-sm">
-        <thead className="text-xs uppercase tracking-wider text-faint">
-          <tr><th className="py-1.5 pr-3">Run</th><th className="pr-4">Status</th><th className="pr-3">Commit</th><th>Started</th></tr>
-        </thead>
-        <tbody className="divide-y divide-line">
-          {items.map(a => (
-            <tr key={a.id}>
-              <td className="py-2 pr-3"><Link className="text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`} aria-label={`Open run & replay ${a.id}`} title={a.id}>Open run & replay</Link></td>
-              <td className="whitespace-nowrap pr-4"><Badge view={ASSESSMENT_STATE[a.state]} /></td>
-              <td className="pr-3"><Mono>{shortSha(a.commit_sha)}</Mono></td>
-              <td className="text-muted"><Time iso={a.created_at} /></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="min-w-0">
+      <div className="hidden min-w-0 overflow-x-auto sm:block" data-testid="assessment-history-table-scroll">
+        <table className="w-full min-w-[520px] text-left text-sm">
+          <thead className="text-xs uppercase tracking-wider text-faint">
+            <tr><th className="py-1.5 pr-3">Run</th><th className="pr-4">Status</th><th className="pr-3">Commit</th><th>Started</th></tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {items.map(a => (
+              <tr key={a.id}>
+                <td className="py-2 pr-3"><Link className="text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`} aria-label={`Open run & replay ${a.id}`} title={a.id}>Open run & replay</Link></td>
+                <td className="whitespace-nowrap pr-4"><Badge view={ASSESSMENT_STATE[a.state]} /></td>
+                <td className="pr-3"><Mono>{shortSha(a.commit_sha)}</Mono></td>
+                <td className="text-muted"><Time iso={a.created_at} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex min-w-0 flex-col gap-2 sm:hidden" data-testid="assessment-history-mobile-list">
+        {items.map(a => (
+          <article key={a.id} className="min-w-0 rounded-md border border-line bg-panel-2/40 p-3" data-testid="assessment-history-mobile-row">
+            <Link className="block break-words text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`} aria-label={`Open run & replay ${a.id}`} title={a.id}>Open run & replay</Link>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <span data-testid="assessment-mobile-status"><Badge view={ASSESSMENT_STATE[a.state]} /></span>
+              <Mono>{shortSha(a.commit_sha)}</Mono>
+              <span className="text-xs text-muted"><Time iso={a.created_at} /></span>
+            </div>
+          </article>
+        ))}
+      </div>
       {nextCursor !== null && (
         <div className="mt-3 flex flex-wrap items-center gap-3" data-testid="assessments-truncated">
           <p className="text-xs text-muted">Showing the newest {items.length} checks. Older checks exist.</p>

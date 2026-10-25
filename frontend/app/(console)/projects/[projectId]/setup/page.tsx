@@ -287,7 +287,7 @@ function Walkthrough({ repo, scope, authorized, hasRun, reload }: {
               <li className="flex items-center justify-between gap-3 py-3 text-sm"><span className="text-muted">Build recipe</span><BuildRecipeReadiness projectId={project.id} repo={repo} compact /></li>
             </ul>
             {!authorized && <button type="button" className="mt-4 text-sm text-brand underline-offset-2 hover:underline" onClick={() => navigateStep(5)}>Review step 5: testing scope</button>}
-            {hasRun && <p className="mt-4 text-sm"><Link className="font-semibold text-brand" href={`/projects/${project.id}/assessments`}>See your reviews</Link></p>}
+            {hasRun && <p className="mt-4 text-sm"><Link className="font-semibold text-brand" href={`/projects/${project.id}#assessments`}>See your reviews</Link></p>}
             <div><Button variant="primary" className="mt-4" disabled={busy !== null || !authorized} title={authorized ? undefined : 'Approve sandbox testing first'} onClick={() => void run()}>{busy === 'run' ? 'Starting…' : hasRun ? 'Run another review' : 'Start first assessment'}</Button></div>
           </StepPanel>
         )}

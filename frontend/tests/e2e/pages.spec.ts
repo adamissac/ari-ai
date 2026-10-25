@@ -1,7 +1,31 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { env, evidenceShot, newUser } from './helpers';
 
 const project = () => env('E2E_PROJECT_ID');
+
+async function expectStatusBadgesInsideRows(rows: Locator, statusTestId: string) {
+  const count = await rows.count();
+  expect(count).toBeGreaterThan(0);
+  for (let index = 0; index < count; index++) {
+    const row = rows.nth(index);
+    const badge = row.getByTestId(statusTestId);
+    await expect(badge).toBeVisible();
+    const rowBox = await row.boundingBox();
+    const badgeBox = await badge.boundingBox();
+    expect(rowBox).not.toBeNull();
+    expect(badgeBox).not.toBeNull();
+    expect(badgeBox!.x).toBeGreaterThanOrEqual(rowBox!.x);
+    expect(badgeBox!.x + badgeBox!.width).toBeLessThanOrEqual(rowBox!.x + rowBox!.width + 0.5);
+  }
+}
+
+async function expectNoDocumentOverflow(page: Page) {
+  const { clientWidth, scrollWidth } = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+}
 
 test('owner edits project settings and they persist on reload', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
@@ -150,30 +174,34 @@ test('expectations page shows the version-pinned snapshot view', async ({ browse
   await evidenceShot(page, 'expectations');
 });
 
-test('status chips stay unbroken inside narrow console table scrollers', async ({ browser }) => {
+test('findings and assessment history use contained mobile rows and desktop tables', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/projects/${project()}/findings`);
   await page.getByRole('tab', { name: 'Fixed (independently verified)' }).click();
   const findingsTable = page.getByTestId('findings-table-scroll');
-  const findingStatus = findingsTable.locator('tbody tr td:nth-child(2)').first();
-  await expect(findingStatus).toBeVisible();
-  await expect(findingStatus).toHaveCSS('white-space', 'nowrap');
-  expect(await findingsTable.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
-  const findingBounds = await findingStatus.evaluate(cell => {
-    const chip = cell.firstElementChild!;
-    return {
-      cellRight: cell.getBoundingClientRect().right,
-      chipRight: chip.getBoundingClientRect().right,
-      paddingRight: Number.parseFloat(getComputedStyle(cell).paddingRight),
-    };
-  });
-  expect(findingBounds.chipRight).toBeLessThanOrEqual(findingBounds.cellRight - findingBounds.paddingRight + 1);
+  const findingsMobile = page.getByTestId('findings-mobile-list');
+  await expect(findingsMobile).toBeVisible();
+  await expect(findingsTable).toBeHidden();
+  await expectStatusBadgesInsideRows(findingsMobile.getByTestId('finding-mobile-row'), 'finding-mobile-status');
+  await expectNoDocumentOverflow(page);
+  await evidenceShot(page, 'findings-mobile');
 
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await expect(findingsTable).toBeVisible();
+  await expect(findingsMobile).toBeHidden();
+
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/projects/${project()}`);
   const historyTable = page.getByTestId('assessment-history-table-scroll');
-  const assessmentStatus = historyTable.locator('tbody tr td:nth-child(2)').first();
-  await expect(assessmentStatus).toBeVisible();
-  await expect(assessmentStatus).toHaveCSS('white-space', 'nowrap');
-  expect(await historyTable.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(true);
+  const historyMobile = page.getByTestId('assessment-history-mobile-list');
+  await expect(historyMobile).toBeVisible();
+  await expect(historyTable).toBeHidden();
+  await expectStatusBadgesInsideRows(historyMobile.getByTestId('assessment-history-mobile-row'), 'assessment-mobile-status');
+  await expectNoDocumentOverflow(page);
+  await evidenceShot(page, 'project-overview-mobile');
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await expect(historyTable).toBeVisible();
+  await expect(historyMobile).toBeHidden();
 });
