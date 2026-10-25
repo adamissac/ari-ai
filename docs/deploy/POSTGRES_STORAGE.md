@@ -91,12 +91,39 @@ minutes. If per-commit full runs are re-enabled, keep
 
 Hard protections in code (not just convention):
 
-- Snapshots referenced by any **non-terminal assessment** are never pruned.
-- Payloads younger than `RETENTION_SNAPSHOT_GRACE_DAYS` are never pruned, so a queued
-  `register_verified_regression`/`deliver_verified_patch` job cannot lose its inputs.
-- `index_payloads`/`index_snapshots` pruning runs per project inside a transaction that
-  sets `ari.project_id`, honoring the FORCE RLS boundary (same predicate as
-  `intel_store.py`).
+- Snapshots referenced by **any finding** (all statuses), verified regression memory,
+  expectation decisions, or a non-terminal assessment are never pruned.
+- Snapshots referenced by an assessment with a queued/running job, or directly by a
+  queued/running job payload, are never pruned.
+- `RETENTION_PROTECT_ASSESSMENT_SNAPSHOTS=true` (default) protects every assessment
+  snapshot, including terminal assessments. If disabled, terminal-assessment-only
+  snapshots become eligible after `RETENTION_ASSESSMENT_SNAPSHOT_DAYS` (default 30,
+  minimum 7); snapshots with no assessment reference keep the existing seven-day grace.
+- Keep the newest `RETENTION_SNAPSHOTS_PER_REPO` ready snapshots (default 5) and keep
+  young snapshots for `RETENTION_SNAPSHOT_GRACE_DAYS` (default 7). Orphan payloads
+  retain their separate 24-hour grace.
+- A ready snapshot is locked and all protections are rechecked in one short delete
+  transaction. Assessment binding takes the matching shared lock, so cleanup cannot
+  race a new binding. Project-scoped transactions set `ari.project_id`, honoring FORCE
+  RLS.
+- Findings, assessments, reports, regression memory, and expectation decisions are
+  never pruned while referenced. With assessment snapshot protection disabled, an old
+  assessment without findings keeps its result, but loses its code-intelligence views:
+  Expectations/commits pages and `/snapshots/*` return “snapshot not ready”; rerunning
+  the assessment re-indexes the repository.
+- Measured 2026-10-25 by running this branch's dry-run read-only against production
+  with time shifted 40 days ahead: default assessment protection leaves 2 snapshots
+  / about 12 MB physical reclaimable. With
+  `RETENTION_PROTECT_ASSESSMENT_SNAPSHOTS=false`, 324 snapshots / about 1.8 GB
+  physical become reclaimable; 322 are referenced only by terminal assessments with
+  no findings, regression memory, or decisions. Production currently has 49
+  regression-memory snapshots, 285 finding-referenced snapshots, and 1
+  expectation-decision snapshot; none is a retention target.
+- The ops API refuses destructive maintenance unless (1) `RETENTION_DRY_RUN=false`,
+  (2) `OPS_DESTRUCTIVE_TOKEN` is configured and matches `X-Ops-Destructive-Token` in
+  addition to the Bearer `OPS_API_TOKEN`, and (3) the request includes the current
+  `confirm_plan_digest` from a dry-run report. The API returns the current digest on
+  mismatch. The hourly sidecar continues to honor `RETENTION_DRY_RUN` only.
 - Every real prune writes an `audit_events` row (`action = "maintenance.retention"`)
   with per-class counts.
 - `purge_project` remains the authoritative "delete everything for a project" path;
