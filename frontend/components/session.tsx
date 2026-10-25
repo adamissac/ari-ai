@@ -4,6 +4,7 @@ import { ApiError, type MeResponse } from '@hackatl/frontend-transport';
 import { createContext, useCallback, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { notifySessionChanged } from '@/lib/session-events';
 import { AuthStage, LockIcon } from '@/components/auth-stage';
 import { BRAND_NAME } from '@/components/brand';
 import { GitHubMark } from '@/components/demo/ui';
@@ -45,6 +46,7 @@ export function OptionalSession({ children }: { children: ReactNode }) {
   const refresh = useCallback(() => { api().session().then(setMe, () => setMe(null)); }, []);
   const signOut = useCallback(async () => {
     await api().logout();
+    notifySessionChanged(null);
     try { window.sessionStorage.removeItem(INTRO_KEY); } catch { /* storage unavailable */ }
     setMe(null);
   }, []);
@@ -82,6 +84,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await api().logout();
+    notifySessionChanged(null);
     try { window.sessionStorage.removeItem(INTRO_KEY); } catch { /* storage unavailable */ }
     setState({ status: 'signed-out' });
   }, []);
@@ -94,7 +97,10 @@ export function SessionGate({ children }: { children: ReactNode }) {
       </div>
     );
   }
-  if (state.status === 'signed-out') return <SignIn onSignedIn={me => setState({ status: 'signed-in', me })} />;
+  if (state.status === 'signed-out') return <SignIn onSignedIn={me => {
+    setState({ status: 'signed-in', me });
+    notifySessionChanged(me);
+  }} />;
   return <SessionContext.Provider value={{ me: state.me, refresh, signOut }}>{children}</SessionContext.Provider>;
 }
 
