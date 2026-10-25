@@ -26,6 +26,38 @@ adds an entry before ending.
 - Next: branch-protection config by repo admin; run `pilot-verify.yml` on the merge SHA.
 
 
+### 2026-10-25 — Adam/Devin: rehearsal independently reproduced + e2e scare cleared
+
+- Did: re-ran the two-org rehearsal end-to-end on a fresh `make dev` boot with real
+  `SECURITY_SANDBOX=vercel` + real Anthropic (second independent reproduction after
+  #556's run). Assessment `asm_01M5R6R5W5WVH46MMNMXHJFSNK` completed; all 4 planted
+  flaws found; outcomes include honest `refuted`/`inconclusive` (not rubber-stamped).
+  Worker logs show real Vercel sandbox lifecycle (sbx create/cmd/stop/delete 200s).
+- Resolved `VERCEL_PROJECT_ID`/`VERCEL_TEAM_ID` read-only via `GET /v9/projects` —
+  `accountId` IS the `team_*` id even for personal accounts; no Adam action needed.
+- Reproduced `frontend/tests/e2e/journey.spec.ts` locally on main `ceb2a709`: 3/3
+  pass — the `Test provider (scripted) × 9, Deterministic (no model call) × 1`
+  provider-summary assertion is GREEN on main. #536/#540 e2e failures were stale
+  heads; re-runs after `Merge origin/main` go green (#540 now 10/10).
+- Warnings for the next session: `REPOSITORY_BINDINGS_FILE` local_path must be a git
+  repo and `commit_sha` must verify in it (driver inits+commits the staged copy);
+  `sandbox.pip` must not re-pin ari-base packages (pip conflict kills the baseline
+  run); repo `full_name` uniqueness is global across projects (409 -> reuse).
+- Still owner-gated for the HOSTED staging leg: `gh repo create
+  adamissac/ari-pilot-rehearsal --private`, install the GitHub App on it, OAuth-login.
+
+
+---
+
+### 2026-10-24 — Devin (agent, Adam) — pilot-readiness ops: readiness split, worker heartbeats, restart/rollback evidence
+### 2026-10-24 — Devin (agent, Adam) — Postgres volume 80% investigation + retention
+- Did: mapped every storage consumer (index_payloads immutable per-commit payloads are the dominant growth driver alongside terminal jobs; /data volume accumulates artifact CAS + refs/ari/* clone refs); added `backend/maintenance.py` (report/apply/loop + storage_report + run_retention), `backend/api/ops.py` (OPS_API_TOKEN-gated storage + prometheus + maintenance endpoints), hourly sidecar in `deploy/railway/start.sh`, runbook `docs/deploy/POSTGRES_STORAGE.md`, 14 tests in `test_maintenance.py`.
+- State of the code: `RETENTION_DRY_RUN=true` ships report-only; all deletes batch inside short txs with `ctid` LIMIT pattern; RLS honored via per-project `set_config('ari.project_id')`; audit row per prune; no schema migration (0017 is already taken by PR #533 heartbeats; `test_parallel_migrations` still expects head 0016).
+- Commands run and results: `pytest backend/tests/test_maintenance.py` 14/14 pass; regression subset (intel_store, jobs_queue, api_core, tenant_isolation_adversarial, parallel_migrations, env_example, worker_drain, idempotent_mutations) 50/50 pass; ruff + ruff format clean; `sh -n start.sh` clean.
+- Decisions: zero-migration retention; dry-run default; ops surface returns 404 unless OPS_API_TOKEN set; maintenance loop deliberately outside start.sh `pids` so it can never restart the service.
+- Open: actual production table sizes unknown — needs `railway run` + `DATABASE_URL` (not held by this session); whether Railway's alert covers the Postgres service volume or the app /data volume.
+- Next steps: Adam sets OPS_API_TOKEN/POSTGRES_VOLUME_BYTES, reviews first dry-run report, flips RETENTION_DRY_RUN=false; re-measure after a cycle; size volume bump decision from real growth data.
+- Warnings: deleting rows does NOT shrink the Railway-reported volume (frees internal pages); `VACUUM FULL`/repack only after verified backup. Coordination note: `coordination/messages/20261024T235500Z-devin-to-all-postgres-storage-retention.md`.
 
 
 ### 2026-10-24 — Adam/Devin: pilot rehearsal executed end-to-end (13/13 PASS)

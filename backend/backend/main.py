@@ -24,7 +24,7 @@ from backend.api import (
     webhooks,
 )
 from backend.api import (
-    ops as api_ops,
+    ops as ops_api,
 )
 from backend.api.deps import ApiError, require_user
 from backend.settings import get_settings
@@ -170,7 +170,7 @@ def create_app() -> FastAPI:
         live_defense.router,
         live_defense_controls.router,
         live_defense_first_responder.router,
-        api_ops.router,
+        ops_api.router,
     ):
         app.include_router(r, prefix="/api/v1")
     return app
