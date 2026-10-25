@@ -329,7 +329,7 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
         add(
             VerificationCheckName.NO_TEST_TAMPERING,
             False,
-            f"tests encoding confirmed expectations were modified or deleted: {tampered}",
+            f"protected tests or test-runner configuration were modified or deleted: {tampered}",
         )
     else:
         add(

@@ -12,11 +12,14 @@ coordination message to Sai.
 
 from __future__ import annotations
 
+import configparser
 import json
+import os
 import re
 import shlex
 import shutil
 import tempfile
+import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -239,12 +242,15 @@ class TestRunner:
 
     driver: SandboxDriver
     workspace_provider: Any  # callable(ctx) -> Path
+    suite_workspace_provider: Any = None  # callable(ctx) -> Path for project_suite runs
     test_command_args: tuple[str, ...] = ("-q", "tests")
     limits: SandboxLimits = field(default_factory=SandboxLimits)
     setup: dict[str, tuple[str, ...]] = field(default_factory=dict)  # recipe `sandbox` block
 
     def run(self, ctx: ToolContext, selection: str, node_ids: list[str]) -> dict[str, Any]:
         workspace = self.workspace_provider(ctx)
+        if selection == "project_suite" and not node_ids and self.suite_workspace_provider is not None:
+            workspace = self.suite_workspace_provider(ctx) or workspace
         args: list[str] = ["-q"]
         if node_ids:
             for raw in node_ids:
@@ -470,6 +476,11 @@ class PatchApplier:
         tampered = set(self._tampered_tests(diff_text, protected_tests))
         if ok:
             tampered.update(self._tampered_test_contents(self.intel.snapshot.root, root, protected_tests))
+            tampered.update(self._tampered_runner_config(diff_text, self.intel.snapshot.root, root))
+            suite_dest = dest.parent / f"verify-suite-{patch_id}"
+            ctx.artifacts["verify_suite_workspace"] = self._verify_suite_workspace(
+                self.intel.snapshot.root, root, suite_dest, roots
+            )
         tampered_tests = sorted(tampered)
         ctx.artifacts["verify_workspace"] = root
         from ..regressions import RegressionEvidenceUnavailable, read_sources
@@ -511,6 +522,48 @@ class PatchApplier:
         }
 
     @staticmethod
+    def _verify_suite_workspace(
+        snapshot_root: Path, patched_root: Path, destination: Path, test_roots: tuple[str, ...]
+    ) -> Path:
+        if os.path.lexists(destination):
+            if destination.is_symlink() or not destination.is_dir():
+                destination.unlink()
+            else:
+                shutil.rmtree(destination)
+        copy_tree(patched_root, destination)
+
+        for test_root in test_roots:
+            rel_root = safe_rel_path(test_root)
+            root = destination / rel_root
+            if not os.path.lexists(root):
+                continue
+            if root.is_symlink():
+                if not os.path.lexists(snapshot_root / rel_root):
+                    root.unlink()
+                continue
+            if not root.is_dir():
+                if not os.path.lexists(snapshot_root / rel_root):
+                    root.unlink()
+                continue
+            for current, directories, files in os.walk(root, topdown=False, followlinks=False):
+                current_path = Path(current)
+                for name in files:
+                    path = current_path / name
+                    rel = path.relative_to(destination).as_posix()
+                    if not os.path.lexists(snapshot_root / rel):
+                        path.unlink()
+                for name in directories:
+                    path = current_path / name
+                    rel = path.relative_to(destination).as_posix()
+                    if os.path.lexists(snapshot_root / rel):
+                        continue
+                    if path.is_symlink():
+                        path.unlink()
+                    else:
+                        path.rmdir()
+        return destination
+
+    @staticmethod
     def _tampered_tests(diff_text: str, protected: list[str]) -> list[str]:
         """Protected tests touched by changed hunks or file metadata in a diff."""
         protected_set = {safe_rel_path(p) for p in protected}
@@ -542,6 +595,7 @@ class PatchApplier:
 
         for line in diff_text.splitlines():
             if line.startswith("diff --git "):
+                mark_section()
                 section_paths = set()
                 git_section = True
                 new_file = False
@@ -580,6 +634,7 @@ class PatchApplier:
 
             if line.startswith("--- "):
                 if not git_section:
+                    mark_section()
                     section_paths = set()
                     new_file = False
                 path = path_from_header(line[4:].split("\t", 1)[0].strip())
@@ -613,7 +668,88 @@ class PatchApplier:
                     new_remaining = int(hunk.group(2) or 1)
                     in_hunk = old_remaining > 0 or new_remaining > 0
                 continue
+        mark_section()
         return sorted(touched)
+
+    @staticmethod
+    def _tampered_runner_config(diff_text: str, snapshot_root: Path, patched_root: Path) -> list[str]:
+        """Test-runner configuration paths whose effective settings changed."""
+        tampered: set[str] = set()
+
+        def read_config(root: Path, path: str) -> bytes | None:
+            candidate = root / path
+            resolved = resolve_under(root, path)
+            if not os.path.lexists(candidate):
+                return None
+            if not resolved.is_file():
+                raise OSError(f"configuration path is not a file: {path}")
+            return resolved.read_bytes()
+
+        def ini_table(raw: bytes | None, section: str) -> dict[str, str]:
+            config = configparser.ConfigParser(interpolation=None)
+            if raw is not None:
+                config.read_string(raw.decode("utf-8"))
+            return dict(config.items(section, raw=True)) if config.has_section(section) else {}
+
+        def nested_table(parsed: dict[str, Any], *keys: str) -> Any:
+            current: Any = parsed
+            for key in keys:
+                if not isinstance(current, dict):
+                    return None
+                current = current.get(key)
+            return current
+
+        for path in diff_paths(diff_text):
+            name = path.rsplit("/", 1)[-1]
+            if name == "conftest.py":
+                tampered.add(path)
+                continue
+            if name not in {
+                "pytest.ini",
+                ".pytest.ini",
+                "pytest.toml",
+                ".pytest.toml",
+                "tox.ini",
+                "setup.cfg",
+                "pyproject.toml",
+            }:
+                continue
+            try:
+                original_bytes = read_config(snapshot_root, path)
+                patched_bytes = read_config(patched_root, path)
+            except (OSError, PlatformError):
+                tampered.add(path)
+                continue
+            if name in {"pytest.ini", ".pytest.ini", "pytest.toml", ".pytest.toml"}:
+                if original_bytes != patched_bytes:
+                    tampered.add(path)
+                continue
+            try:
+                if name == "tox.ini":
+                    changed = ini_table(original_bytes, "pytest") != ini_table(patched_bytes, "pytest")
+                elif name == "setup.cfg":
+                    changed = ini_table(original_bytes, "tool:pytest") != ini_table(
+                        patched_bytes, "tool:pytest"
+                    ) or ini_table(original_bytes, "options.entry_points").get("pytest11") != ini_table(
+                        patched_bytes, "options.entry_points"
+                    ).get("pytest11")
+                else:
+                    original = tomllib.loads((original_bytes or b"").decode("utf-8"))
+                    patched = tomllib.loads((patched_bytes or b"").decode("utf-8"))
+                    fields = (
+                        ("tool", "pytest"),
+                        ("project", "entry-points", "pytest11"),
+                        ("tool", "poetry", "plugins", "pytest11"),
+                    )
+                    changed = any(
+                        nested_table(original, *keys) != nested_table(patched, *keys) for keys in fields
+                    )
+            except (UnicodeDecodeError, configparser.Error, tomllib.TOMLDecodeError):
+                tampered.add(path)
+                continue
+            if changed:
+                tampered.add(path)
+        return sorted(tampered)
 
     @staticmethod
     def _tampered_test_contents(snapshot_root: Path, patched_root: Path, protected: list[str]) -> list[str]:
@@ -621,15 +757,33 @@ class PatchApplier:
         tampered: set[str] = set()
         for raw_path in protected:
             path = safe_rel_path(raw_path)
+            if not os.path.lexists(snapshot_root / path):
+                try:
+                    resolve_under(patched_root, path)
+                    current = patched_root
+                    for part in path.split("/"):
+                        current = current / part
+                        if current.is_symlink() and not os.path.exists(current):
+                            tampered.add(path)
+                            break
+                except (OSError, PlatformError):
+                    tampered.add(path)
+                continue
             try:
                 original = resolve_under(snapshot_root, path)
-                original_bytes = original.read_bytes() if original.is_file() else None
+                if not original.is_file():
+                    tampered.add(path)
+                    continue
+                original_bytes = original.read_bytes()
             except (OSError, PlatformError):
                 tampered.add(path)
                 continue
             try:
                 patched = resolve_under(patched_root, path)
-                patched_bytes = patched.read_bytes() if patched.is_file() else None
+                if not patched.is_file():
+                    tampered.add(path)
+                    continue
+                patched_bytes = patched.read_bytes()
             except (OSError, PlatformError):
                 tampered.add(path)
                 continue

@@ -9,20 +9,26 @@ in a fresh checkout. Labelled `fake` provider mode throughout.
 from __future__ import annotations
 
 import json
+import os
+import shutil
+import subprocess
+import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from security_agents.checks.library import CheckLibrary
 from security_agents.contracts import AgentName, Approval, Budget, ValidationOutcome
-from security_agents.intel import LocalIntel
+from security_agents.intel import LocalIntel, load_expectations
 from security_agents.llm import FakeLLM, ProviderGateway
 from security_agents.sandbox.driver import LocalProcessDriver
+from security_agents.sandbox.workspace import SnapshotHandle
 from security_agents.workflow import AssessmentState, FindingRecord, Orchestrator, OrchestratorConfig
 from security_agents.workflow.states import MAX_PATCH_ATTEMPTS
 
 from . import fake_agents
-from .conftest import TARGET_ID, live_scope
+from .conftest import LABELS, TARGET_ID, live_scope
 
 EXPECTED_AGENT_ORDER = ["scout", "probe", "trace", "diagnose", "patch", "verify", "fortify"]
 
@@ -71,6 +77,48 @@ def build(intel, driver, library, tmp_path: Path, *, scripts=None, approve=True,
         workdir=tmp_path / "work",
         approve_remediation=approver,
     ), gateway
+
+
+def _variant_intel(
+    intel: LocalIntel,
+    tmp_path: Path,
+    *,
+    recipe_changes: dict[str, object] | None = None,
+) -> LocalIntel:
+    staging = tmp_path / "variant-staging"
+    shutil.copytree(intel.snapshot.root, staging, symlinks=True)
+    for current, dirs, files in os.walk(staging, followlinks=False):
+        directory = Path(current)
+        directory.chmod(directory.stat().st_mode | 0o700)
+        for name in dirs:
+            path = directory / name
+            if not path.is_symlink():
+                path.chmod(path.stat().st_mode | 0o700)
+        for name in files:
+            path = directory / name
+            if not path.is_symlink():
+                path.chmod(path.stat().st_mode | 0o600)
+
+    recipe_path = staging / "build_recipe.json"
+    recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
+    recipe.update(recipe_changes or {})
+    recipe_path.write_text(json.dumps(recipe), encoding="utf-8")
+
+    snapshot = SnapshotHandle.from_directory(
+        staging,
+        tmp_path / "variant-snapshot",
+        snapshot_id=f"{intel.snapshot.snapshot_id}-variant",
+        repo_id=intel.snapshot.repo_id,
+    )
+    return LocalIntel(
+        snapshot,
+        expectations=load_expectations(
+            LABELS,
+            snapshot_id=snapshot.snapshot_id,
+            commit_sha=snapshot.commit_sha,
+            strip_prefix="target/",
+        ),
+    )
 
 
 @pytest.fixture(scope="module")
@@ -547,6 +595,466 @@ def test_verify_does_not_flag_a_new_test_under_recipe_test_roots(
 
 
 @pytest.mark.boundary
+def test_verify_accepts_a_new_recipe_declared_test(
+    intel: LocalIntel, driver: LocalProcessDriver, library: CheckLibrary, tmp_path: Path
+) -> None:
+    variant = _variant_intel(
+        intel,
+        tmp_path,
+        recipe_changes={"protected_tests": ["tests/test_new_regression.py"]},
+    )
+    orch, _ = build(variant, driver, library, tmp_path, test_path="tests/test_new_regression.py")
+    result = orch.run()
+    verification = result.findings[0].verifications[-1]
+
+    assert verification.verdict == "accepted", verification.reasons
+    no_tampering = next(check for check in verification.checks if check.name.value == "no_test_tampering")
+    assert no_tampering.passed, no_tampering.detail
+
+
+@pytest.mark.boundary
+def test_verify_flags_a_modified_recipe_declared_test(
+    intel: LocalIntel, driver: LocalProcessDriver, library: CheckLibrary, tmp_path: Path
+) -> None:
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+    from security_agents.tools import AuditSink, PatchApplier, ToolContext
+
+    variant = _variant_intel(
+        intel,
+        tmp_path,
+        recipe_changes={"protected_tests": ["tests/test_api.py"]},
+    )
+
+    work = tmp_path / "recipe-declared-existing-test"
+    wt = fresh_checkout(variant.snapshot, work / "wt")
+    protected = wt / "tests" / "test_api.py"
+    protected.write_text(protected.read_text().replace("== 404", "in (200, 404)"))
+    diff = unified_diff(variant.snapshot.root, wt, ["tests/test_api.py"])
+    applier = PatchApplier(
+        intel=variant,
+        artifacts={
+            "pat_recipe_existing_test": {
+                "diff": diff,
+                "plan_files": ["tests/test_api.py"],
+                "protected_tests": ["tests/test_api.py"],
+            }
+        },
+        workdir=work,
+    )
+    ctx = ToolContext(
+        assessment_id="asm_recipe_existing_test",
+        agent=AgentName.VERIFY,
+        run_id="run_recipe_existing_test",
+        step_key="verify",
+        read_root=variant.snapshot.root,
+        audit=AuditSink(),
+    )
+
+    facts = applier.apply_fresh(ctx, "pat_recipe_existing_test")
+
+    assert facts["tampered_protected_tests"] == ["tests/test_api.py"]
+
+
+def _apply_fresh_diff(
+    intel: LocalIntel,
+    tmp_path: Path,
+    diff: str,
+    plan_files: list[str],
+    protected_tests: list[str] | None = None,
+) -> tuple[dict[str, Any], Any]:
+    from security_agents.tools import AuditSink, PatchApplier, ToolContext
+
+    patch_id = "pat_runner_config"
+    applier = PatchApplier(
+        intel=intel,
+        artifacts={
+            patch_id: {
+                "diff": diff,
+                "plan_files": plan_files,
+                "protected_tests": protected_tests or [],
+            }
+        },
+        workdir=tmp_path / "verify",
+    )
+    ctx = ToolContext(
+        assessment_id="asm_runner_config",
+        agent=AgentName.VERIFY,
+        run_id="run_runner_config",
+        step_key="verify",
+        read_root=intel.snapshot.root,
+        audit=AuditSink(),
+    )
+    return applier.apply_fresh(ctx, patch_id), ctx
+
+
+_DESELECT_PROTECTED_TEST = (
+    "def pytest_collection_modifyitems(items):\n"
+    "    items[:] = [item for item in items if "
+    "'tests/test_api.py::test_customer_cannot_read_other_customer_profile' "
+    "not in item.nodeid]\n"
+)
+
+
+def test_runner_config_diff_paths_include_deleted_and_renamed_paths() -> None:
+    from security_agents.sandbox.workspace import diff_paths
+
+    rename_diff = """diff --git a/pytest.ini b/tests/pytest.ini
+similarity index 100%
+rename from pytest.ini
+rename to tests/pytest.ini
+"""
+    deleted_diff = """diff --git a/setup.cfg b/setup.cfg
+deleted file mode 100644
+--- a/setup.cfg
++++ /dev/null
+"""
+    assert diff_paths(rename_diff) == ["pytest.ini", "tests/pytest.ini"]
+    assert diff_paths(deleted_diff) == ["setup.cfg"]
+
+
+def _new_nested_conftest_patch(intel: LocalIntel, tmp_path: Path) -> tuple[Path, str]:
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+
+    path = "tests/helpers/conftest.py"
+    source = fresh_checkout(intel.snapshot, tmp_path / "patch-worktree")
+    conftest = source / path
+    conftest.parent.mkdir(parents=True, exist_ok=True)
+    conftest.write_text(_DESELECT_PROTECTED_TEST, encoding="utf-8")
+    return source, unified_diff(intel.snapshot.root, source, [path])
+
+
+def _synthetic_test_target(tmp_path: Path, *, tests_package: bool) -> LocalIntel:
+    target = tmp_path / "synthetic-target"
+    package = target / "pkg"
+    tests = target / "tests"
+    package.mkdir(parents=True)
+    tests.mkdir()
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (package / "app.py").write_text("def value():\n    return 1\n", encoding="utf-8")
+    if tests_package:
+        (tests / "__init__.py").write_text("", encoding="utf-8")
+    (tests / "test_api.py").write_text(
+        "from pkg.app import value\n\ndef test_value():\n    assert value() == 1\n",
+        encoding="utf-8",
+    )
+    (target / "build_recipe.json").write_text(
+        json.dumps({"test_roots": ["tests"], "test_command": ["-q", "tests"]}),
+        encoding="utf-8",
+    )
+    snapshot = SnapshotHandle.from_directory(
+        target,
+        tmp_path / "synthetic-snapshot",
+        snapshot_id="synthetic-test-root",
+        repo_id="repo_synthetic",
+    )
+    return LocalIntel(snapshot, expectations=[])
+
+
+def _apply_synthetic_test_patch(
+    intel: LocalIntel, tmp_path: Path, new_files: dict[str, str]
+) -> tuple[dict[str, Any], Any]:
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+    from security_agents.tools import AuditSink, PatchApplier, ToolContext
+
+    patch_root = fresh_checkout(intel.snapshot, tmp_path / "synthetic-patch")
+    changed = ["pkg/app.py", *new_files]
+    (patch_root / "pkg/app.py").write_text("def value():\n    return 2\n", encoding="utf-8")
+    for rel, content in new_files.items():
+        path = patch_root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    patch_id = "pat_synthetic_test_root"
+    applier = PatchApplier(
+        intel=intel,
+        artifacts={
+            patch_id: {
+                "diff": unified_diff(intel.snapshot.root, patch_root, changed),
+                "plan_files": ["pkg/app.py"],
+                "protected_tests": ["tests/test_api.py"],
+                "tests_added": ["tests/test_aaa.py"],
+            }
+        },
+        workdir=tmp_path / "synthetic-verify-work",
+    )
+    ctx = ToolContext(
+        assessment_id="asm_synthetic_test_root",
+        agent=AgentName.VERIFY,
+        run_id="run_synthetic_test_root",
+        step_key="verify",
+        read_root=intel.snapshot.root,
+        audit=AuditSink(),
+    )
+    return applier.apply_fresh(ctx, patch_id), ctx
+
+
+def _test_files_under(root: Path, test_root: str = "tests") -> dict[str, bytes]:
+    files: dict[str, bytes] = {}
+    start = root / test_root
+    for current, _, names in os.walk(start, followlinks=False):
+        for name in names:
+            path = Path(current) / name
+            if path.is_file() and not path.is_symlink():
+                files[path.relative_to(root).as_posix()] = path.read_bytes()
+    return files
+
+
+def _synthetic_test_runner(
+    intel: LocalIntel,
+    driver: LocalProcessDriver,
+    library: CheckLibrary,
+    tmp_path: Path,
+    *,
+    isolated_suite: bool,
+) -> Any:
+    orch, _ = build(intel, driver, library, tmp_path, scripts={"unused": []})
+
+    def verify_workspace(ctx: Any) -> Path:
+        return ctx.artifacts.get("verify_workspace") or intel.snapshot.root
+
+    def verify_suite_workspace(ctx: Any) -> Path:
+        return ctx.artifacts.get("verify_suite_workspace") or intel.snapshot.root
+
+    return orch._test_runner(
+        verify_workspace,
+        suite_workspace_provider=verify_suite_workspace if isolated_suite else None,
+    )
+
+
+@pytest.mark.boundary
+def test_verify_project_suite_ignores_patch_added_test_module(
+    driver: LocalProcessDriver, library: CheckLibrary, tmp_path: Path
+) -> None:
+    intel = _synthetic_test_target(tmp_path, tests_package=True)
+    facts, ctx = _apply_synthetic_test_patch(
+        intel,
+        tmp_path,
+        {
+            "tests/test_aaa.py": (
+                "import tests.test_api as protected\n"
+                "protected.test_value = lambda: None\n\n"
+                "def test_added_module_runs():\n"
+                "    assert True\n"
+            )
+        },
+    )
+    assert facts["applied"], facts["apply_error"]
+    assert facts["out_of_scope_files"] == []
+
+    legacy = _synthetic_test_runner(intel, driver, library, tmp_path, isolated_suite=False)
+    legacy_result = legacy.run(ctx, "project_suite", [])
+    assert legacy_result["failing_tests"] == []
+
+    runner = _synthetic_test_runner(intel, driver, library, tmp_path, isolated_suite=True)
+    suite_result = runner.run(ctx, "project_suite", [])
+    assert "tests/test_api.py::test_value" in suite_result["failing_tests"]
+
+    suite_root = ctx.artifacts["verify_suite_workspace"]
+    verify_root = ctx.artifacts["verify_workspace"]
+    assert not (suite_root / "tests/test_aaa.py").exists()
+    assert _test_files_under(suite_root) == _test_files_under(intel.snapshot.root)
+    assert (suite_root / "pkg/app.py").read_bytes() == (verify_root / "pkg/app.py").read_bytes()
+
+    ctx.artifacts["tests_added"] = ["tests/test_aaa.py"]
+    added_result = runner.run(ctx, "added_tests", [])
+    assert added_result["passed"] == 1, added_result["stdout_tail"]
+
+
+@pytest.mark.boundary
+def test_verify_project_suite_ignores_patch_loaded_pytest_plugin(
+    driver: LocalProcessDriver, library: CheckLibrary, tmp_path: Path
+) -> None:
+    intel = _synthetic_test_target(tmp_path, tests_package=False)
+    facts, ctx = _apply_synthetic_test_patch(
+        intel,
+        tmp_path,
+        {
+            "tests/test_aaa.py": (
+                'pytest_plugins = ["tests.plug"]\n\ndef test_added_module_runs():\n    assert True\n'
+            ),
+            "tests/plug.py": (
+                "def pytest_collection_modifyitems(items):\n"
+                "    for item in items:\n"
+                "        if item.nodeid.endswith('test_api.py::test_value'):\n"
+                "            item.obj = lambda: None\n"
+            ),
+        },
+    )
+    assert facts["applied"], facts["apply_error"]
+    assert facts["out_of_scope_files"] == []
+
+    legacy = _synthetic_test_runner(intel, driver, library, tmp_path, isolated_suite=False)
+    legacy_result = legacy.run(ctx, "project_suite", [])
+    assert legacy_result["failing_tests"] == []
+
+    runner = _synthetic_test_runner(intel, driver, library, tmp_path, isolated_suite=True)
+    suite_result = runner.run(ctx, "project_suite", [])
+    assert "tests/test_api.py::test_value" in suite_result["failing_tests"]
+
+    suite_root = ctx.artifacts["verify_suite_workspace"]
+    verify_root = ctx.artifacts["verify_workspace"]
+    assert not (suite_root / "tests/test_aaa.py").exists()
+    assert not (suite_root / "tests/plug.py").exists()
+    assert _test_files_under(suite_root) == _test_files_under(intel.snapshot.root)
+    assert (suite_root / "pkg/app.py").read_bytes() == (verify_root / "pkg/app.py").read_bytes()
+
+
+@pytest.mark.boundary
+def test_new_nested_conftest_is_flagged_by_apply_fresh(intel: LocalIntel, tmp_path: Path) -> None:
+    path = "tests/helpers/conftest.py"
+    _, diff = _new_nested_conftest_patch(intel, tmp_path)
+    facts, _ = _apply_fresh_diff(
+        intel,
+        tmp_path,
+        diff,
+        plan_files=[],
+        protected_tests=["tests/test_api.py"],
+    )
+
+    assert facts["applied"], facts["apply_error"]
+    assert facts["out_of_scope_files"] == []
+    assert path in facts["tampered_protected_tests"]
+
+
+@pytest.mark.boundary
+def test_new_nested_conftest_deselects_a_protected_test_in_verify_workspace(
+    intel: LocalIntel, tmp_path: Path
+) -> None:
+    _, diff = _new_nested_conftest_patch(intel, tmp_path)
+    facts, ctx = _apply_fresh_diff(
+        intel,
+        tmp_path,
+        diff,
+        plan_files=[],
+        protected_tests=["tests/test_api.py"],
+    )
+    assert facts["applied"], facts["apply_error"]
+    assert facts["out_of_scope_files"] == []
+
+    def collect(root: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, "-m", "pytest", "--collect-only", "-q", "tests"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+
+    node_id = "test_api.py::test_customer_cannot_read_other_customer_profile"
+    original = collect(intel.snapshot.root)
+    patched = collect(ctx.artifacts["verify_workspace"])
+    assert original.returncode == 0, original.stdout + original.stderr
+    assert patched.returncode == 0, patched.stdout + patched.stderr
+    assert node_id in original.stdout
+    assert node_id not in patched.stdout
+
+
+@pytest.mark.boundary
+def test_orchestrator_rejects_a_new_nested_conftest_that_deselects_a_protected_test(
+    intel: LocalIntel,
+    driver: LocalProcessDriver,
+    library: CheckLibrary,
+    tmp_path: Path,
+) -> None:
+    path = "tests/helpers/conftest.py"
+    orch, _ = build(intel, driver, library, tmp_path, extra_patch_files={path: _DESELECT_PROTECTED_TEST})
+
+    result = orch.run()
+    candidate = result.findings[0].candidates[-1]
+    verification = result.findings[0].verifications[-1]
+    no_tampering = next(check for check in verification.checks if check.name.value == "no_test_tampering")
+
+    assert path in candidate.files_changed
+    assert verification.verdict == "rejected", verification.reasons
+    assert not no_tampering.passed, no_tampering.detail
+    assert path in no_tampering.detail
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    ("scenario", "path", "content", "expected_tampered"),
+    [
+        ("modify-existing-conftest", "tests/conftest.py", "# changed\n", True),
+        ("delete-existing-conftest", "tests/conftest.py", None, True),
+        ("new-root-conftest", "conftest.py", "pytest_plugins = []\n", True),
+        ("new-pytest-ini", "pytest.ini", "[pytest]\naddopts = -q\n", True),
+        ("new-nested-pytest-ini", "tests/pytest.ini", "[pytest]\naddopts = -q\n", True),
+        ("new-hidden-pytest-ini", "tests/.pytest.ini", "[pytest]\naddopts = -q\n", True),
+        ("new-pytest-toml", "pytest.toml", '[pytest]\naddopts = ["-q"]\n', True),
+        ("new-hidden-pytest-toml", ".pytest.toml", '[pytest]\naddopts = ["-q"]\n', True),
+        ("tox-pytest-section", "tox.ini", "[pytest]\naddopts = -q\n", True),
+        ("setup-pytest-section", "setup.cfg", "[tool:pytest]\naddopts = -q\n", True),
+        (
+            "setup-pytest11-entry-point",
+            "setup.cfg",
+            "[options.entry_points]\npytest11 =\n    example = example.plugin\n",
+            True,
+        ),
+        ("pyproject-pytest-table", "pyproject.toml", "pytest-table", True),
+        ("pyproject-pytest11-entry-point", "pyproject.toml", "pytest11-entry-point", True),
+        ("pyproject-poetry-pytest11-plugin", "pyproject.toml", "poetry-pytest11-plugin", True),
+        ("unparsable-pyproject", "pyproject.toml", "not = [toml\n", True),
+        ("pyproject-dependency-only", "pyproject.toml", "dependency-only", False),
+        ("setup-install-requires-only", "setup.cfg", "[options]\ninstall_requires =\n    example\n", False),
+        ("tox-testenv-only", "tox.ini", "[testenv]\ncommands = pytest\n", False),
+    ],
+)
+def test_apply_fresh_flags_effective_runner_configuration_changes(
+    scenario: str,
+    path: str,
+    content: str | None,
+    expected_tampered: bool,
+    intel: LocalIntel,
+    tmp_path: Path,
+) -> None:
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+
+    source = fresh_checkout(intel.snapshot, tmp_path / "patch-worktree")
+    config = source / path
+    if content is None:
+        config.unlink()
+    else:
+        config.parent.mkdir(parents=True, exist_ok=True)
+        if scenario == "modify-existing-conftest":
+            config.write_text(config.read_text(encoding="utf-8") + content, encoding="utf-8")
+        elif scenario == "pyproject-pytest-table":
+            current = config.read_text(encoding="utf-8")
+            config.write_text(
+                current.replace(
+                    'testpaths = ["tests"]',
+                    'testpaths = ["tests"]\naddopts = "--deselect=tests/test_api.py::'
+                    'test_customer_cannot_read_other_customer_profile"',
+                ),
+                encoding="utf-8",
+            )
+        elif scenario == "pyproject-pytest11-entry-point":
+            config.write_text(
+                config.read_text(encoding="utf-8")
+                + '\n[project.entry-points.pytest11]\nexample = "example.plugin"\n',
+                encoding="utf-8",
+            )
+        elif scenario == "pyproject-poetry-pytest11-plugin":
+            config.write_text(
+                config.read_text(encoding="utf-8")
+                + '\n[tool.poetry.plugins.pytest11]\nexample = "example.plugin"\n',
+                encoding="utf-8",
+            )
+        elif scenario == "pyproject-dependency-only":
+            config.write_text(
+                config.read_text(encoding="utf-8").replace("fastapi>=0.110", "fastapi>=0.111"),
+                encoding="utf-8",
+            )
+        else:
+            config.write_text(content, encoding="utf-8")
+
+    diff = unified_diff(intel.snapshot.root, source, [path])
+    facts, _ = _apply_fresh_diff(intel, tmp_path, diff, plan_files=[path])
+
+    assert facts["applied"], facts["apply_error"]
+    assert (path in facts["tampered_protected_tests"]) is expected_tampered, scenario
+
+
+@pytest.mark.boundary
 def test_orchestrator_protects_only_in_root_symlinked_tests(
     intel: LocalIntel, driver: LocalProcessDriver, library: CheckLibrary, tmp_path: Path
 ) -> None:
@@ -723,6 +1231,49 @@ def test_tampered_test_content_check_flags_escaping_patched_symlink(tmp_path: Pa
     assert PatchApplier._tampered_test_contents(snapshot_root, patched_root, ["tests/test_api.py"]) == [
         "tests/test_api.py"
     ]
+
+
+@pytest.mark.parametrize(
+    ("snapshot_entry", "patched_entry", "expected"),
+    [
+        ("dangling-symlink", "file", ["tests/test_x.py"]),
+        ("directory", "file", ["tests/test_x.py"]),
+        ("escaping-symlink", "file", ["tests/test_x.py"]),
+        ("absent", "file", []),
+        ("absent", "escaping-symlink", ["tests/test_x.py"]),
+    ],
+)
+def test_tampered_test_content_check_handles_snapshot_entry_types(
+    snapshot_entry: str,
+    patched_entry: str,
+    expected: list[str],
+    tmp_path: Path,
+) -> None:
+    from security_agents.tools import PatchApplier
+
+    path = "tests/test_x.py"
+    snapshot_root = tmp_path / "snapshot"
+    patched_root = tmp_path / "patched"
+    snapshot_path = snapshot_root / path
+    patched_path = patched_root / path
+    snapshot_path.parent.mkdir(parents=True)
+    patched_path.parent.mkdir(parents=True)
+    outside = tmp_path / "outside.py"
+    outside.write_text("outside\n", encoding="utf-8")
+
+    if snapshot_entry == "dangling-symlink":
+        snapshot_path.symlink_to("missing.py")
+    elif snapshot_entry == "directory":
+        snapshot_path.mkdir()
+    elif snapshot_entry == "escaping-symlink":
+        snapshot_path.symlink_to(outside)
+
+    if patched_entry == "file":
+        patched_path.write_text("test\n", encoding="utf-8")
+    elif patched_entry == "escaping-symlink":
+        patched_path.symlink_to(outside)
+
+    assert PatchApplier._tampered_test_contents(snapshot_root, patched_root, [path]) == expected
 
 
 @pytest.mark.boundary

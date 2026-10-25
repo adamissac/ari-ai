@@ -758,7 +758,7 @@ class Orchestrator:
         )
         return [result]
 
-    def _test_runner(self, workspace_provider: Any) -> TestRunner:
+    def _test_runner(self, workspace_provider: Any, *, suite_workspace_provider: Any = None) -> TestRunner:
         """Tests run with the target recipe's `test_command` and `sandbox` setup when it has them."""
         recipe: dict[str, Any] = {}
         path = self.intel.snapshot.root / "build_recipe.json"
@@ -773,6 +773,7 @@ class Orchestrator:
         return TestRunner(
             driver=self.driver,
             workspace_provider=workspace_provider,
+            suite_workspace_provider=suite_workspace_provider,
             test_command_args=tuple(command) if valid else self.config.test_command_args,
             setup=setup,
         )
@@ -1266,10 +1267,15 @@ class Orchestrator:
             # has applied the diff; before that, against the pristine snapshot.
             return ctx.artifacts.get("verify_workspace") or self.intel.snapshot.root
 
+        def verify_suite_workspace(ctx: ToolContext) -> Any:
+            return ctx.artifacts.get("verify_suite_workspace") or self.intel.snapshot.root
+
         services = {
             **self._read_services(),
             "patch_applier": applier,
-            "test_runner": self._test_runner(verify_workspace),
+            "test_runner": self._test_runner(
+                verify_workspace, suite_workspace_provider=verify_suite_workspace
+            ),
             "check_runner": CheckRunner(
                 driver=self.driver,
                 library=self.library,
