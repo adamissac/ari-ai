@@ -6,7 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
-    "0.22.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    "0.23.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
     # 0.22 ops readiness (additive): ReadinessStatus gains workers/capabilities/
     #      capabilities_ready/git_sha/schema_version; HealthStatus gains
     #      git_sha/schema_version; new DiagnosticsReport. /readyz consumers only.
@@ -40,8 +40,12 @@ SCHEMA_VERSION = (
     #      default to false (owner must explicitly enable; PR #385).
     # 0.19 ProjectSettings.delivery_mode (auto | pull_request | manual, default auto) and
     #      server-set delivery_authorized_by (additive, ADR-0021).
-    # 0.20 reserved by open PR #412 (Phase 6.5 RL-gated pilot). This branch does
-    #      not claim 0.20.0 so both PRs can land independently.
+    # 0.20 live-defense Phase 6.5 RL-gated pilot infrastructure (additive):
+    #      ConnectedApplication.rl_gated_pilot; RL readiness categories A–J;
+    #      evaluation plan with unset thresholds; policy serving contract;
+    #      hosted-inference readiness config. ready=true only if every mandatory
+    #      category is PASS. Merged research PRs / unit tests / docs are not
+    #      model readiness. No new executable action.
     # 0.21 live-defense Phase 7A first-responder (additive): OFF/MONITOR|SHADOW/
     #      ASSISTED RESPONSE modes, deterministic orchestrator decisions,
     #      seven-agent capability registry, runtime↔code correlation,
@@ -49,4 +53,16 @@ SCHEMA_VERSION = (
     #      No AUTO-EXECUTE. LLM prose is never proof of a confirmed threat.
     #      evidence_state=verified requires independently executed verification
     #      evidence, not Verify eligibility.
+    # 0.23 live-defense Phase 7C live agent execution (additive): genuine
+    #      first-responder agent-loop records (cost, latency, transcript,
+    #      typed output, execution integrity). predicted_probability stays
+    #      null. executed investigative output is not threat confirmation.
+    #      Probe/Patch/Verify privileges are not expanded. Open PR #412 keeps
+    #      0.20.0; this branch does not collide that number. Main claimed 0.22.0
+    #      for ops readiness, so 7C is 0.23.0. Execution lives in existing
+    #      invocation JSONB (no 7C migration). Additive 7C follow-up:
+    #      ProviderAttempt ledger + invocation.deadline_at (optional fields;
+    #      old 0.22.0 payloads still validate). Inherits main Alembic 0017
+    #      worker heartbeats; does not add a competing repository-disconnect
+    #      migration (Devin Hardening owns repositories.disconnected_at).
 )

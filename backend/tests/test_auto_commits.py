@@ -79,7 +79,9 @@ def seed_assessments(alice, ids, triggers, *, created_at=None, spend=None):
                 doc.setdefault("usage", {})["usd"] = spend
             values = {"state": "FAILED", "doc": doc}
             if created_at is not None:
-                values["created_at"] = created_at
+                values["created_at"] = (
+                    created_at[index] if isinstance(created_at, list) else created_at
+                )
             conn.execute(
                 sa.update(assessments).where(assessments.c.id == assessment.id).values(**values)
             )
@@ -369,6 +371,31 @@ def test_ten_mixed_assessments_skip_automatic_and_block_manual_start(automatic):
     assert datetime.fromisoformat(resets_at) == seeded_at + timedelta(hours=1)
 
 
+def test_over_limit_hourly_assessments_report_actual_reset(automatic):
+    from datetime import datetime, timedelta
+
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    seeded_at = utcnow() - timedelta(seconds=20)
+    created_at = [seeded_at + timedelta(seconds=index) for index in range(12)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * 12,
+        created_at=created_at,
+    )
+
+    response = manual_start(alice, ids, "f" * 40)
+    assert response.status_code == 429
+    error = response.json()["error"]
+    assert "project review limit reached (10 per hour); resets at " in error["message"]
+    assert datetime.fromisoformat(error["details"]["resets_at"]) == created_at[2] + timedelta(
+        hours=1
+    )
+
+
 @pytest.mark.parametrize("start_kind", ["manual", "automatic"])
 def test_nine_recent_assessments_allow_next_start(automatic, start_kind):
     alice, bob, ids, _ = automatic
@@ -432,6 +459,31 @@ def test_fifty_daily_assessments_block_by_day_quota(automatic):
     error = response.json()["error"]
     assert "project review limit reached (50 per day); resets at " in error["message"]
     assert datetime.fromisoformat(error["details"]["resets_at"]) == seeded_at + timedelta(days=1)
+
+
+def test_over_limit_daily_assessments_report_actual_reset(automatic):
+    from datetime import datetime, timedelta
+
+    from shared.base import utcnow
+
+    alice, bob, ids, _ = automatic
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    seeded_at = utcnow() - timedelta(hours=2, seconds=51)
+    created_at = [seeded_at + timedelta(seconds=index) for index in range(52)]
+    seed_assessments(
+        alice,
+        ids,
+        [AssessmentTrigger.manual] * 52,
+        created_at=created_at,
+    )
+
+    response = manual_start(alice, ids, "f" * 40)
+    assert response.status_code == 429
+    error = response.json()["error"]
+    assert "project review limit reached (50 per day); resets at " in error["message"]
+    assert datetime.fromisoformat(error["details"]["resets_at"]) == created_at[2] + timedelta(
+        days=1
+    )
 
 
 def test_global_spend_from_any_trigger_blocks_automatic_and_manual(automatic):

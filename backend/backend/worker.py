@@ -41,6 +41,14 @@ class JobCancelled(Exception):
     pass
 
 
+class JobDeferred(Exception):
+    """Handler is waiting on a prerequisite. Do not consume a failure attempt."""
+
+    def __init__(self, delay_s: float = 2.0, message: str = "prerequisite not ready") -> None:
+        super().__init__(message)
+        self.delay_s = delay_s
+
+
 class JobDeadlineExceeded(JobCancelled):
     """The job's execution deadline passed; it ends ``timed_out``, not retried."""
 
@@ -236,7 +244,6 @@ def run_one(owner: str, kinds: list[str] | None = None) -> str | None:
             raise PermanentJobError(ErrorCode.INTERNAL, f"no handler for job kind {job.kind!r}")
         result = fn(ctx)
         ctx.check_cancelled()
-
         def done() -> bool:
             with transaction() as conn:
                 return jobs.complete(conn, job.id, owner, result)
@@ -246,6 +253,11 @@ def run_one(owner: str, kinds: list[str] | None = None) -> str | None:
             raise JobCancelled(f"{job.id}: cancelled or lease lost before complete")
         if completed:
             log.info("job %s (%s) succeeded", job.id, job.kind)
+    except JobDeferred as exc:
+        with transaction() as conn:
+            jobs.defer(conn, job.id, owner, delay_s=exc.delay_s)
+        log.info("job %s (%s) deferred: %s", job.id, job.kind, exc)
+        return job.id
     except JobCancelled as exc:
         code = (
             ErrorCode.JOB_LEASE_EXPIRED
