@@ -6,6 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
+    "0.24.0"  # 0.23 reserved by upstream PR #458 (Phase 7C). 0.24 live-defense investigation observability (additive): Executions read APIs + console tab.
     # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents (PR #49);
     # 0.8 FindingDetail / AssessmentReport response DTOs (additive);
     # 0.9 CheckCategory enum (Probe ids + V0 fixture aliases);
