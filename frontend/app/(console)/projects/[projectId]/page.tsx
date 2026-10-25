@@ -8,7 +8,7 @@ import { PillarLoop } from '@/components/pillar-loop';
 import { RepoCommits } from '@/components/repo-commits';
 import { RepoPicker } from '@/components/repo-picker';
 import { useProject } from '@/components/project';
-import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Stat, Time } from '@/components/ui';
+import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, PageTitle, Panel, Stat, Time } from '@/components/ui';
 import { api, idempotencyKey } from '@/lib/api';
 import { CONNECT_REPOSITORY_NOTE } from '@/lib/connect';
 import { INDEX_COMMIT_NOTE } from '@/lib/index-commit';
@@ -67,7 +67,7 @@ export default function ProjectOverview() {
           </>
         ) : <p className="text-sm text-muted">Loading the current project records…</p>}
       </section>
-      <div className="flex items-end justify-between gap-4"><div><h1 className="text-2xl font-semibold">7 agents</h1><p className="mt-2 text-sm text-muted">Start a security check, then open a run to replay the work and review its findings.</p></div></div>
+      <PageTitle eyebrow="Review" title="7 Agents" subtitle="Start a security check, then open a run to replay the work and review its findings." />
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-4">
         <StartAssessment onStarted={assessments.reload} />

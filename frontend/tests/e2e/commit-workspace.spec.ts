@@ -61,8 +61,15 @@ test('organization → repository → commit keeps real agent work and replay in
   await bob.goto(`/projects/${env('E2E_WORKSPACE_PROJECT_ID')}/assessments/${assessmentId}`);
   await expect(bob.getByRole('heading', { name: 'Human approval required' })).toBeVisible({ timeout: 180_000 });
   const decisions = bob.getByRole('button', { name: 'Approve remediation', exact: true });
-  await expect(decisions).toHaveCount(2);
-  for (let i = 0; i < 2; i++) { await decisions.first().click(); await expect(decisions).toHaveCount(1 - i); }
+  // The functional-repair approval is recorded later in the run than the security one;
+  // the gate polls the event log, so the second card can trail the first by a poll cycle.
+  await expect(decisions).toHaveCount(2, { timeout: 120_000 });
+  for (let i = 0; i < 2; i++) {
+    await decisions.first().click();
+    // Approving takes a second explicit click; the first only opens the confirm block.
+    await bob.getByRole('button', { name: 'Confirm approval' }).click();
+    await expect(decisions).toHaveCount(1 - i);
+  }
   await expect(bob.getByRole('heading', { name: /Assessment/ }).getByText('Completed')).toBeVisible({ timeout: 180_000 });
   await page.goto(`${base}/commit/${otherSha}`);
   await expect(page.getByRole('heading', { name: 'A different commit' })).toBeVisible();

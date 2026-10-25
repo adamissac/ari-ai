@@ -29,6 +29,7 @@ Nothing else can push code. `installation` and `installation_repositories` event
 delivered to the App automatically (no subscription); `Repository` events let Ari follow
 renames/transfers and repo deletion. Tell customers the write scope plainly during onboarding — see
 `docs/pilot/CUSTOMER_ONBOARDING.md`.
+
 | Where can it be installed | Any account (so other people can use it) |
 
 After creating it: note the **App ID** and **Client ID**, generate a **client secret**, and
@@ -44,6 +45,7 @@ generate a **private key** (downloads a `.pem`).
 | `GITHUB_OAUTH_CLIENT_SECRET` | the App's client secret |
 | `GITHUB_WEBHOOK_SECRET` | the webhook secret from step 1 |
 | `ANTHROPIC_API_KEY` | your key (set a monthly spend limit in the Anthropic console) |
+| `MIGRATION_DATABASE_URL` | Optional migration-only database role; defaults to `DATABASE_URL` |
 
 Already set (non-secret): `DATABASE_URL` (reference to Postgres), `APP_ENV=production`,
 `ARTIFACT_STORE_URI=file:///data/artifacts`, `SECURITY_WORKDIR=/data/work`,

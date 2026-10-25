@@ -15,7 +15,7 @@ it('starts the quick read on arrival and asks the analyze route for this commit'
   vi.stubGlobal('fetch', fetchMock);
   render(<RealCommitPage />);
   await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/analyze', expect.objectContaining({ method: 'POST', body: JSON.stringify({ repo: 'test-team/test-app', sha: 'c'.repeat(40) }) })));
-  await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('not configured'));
+  await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('no model API key configured'));
 });
 
 it('uses the configured provider commit URL rather than assuming GitHub.com', async () => {

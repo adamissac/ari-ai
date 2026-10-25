@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useProject } from '@/components/project';
 import { useSession } from '@/components/session';
-import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Time } from '@/components/ui';
+import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, PageTitle, Panel, Time } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
 import { APPROVAL_STATUS } from '@/lib/status';
@@ -21,7 +21,9 @@ export default function ApprovalsPage() {
   const { project } = useProject();
   const approvals = useResource(`approvals:${project.id}`, s => api().approvals(project.id, { signal: s }), 5000);
   return (
-    <Panel title="Approval inbox" actions={<span className="text-xs text-muted">Owners may approve their own sandbox scopes. Other approvals require a different requester and approver.</span>}>
+    <>
+      <PageTitle eyebrow="Review" title="Approvals" subtitle="Decisions that let agents proceed — scoped to this project." />
+      <Panel title="Approval inbox" actions={<span className="text-xs text-muted">Owners may approve their own sandbox scopes. Other approvals require a different requester and approver.</span>}>
       <Async resource={approvals} label="approvals">
         {page => {
           const items = [...page.items].sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending') || b.requested_at.localeCompare(a.requested_at));
@@ -31,6 +33,7 @@ export default function ApprovalsPage() {
         }}
       </Async>
     </Panel>
+    </>
   );
 }
 
@@ -39,6 +42,7 @@ function ApprovalRow({ approval, onDone }: { approval: Approval; onDone: () => v
   const { project } = useProject();
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const mine = approval.requested_by === me.user.id;
   const what = WHAT[approval.subject_type];
@@ -69,13 +73,22 @@ function ApprovalRow({ approval, onDone }: { approval: Approval; onDone: () => v
         <p className="rounded border border-line p-2"><span className="font-semibold text-muted">Will not: </span>{what.wont}</p>
       </div>
       {approval.status === 'pending' ? (
-        approval.subject_type === 'scope' ? <p className="mt-2 text-xs text-muted">Decide scope approvals on the <Link className="text-accent hover:underline" href={`/projects/${project.id}/scopes`}>Scopes</Link> tab.</p> : (
+        approval.subject_type === 'scope' ? <p className="mt-2 text-xs text-muted">Decide scope approvals on the <Link className="text-accent hover:underline" href={`/projects/${project.id}/scopes`}>Scopes</Link> tab.</p> : (<>
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <Field label="Reason (optional)"><input className={inputClass} value={reason} onChange={e => setReason(e.target.value)} name="approval_reason" /></Field>
-            <Button variant="primary" disabled={busy || mine} onClick={() => void decide('approved')}>Approve {approval.subject_type}</Button>
+            <Button variant="primary" disabled={busy || mine} onClick={() => setConfirming(true)}>Approve {approval.subject_type}</Button>
             <Button variant="danger" disabled={busy} onClick={() => void decide('declined')}>Decline</Button>
           </div>
-        )
+          {confirming && (
+            <div className="mt-3 rounded border border-warn/50 bg-warn/5 p-2" role="alert">
+              <p className="text-xs">Confirm {approval.subject_type} approval — {what.will} It never merges or deploys.</p>
+              <div className="mt-2 flex gap-2">
+                <Button variant="primary" disabled={busy} onClick={() => { setConfirming(false); void decide('approved'); }}>Confirm approval</Button>
+                <Button variant="ghost" onClick={() => setConfirming(false)}>Back</Button>
+              </div>
+            </div>
+          )}
+        </>)
       ) : (
         <p className="mt-2 text-xs text-muted">Decided by <Mono>{approval.decided_by ?? '—'}</Mono> <Time iso={approval.decided_at} />{approval.reason && <> — {approval.reason}</>}</p>
       )}
