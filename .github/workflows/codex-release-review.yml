@@ -70,7 +70,9 @@ jobs:
           pr="$(curl -sf -H "Authorization: Bearer $GH_TOKEN" \
             "https://api.github.com/repos/$REPO/pulls?head=m-alan08:integration/2026-11-02-release&state=open" \
             | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["number"] if d else "")')"
-          base="$(git rev-parse origin/ci/upstream-e41c9dc2 2>/dev/null || git rev-parse origin/ci/upstream-main)"
+          base="$(curl -sf -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/$REPO/pulls/8" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["base"]["sha"])')"
           echo "skip=false" >> "$GITHUB_OUTPUT"
           echo "pr_number=$pr" >> "$GITHUB_OUTPUT"
           echo "base_sha=$base" >> "$GITHUB_OUTPUT"
