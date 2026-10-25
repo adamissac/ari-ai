@@ -8,6 +8,7 @@ All notable changes are documented here. Format follows
 
 - Starting an assessment with no commit SHA now reviews the latest commit on the repository's
   default branch when connected through the GitHub App.
+- Verify now honors repository-declared `protected_tests` from `build_recipe.json` in its no-tampering check.
 - Added independent 70/80/90% storage alerts and Prometheus gauges for the app data volume mounted at `/data`.
 - Quota reset timestamps now reflect when an over-limit rolling hour or day window actually falls below its limit.
 - Railway now defaults `GITHUB_AUTO_COMMIT_AUTHORS` to empty, disabling per-commit full runs while enabled repositories fall back to the legacy impact-gated, coalesced monitoring policy; `*` or a comma-separated GitHub login list opts into per-commit full runs. Strictly manual operation requires `automatic_assessments` OFF per repository (or project monitoring disabled); manual Run remains available.
