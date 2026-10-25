@@ -1731,6 +1731,7 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Eval harness: `run.py` cleanup survives missing `gh` auth; `score_api.py` accepts the bare-list assessments response. All 35 cases pushed as `eval/20261024-110115/*` branches; assessments accumulate live pending a fresh `hackatl_session` for scoring + scope widening (`access_control.authentication` category).
 - Test scope fixture (`make_scope` default) now grants all three check categories — required for the f2 listing invariant after the authentication template landed.
 
+
 ## 2026-10-24 — Devin (Adam): first live 45-case eval + baseline
 
 - Scored the full 45-case run live over the REST API: **idor 8/8 flagged→validated→fixed; vuln 23/24 flagged, 5 functionally validated (functional reviewer, not Probe); 1 transient FAILED** (worker restart mid-VALIDATION). Median 153s, ~$0.028/run.
@@ -1748,3 +1749,35 @@ ancestry retained and v6 registry hash unchanged (see verification report).
 - Review packet regenerated with the role sample; its import allowlist now includes `datetime` (needed by `{expires_in_days}` renders).
 - **Incident:** `chore/agent-commit-cadence` was accidentally cut from `eval/20261024-142809/idor_project_cache_before_auth` and carried the planted `_PROJECT_CACHE` vuln — PR e2e caught it correctly (`toHaveValue('900')` got stale `600`). Rebased it off; the vuln stays only on its eval branch. Lesson: always `git checkout -b <branch> origin/main`, never off the current checkout.
 - Eval run 2 (tag `20261024-142809`, 45 cases) in flight with specialist Scout live: mid-run shows vuln flagged 20/24, benign FP 0/13, median 69s (~2× faster than the 153s baseline).
+
+## 2026-10-24 — Devin (Adam): inventory-lite rehearsal fixture
+
+- `examples/inventory-lite`: second owned fixture — a FastAPI inventory service authored
+  after the scripted fixtures were fixed, so no agent script or canned turn is shaped
+  around it. Planted CWE-639-class defect on `GET /items/{item_id}` (missing
+  `require_owner`); `labels.yaml` answer key, `label_checks/` guard it, `build_recipe.json`
+  and Dockerfile mirror payments-lite.
+- `security-agents/tests/test_inventory_lite_rehearsal.py` (3 passed): drives the real
+  `checks.run_template` path — `item_detail` CONFIRMED by execution (bob gets 200),
+  `warehouse_detail` refuted. Evidence doc: `docs/rehearsal/2026-10-24-inventory-lite.md`.
+- `examples.yml` gained an `inventory-lite` job (install, lint, target tests, label
+  checks, Docker build).
+- Outstanding: the full seven-agent *live-provider* assessment on this fixture needs
+  `ANTHROPIC_API_KEY` (`RUN_LIVE_LLM_EVAL=1`); scripted transports cannot honestly
+  produce novel findings on it by design.
+
+
+## 2026-10-24 late — Devin pilot-readiness lane (session 174c2824231b457a8954115bff931884)
+
+### Done
+- **Rehearsal legs green**: local 7/7 incl. real-provider + real-Vercel-sandbox leg (CWE-639 found, CVSS 4.3, eve cross-tenant 404s). Prod leg on ari-ai `rehearsal/ledgerlite-v2` COMPLETED end-to-end (live provider + index) — Scout did not flag the planted vuln inside the large repo; detection quality is repo-context-dependent (tuning lever).
+- **Defects found+fixed via rehearsal**: (1) crashed indexer leaves not-ready index payloads that permanently poison `(project,repo,commit,index_version)` → `backend/intel_store.py` rewrite-before-ready fix, PR #542; (2) eval runner died on any transient 503 → scorer retry + deadline-persistent batch loop, PR #543.
+- **gitleaks repo-wide contamination removed**: fixture literals `Bearer tok-alice/tok-bob` existed in reachable commits on `rehearsal/ledgerlite-v2` (squashed + force-pushed) and `docs/adam/pilot-launch` (scrubbed, #527 head). Verified with gitleaks 8.30.1 on the exact `pull/N/merge` SHAs CI scanned.
+- **Rebases** (mechanical, append-file conflicts only): #458, #533, #536 pushed to their head branches. NOTE: integration lead (session aedd769fac50460c914b5139579a16e5) owns merge execution per `coordination/messages/20261024T234500Z`; #458 + #412 HELD for human security review — do not merge.
+- **Private rehearsal target prepared locally**: `~/repos/pilot-rehearsal-target` — ledgerlite app w/ planted CWE-639, build_recipe.json (alice/bob identities, 3 routes), pytest cover. Owner action remaining: `gh repo create adamissac/ari-pilot-rehearsal --private` + push + install the Ari AI app (docs/pilot/REHEARSAL.md).
+- **Eval run 3** (45 cases, `access_control.role` template live): tag `eval/20261024-153652`, running in background; results in `~/work/eval_run3/`; scorer API env in `/tmp/eval3.env`.
+
+### Outstanding
+- Merge waves belong to the integration lead; wave 2 includes my #542/#543.
+- Prod queue depth (~88 items) makes 45-case live eval slow — some cases may return `pending`/NOT_STARTED; rerun stragglers or extend deadlines.
+- Second-org real-provider leg needs owner's private repo + second GitHub org (account actions).
