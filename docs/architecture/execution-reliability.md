@@ -73,7 +73,10 @@ included) is kept strictly separate from code-aware redaction (`redact_code`,
 which `ArtifactStore.put_text` applies to `diff` artifacts): the generic
 `key=value` matcher is deliberately excluded from the code path so non-secret
 expressions like `api_key=os.environ["API_KEY"]` survive byte-identical and
-parseable, while quoted secret literals and token/DSN shapes still redact.
+parseable. `redact_code` still removes actual secret literals: quoted values
+after a credential-ish key in simple (`name = "…"` / `name: "…"`), annotated
+(`name: Type = "…"`) and quoted mapping/subscript (`{"name": "…"}`,
+`d["name"] = "…"`) forms, plus token/DSN/URI shapes.
 
 ## Recovery (`backend.execution.reconcile`)
 
