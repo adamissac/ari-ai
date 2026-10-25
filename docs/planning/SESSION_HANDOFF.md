@@ -203,6 +203,23 @@ adds an entry before ending.
 - Next steps: run the staging rehearsal before customer 1; merge #441 (redaction parse fix) recommended pre-indexing; reference privacy session's threat-model/retention docs in DATA_HANDLING.md when they land.
 - Warnings for the next session: do not upgrade feature-matrix labels without new executed evidence; pilot claims track `main` only — open PRs #496/#458/#441/#412/#517 are branch-only.
 
+### 2026-10-25 — Devin (agent, Alan) — R2 disconnect-side cancellation for release-0019
+- Did (fork PR #4): R2 P1 fix-request from Devin Integration. Disconnect now locks the
+  repo row FOR UPDATE for the whole transaction (serializes per-operation and
+  final-persist revocation checks), identifies live-defense work via the trusted
+  repo<->mapping linkage (jobs keyed by application_id, mapping_id, and decision_id
+  -> first_responder_decisions.application_id), cancels queued+waiting linked jobs,
+  and sets cancel_requested on RUNNING linked jobs (cooperative; evidence/cost
+  preserved). New `services.repository_revocation(conn, repo_id=, application_id=,
+  mapping_id=)` is the canonical check for Alan's #458 first_responder source
+  callback and final persist — returns 'repository_disconnected' /
+  'deploy_mapping_revoked' / None. Did NOT touch first_responder.py (#458 head).
+  Codex probe `test_repository_disconnect_stops_next_provider_turn` goes green only
+  on the composed tree once #458 calls the helper per provider turn.
+- Tests: 20/20 test_customer_security_hardening (new: linked agent-step jobs
+  cancelled incl. running -> cancel_requested, unrelated decision untouched,
+  repository_revocation contract); regression subsets green; ruff/format clean.
+
 ### 2026-10-24 — Devin (agent, Alan) — canonical repo disconnect + migration rebase + e2e fix
 - Did: resolved the three blockers on PR #4 (feat/devin-pilot-security-hardening):
   1. Migration collision: execution-reliability (fork PR #1) owns revision `0016`; its
