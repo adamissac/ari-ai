@@ -1,0 +1,14 @@
+{
+  "candidate_sha": "4fdcf10cc2320b0eb499a177e3b8bea847de8e73",
+  "upstream_sha": "e41c9dc22e6536463cdab9be6a2a4cd76302c866",
+  "upstream_merge_clean": true,
+  "merge_exit": 0,
+  "merge_output": "b158c46673e313a6ecddafc21b5422b7a15ab9c6\n\n",
+  "manifest_sha": "b2a10667b6757e67fb32323919ef2d3cf843160a",
+  "manifest_production_equal": false,
+  "production_differences": [
+    "deploy/reports/release-readiness-20261025T065919+0000.json",
+    "deploy/reports/release-readiness-20261025T082755+0000.json"
+  ],
+  "production_diff_complete": true
+}

@@ -16,6 +16,46 @@ adds an entry before ending.
 - Warnings for the next session:
 ```
 
+### 2026-10-25 — Devin (agent, Adam) — all-depth pytest hook definitions (#629)
+- Did: restored recording of every `pytest_*` function and async-function
+  definition, including nested definitions and plugin-class methods, while
+  keeping local variable bindings accepted by the context-aware collector.
+- State of the code: follow-up is on `fix/adam/verify-hook-attribute-writes`,
+  based on `221e5ebb`; `origin/main` remained at `e41c9dc2`.
+- Commands run and results: baseline at `221e5ebb` — 2 failed, 1 passed,
+  210 deselected (`/Users/devin/.devin-files/verify-nested-hook-defs-red-221e5ebb.log`);
+  narrow replay suite — 213 passed; Ruff check and format check passed;
+  `git diff --check` passed.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: await the owner's CI-loop re-brief; no post-push CI checks are
+  requested for this handoff.
+- Warnings for the next session: no backend or full security-agents rerun was
+  needed for this focused delta.
+
+### 2026-10-25 — Devin (agent, Adam) — Verify hook binding and symlink follow-ups (#629)
+- Did: replaced the pytest target walker with a context-aware binding scan for
+  `pytest_*` names, imports, global stores, and hook-rooted attribute/subscript
+  writes, `setattr`, and `del`. Kept local names and index-only reads accepted.
+  Continued Python/conftest checks for section-config targets and compared
+  linked config target contents using the logical config parser through
+  `apply_fresh`.
+- State of the code: `origin/main` through `e41c9dc2` is integrated. Its
+  `security_agents/intel/host_service.py` snapshot retry change is unrelated to
+  the Verify changes; the later main update to `coordination/status/ADAM.md` is
+  also retained. The only merge conflict was `SESSION_HANDOFF.md`; retained
+  main's handoff entries and the branch's Verify entry.
+- Commands run and results: baseline at `99f9ebf9` — 11 failed, 22 passed,
+  175 deselected (`/Users/devin/.devin-files/verify-hook-binding-symlink-red-99f9ebf9.log`);
+  narrow replay suite — 211 passed; backend selector — 123 passed, 4 skipped,
+  689 deselected; full security-agents suite — 792 passed, 24 skipped;
+  Ruff check and format check passed.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: create one canonical no-trailer merge commit, audit identity, and
+  push `fix/adam/verify-hook-attribute-writes`; do not monitor CI until re-briefed.
+- Warnings for the next session: no PR was opened and no post-push CI checks were run.
+
 ### 2026-10-26 — Devin (agent, Adam) — protect retention references and destructive ops
 - Did: expanded snapshot protection to findings, memory, decisions, active assessments/jobs, and (by default) all assessment references; added per-snapshot locking/rechecks, assessment binding locks, plan digests, and a separate destructive-maintenance token.
 - State of the code: implemented on `fix/adam/retention-protect-references`; production `RETENTION_DRY_RUN=true` is unchanged. No PR was opened.
@@ -2485,6 +2525,23 @@ remains OFF pending manual installation and protected credential/session setup.
 - Spend-cap reset time now uses a Numeric window calculation over one database snapshot,
   avoiding fractional-cost rounding and concurrent-write inconsistencies.
 
+## 2026-10-25 — Adam: Verify hook and config follow-ups
+
+### Done
+- Added hook-rooted attribute/subscript, `setattr`, and `del` detection while
+  preserving subscript-index and ordinary-attribute controls.
+- Made invalid non-`conftest.py` test fixtures inert during literal
+  `pytest_plugins` discovery; read and malformed-`conftest.py` errors remain
+  fail-closed.
+- Applied semantic checks to changed in-repository symlink targets of rootdir
+  and repository-root section-checked pytest configs.
+- Added `apply_fresh` coverage for config read errors and `os.walk` errors.
+- Baseline at `ee8b8666`: 6 failed, 17 passed, 169 deselected. Final narrow
+  suite: 194 passed; backend selector: 123 passed, 4 skipped, 672 deselected;
+  full security-agents suite: 775 passed, 24 skipped.
+- Ruff check, Ruff format check, and `git diff --check` passed.
+- No PR was opened and CI was not monitored, as requested.
+
 ## 2026-10-25 — Adam: onboarding readiness and setup clarity
 
 - On `feat/adam/onboarding-graphite`, recipe readiness now validates and scans up to four
@@ -2517,3 +2574,11 @@ remains OFF pending manual installation and protected credential/session setup.
 - Note: `CHANGELOG.md` on upstream main contains a leftover `|||||||` merge marker under Unreleased (pre-existing, not touched).
 
 - Follow-up review: `end_effect(applied=False)` now keeps a `settled` marker when an earlier effect was already applied (prevents replay of an applied effect); `end_effect` regression test added; control-doc caveat documented.
+
+### Independent RC4 review — 2026-10-25
+
+Pinned product 6a72949efa7c0a2d3233eb6884bb7a23dfe71ced; upstream e41c9dc22e6536463cdab9be6a2a4cd76302c866. Original F1–F10/N1–N7 probes pass. New P2 N8: quoted dictionary/typed password literals survive redacted diff storage and actual project-viewer download; unrelated user remains denied. Independent Docker run 40202085130: 182 passed, 5 failed, 0 skipped (four N8 checks plus newer VerifyEvidence constructor incompatibility); fail-closed runner cleanup error retained. Eight-step stack matches RC4 exactly in production on eea084bc; conflicts at S1 on latest main. Original candidate CI 21 success/1 optional live skip verified. No production edits/merge/deploy/approval. Report: docs/reviews/rc4-independent/REPORT.md. Overall/customer/merge NO-GO; known-finding-only GO on pinned product.
+
+### Repeat RC4/N8 independent review — 2026-10-25
+
+Pin 4fdcf10c vs main e41c9dc2; tip 0098f1d5 report-only. Original F1–F10/N1–N8 pass; upstream composition and VerifyEvidence blockers closed. New N9/P2: annotation regex crosses semicolon into another statement and corrupts non-secret source/stored diff. Final isolated run 40210138609: 187 pass, 3 fail, zero skip (two N9 checks and retained stale legacy GET/write-limit test); independent split-limit control passes. Collector cleanup error retained. Product CI succeeds; missing paid Codex audit is not a product finding. NO-GO pending N9 and final gates. No production edits/merge/deploy/approval. Report: docs/reviews/rc4-n8-independent/REPORT.md.
