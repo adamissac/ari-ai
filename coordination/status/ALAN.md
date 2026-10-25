@@ -589,3 +589,8 @@ re-run on any further recomposition.
 
 Upstream-reconciled tip 070f75a9 (head 0019, upstream ops/storage + heartbeat
 surface merged): release_readiness GO 25/25 unchanged. Gate still green.
+
+RC GATE GREEN: release_readiness.py GO 25/25 on RC SHA bc490484 (upstream
+580d2f67 reconciled — onboarding lifecycle, release-gate+dead-letter, intel
+audit + write-time redaction, ops-alias fix; head stays 0019). Gate stable
+across the entire reconciliation.
