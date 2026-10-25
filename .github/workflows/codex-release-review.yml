@@ -104,7 +104,7 @@ jobs:
           pend = sum(1 for r in rs if r["status"] != "completed")
           fail = sum(1 for r in rs if r["status"] == "completed" and r["conclusion"] not in ("success","skipped","neutral"))
           print(f"{len(rs)} {pend} {fail}")
-          for r in rs: print(f"{r[\"name\"]}: {r[\"conclusion\"]}")' > /tmp/checks.txt
+          for r in rs: print(f"{r['name']}: {r['conclusion']}")' > /tmp/checks.txt
             head -1 /tmp/checks.txt
             tail -n +2 /tmp/checks.txt > ci-summary.txt
           }
