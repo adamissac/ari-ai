@@ -1,7 +1,7 @@
 # Staging Rehearsal Report
 
-- **Rehearsal date:** 2026-10-24 (local legs); production leg 2026-10-25 01:26–02:14 UTC
-- **Code under test:** local legs `main` @ `d0131167`; production leg Railway `readyz.git_sha` = `0f311913` (`main`, schema 0.22.0, migration head 0017)
+- **Rehearsal date:** 2026-10-24 (local legs); production Leg 7 2026-10-25 01:26–02:14 UTC and Leg 8 04:16–05:50Z
+- **Code under test:** local legs `main` @ `d0131167`; production Leg 7 Railway `readyz.git_sha` = `0f311913` (`main`, schema 0.22.0, migration head 0017); Leg 8 ran `497372ff` (#587, delivery from a delivery-only sealed artifact)
 - **Environments:** (a) production — Railway API `ari-ai-production-76d4.up.railway.app` + Vercel frontend `ari-ai-lake.vercel.app` + real GitHub App + live Anthropic; (b) local real stack — FastAPI TestClient + real PostgreSQL + in-process worker + scripted `FakeTransport`.
 - **Honesty rule (per Adam):** each stage is labelled `live Claude` / `scripted` / `sandbox` / `real I/O`. Nothing skipped is claimed as passed.
 
@@ -11,12 +11,13 @@
 |---|---|---|---|
 | 1 | Tenant isolation (cross-org ID substitution) | Local real stack | **PASS** — 34 probes, uniform 404, no existence leak |
 | 2 | Real execution / labelling | Local + prod | **PASS** — live leg executed: every agent run `provider_mode=live`; scripted stages labelled |
-| 3 | GitHub safety (PR/manual only, scoped write tokens, no auto-merge) | Code audit + prod | **FAIL / not proven**: fix-PR delivery refused (D1). The project ran `delivery_mode=auto`, which would have committed straight to `main` if D1 had not blocked it (D7). Nothing was merged or deployed |
+| 3 | GitHub safety (PR/manual only, scoped write tokens, no agent merge/close) | Code audit + prod | **PARTIAL** — Leg 8 proved PR delivery (#2 and #4); D10 showed agent sessions merged/closed those PRs using the owner's account, and the free-plan private target has no branch protection |
 | 4 | Monitoring: opt-in controls, limits, cancel, budget caps | Local + prod | **PASS** — prod cancel, budget, scope-revoke drills; opt-out toggle persisted (no push event landed in the window — behaviour evidence is the local leg) |
 | 5 | Defense Lab: recommendation-only | Code + tests | **PASS** |
 | 6 | Data privacy: storage, provider processing, artifacts, deletion | Local + code + prod | **FAIL for DB isolation in prod**: policies enforce for a non-superuser probe, but the app connects as superuser `postgres` (BYPASSRLS), so RLS is inert for the app (D8). App-layer membership checks held (P2) |
 | 7 | Reliability: failure recovery, persistence, restarts, UI errors | Local + prod | **PASS with findings** — prod outage recovered; UI showed accurate `SUBSYSTEM_UNAVAILABLE`; see D2–D4 |
-| P1 | Prod journey: install → connect → index → live assessment → findings → repair → verify → results | Prod | **PASS through independent Verify; FAIL at fix-PR delivery (D1, pilot-blocking)** |
+| 8 | Hosted C9 re-run: Verify-tested sealed artifact → PR | Production | Delivery mechanism **PROVEN** (#2 and #4); C9 closure **OPEN** pending the review, owner decision, and owner-witnessed PR described below |
+| P1 | Prod journey: install → connect → index → live assessment → findings → repair → verify → results | Prod | **PASS through independent Verify; PR delivery mechanism PROVEN in Leg 8; C9 remains OPEN** |
 | P2 | Prod tenant isolation (app-layer) (org B substitutes org A's real IDs) | Prod | **PASS** — 34/34 reads+mutations → 404 |
 
 ## Leg 1 — Two-org isolation (real stack, scripted LLM)
@@ -239,6 +240,66 @@ Evidence files (operator machine, not committed — contain tenant IDs):
 `prod_drill_cancel_revoke.txt`, `prod_drill_monitoring_optout.txt`,
 `prod_cost_ops.txt`.
 
+## Leg 8 — hosted C9 re-run on production (2026-10-25)
+
+At the time of the re-run, production ran `497372ff` (#587), which delivered
+from a delivery-only sealed artifact. Rehearsal project
+`prj_01M55VPRZP4SY423ETVF3K3TBW` was changed from `delivery_mode=auto` to
+`pull_request` through `PATCH /api/v1/projects/{id}`; the audit recorded
+`delivery.pull_request` and `project.updated`.
+
+### Run 1 — sealed delivery and PR #2
+
+Manual assessment `asm_01M5RMCW5QNM53Y9R53NT5PYRM` started at 04:16:44Z and
+completed through every state. The planted IDOR finding
+`fnd_01M5RMDNR0FGEJD0VFCANBRSG2` was patched as
+`pat_01M5RMFBQWDZQKAAQV74ZY2XXF`; Verify
+`ver_01M5RMFQ0XMKSW25P2H8HET1ER` was accepted.
+
+Sealed artifact `art_01M5RMFBRYH69CRQVAGXGSRDD9` was 2,036 bytes with SHA-256
+`0a86ea56…9756`, identical to the member-visible diff. No redaction was needed,
+so this run did not re-exercise D1's redaction path. Audit recorded
+`delivery.pr_opened` at 04:18:20Z by `auto-delivery`, opening
+[pilot-rehearsal-target#2](https://github.com/adamissac/pilot-rehearsal-target/pull/2)
+on branch `ari/fix-pat_01M5RMFBQWDZQKAAQV74ZY2XXF`, head `faada009`. The PR
+changed two files, +40/−4: `ledgerlite/app.py` and new
+`tests/test_account_ownership.py`; those changes match the verified patch.
+A byte-for-byte comparison of GitHub's diff with the stored artifact was not
+possible because the formats differ. Exactness rests on delivery's sealed-SHA
+check passing before push.
+
+PR #2 was open and unmerged from 04:18:20Z to 05:03:31Z, then approved and
+squash-merged as `d6acccf` by another agent session (`devin-defense-lab`)
+using Adam's GitHub account under delegation. Its review was not a personal
+review by Adam. Ari's backend has no merge call; the merge was an
+operator/agent action.
+
+### Run 2 — protected-tests proof and PR #4
+
+Assessment `asm_01M5RSKEZDZWYBKRASGE3QJA0S` ran at 05:47:42Z on
+`rehearsal/protected-tests-proof`, using production `95e90861` (including
+#599). Verify `ver_01M5RSNZHCXH5XAMQMRMG9MST0` was accepted with
+`no_test_tampering` = `"protected: 1 file(s)"`. Delivery opened
+[pilot-rehearsal-target#4](https://github.com/adamissac/pilot-rehearsal-target/pull/4)
+at 05:49:08Z; an agent closed it unmerged at 05:50:42Z as proof-only.
+
+### Quotas and findings
+
+For Run 1, the daily limit was temporarily raised from 50 to 500 with owner
+approval and restored to 50 around 05:05Z. The hourly limit was found at 60
+after an unknown-lane change and restored to 10. Another lane temporarily
+raised the daily limit to 600 for Run 2 and restored it. Final verified
+Railway values were `PROJECT_ASSESSMENTS_PER_HOUR=10`,
+`PROJECT_ASSESSMENTS_PER_DAY=50`, and `ASSESSMENTS_USD_PER_DAY=50`;
+`/readyz` was ready with 24 workers and 0 queued.
+
+- **D9:** 429 `resets_at` was wrong when the count greatly exceeded the limit.
+  #596 fixed the hour/day cases; the spend cap remained affected and needed a
+  follow-up fix.
+- **D10:** Agent sessions merged or closed Ari fix PRs on the rehearsal target
+  using the owner's account. No owner-witnessed open PR remains, and branch
+  protection is unavailable on the free-plan private target repository.
+
 ## Open findings for the launch decision
 
 1. **No automated retention; deletion is operator-invoked** — `purge_project`
@@ -254,9 +315,15 @@ Evidence files (operator machine, not committed — contain tenant IDs):
    ID-substitution drill.
 4. **Assistant-role turns are re-sent unredacted** to the provider (thinking-block
    signature constraint) — disclosed; mitigated by inbound redaction.
-5. **Prod leg executed (Leg 7)** — journey passes through independent Verify;
-   fix-PR delivery fails closed (D1). D2–D6 recorded above.
+5. **Production fix-PR delivery** — Leg 7's delivery attempt failed closed
+   (D1); Leg 8 proved the PR-delivery mechanism with #2 and #4, but C9 remains
+   open because its owner/review gates are unmet (D10).
 6. **PR #535 (RLS + `purge_project`)** — merged and verified on production
    (migration head 0017, non-superuser RLS drill passed).
 7. **`jobs.last_error` redaction** — #530 merged; `jobs.py` stores
    `last_error=redact(...)` on `main` @ `0f311913`, which production runs.
+8. **D9 — quota reset timestamps** — #596 fixed hour/day reset times; spend-cap
+   reset times still required a follow-up fix.
+9. **D10 — owner-witnessed PR handling** — no owner-witnessed open PR remains;
+   agents merged/closed PRs using the owner's account, and branch protection is
+   unavailable on the free-plan private target.

@@ -69,18 +69,21 @@ Nothing here is to be performed by an agent.
      update the Railway variable, then deploy. Once a webhook delivery and an
      installation-token fetch succeed, delete the old key.
 
-## Rehearsal cleanup (for approval; runs only after the C9 re-run)
+## Rehearsal cleanup inventory (owner approval required)
 
-Inventory (read-only query, 2026-10-25):
+The rehearsal-alice owner seat in Adam's org and both rehearsal sessions were
+removed by another lane by 05:01Z, not by an approved cleanup. No remaining
+item may be deleted without owner approval. The DB-role migration remains
+**NOT EXECUTED**.
 
 | Object | IDs | Proposed handling |
 |---|---|---|
-| Users | `usr_A40D640D9695D19372BACD36EB` (rehearsal-alice), `usr_7C13AB87FA6E020B936382C9C7` (rehearsal-eve); `github_id` NULL | Retain rows (audit references). After the steps below they have no access |
-| Sessions | 1 per user, expire 2026-11-01 | `POST /api/v1/auth/logout` with each session (supported mechanism) |
-| Membership in owner org | alice → `org_01M55VPKH8T3P1WWEB73YQ8RDS` (owner) | No API exists. One approved single-row SQL delete (`org_id`+`user_id` match) |
-| Personal orgs | `org_4893E29D9B9FDCD265ACD26992`, `org_C992A0C6A94705736F4C7E61AC` | Retain |
-| Project | `prj_01M5RASMAA4GT4EDKWJMCQGAWF` (alice org, no repos indexed) | `purge_project` (operator runbook, supported) |
-| Assessments | `asm_01M5RCNXY6CTM8S8S3MDQ6ZFBD`, `asm_01M5RCVC20ZMYH8EKTZQP40W73`, `asm_01M5RD308T0RER91FNMQ0JGP0Q`, `asm_01M5RD406NQC4GRRT48N64ANNY` (owner project) | Retain as rehearsal evidence |
+| Users | `usr_A40D640D9695D19372BACD36EB` (rehearsal-alice), `usr_7C13AB87FA6E020B936382C9C7` (rehearsal-eve) | Retain rows referenced by audit; no deletion without owner approval |
+| Sessions | Both rehearsal sessions were removed by another lane by 05:01Z | No session cleanup remains; removal was not an approved cleanup |
+| Membership in owner org | rehearsal-alice's owner seat in Adam's org was removed by another lane by 05:01Z | No further cleanup; removal was not owner-approved |
+| Personal orgs | `org_4893E29D9B9FDCD265ACD26992`, `org_C992A0C6A94705736F4C7E61AC` | Retain; no deletion without owner approval |
+| Project | “Pilot Rehearsal (prod leg)” | Retain; no deletion or purge without owner approval |
+| Assessments | `asm_01M5RCNXY6CTM8S8S3MDQ6ZFBD`, `asm_01M5RCVC20ZMYH8EKTZQP40W73`, `asm_01M5RD308T0RER91FNMQ0JGP0Q`, `asm_01M5RD406NQC4GRRT48N64ANNY` (owner project) | Retain as audit-referenced rehearsal evidence |
 | Scope | `scp_01M5RD3YN9JH9V652ATKS93GKV` (revoked) | Retain (audit) |
 
 Evidence is kept on the operator machine (report JSON, patch and

@@ -1960,8 +1960,15 @@ selected run is still loading.
 ## 2026-10-25 — Devin pilot-readiness lane: production rehearsal leg
 
 ### Done
-- Production journey on `adamissac/pilot-rehearsal-target` (prod `git_sha` `0f311913`): live 9-agent assessment `asm_01M5RCVC20ZMYH8EKTZQP40W73` ($0.0294, 29.2 s sandbox) validated → patched → independently verified the planted IDOR; prod tenant isolation 34/34 → 404; non-superuser RLS drill; cancel, budget, scope-revoke drills pass; monitoring opt-out toggle persisted. Recorded in `docs/pilot/REHEARSAL_REPORT.md` Leg 7 + `LAUNCH_DECISION.md` (CONDITIONAL GO, customer 1 not yet recommended).
+- Production journey on `adamissac/pilot-rehearsal-target` (prod `git_sha` `0f311913`): live 9-agent assessment `asm_01M5RCVC20ZMYH8EKTZQP40W73` ($0.0294, 29.2 s sandbox) validated → patched → independently verified the planted IDOR; prod tenant isolation 34/34 → 404; non-superuser RLS drill; cancel, budget, scope-revoke drills pass; monitoring opt-out toggle persisted. Recorded in `docs/pilot/REHEARSAL_REPORT.md` Leg 7 + `LAUNCH_DECISION.md` (**NO-GO**).
 
 ### Outstanding
-- C9: `deliver_verified_patch` refuses redacted stored diffs (D1) — serve-time redaction fix with the delivery/redaction lane (session 2c9458c9), needs Adam's review; then re-run the repair leg to an open PR.
-- C10–C12: pilot automatic limits in Railway env, sandbox plan capacity, rotate Postgres password + disable public networking. Delete rehearsal users/orgs/sessions after the C9 re-run.
+- C9: Leg 8 proved production PR delivery (#2 and #4), but remains open pending independent security review and owner approval of #587, the owner's approval-semantics decision, and one Ari-delivered PR left open for the owner to review and personally merge or close. No agent may merge or close an Ari fix PR on a customer repo.
+- C6: remains open until the hosted browser journey with real GitHub sign-in and unaided onboarding (FIRST_FIVE_PLAN part 1) passes; the API-only rehearsal with server-created accounts does not close it.
+- Cleanup: follow `docs/pilot/DB_ROLE_MIGRATION.md`; retain audit-referenced rows and delete nothing without owner approval. The owner-org seat and both sessions were removed by another lane, not an approved cleanup; the DB-role migration remains NOT EXECUTED.
+
+## 2026-10-25 — Devin pilot-readiness lane: hosted C9 re-run (Leg 8)
+
+- Done: production opened PR #2 from the sealed Verify-tested artifact and opened proof-only PR #4; delivery mechanism is proven. The rehearsal project was switched to `pull_request`. Final verified Railway limits were 10/hour, 50/day, and $50/day; `/readyz` was ready with 24 workers and 0 queued.
+- Open: C9 remains open; PR #2 was merged by another agent under delegation and PR #4 was closed unmerged, so no owner-witnessed open PR remains. D9 spend reset time still needed a follow-up fix.
+- Next: record independent review and owner approval of #587, decide approval semantics, and leave an Ari-delivered PR open for the owner's personal review and merge or closure. Keep C6 open pending the hosted browser journey.
