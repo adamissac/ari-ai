@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="187" time="32.831" timestamp="2026-10-25T14:25:36.449858+00:00" hostname="f82b4b6b82bd"><testcase classname="" name="test_emergency_stop_is_claimable_when_project_slots_are_full" time="0.060" /><testcase classname="" name="test_complete_rejects_expired_lease_without_waiting_for_reconciler" time="0.030" /><testcase classname="" name="test_dependency_deferral_is_recorded_in_lifecycle_history" time="0.029" /><testcase classname="" name="test_off_marks_waiting_first_responder_jobs_cancelled" time="0.363" /><testcase classname="" name="test_deadline_compatibility_with_database_clock" time="0.030" /><testcase classname="" name="test_observability_marks_nonrunning_jobs_as_not_in_progress[timed_out]" time="0.128" /><testcase classname="" name="test_observability_marks_nonrunning_jobs_as_not_in_progress[recovery_required]" time="0.126" /><testcase classname="" name="test_crash_during_provider_request_requires_recovery_before_replay" time="0.479" /><testcase classname="" name="test_first_responder_step_has_a_durable_queue_deadline" time="0.245" /><testcase classname="" name="test_off_during_final_submit_cannot_upgrade_cancelled_invocation" time="0.336" /><testcase classname="" name="test_compat_depends_on_waits_for_prerequisite" time="0.043" /><testcase classname="" name="test_compat_per_project_concurrency_is_fair" time="0.032" /><testcase classname="" name="test_compat_execution_deadline_times_out" time="0.029" /><testcase classname="" name="test_compat_uncertain_effect_needs_operator" time="0.031" /><testcase classname="" name="test_deadline_survives_requeue_and_recovery" time="0.030" /><testcase classname="" name="test_crash_after_send_requires_recovery_before_replay" time="0.302" /><testcase classname="" name="test_off_during_final_submit_stays_cancelled" time="0.431" /><testcase classname="" name="test_agent_step_jobs_have_durable_deadline" time="0.377" /><testcase classname="" name="test_abrupt_process_death_during_provider_send_requires_recovery" time="0.316" /><testcase classname="" name="test_repo_picker_does_not_disclose_other_tenant_connection" time="0.119" /><testcase classname="" name="test_reconnect_refuses_stale_access_when_fresh_check_fails" time="0.088" /><testcase classname="" name="test_repository_disconnect_stops_next_provider_turn" time="0.411" /><testcase classname="" name="test_job_api_does_not_expose_infrastructure_credentials" time="0.132" /><testcase classname="" name="test_disconnect_after_final_revocation_read_prevents_success" time="0.348" /><testcase classname="" name="test_org_reconnect_checks_target_installation_even_with_personal_refresh" time="0.087" /><testcase classname="" name="test_operator_confirmed_retry_resolves_provider_ledger" time="0.520" /><testcase classname="" name="test_viewer_history_does_not_bypass_job_error_redaction" time="0.320" /><testcase classname="" name="test_disconnect_after_response_keeps_settled_attempt_evidence" time="0.310" /><testcase classname="" name="test_fast_reclaim_cannot_hide_unresolved_provider_from_reconciler" time="0.347" /><testcase classname="" name="test_nonliteral_credential_expression_survives_diff_artifact[api_key=os.environ[&quot;API_KEY&quot;]\n]" time="0.030" /><testcase classname="" name="test_nonliteral_credential_expression_survives_diff_artifact[password=os.environ.get(&quot;DB_PASSWORD&quot;)\n]" time="0.025" /><testcase classname="" name="test_nonliteral_redaction_stays_parseable" time="0.022" /><testcase classname="" name="test_legacy_raw_history_is_scrubbed_for_viewer" time="0.381" /><testcase classname="" name="test_locked_finalizer_serializes_repository_update" time="0.336" /><testcase classname="" name="test_populated_0017_to_0019_roundtrip_preserves_upstream_boundaries" time="0.478" /><testcase classname="" name="test_latest_upstream_database_can_upgrade_to_release[main_to_release]" time="0.371" /><testcase classname="" name="test_proposed_transfer_migrations_do_not_reuse_revision_ids" time="0.028" /><testcase classname="" name="test_declared_transfer_order_does_not_downgrade_schema" time="0.028" /><testcase classname="" name="test_transition_table_rejects_illegal_moves" time="0.029" /><testcase classname="" name="test_successful_job_records_full_history_and_timings" time="0.041" /><testcase classname="" name="test_assessment_jobs_inherit_their_project" time="0.144" /><testcase classname="" name="test_worker_crash_after_claim_is_requeued_by_reconcile_and_rerun" time="0.053" /><testcase classname="" name="test_stale_lease_is_reported_as_stuck_until_reconciled" time="0.043" /><testcase classname="" name="test_expired_lease_on_final_attempt_is_dead_lettered" time="0.038" /><testcase classname="" name="test_restart_recovers_orphans_and_prunes_dead_workers" time="0.063" /><testcase classname="" name="test_concurrent_reconcilers_do_not_double_process" time="0.241" /><testcase classname="" name="test_per_project_limit_and_fair_ordering_prevent_starvation" time="0.074" /><testcase classname="" name="test_concurrent_workers_never_exceed_project_limit" time="0.130" /><testcase classname="" name="test_high_queue_pressure_applies_backpressure_per_project" time="0.095" /><testcase classname="" name="test_backpressure_maps_to_429_with_retry_after" time="0.092" /><testcase classname="" name="test_cancellation_outcomes_are_recorded" time="1.258" /><testcase classname="" name="test_deadline_exhaustion_times_out_pending_running_and_retrying_jobs" time="0.965" /><testcase classname="" name="test_retry_budget_exhaustion_dead_letters_with_history" time="0.070" /><testcase classname="" name="test_retry_policy_backoff_is_bounded_with_jitter" time="0.023" /><testcase classname="" name="test_database_failure_in_handler_is_classified_and_retried" time="0.038" /><testcase classname="" name="test_transient_database_failure_while_completing_is_retried" time="0.242" /><testcase classname="" name="test_persistent_database_failure_leaves_job_for_lease_recovery" time="0.253" /><testcase classname="" name="test_failure_after_effect_started_requires_recovery_and_is_not_replayed" time="0.050" /><testcase classname="" name="test_worker_death_during_effect_is_never_reclaimed_automatically" time="0.045" /><testcase classname="" name="test_effect_definitely_not_applied_stays_retryable" time="0.044" /><testcase classname="" name="test_applied_earlier_effect_keeps_job_uncertain_when_later_one_is_rejected" time="0.048" /><testcase classname="" name="test_effect_is_refused_once_cancelled" time="0.031" /><testcase classname="" name="test_operator_resolution_paths_and_retry_respects_cancellation" time="0.088" /><testcase classname="" name="test_waiting_on_prerequisite_promotes_or_fails" time="0.086" /><testcase classname="" name="test_stats_are_project_isolated" time="0.047" /><testcase classname="" name="test_execution_api_enforces_project_authorization" time="0.535" /><testcase classname="" name="test_reconcile_never_runs_handlers_or_bypasses_cancellation" time="0.040" /><testcase classname="" name="test_queue_wait_and_duration_metrics" time="0.064" /><testcase classname="" name="test_emergency_jobs_claimable_when_project_and_global_caps_saturated" time="0.043" /><testcase classname="" name="test_emergency_capacity_is_bounded" time="0.032" /><testcase classname="" name="test_emergency_jobs_do_not_eat_ordinary_capacity" time="0.033" /><testcase classname="" name="test_new_apply_operations_stay_under_ordinary_limits" time="0.036" /><testcase classname="" name="test_emergency_cleanup_bounded_latency_under_queue_saturation" time="0.043" /><testcase classname="" name="test_complete_rejects_expired_lease_without_waiting_for_reconciler" time="0.032" /><testcase classname="" name="test_fail_rejects_expired_lease_leaving_recovery_to_reconcile" time="0.038" /><testcase classname="" name="test_expired_owner_loses_race_to_new_lease_owner" time="0.038" /><testcase classname="" name="test_heartbeat_race_extends_lease_then_completion_succeeds" time="0.033" /><testcase classname="" name="test_deferral_is_recorded_in_lifecycle_history" time="0.033" /><testcase classname="" name="test_deferral_does_not_consume_retry_budget" time="0.051" /><testcase classname="" name="test_deferral_respects_cancellation_deadline_and_effect_guards" time="0.050" /><testcase classname="" name="test_deferral_onto_prerequisite_parks_in_waiting" time="0.041" /><testcase classname="" name="test_enqueue_propagates_an_absolute_deadline" time="0.041" /><testcase classname="" name="test_off_sweep_cancels_waiting_and_preserves_recovery_evidence" time="0.056" /><testcase classname="" name="test_off_then_dependency_completion_does_not_revive_cancelled_work" time="0.047" /><testcase classname="" name="test_deadline_compatibility_with_database_clock" time="0.032" /><testcase classname="" name="test_expired_lease_with_unresolved_provider_ledger_requires_recovery" time="0.043" /><testcase classname="" name="test_expired_lease_with_uncertain_provider_outcome_flag_requires_recovery" time="0.038" /><testcase classname="" name="test_expired_lease_with_only_settled_attempts_requeues_normally" time="0.037" /><testcase classname="" name="test_expired_lease_with_missing_invocation_requeues_normally" time="0.035" /><testcase classname="" name="test_atomic_reservation_committed_with_ledger_write_is_fenced" time="0.041" /><testcase classname="" name="test_fast_reclaim_parks_job_with_unresolved_provider_ledger" time="0.043" /><testcase classname="" name="test_queued_job_with_unresolved_ledger_is_parked_at_claim" time="0.035" /><testcase classname="" name="test_operator_retry_clears_provider_ledger_for_authorized_replay" time="0.044" /><testcase classname="" name="test_operator_applied_marks_provider_ledger_settled" time="0.042" /><testcase classname="" name="test_operator_not_applied_cancels_provider_ledger" time="0.042" /><testcase classname="" name="test_failure_reason_redacted_in_events_and_last_error" time="0.036" /><testcase classname="" name="test_history_read_scrubs_legacy_unsanitized_events" time="0.030" /><testcase classname="" name="test_dedupe_key_returns_existing_job" time="0.027" /><testcase classname="" name="test_crashed_worker_lease_expires_and_job_runs_exactly_once_more" time="0.049" /><testcase classname="" name="test_transient_failure_retries_with_backoff" time="0.052" /><testcase classname="" name="test_permanent_failure_is_not_retried" time="0.040" /><testcase classname="" name="test_exhausted_attempts_dead_letter" time="0.040" /><testcase classname="" name="test_cancel_queued_job" time="0.035" /><testcase classname="" name="test_claim_skips_cancel_requested_running_job_even_after_lease_expiry" time="0.039" /><testcase classname="" name="test_unknown_kind_fails_permanently" time="0.040" /><testcase classname=".TestAccountIdentity" name="test_reused_login_cannot_take_over_account" time="0.034" /><testcase classname=".TestAccountIdentity" name="test_github_id_survives_rename_and_reclaims_login" time="0.030" /><testcase classname=".TestAccountIdentity" name="test_dev_created_user_links_first_github_id" time="0.030" /><testcase classname=".TestRepositoryConnect" name="test_name_only_connect_rejected_outside_dev" time="0.067" /><testcase classname=".TestRepositoryConnect" name="test_name_only_connect_still_allowed_in_dev" time="0.131" /><testcase classname=".TestRateLimits" name="test_global_user_limit_applies_on_all_routers" time="0.075" /><testcase classname=".TestRateLimits" name="test_snapshot_requests_are_bounded" time="0.431" /><testcase classname=".TestRepositoryDisconnect" name="test_disconnect_blocks_repo_scoped_work_and_reconnect_restores" time="0.206" /><testcase classname=".TestRepositoryDisconnect" name="test_disconnect_stops_push_automation" time="0.134" /><testcase classname=".TestRepositoryDisconnect" name="test_assess_commit_job_exits_when_repo_disconnected" time="0.128" /><testcase classname=".TestStaleAuthorization" name="test_removed_member_loses_access_immediately" time="0.176" /><testcase classname=".TestDataHandling" name="test_raw_bytes_artifact_is_not_flagged_redacted" time="0.132" /><testcase classname=".TestDataHandling" name="test_cross_project_artifact_access_denied" time="0.286" /><testcase classname=".TestDataHandling" name="test_openapi_schema_hidden_outside_dev" time="0.087" /><testcase classname=".TestDataHandling" name="test_invalid_webhook_signature_rejected" time="0.055" /><testcase classname=".TestDataHandling" name="test_csrf_required_for_mutations" time="0.064" /><testcase classname=".TestDataHandling" name="test_unauthenticated_requests_rejected" time="0.053" /><testcase classname=".TestDisconnectLifecycle" name="test_disconnect_revokes_app_access_cancels_jobs_and_inflight" time="0.173" /><testcase classname=".TestDisconnectLifecycle" name="test_installation_id_survives_disconnect_as_access_record" time="0.152" /><testcase classname=".TestDisconnectLifecycle" name="test_disconnect_cancels_linked_agent_steps_and_running_jobs" time="0.151" /><testcase classname=".TestDisconnectLifecycle" name="test_revocation_locked_serializes_finalize_with_disconnect" time="0.261" /><testcase classname="" name="test_outsider_cannot_read_any_project_surface" time="0.312" /><testcase classname="" name="test_outsider_cannot_mutate_any_project_surface" time="0.220" /><testcase classname="" name="test_outsider_gets_no_sse_stream" time="0.180" /><testcase classname="" name="test_artifact_id_guess_grants_nothing" time="0.302" /><testcase classname="" name="test_projectless_artifacts_are_unreadable_by_anyone" time="0.185" /><testcase classname="" name="test_job_lookup_never_leaks_trace_even_to_owner" time="0.184" /><testcase classname="" name="test_audit_log_denied_to_outsider" time="0.179" /><testcase classname="" name="test_scope_cannot_borrow_foreign_repo" time="0.185" /><testcase classname="" name="test_cannot_connect_repo_without_recorded_access" time="0.307" /><testcase classname="" name="test_ingest_token_is_bound_to_its_project" time="0.191" /><testcase classname="" name="test_context_pack_requires_exact_matching_snapshot" time="0.189" /><testcase classname="" name="test_viewer_role_boundary" time="0.238" /><testcase classname="" name="test_payload_store_rejects_forged_ref" time="0.309" /><testcase classname="" name="test_memory_store_decision_requires_membership" time="0.188" /><testcase classname="" name="test_rls_blocks_reads_without_tenant_context" time="0.192" /><testcase classname="" name="test_store_layer_sets_tenant_context_itself" time="0.184" /><testcase classname="" name="test_purge_project_deletes_every_surface" time="0.228" /><testcase classname="" name="test_sigterm_lets_the_running_job_finish_and_takes_no_new_one" time="2.794" /><testcase classname="" name="test_sigterm_stops_an_idle_worker_at_once_even_if_its_poll_hangs" time="1.200" /><testcase classname="" name="test_investigations_requires_auth" time="0.327" /><testcase classname="" name="test_investigations_cross_project_denied" time="0.207" /><testcase classname="" name="test_investigations_list_and_timeline" time="0.177" /><testcase classname="" name="test_investigation_missing_and_invalid_refs" time="0.169" /><testcase classname="" name="test_investigations_pagination_bounded" time="0.303" /><testcase classname="" name="test_invocation_detail_joins_job_and_execution" time="0.175" /><testcase classname="" name="test_diagnostics_counts_and_no_fabrication" time="0.181" /><testcase classname="" name="test_diagnostics_stalled_and_recent_error_redacted" time="0.177" /><testcase classname="" name="test_timeline_final_state_cancelled" time="0.297" /><testcase classname="" name="test_timeline_effective_state_timed_out_and_recovery_required" time="0.184" /><testcase classname="" name="test_timeline_effective_state_precedence" time="0.214" /><testcase classname="" name="test_timeline_terminal_invocation_beats_job" time="0.173" /><testcase classname="" name="test_timeline_partial_failure_and_recovery_overrides" time="0.194" /><testcase classname="" name="test_investigations_list_job_statuses_rollup" time="0.305" /><testcase classname="" name="test_diagnostics_new_job_states" time="0.179" /><testcase classname="" name="test_job_api_does_not_expose_infrastructure_credentials" time="0.143" /><testcase classname="" name="test_stored_sensitive_job_events_redact_at_read" time="0.023" /><testcase classname="" name="test_viewer_surfaces_do_not_bypass_job_error_redaction" time="0.215" /><testcase classname="" name="test_audit_read_redacts_stored_sensitive_details" time="0.137" /><testcase classname="" name="test_code_redaction_preserves_ledgerlite_lines_and_diff" time="0.023" /><testcase classname="" name="test_diff_artifact_preserves_original_bytes_and_sha" time="0.028" /><testcase classname="" name="test_code_redaction_scrubs_quoted_values_and_high_confidence_secrets" time="0.023" /><testcase classname="" name="test_code_redaction_keeps_python_snippet_parseable" time="0.023" /><testcase classname="" name="test_code_redaction_only_scrubs_same_line_quoted_values" time="0.022" /><testcase classname="" name="test_log_redaction_keeps_generic_key_value_behavior" time="0.022" /><testcase classname="" name="test_psycopg_dsn" time="0.023" /><testcase classname="" name="test_access_token_kv" time="0.022" /><testcase classname="" name="test_db_password_kv" time="0.022" /><testcase classname="" name="test_client_secret_kv" time="0.023" /><testcase classname="" name="test_stripe_live_key" time="0.023" /><testcase classname="" name="test_quoted_kv_with_space" time="0.022" /><testcase classname="" name="test_bearer_token_short" time="0.023" /><testcase classname="" name="test_double_quoted_kv" time="0.023" /><testcase classname="" name="test_real_parallel_heads_upgrade_and_downgrade" time="0.892" /><testcase classname="" name="test_repository_has_a_single_migration_head" time="0.038" /><testcase classname="" name="test_literal_secret_is_not_stored_in_redacted_diff[settings = {&quot;password&quot;: &quot;review-only-dict-password&quot;}\n]" time="0.031"><failure message="AssertionError: literal credential retained in artifact labeled redacted&#10;assert 'review-only-dict-password' not in 'settings = ...password&quot;}\n'&#10;  &#10;  'review-only-dict-password' is contained here:&#10;    settings = {&quot;password&quot;: &quot;review-only-dict-password&quot;}">source = 'settings = {"password": "review-only-dict-password"}\n'
+tmp_path = PosixPath('/tmp/pytest-of-unknown/pytest-0/test_literal_secret_is_not_sto0')
+
+    @pytest.mark.parametrize('source', [
+        'settings = {"password": "review-only-dict-password"}\n',
+        'password: str = "review-only-typed-password"\n',
+    ])
+    def test_literal_secret_is_not_stored_in_redacted_diff(source, tmp_path):
+        secret = 'review-only-dict-password' if 'dict-password' in source else 'review-only-typed-password'
+        store = ArtifactStore(tmp_path.as_uri())
+        with transaction() as conn:
+            ref = store.put_text(conn, source, kind=ArtifactKind.diff, project_id=None)
+        with transaction() as conn:
+            row, body = store.get(conn, ref.id)
+        assert row['redacted'] is True
+&gt;       assert secret not in body.decode(), 'literal credential retained in artifact labeled redacted'
+E       AssertionError: literal credential retained in artifact labeled redacted
+E       assert 'review-only-dict-password' not in 'settings = ...password"}\n'
+E         
+E         'review-only-dict-password' is contained here:
+E           settings = {"password": "review-only-dict-password"}
+
+/suite/backend/tests/test_rc4_additional.py:19: AssertionError</failure></testcase><testcase classname="" name="test_literal_secret_is_not_stored_in_redacted_diff[password: str = &quot;review-only-typed-password&quot;\n]" time="0.030"><failure message="AssertionError: literal credential retained in artifact labeled redacted&#10;assert 'review-only-typed-password' not in 'password: s...-password&quot;\n'&#10;  &#10;  'review-only-typed-password' is contained here:&#10;    password: str = &quot;review-only-typed-password&quot;">source = 'password: str = "review-only-typed-password"\n'
+tmp_path = PosixPath('/tmp/pytest-of-unknown/pytest-0/test_literal_secret_is_not_sto1')
+
+    @pytest.mark.parametrize('source', [
+        'settings = {"password": "review-only-dict-password"}\n',
+        'password: str = "review-only-typed-password"\n',
+    ])
+    def test_literal_secret_is_not_stored_in_redacted_diff(source, tmp_path):
+        secret = 'review-only-dict-password' if 'dict-password' in source else 'review-only-typed-password'
+        store = ArtifactStore(tmp_path.as_uri())
+        with transaction() as conn:
+            ref = store.put_text(conn, source, kind=ArtifactKind.diff, project_id=None)
+        with transaction() as conn:
+            row, body = store.get(conn, ref.id)
+        assert row['redacted'] is True
+&gt;       assert secret not in body.decode(), 'literal credential retained in artifact labeled redacted'
+E       AssertionError: literal credential retained in artifact labeled redacted
+E       assert 'review-only-typed-password' not in 'password: s...-password"\n'
+E         
+E         'review-only-typed-password' is contained here:
+E           password: str = "review-only-typed-password"
+
+/suite/backend/tests/test_rc4_additional.py:19: AssertionError</failure></testcase><testcase classname="" name="test_redacted_diff_literal_secret_not_disclosed_by_artifact_api[+settings = {&quot;password&quot;: &quot;review-only-dict-password&quot;}\n-review-only-dict-password]" time="0.217"><failure message="AssertionError: viewer received credential bytes from a redacted diff artifact&#10;assert 'review-only-dict-password' not in '--- a/setti...password&quot;}\n'&#10;  &#10;  'review-only-dict-password' is contained here:&#10;    ssword&quot;: &quot;review-only-dict-password&quot;}">source = '+settings = {"password": "review-only-dict-password"}\n'
+secret = 'review-only-dict-password'
+client_factory = &lt;function client_factory.&lt;locals&gt;.make at 0x7f35b52e6f20&gt;
+
+    @pytest.mark.parametrize('source,secret', [
+        ('+settings = {"password": "review-only-dict-password"}\n', 'review-only-dict-password'),
+        ('+password: str = "review-only-typed-password"\n', 'review-only-typed-password'),
+    ])
+    def test_redacted_diff_literal_secret_not_disclosed_by_artifact_api(source, secret, client_factory):
+        from helpers import add_member, setup_project
+        alice, bob, viewer = (client_factory(n) for n in ('alice', 'bob', 'viewer'))
+        ids = setup_project(alice, bob)
+        org = alice.me['memberships'][0]['organization']['id']
+        add_member(org, viewer.me['user']['id'], role='viewer')
+        diff = '--- a/settings.py\n+++ b/settings.py\n@@ -0,0 +1 @@\n' + source
+        with transaction() as conn:
+            ref = ArtifactStore().put_text(conn, diff, kind=ArtifactKind.diff, project_id=ids['project'])
+        outsider = client_factory('unrelated-artifact-outsider')
+        assert outsider.get(f'/api/v1/artifacts/{ref.id}').status_code == 404
+        response = viewer.get(f'/api/v1/artifacts/{ref.id}')
+        assert response.status_code == 200
+        assert ref.redacted is True
+&gt;       assert secret not in response.text, 'viewer received credential bytes from a redacted diff artifact'
+E       AssertionError: viewer received credential bytes from a redacted diff artifact
+E       assert 'review-only-dict-password' not in '--- a/setti...password"}\n'
+E         
+E         'review-only-dict-password' is contained here:
+E           ssword": "review-only-dict-password"}
+
+/suite/backend/tests/test_rc4_additional.py:39: AssertionError</failure></testcase><testcase classname="" name="test_redacted_diff_literal_secret_not_disclosed_by_artifact_api[+password: str = &quot;review-only-typed-password&quot;\n-review-only-typed-password]" time="0.210"><failure message="AssertionError: viewer received credential bytes from a redacted diff artifact&#10;assert 'review-only-typed-password' not in '--- a/setti...-password&quot;\n'&#10;  &#10;  'review-only-typed-password' is contained here:&#10;    d: str = &quot;review-only-typed-password&quot;">source = '+password: str = "review-only-typed-password"\n'
+secret = 'review-only-typed-password'
+client_factory = &lt;function client_factory.&lt;locals&gt;.make at 0x7f35b84fd1c0&gt;
+
+    @pytest.mark.parametrize('source,secret', [
+        ('+settings = {"password": "review-only-dict-password"}\n', 'review-only-dict-password'),
+        ('+password: str = "review-only-typed-password"\n', 'review-only-typed-password'),
+    ])
+    def test_redacted_diff_literal_secret_not_disclosed_by_artifact_api(source, secret, client_factory):
+        from helpers import add_member, setup_project
+        alice, bob, viewer = (client_factory(n) for n in ('alice', 'bob', 'viewer'))
+        ids = setup_project(alice, bob)
+        org = alice.me['memberships'][0]['organization']['id']
+        add_member(org, viewer.me['user']['id'], role='viewer')
+        diff = '--- a/settings.py\n+++ b/settings.py\n@@ -0,0 +1 @@\n' + source
+        with transaction() as conn:
+            ref = ArtifactStore().put_text(conn, diff, kind=ArtifactKind.diff, project_id=ids['project'])
+        outsider = client_factory('unrelated-artifact-outsider')
+        assert outsider.get(f'/api/v1/artifacts/{ref.id}').status_code == 404
+        response = viewer.get(f'/api/v1/artifacts/{ref.id}')
+        assert response.status_code == 200
+        assert ref.redacted is True
+&gt;       assert secret not in response.text, 'viewer received credential bytes from a redacted diff artifact'
+E       AssertionError: viewer received credential bytes from a redacted diff artifact
+E       assert 'review-only-typed-password' not in '--- a/setti...-password"\n'
+E         
+E         'review-only-typed-password' is contained here:
+E           d: str = "review-only-typed-password"
+
+/suite/backend/tests/test_rc4_additional.py:39: AssertionError</failure></testcase><testcase classname="" name="test_over_limit_hourly_assessments_report_actual_reset" time="0.230" /><testcase classname="" name="test_over_limit_daily_assessments_report_actual_reset" time="0.571" /><testcase classname="" name="test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test" time="0.038"><failure message="TypeError: VerifyEvidence.__init__() got an unexpected keyword argument 'candidate_id'">intel = &lt;security_agents.intel.port.LocalIntel object at 0x7f35b7485e20&gt;
+driver = &lt;security_agents.sandbox.driver.LocalProcessDriver object at 0x7f35b77f9400&gt;
+library = CheckLibrary(templates={'access_control.ownership@1': CheckTemplateMeta(template_id='access_control.ownership', versio...meters=('route_id', 'restricted_identity', 'permitted_identity'), reviewed_by='security-owner:pending-human-signoff')})
+tmp_path = PosixPath('/tmp/pytest-of-unknown/pytest-0/test_verify_rejects_a_planted_0')
+
+    @pytest.mark.boundary
+    def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(intel, driver, library, tmp_path):
+        """A diff authored outside the worktree guard is still rejected by Verify (SB-09).
+    
+        This is the `examples/fixtures/bad-patches` case: a patch that makes the
+        failing expectation pass by weakening the test that encodes it.
+        """
+        from security_agents.agents import verify as verify_agent
+        from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+        from security_agents.tools import AuditSink, PatchApplier, ToolContext
+    
+        recipe_path = intel.snapshot.root / "build_recipe.json"
+        recipe_path.chmod(0o644)
+        recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
+        recipe["protected_tests"] = ["tests/test_api.py"]
+        recipe_path.write_text(json.dumps(recipe), encoding="utf-8")
+        recipe_path.chmod(0o444)
+        orchestrator, _ = build(intel, driver, library, tmp_path)
+        protected_tests = orchestrator._protected_tests()
+        assert "tests/test_api.py" in protected_tests
+    
+        work = tmp_path / "bad"
+        wt = fresh_checkout(intel.snapshot, work / "wt")
+        protected = wt / "tests" / "test_api.py"
+        protected.write_text(protected.read_text().replace("== 404", "in (200, 404)"))
+        diff = unified_diff(intel.snapshot.root, wt, ["tests/test_api.py"])
+        assert "tests/test_api.py" in diff
+    
+        applier = PatchApplier(
+            intel=intel,
+            artifacts={
+                "pat_bad": {
+                    "diff": diff,
+                    "plan_files": ["payments_lite/app.py"],
+                    "protected_tests": protected_tests,
+                }
+            },
+            workdir=work,
+        )
+        ctx = ToolContext(
+            assessment_id="asm_bad",
+            agent=AgentName.VERIFY,
+            run_id="run_bad",
+            step_key="verify",
+            read_root=intel.snapshot.root,
+            audit=AuditSink(),
+        )
+        facts = applier.apply_fresh(ctx, "pat_bad")
+        assert facts["applied"] is True
+        assert facts["tampered_protected_tests"] == ["tests/test_api.py"]
+        # editing an existing test is both tampering and outside the plan's file set
+        assert facts["out_of_scope_files"] == ["tests/test_api.py"]
+        assert facts["new_test_files"] == []
+    
+&gt;       evidence = verify_agent.VerifyEvidence(
+            apply_facts=dict(ctx.artifacts["verify_facts"]),
+            recheck_runs=[],
+            test_runs=[],
+            baseline_failing=[],
+            tests_added=[],
+            protected_tests=protected_tests,
+            original_check_ref="access_control.ownership@1",
+            original_check_params={},
+            candidate_id="pat_bad",
+        )
+E       TypeError: VerifyEvidence.__init__() got an unexpected keyword argument 'candidate_id'
+
+/suite/security-agents/tests/test_ari_latest_protected.py:2703: TypeError</failure></testcase></testsuite></testsuites>
