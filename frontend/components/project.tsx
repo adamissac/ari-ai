@@ -24,6 +24,35 @@ export function useParam(name: string): string {
   return typeof value === 'string' ? value : '';
 }
 
+interface RailItem { href: string; label: string }
+const GROUPS: { label: string; items: RailItem[] }[] = [
+  {
+    label: 'Review',
+    items: [
+      { href: '', label: '7 Agents' },
+      { href: '/commits', label: 'Code review' },
+      { href: '/findings', label: 'Findings' },
+      { href: '/approvals', label: 'Approvals' },
+    ],
+  },
+  {
+    label: 'Defend',
+    items: [
+      { href: '/live-defense', label: 'Live Defense' },
+      { href: '/incidents', label: 'Incidents' },
+      { href: '/monitoring', label: 'Monitoring' },
+      { href: '/scopes', label: 'Authorized scopes' },
+      { href: '/expectations', label: 'Expectations' },
+    ],
+  },
+  {
+    label: 'Configure',
+    items: [
+      { href: '/onboarding', label: 'Onboarding' },
+      { href: '/simulate', label: 'Simulate' },
+      { href: '/settings', label: 'Settings' },
+    ],
+  },
 ];
 
 const isActive = (pathname: string, base: string, href: string) =>
@@ -89,5 +118,4 @@ export function ProjectShell({ children }: { children: ReactNode }) {
       </div>
     </ProjectContext.Provider>
   );
-}      { href: '/onboarding', label: 'Onboarding' },
-
+}
