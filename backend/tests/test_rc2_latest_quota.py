@@ -368,9 +368,7 @@ def test_ten_mixed_assessments_skip_automatic_and_block_manual_start(automatic):
     response = manual_start(alice, ids, "f" * 40)
     assert response.status_code == 202
 
-    seed_assessments(
-        alice, ids, [AssessmentTrigger.manual] * 4, created_at=seeded_at
-    )
+    seed_assessments(alice, ids, [AssessmentTrigger.manual] * 4, created_at=seeded_at)
     response = manual_start(alice, ids, "f" * 40)
     assert response.status_code == 429
     error = response.json()["error"]
