@@ -1643,6 +1643,7 @@ def list_project_jobs(
 @router.get("/jobs/{job_id}")
 def get_job(job_id: str, request: Request) -> dict[str, Any]:
     from backend.db import jobs as jobs_t
+    from backend.redaction import redact
 
     with transaction() as conn:
         user = _user(conn, request)
@@ -1653,18 +1654,22 @@ def get_job(job_id: str, request: Request) -> dict[str, Any]:
         if row is None or not pid:
             raise not_found("job")
         require_project(conn, user, pid)
+        # Scrub at read too: rows persisted before the write-side redaction
+        # keep credentials in last_error/recovery text.
         return {
             "id": row["id"],
             "kind": row["kind"],
             "status": row["status"],
             "attempts": row["attempts"],
-            "result": row["result"],
-            "last_error": {k: v for k, v in (row["last_error"] or {}).items() if k != "trace"}
+            "result": redact(row["result"]),
+            "last_error": redact(
+                {k: v for k, v in (row["last_error"] or {}).items() if k != "trace"}
+            )
             or None,
             "error_category": row["error_category"],
             "deadline_at": row["deadline_at"].isoformat() if row["deadline_at"] else None,
             "effect_state": row["effect_state"],
-            "recovery": row["recovery"],
+            "recovery": redact(row["recovery"]),
         }
 
 

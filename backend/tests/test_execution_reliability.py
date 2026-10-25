@@ -940,6 +940,18 @@ def _attempt(status: str, seq: int = 1) -> dict:
     }
 
 
+def _update_invocation_doc(inv_id: str, doc: dict) -> None:
+    """Rewrite an invocation doc the way the handler's ledger commit would."""
+    from backend.db import first_responder_invocations
+
+    with transaction() as conn:
+        conn.execute(
+            sa.update(first_responder_invocations)
+            .where(first_responder_invocations.c.id == inv_id)
+            .values(doc=doc)
+        )
+
+
 def test_expired_lease_with_unresolved_provider_ledger_requires_recovery():
     """R5: abrupt death during a provider send -> recovery_required, never requeue."""
     pid = "prj_r5"
@@ -947,14 +959,7 @@ def test_expired_lease_with_unresolved_provider_ledger_requires_recovery():
         inv_id = _mk_invocation(
             conn,
             pid,
-            {
-                "execution": {
-                    "provider_attempts": [
-                        _attempt("settled"),
-                        _attempt("in_flight", 2),
-                    ]
-                }
-            },
+            {"execution": {"provider_attempts": [_attempt("settled")]}},
         )
         jid, _ = jobs.enqueue(
             conn,
@@ -962,6 +967,18 @@ def test_expired_lease_with_unresolved_provider_ledger_requires_recovery():
             {"project_id": pid, "invocation_id": inv_id},
         )
     assert _claim("dead-worker", ["live_defense_agent_step"]) is not None
+    # The handler's reservation commit lands mid-run, then the process dies.
+    _update_invocation_doc(
+        inv_id,
+        {
+            "execution": {
+                "provider_attempts": [
+                    _attempt("settled"),
+                    _attempt("in_flight", 2),
+                ]
+            }
+        },
+    )
     _expire(jid)
     with transaction() as conn:
         report = execution.reconcile(conn)
@@ -989,11 +1006,20 @@ def test_expired_lease_with_uncertain_provider_outcome_flag_requires_recovery():
     """R5: the invocation-level uncertain flag is honoured the same way."""
     pid = "prj_r5_flag"
     with transaction() as conn:
-        inv_id = _mk_invocation(conn, pid, {"execution": {"uncertain_provider_outcome": True}})
+        inv_id = _mk_invocation(conn, pid, {"execution": {"provider_attempts": []}})
         jid, _ = jobs.enqueue(
             conn, "live_defense_agent_step", {"project_id": pid, "invocation_id": inv_id}
         )
     assert _claim("w", ["live_defense_agent_step"]) is not None
+    _update_invocation_doc(
+        inv_id,
+        {
+            "execution": {
+                "provider_attempts": [_attempt("uncertain")],
+                "uncertain_provider_outcome": True,
+            }
+        },
+    )
     _expire(jid)
     with transaction() as conn:
         execution.reconcile(conn)
@@ -1062,3 +1088,260 @@ def test_atomic_reservation_committed_with_ledger_write_is_fenced():
         report = execution.reconcile(conn)
     assert report["recovery_required"] == 1
     assert _job(jid)["status"] == "recovery_required"
+
+
+# --- Codex RC2 regressions (N3 fenced recovery, N4 event sanitization) ---------------
+
+
+def _invocation_doc(inv_id: str) -> dict:
+    from backend.db import first_responder_invocations
+
+    with transaction() as conn:
+        return dict(
+            conn.execute(
+                sa.select(first_responder_invocations.c.doc).where(
+                    first_responder_invocations.c.id == inv_id
+                )
+            ).scalar_one()
+        )
+
+
+def _recovery_required_from_ledger(pid: str, doc: dict) -> tuple[str, str]:
+    """Claim clean, land the ledger rows mid-run, expire, reconcile -> recovery."""
+    with transaction() as conn:
+        inv_id = _mk_invocation(conn, pid, {"execution": {"provider_attempts": []}})
+        jid, _ = jobs.enqueue(
+            conn, "live_defense_agent_step", {"project_id": pid, "invocation_id": inv_id}
+        )
+    assert _claim("dead-worker", ["live_defense_agent_step"]) is not None
+    _update_invocation_doc(inv_id, doc)
+    _expire(jid)
+    with transaction() as conn:
+        execution.reconcile(conn)
+    assert _job(jid)["status"] == "recovery_required"
+    return inv_id, jid
+
+
+def test_fast_reclaim_parks_job_with_unresolved_provider_ledger():
+    """N3: claim-time fence — an unresolved billable ledger row is never handed
+    to a worker, even when a fast reclaim beats the reconciler to the lease."""
+    pid = "prj_n3_claim"
+    with transaction() as conn:
+        inv_id = _mk_invocation(conn, pid, {"execution": {"provider_attempts": []}})
+        jid, _ = jobs.enqueue(
+            conn, "live_defense_agent_step", {"project_id": pid, "invocation_id": inv_id}
+        )
+    assert _claim("dead-worker", ["live_defense_agent_step"]) is not None
+    # Reservation commit lands mid-run, then the owning process dies abruptly.
+    _update_invocation_doc(inv_id, {"execution": {"provider_attempts": [_attempt("in_flight")]}})
+    _expire(jid)
+    # Fast reclaim: a fresh worker picks the expired lease before reconcile runs.
+    assert _claim("fast-reclaimer", ["live_defense_agent_step"]) is None
+    row = _job(jid)
+    assert row["status"] == "recovery_required"
+    assert row["error_category"] == "uncertain_side_effect"
+    rec = row["recovery"]
+    assert rec["previous_owner"] == "dead-worker"
+    assert rec["uncertainty_source"] == "provider_attempt_ledger"
+    assert rec["ledger_attempt_id"] == "att_0001"
+    last = _events(jid)[-1]
+    assert last["to_status"] == "recovery_required" and last["worker"] == "fast-reclaimer"
+    # The parked job stays parked: reconcile never requeues it.
+    with transaction() as conn:
+        report = execution.reconcile(conn)
+    assert report["requeued"] == 0
+    assert _job(jid)["status"] == "recovery_required"
+
+
+def test_queued_job_with_unresolved_ledger_is_parked_at_claim():
+    """N3: the claim fence applies to ordinary queued claims too — a job whose
+    ledger went unresolved while queued is parked, never executed."""
+    pid = "prj_n3_queued"
+    with transaction() as conn:
+        inv_id = _mk_invocation(
+            conn,
+            pid,
+            {
+                "execution": {
+                    "provider_attempts": [_attempt("uncertain")],
+                    "uncertain_provider_outcome": True,
+                }
+            },
+        )
+        jid, _ = jobs.enqueue(
+            conn, "live_defense_agent_step", {"project_id": pid, "invocation_id": inv_id}
+        )
+    assert _claim("w", ["live_defense_agent_step"]) is None
+    row = _job(jid)
+    assert row["status"] == "recovery_required"
+    assert row["recovery"]["invocation_id"] == inv_id
+
+
+def test_operator_retry_clears_provider_ledger_for_authorized_replay():
+    """N3: resolution=retry closes the stale reservation in the same transaction
+    as the requeue, so the authorized replay can reserve a fresh attempt."""
+    inv_id, jid = _recovery_required_from_ledger(
+        "prj_n3_retry", {"execution": {"provider_attempts": [_attempt("in_flight")]}}
+    )
+    with transaction() as conn:
+        out = execution.resolve_recovery(
+            conn, jid, resolution="retry", actor_id="op1", note="provider confirmed 4xx"
+        )
+    assert out["status"] == "queued"
+    doc = _invocation_doc(inv_id)
+    attempts = doc["execution"]["provider_attempts"]
+    assert attempts[0]["status"] == "cancelled"
+    assert attempts[0]["error_code"].startswith("OPERATOR_AUTHORIZED_RETRY")
+    assert attempts[0]["settled_at"] is not None
+    assert doc["execution"]["uncertain_provider_outcome"] is False
+    # The replay is allowed through the same claim fence — nothing unresolved left.
+    job = _claim("retry-worker", ["live_defense_agent_step"])
+    assert job is not None and job.id == jid
+
+
+def test_operator_applied_marks_provider_ledger_settled():
+    """N3: resolution=applied marks the uncertain attempt settled so the
+    accounted outcome is never replayed."""
+    inv_id, jid = _recovery_required_from_ledger(
+        "prj_n3_applied",
+        {
+            "execution": {
+                "provider_attempts": [_attempt("settled"), _attempt("sent", 2)],
+                "uncertain_provider_outcome": True,
+            }
+        },
+    )
+    with transaction() as conn:
+        out = execution.resolve_recovery(
+            conn, jid, resolution="applied", actor_id="op2", note="provider confirmed 2xx"
+        )
+    assert out["status"] == "succeeded"
+    doc = _invocation_doc(inv_id)
+    attempts = doc["execution"]["provider_attempts"]
+    assert attempts[0]["status"] == "settled"  # untouched evidence
+    assert attempts[0].get("error_code") is None
+    assert attempts[1]["status"] == "settled"
+    assert attempts[1]["error_code"].startswith("OPERATOR_CONFIRMED_APPLIED")
+    assert doc["execution"]["uncertain_provider_outcome"] is False
+
+
+def test_operator_not_applied_cancels_provider_ledger():
+    """N3: resolution=not_applied closes the stale reservation as cancelled."""
+    inv_id, jid = _recovery_required_from_ledger(
+        "prj_n3_na", {"execution": {"provider_attempts": [_attempt("reserved")]}}
+    )
+    with transaction() as conn:
+        out = execution.resolve_recovery(
+            conn, jid, resolution="not_applied", actor_id="op3", note="never sent"
+        )
+    assert out["status"] == "failed"
+    attempts = _invocation_doc(inv_id)["execution"]["provider_attempts"]
+    assert attempts[0]["status"] == "cancelled"
+    assert attempts[0]["error_code"].startswith("OPERATOR_CONFIRMED_NOT_APPLIED")
+
+
+def test_failure_reason_redacted_in_events_and_last_error():
+    """N4: raw exception text carrying credentials never reaches job_events
+    or last_error — reason, details and stored error are all sanitized."""
+    marker = "unit-only-password"
+    jid = _enqueue("rel_fail")
+    assert _claim("w1", ["rel_fail"]) is not None
+    with transaction() as conn:
+        jobs.fail(
+            conn,
+            jid,
+            "w1",
+            {
+                "code": "TOOL_ERROR",
+                "message": f"connect postgresql://svc:{marker}@db.internal/app failed",
+            },
+            retryable=False,
+        )
+    row = _job(jid)
+    assert marker not in str(row["last_error"])
+    with transaction() as conn:
+        raw = conn.execute(
+            sa.select(job_events.c.reason, job_events.c.details).where(job_events.c.job_id == jid)
+        ).all()
+    assert marker not in str([dict(r._mapping) for r in raw])
+    assert marker not in str(_events(jid))
+
+
+def test_history_read_scrubs_legacy_unsanitized_events():
+    """N4: events persisted before write-side redaction are scrubbed at read."""
+    marker = "legacy-only-password"
+    jid = _enqueue("rel_ok")
+    with transaction() as conn:
+        conn.execute(
+            sa.insert(job_events).values(
+                job_id=jid,
+                project_id="prj_a",
+                kind="rel_ok",
+                from_status="running",
+                to_status="failed",
+                attempt=1,
+                category="permanent",
+                reason=f"connect postgresql://svc:{marker}@db.internal/app failed",
+                details={"message": f"driver said password={marker} retry"},
+            )
+        )
+    events = _events(jid)
+    assert marker not in str(events)
+    last = events[-1]
+    assert "[REDACTED" in last["reason"]
+    assert "[REDACTED" in last["details"]["message"]
+
+
+def test_diff_artifact_preserves_non_secret_code_expressions(tmp_path):
+    """N7: free-text key=value scrubbing must not corrupt persisted diff code."""
+    import ast
+
+    from backend.artifacts import ArtifactStore
+    from shared.evidence import ArtifactKind
+
+    source = 'api_key=os.environ["API_KEY"]\npassword=os.environ.get("DB_PASSWORD")\n'
+    ast.parse(source)
+    store = ArtifactStore(tmp_path.as_uri())
+    with transaction() as conn:
+        ref = store.put_text(conn, source, kind=ArtifactKind.diff, project_id=None)
+    with transaction() as conn:
+        _, body = store.get(conn, ref.id)
+    actual = body.decode()
+    assert actual == source, "code-aware redaction rewrote a non-secret expression"
+    ast.parse(actual)
+
+
+def test_free_text_and_code_redaction_split(tmp_path):
+    """N7: secrets still redact in both modes; expressions only survive in code."""
+    import ast
+
+    from backend.artifacts import ArtifactStore
+    from backend.redaction import (
+        find_high_confidence_secret,
+        redact_code,
+        redact_text,
+    )
+    from shared.evidence import ArtifactKind
+
+    # Free text: credential-looking key=value fragments are scrubbed.
+    assert "hunter2" not in redact_text("connect failed: password=hunter2 api-key=hunter2")
+    # Code: unquoted expressions survive; quoted secret literals still redact.
+    expr = 'password=os.environ.get("DB_PASSWORD")\n'
+    assert redact_code(expr) == expr
+    redacted_literal = redact_code('password="hunter2"\n')
+    assert "hunter2" not in redacted_literal
+    ast.parse(redacted_literal)
+    # A real credential inside a code literal is still caught.
+    code = 'dsn = "postgresql://svc:hunter2@db.internal/app"\n'
+    out = redact_code(code)
+    assert "hunter2" not in out
+    ast.parse(out)
+    # Diff artifacts with an actual embedded secret lose the secret, not syntax.
+    store = ArtifactStore(tmp_path.as_uri())
+    with transaction() as conn:
+        ref = store.put_text(conn, code, kind=ArtifactKind.diff, project_id=None)
+    with transaction() as conn:
+        _, body = store.get(conn, ref.id)
+    assert "hunter2" not in body.decode()
+    # Label preference: the transport-DSN pattern names postgres DSNs.
+    assert find_high_confidence_secret("postgresql://svc:hunter2@db.internal") == "dsn_credentials"

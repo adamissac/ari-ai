@@ -143,7 +143,6 @@ def _heartbeat_loop(ctx: JobContext, lease_s: int, stop: threading.Event) -> Non
                 execution.worker_seen(conn, ctx.owner, "busy", ctx.job.id)
             if state == "lost":
                 ctx._lease_lost.set()
-                ctx._cancelled.set()
             elif state == "cancelled":
                 ctx._cancelled.set()
             elif state == "deadline":
