@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Added an hourly GitHub Actions storage watchdog for Railway volume usage and backup freshness, with idempotent issue alerts.
 - New projects default to owner-authorized pull-request delivery; the 7 Agents switch now toggles between automatically opened fix PRs and manual approval.
 - Starting an assessment with no commit SHA now reviews the latest commit on the repository's
   default branch when connected through the GitHub App.

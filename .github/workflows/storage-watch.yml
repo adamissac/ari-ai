@@ -1,0 +1,45 @@
+name: storage-watch
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - scripts/ops/**
+      - tests/ops/**
+      - .github/workflows/storage-watch.yml
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: storage-watch
+  cancel-in-progress: false
+
+jobs:
+  storage-watch-tests:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@82c7e63bb3cdc9106f2ffcac161af8ff57a9f875 # v5.6.0
+        with:
+          python-version: "3.12"
+      - run: python3 -m unittest discover -s tests/ops -v
+
+  storage-watch:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@82c7e63bb3cdc9106f2ffcac161af8ff57a9f875 # v5.6.0
+        with:
+          python-version: "3.12"
+      - name: Check Railway storage and backups
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/ops/storage_watch.py
