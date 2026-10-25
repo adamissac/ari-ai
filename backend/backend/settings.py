@@ -97,6 +97,7 @@ class Settings(BaseSettings):
 
     # Rate limits (in-process, docs/13)
     rate_limit_per_minute: int = 60
+    rate_limit_read_per_minute: int = 600
 
     # Ops surface + storage maintenance (docs/deploy/POSTGRES_STORAGE.md)
     # Bearer token for /api/v1/ops/*; unset disables those endpoints entirely.
