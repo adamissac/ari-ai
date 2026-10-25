@@ -121,7 +121,7 @@ jobs:
             echo "ci_ok=false" >> "$GITHUB_OUTPUT"; exit 0
           fi
           echo "ci_ok=true" >> "$GITHUB_OUTPUT"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f436022fa2 # v4.6.2
+      - uses: actions/upload-artifact@v4
         with:
           name: ci-summary
           path: ci-summary.txt
@@ -151,7 +151,7 @@ jobs:
           fetch-depth: 0
       - name: Fetch transfer branches (manifest equivalence test)
         run: git fetch origin '+refs/heads/transfer/*:refs/remotes/origin/transfer/*' '+refs/heads/ci/*:refs/remotes/origin/ci/*'
-      - uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v5.0.0
+      - uses: astral-sh/setup-uv@v5
       - name: Install deps and run strict regressions
         run: |
           uv sync --quiet
@@ -160,7 +160,7 @@ jobs:
             uv run pytest -q backend/tests/test_independent_corrected_review.py
             uv run pytest -q backend/tests/test_rc2_transfer_manifest.py
           } 2>&1 | tee strict-results.txt
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f436022fa2 # v4.6.2
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: strict-results
@@ -195,9 +195,9 @@ jobs:
           git fetch origin '+refs/heads/ci/*:refs/remotes/origin/ci/*' '+refs/heads/transfer/*:refs/remotes/origin/transfer/*'
           git fetch origin "${{ needs.gate.outputs.base_sha }}"
           git rev-parse HEAD  # must equal CANDIDATE_SHA
-      - uses: astral-sh/setup-uv@85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41 # v5.0.0
+      - uses: astral-sh/setup-uv@v5
       - run: uv sync --quiet
-      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e4c2b46a783f0a2d59 # v4.6.2
+      - uses: actions/download-artifact@v4
         with:
           name: strict-results
       - name: Codex independent audit
@@ -213,7 +213,7 @@ jobs:
           output-file: codex-audit.json
           permission-profile: ":workspace"
           safety-strategy: drop-sudo
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f436022fa2 # v4.6.2
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: codex-audit
@@ -228,10 +228,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: integration/2026-11-02-release
-      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e4c2b46a783f0a2d59 # v4.6.2
+      - uses: actions/download-artifact@v4
         with:
           pattern: '*-summary'
-      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e4c2b46a783f0a2d59 # v4.6.2
+      - uses: actions/download-artifact@v4
         with:
           name: codex-audit
           path: .
