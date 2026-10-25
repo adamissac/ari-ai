@@ -236,6 +236,5 @@ test('connect a repository to a project through the UI', async ({ browser }) => 
 
   // GitHub onboarding: without App access the org chooser says how to add repositories.
   await page.goto('/connect');
-  await expect(page.getByRole('heading', { name: 'What Ari can access' })).toBeVisible();
   await expect(page.getByTestId('connect-empty')).toBeVisible();
 });

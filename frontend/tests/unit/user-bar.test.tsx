@@ -20,7 +20,7 @@ describe('UserBar sign out', () => {
     render(<UserBar />);
     fireEvent.click(screen.getByRole('button', { name: /sign out/i }));
     await waitFor(() => expect(screen.getByTestId('error-state').textContent).toContain('you are still signed in'));
-    expect(screen.getByText('tester').textContent).toBe('tester');
+    expect(screen.getByTestId('signed-in-user').textContent).toBe('tester');
     expect((screen.getByRole('button', { name: /sign out/i }) as HTMLButtonElement).disabled).toBe(false);
   });
   it('calls signOut once per click', async () => {

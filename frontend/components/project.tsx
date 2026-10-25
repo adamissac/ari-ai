@@ -3,7 +3,7 @@
 import type { Project, Repository } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import { api } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
 import { ErrorState, Loading } from '@/components/ui';
@@ -61,43 +61,27 @@ const isActive = (pathname: string, base: string, href: string) =>
 
 export function ProjectNavigation({ base }: { base: string }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const current = GROUPS.flatMap(group => group.items.map(item => ({ group: group.label, item })))
-    .find(entry => isActive(pathname, base, entry.item.href));
-  const currentLabel = `${current?.group ?? 'Review'} · ${current?.item.label ?? '7 Agents'}`;
   return (
-    <>
-      <button
-        type="button"
-        className="project-rail-disclosure"
-        aria-controls="project-navigation"
-        aria-expanded={open}
-        onClick={() => setOpen(value => !value)}
-      >
-        <span>{currentLabel}</span><span aria-hidden="true">{open ? '▴' : '▾'}</span>
-      </button>
-      <nav id="project-navigation" aria-label="Project" className="rail-nav" data-open={open}>
-        {GROUPS.map(group => (
-          <div key={group.label} className="rail-group">
-            <p className="rail-group-label">{group.label}</p>
-            {group.items.map(item => {
-              const active = isActive(pathname, base, item.href);
-              return (
-                <Link
-                  key={item.label}
-                  href={base + item.href}
-                  aria-current={active ? 'page' : undefined}
-                  className="rail-link"
-                  onClick={() => setOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </div>
-        ))}
-      </nav>
-    </>
+    <nav aria-label="Project" className="rail-nav">
+      {GROUPS.map(group => (
+        <div key={group.label} className="rail-group">
+          <p className="rail-group-label">{group.label}</p>
+          {group.items.map(item => {
+            const active = isActive(pathname, base, item.href);
+            return (
+              <Link
+                key={item.label}
+                href={base + item.href}
+                aria-current={active ? 'page' : undefined}
+                className="rail-link"
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
   );
 }
 

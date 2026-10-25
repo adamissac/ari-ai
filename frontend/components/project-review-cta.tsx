@@ -26,7 +26,7 @@ export function ProjectReviewCta({ repoId }: { repoId: string | null }) {
   return (
     <Link
       href={href}
-      className="inline-flex rounded-[var(--radius-2)] bg-white px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-white/90"
+      className="inline-flex rounded-full bg-white px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-white/90"
       data-testid="project-review-cta"
     >
       {label}
