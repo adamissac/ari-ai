@@ -18,7 +18,7 @@ from reference_orchestrator import scripted_transport
 
 from backend import delivery, llm, worker
 from backend.checkouts import CheckoutError, fetch_commit
-from backend.db import audit_events, jobs, memberships, repositories, transaction
+from backend.db import audit_events, jobs, memberships, patch_candidates, repositories, transaction
 from backend.delivery import BranchMoved, authority, push_patch
 
 
@@ -47,11 +47,13 @@ def _run_push(client, pid: str) -> str:
     return client.get(f"/api/v1/projects/{pid}/reassessments").json()["items"][0]["assessment_id"]
 
 
-def test_new_projects_default_to_auto_and_server_stamps_the_authorizer(client_factory) -> None:
+def test_new_projects_default_to_pull_request_and_server_stamps_the_authorizer(
+    client_factory,
+) -> None:
     alice, bob = client_factory("alice"), client_factory("bob")
     ids = setup_project(alice, bob)
     p = alice.post("/api/v1/projects", json={"name": "fresh"}).json()
-    assert p["settings"]["delivery_mode"] == "auto"
+    assert p["settings"]["delivery_mode"] == "pull_request"
     assert p["settings"]["delivery_authorized_by"] == alice.me["user"]["id"]
     pid = ids["project"]
     r = _set_mode(alice, pid, "auto", delivery_authorized_by="usr_forged123")
@@ -171,13 +173,15 @@ def wired(client_factory, reference, settings_override, tmp_path, monkeypatch):
     FakeApp.moved = False
     monkeypatch.setattr(delivery, "push_patch", push)
 
-    def start(mode: str) -> None:
+    def start(mode: str | None, *, delivery_mode: str | None = "manual"):
         alice, bob = client_factory("alice"), client_factory("bob")
-        ids = setup_project(alice, bob)
-        _set_mode(alice, ids["project"], mode)
-        _run_push(alice, ids["project"])
+        ids = setup_project(alice, bob, delivery_mode=delivery_mode)
+        if mode is not None:
+            _set_mode(alice, ids["project"], mode)
+        asm_id = _run_push(alice, ids["project"])
         with transaction() as conn:
             conn.execute(sa.update(repositories).values(installation_id=7))
+        return alice, ids, asm_id
 
     return start
 
@@ -203,6 +207,34 @@ def test_pull_request_mode_never_touches_the_default_branch(wired) -> None:
     pushes = [c for c in FakeApp.calls if c[0] == "push"]
     assert len(pushes) == 1 and pushes[0][1].startswith("ari/fix-") and not pushes[0][2]
     assert ("pr", pushes[0][1], "main") in FakeApp.calls
+
+
+def test_new_project_default_opens_verified_fix_pr_without_manual_approval(wired) -> None:
+    alice, ids, asm_id = wired(None, delivery_mode=None)
+    owner_id = alice.me["user"]["id"]
+    assert alice.get(f"/api/v1/assessments/{asm_id}").json()["assessment"]["state"] == "COMPLETED"
+    settings = alice.get(f"/api/v1/projects/{ids['project']}").json()["settings"]
+    assert settings["delivery_mode"] == "pull_request"
+    assert settings["delivery_authorized_by"] == owner_id
+
+    approved = alice.get(
+        f"/api/v1/projects/{ids['project']}/approvals", params={"status": "approved"}
+    ).json()["items"]
+    assert any(
+        item["subject_type"] == "remediation" and item["decided_by"] == owner_id
+        for item in approved
+    )
+    pending = alice.get(
+        f"/api/v1/projects/{ids['project']}/approvals", params={"status": "pending"}
+    ).json()["items"]
+    assert not any(item["subject_type"] == "remediation" for item in pending)
+
+    worker.drain(kinds=["deliver_verified_patch"])
+    with transaction() as conn:
+        patch = conn.execute(sa.select(patch_candidates.c.doc)).scalar_one()
+    branch = f"ari/fix-{patch['id']}"
+    assert FakeApp.calls == [("push", branch, False), ("pr", branch, "main")]
+    assert "delivery.pr_opened" in _actions()
 
 
 def test_missing_app_permission_is_recorded(wired) -> None:
