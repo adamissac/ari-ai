@@ -62,6 +62,7 @@ from ..runtime import AgentSpec, StepOutcome, StepRecord, run_agent
 from ..sandbox.driver import SandboxDriver
 from ..sandbox.workspace import (
     fresh_checkout,
+    recipe_protected_tests,
     recipe_test_roots,
     resolve_under,
     tree_digest,
@@ -1459,9 +1460,11 @@ class Orchestrator:
         return None
 
     def _protected_tests(self) -> list[str]:
-        """Pre-existing files under recipe test roots are always protected."""
+        """Configured, recipe-declared and pre-existing test-root files, plus confirmed-expectation sources."""
         protected = set(self.config.protected_tests)
-        test_roots = recipe_test_roots(self.intel.snapshot.root)
+        root = self.intel.snapshot.root
+        test_roots = recipe_test_roots(root)
+        protected.update(recipe_protected_tests(root))
         protected.update(path for path in self.intel.snapshot.files() if under_test_roots(path, test_roots))
         for expectation in self.intel.expectations():
             if expectation.status != "confirmed":
