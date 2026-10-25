@@ -16,10 +16,11 @@
   ],
   "depends_on": [],
   "blockers": [
-    "rehearsal production leg (C6): owner creates private repo + installs GitHub App + OAuth sign-in",
+    "rehearsal production leg (C6): repo adamissac/pilot-rehearsal-target EXISTS + Ari GitHub App installed + webhooks confirmed \u2014 do NOT recreate; still needs genuine user authn, successful assessment, actual fix PR, independent verification",
+    "pilot stays NO-GO until commander verifies remaining requirements + resolves security blockers",
     "held Alan-lane PRs #458/#412 per owner"
   ],
-  "last_update_utc": "2026-10-25T02:05:00Z",
+  "last_update_utc": "2026-10-25T02:20:00Z",
   "tests": "19/19 CI green on merged head; prod healthz 200 recovered ~02:05Z",
-  "next_action": "none \u2014 workstream complete; standing by for owner-direction"
+  "next_action": "none \u2014 workstream complete at owner request; session closed"
 }
