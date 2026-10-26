@@ -169,7 +169,7 @@ test('fresh repository redirects Analytics to setup and locks project tabs', asy
   await expect(tabs.getByRole('link')).toHaveCount(0);
   await page.getByRole('button', { name: 'Setup' }).click();
   await expect(page.getByRole('link', { name: 'Setup' })).toBeVisible();
-  await expect(page.locator('.project-more-menu [aria-disabled="true"]')).toHaveCount(6);
+  await expect(page.locator('.project-more-menu [aria-disabled="true"]')).toHaveCount(5);
 });
 
 test('owner edits project settings and they persist on reload', async ({ browser }) => {
