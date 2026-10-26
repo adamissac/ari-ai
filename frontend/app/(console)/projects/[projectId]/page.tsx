@@ -2,10 +2,12 @@
 
 import type { Finding, SeverityLevel } from '@hackatl/frontend-transport';
 import Link from 'next/link';
+import { ChecksChart } from '@/components/checks-chart';
 import { PillarLoopSection, ProjectJourney } from '@/components/project-progress';
 import { useProject } from '@/components/project';
-import { Async, Badge, Empty, ErrorState, Loading, PageTitle, Panel } from '@/components/ui';
+import { Async, Badge, Empty, ErrorState, Loading, PageTitle, Panel, Time } from '@/components/ui';
 import { api } from '@/lib/api';
+import { shortSha } from '@/lib/format';
 import { projectOverview } from '@/lib/overview';
 import { findingsForRepo, repoAnalytics } from '@/lib/repo-analytics';
 import { effectiveScopeStatus, FINDING_STATUS, SEVERITY } from '@/lib/status';
@@ -90,11 +92,11 @@ export default function ProjectOverview() {
                           </p>
                         )}
                         <Panel title="Repository activity">
-                          <div data-testid="analytics-stats" className="grid grid-cols-2 divide-x divide-y divide-line sm:grid-cols-4 sm:divide-y-0">
+                          <div data-testid="analytics-stats" className="grid grid-cols-2 sm:grid-cols-4">
                             <StatCell label="Commits checked" value={analytics.commitsChecked} />
-                            <StatCell label="Checks run" value={analytics.checksRun} />
-                            <StatCell label="Open findings" value={analytics.openFindings} />
-                            <StatCell label="Fixes verified" value={analytics.fixesVerified} />
+                            <StatCell label="Checks run" value={analytics.checksRun} className="border-l border-line" />
+                            <StatCell label="Open findings" value={analytics.openFindings} className="border-t border-line sm:border-l sm:border-t-0" />
+                            <StatCell label="Fixes verified" value={analytics.fixesVerified} className="border-l border-t border-line sm:border-t-0" />
                           </div>
                         </Panel>
                         <p className="-mt-4 text-xs text-faint">
@@ -170,82 +172,13 @@ export default function ProjectOverview() {
   );
 }
 
-function StatCell({ label, value }: { label: string; value: number }) {
+function StatCell({ label, value, className = '' }: { label: string; value: number; className?: string }) {
   return (
-    <div className="min-w-0 px-4 py-3 first:pl-0 last:pr-0">
+    <div className={`min-w-0 px-4 py-3 ${className}`}>
       <p className="font-mono text-2xl font-semibold text-ink">{value.toLocaleString()}</p>
       <p className="mt-1 text-xs text-muted">{label}</p>
     </div>
   );
-}
-
-function ChecksChart({ days }: { days: { date: string; completed: number; active: number; failed: number }[] }) {
-  const totals = days.map(day => day.completed + day.active + day.failed);
-  const max = Math.max(1, ...totals);
-  const completed = days.reduce((sum, day) => sum + day.completed, 0);
-  const active = days.reduce((sum, day) => sum + day.active, 0);
-  const failed = days.reduce((sum, day) => sum + day.failed, 0);
-  const plotTop = 20;
-  const baseline = 150;
-  const plotHeight = baseline - plotTop;
-  const xFor = (index: number) => 12 + index * 29;
-  const labelIndexes = new Set([0, 5, 10, 15, 20, 25, days.length - 1]);
-  return (
-    <>
-      <div className="min-w-0 overflow-x-auto">
-        <svg
-          className="block min-w-[700px] w-full"
-          viewBox="0 0 900 190"
-          role="img"
-          aria-label={`30-day check activity: ${completed} completed, ${active} active, ${failed} failed.`}
-        >
-          {[0, 0.5, 1].map(fraction => {
-            const y = baseline - fraction * plotHeight;
-            return <line key={fraction} x1="0" x2="890" y1={y} y2={y} stroke="var(--color-line)" strokeWidth="1" />;
-          })}
-          <text x="2" y={plotTop - 5} fill="var(--color-faint)" fontSize="10">{max}</text>
-          <text x="2" y={baseline + 4} fill="var(--color-faint)" fontSize="10">0</text>
-          {days.map((day, index) => {
-            const values = [
-              { value: day.completed, color: 'var(--color-ok)' },
-              { value: day.active, color: 'var(--color-warn)' },
-              { value: day.failed, color: 'var(--color-bad)' },
-            ];
-            let offset = 0;
-            const rectangles = values.map(({ value, color }, part) => {
-              const height = value / max * plotHeight;
-              const y = baseline - offset - height;
-              offset += height;
-              return value === 0 ? null : <rect key={part} x={xFor(index)} y={y} width="17" height={height} fill={color} />;
-            });
-            const label = new Date(`${day.date}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-            return (
-              <g key={day.date}>
-                {rectangles}
-                {labelIndexes.has(index) && <text x={xFor(index) + 8} y="177" textAnchor="middle" fill="var(--color-faint)" fontSize="9" fontFamily="monospace">{label}</text>}
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-      <div aria-hidden="true" className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted">
-        <ChartLegend label="Completed" color="var(--color-ok)" />
-        <ChartLegend label="Active" color="var(--color-warn)" />
-        <ChartLegend label="Failed" color="var(--color-bad)" />
-      </div>
-      <div className="sr-only">
-        <table>
-          <caption>Check outcomes for the last 30 UTC days</caption>
-          <thead><tr><th scope="col">Date</th><th scope="col">Completed</th><th scope="col">Active</th><th scope="col">Failed</th></tr></thead>
-          <tbody>{days.map(day => <tr key={day.date}><th scope="row">{day.date}</th><td>{day.completed}</td><td>{day.active}</td><td>{day.failed}</td></tr>)}</tbody>
-        </table>
-      </div>
-    </>
-  );
-}
-
-function ChartLegend({ label, color }: { label: string; color: string }) {
-  return <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />{label}</span>;
 }
 
 function BreakdownRows({ rows }: { rows: { label: string; value: number; tone: string }[] }) {
@@ -268,7 +201,10 @@ function BreakdownRows({ rows }: { rows: { label: string; value: number; tone: s
 function FindingRow({ finding, projectId, repoId }: { finding: Finding; projectId: string; repoId: string }) {
   return (
     <li className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-3">
-      <Link className="min-w-0 flex-1 break-words text-sm hover:text-accent" href={`/projects/${projectId}/findings/${finding.id}?repo=${encodeURIComponent(repoId)}`}>{finding.title}</Link>
+      <Link className="min-w-0 flex-1 break-words text-sm hover:text-accent" href={`/projects/${projectId}/findings/${finding.id}?repo=${encodeURIComponent(repoId)}`}>
+        <span className="block">{finding.title}</span>
+        <span className="mt-1 block text-xs text-muted"><span className="font-mono">{shortSha(finding.commit_sha)}</span> · <Time iso={finding.updated_at} /></span>
+      </Link>
       <span className="flex flex-wrap items-center gap-2">
         {finding.severity ? <Badge view={SEVERITY[finding.severity.level]} /> : <span className="text-xs text-faint">unassessed</span>}
         <Badge view={FINDING_STATUS[finding.status]} />

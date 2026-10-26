@@ -4,7 +4,7 @@ import type { Assessment, RepositoryCommit } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
-import { AgentTeam } from '@/components/agent-team';
+import { AgentRunList } from '@/components/agent-run-list';
 import { AssessmentList } from '@/components/assessment-history';
 import { CommitAssessmentChip, CommitAssessmentProvider } from '@/components/commit-assessment-chips';
 import { useProject } from '@/components/project';
@@ -50,7 +50,7 @@ export default function CommitsPage() {
           return (
             <>
               <div className="grid min-w-0 gap-6 lg:grid-cols-[2fr_3fr]">
-                <Panel title={`Commits · ${selectedRepo.full_name}`}>
+                <Panel title="History">
                   {github.status === 'error' && <ErrorState error={github.error} onRetry={github.reload} />}
                   {github.status === 'ready' && !github.data.available && <p className="mb-3 text-xs text-muted">{github.data.reason ?? 'GitHub commit history is unavailable.'}</p>}
                   <CommitAssessmentProvider repoId={selectedRepo.id}>
@@ -71,11 +71,11 @@ export default function CommitsPage() {
                     </ul> : <Empty>No commits or assessments are available for this repository.</Empty>}
                   </CommitAssessmentProvider>
                 </Panel>
-                <Panel title={selectedSha ? `Commit ${shortSha(selectedSha)}` : 'Commit details'}>
+                <Panel title="Commit">
                   {!selectedSha ? <Empty>Pick a commit to see its code review and the 7 agents&apos; work.</Empty> : (
                     <>
                       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
-                        <div><Mono>{shortSha(selectedSha)}</Mono><p className="mt-1 text-sm text-muted">{current?.message ?? `Commit ${shortSha(selectedSha)}`}</p></div>
+                        <div><p className="text-base text-ink">{current?.message ?? `Commit ${shortSha(selectedSha)}`}</p><p className="mt-1 font-mono text-xs text-muted">{shortSha(selectedSha)}</p></div>
                         <div className="flex gap-4 text-sm">{analyze && <Link className="text-brand hover:underline" href={analyze}>Analyze this commit →</Link>}{openFullRun && <Link className="text-brand hover:underline" href={openFullRun}>Open full run →</Link>}</div>
                       </div>
                       {!runs.length ? <p className="py-4 text-sm text-muted">Not reviewed yet. {analyze && <Link className="text-brand hover:underline" href={analyze}>Analyze this commit →</Link>}</p> : (
@@ -124,5 +124,5 @@ function mergeCommits(github: RepositoryCommit[], assessments: Assessment[]): Co
 function RecordedAgents({ run, projectId }: { run: Assessment | null; projectId: string }) {
   const result = useResource(run ? `commit-agent-run:${run.id}` : null, signal => run ? api().agentRuns(run.id, { signal }) : Promise.resolve({ items: [], next_cursor: null }));
   if (!run) return <p className="text-sm text-muted">Not reviewed yet.</p>;
-  return <Async resource={result} label="agent runs">{page => <><AgentTeam runs={page.items} state={run.state} /><Link className="mt-3 inline-block text-sm text-brand hover:underline" href={`/projects/${projectId}/assessments/${run.id}?repo=${encodeURIComponent(run.repo_id ?? '')}`}>Open full run &amp; replay →</Link></>}</Async>;
+  return <Async resource={result} label="agent runs">{page => <><AgentRunList runs={page.items} state={run.state} /><Link className="mt-3 inline-block text-sm text-brand hover:underline" href={`/projects/${projectId}/assessments/${run.id}?repo=${encodeURIComponent(run.repo_id ?? '')}`}>Open full run &amp; replay →</Link></>}</Async>;
 }

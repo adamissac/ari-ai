@@ -23,7 +23,7 @@ vi.mock('@/components/commit-assessment-chips', () => ({
 }));
 vi.mock('@/components/assessment-history', () => ({ AssessmentList: () => null }));
 vi.mock('@/components/start-assessment', () => ({ StartAssessment: () => null }));
-vi.mock('@/components/agent-team', () => ({ AgentTeam: () => <div data-testid="agent-team" /> }));
+vi.mock('@/components/agent-run-list', () => ({ AgentRunList: () => <div data-testid="agent-team" /> }));
 vi.mock('next/link', () => ({
   default: ({ href, children, ...props }: React.PropsWithChildren<{ href: string }>) => <a href={href} {...props}>{children}</a>,
 }));

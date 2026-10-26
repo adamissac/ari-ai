@@ -16,7 +16,7 @@ vi.mock('@/components/commit-assessment-chips', () => ({
 }));
 vi.mock('@/components/assessment-history', () => ({ AssessmentList: () => null }));
 vi.mock('@/components/start-assessment', () => ({ StartAssessment: () => null }));
-vi.mock('@/components/agent-team', () => ({ AgentTeam: () => <p>Recorded agent runs</p> }));
+vi.mock('@/components/agent-run-list', () => ({ AgentRunList: () => <p>Recorded agent runs</p> }));
 vi.mock('@/lib/use-resource', () => ({
   useResource: (key: string | null) => {
     const run = { id: 'asm-1', repo_id: 'repo-1', commit_sha: state.sha, state: 'COMPLETED', created_at: '2026-10-25T00:00:00Z', trigger: 'manual', usage: { llm_calls: 1, usd: 0 } };

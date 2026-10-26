@@ -46,6 +46,7 @@ export function useSelectedRepo(projectId: string, repos: readonly Repository[])
     }
     const params = new URLSearchParams(searchParams.toString());
     params.set('repo', id);
+    params.delete('commit');
     const query = params.toString();
     const hash = typeof window === 'undefined' ? '' : window.location.hash;
     router.replace(`${pathname}${query ? `?${query}` : ''}${hash}`, { scroll: false });
