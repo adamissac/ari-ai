@@ -11,6 +11,7 @@ export function resolveSelectedRepo(
 ): Repository | null {
   return repos.find(repo => repo.id === param)
     ?? repos.find(repo => repo.id === stored)
+    ?? repos.find(repo => !repo.disconnected)
     ?? repos[0]
     ?? null;
 }

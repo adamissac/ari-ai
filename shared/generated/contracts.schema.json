@@ -12288,6 +12288,225 @@
       "title": "RepositoryConnect",
       "type": "object"
     },
+    "RepositorySetup": {
+      "additionalProperties": false,
+      "description": "Server-saved setup walkthrough progress for one connected repository.",
+      "properties": {
+        "answers": {
+          "$ref": "#/$defs/RepositorySetupAnswers"
+        },
+        "complete": {
+          "default": false,
+          "title": "Complete",
+          "type": "boolean"
+        },
+        "completed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Completed At"
+        },
+        "repo_id": {
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Repo Id",
+          "type": "string"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Updated At"
+        }
+      },
+      "required": [
+        "repo_id",
+        "answers",
+        "complete",
+        "completed_at",
+        "updated_at"
+      ],
+      "title": "RepositorySetup",
+      "type": "object"
+    },
+    "RepositorySetupAnswers": {
+      "additionalProperties": false,
+      "description": "Answers to the eight repository setup questions; ``None`` means unanswered.",
+      "properties": {
+        "comments": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comments"
+        },
+        "delivery": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Delivery"
+        },
+        "readiness": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Readiness"
+        },
+        "reviewChanges": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewchanges"
+        },
+        "reviewStart": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewstart"
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scope"
+        },
+        "strictness": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Strictness"
+        },
+        "watch": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "maxLength": 80,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Watch"
+        }
+      },
+      "required": [
+        "readiness",
+        "strictness",
+        "reviewChanges",
+        "comments",
+        "watch",
+        "scope",
+        "delivery",
+        "reviewStart"
+      ],
+      "title": "RepositorySetupAnswers",
+      "type": "object"
+    },
+    "RepositorySetupUpdate": {
+      "additionalProperties": false,
+      "properties": {
+        "answers": {
+          "$ref": "#/$defs/RepositorySetupAnswers"
+        },
+        "complete": {
+          "default": false,
+          "title": "Complete",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "answers",
+        "complete"
+      ],
+      "title": "RepositorySetupUpdate",
+      "type": "object"
+    },
     "RepositoryUpdate": {
       "additionalProperties": false,
       "properties": {
@@ -14882,5 +15101,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.26.0"
+  "x-schema-version": "0.27.0"
 }

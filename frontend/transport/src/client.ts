@@ -157,6 +157,13 @@ export class ApiClient {
   updateRepository(repoId: string, body: C.RepositoryUpdate, options?: RequestOptions): Promise<C.Repository> {
     return this.request(`/repositories/${segment(repoId)}`, 'Repository', options, body, undefined, undefined, false, 'PATCH') as Promise<C.Repository>;
   }
+  /** Setup walkthrough progress saved on the server for this repository. */
+  repositorySetup(repoId: string, options?: RequestOptions): Promise<C.RepositorySetup> {
+    return this.request(`/repositories/${segment(repoId)}/setup`, 'RepositorySetup', options) as Promise<C.RepositorySetup>;
+  }
+  saveRepositorySetup(repoId: string, body: C.RepositorySetupUpdate, options?: RequestOptions): Promise<C.RepositorySetup> {
+    return this.request(`/repositories/${segment(repoId)}/setup`, 'RepositorySetup', options, body, undefined, undefined, false, 'PATCH') as Promise<C.RepositorySetup>;
+  }
   /** Owner kill-switch: parks the repository server-side; the GitHub App grant stays until uninstalled. */
   disconnectRepository(repoId: string, options?: RequestOptions): Promise<{ id: string; disconnected: boolean }> {
     return this.request(`/repositories/${segment(repoId)}/disconnect`, RAW, options, {}) as Promise<{ id: string; disconnected: boolean }>;
