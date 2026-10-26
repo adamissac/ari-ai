@@ -9,6 +9,7 @@ test('organization → repository → commit keeps real agent work and replay in
   const sha = env('E2E_COMMIT');
   const otherSha = 'f'.repeat(40);
   const base = `/connect/${org}/${repo}`;
+  const screenshotDir = process.env.E2E_SCREENSHOT_DIR ?? 'test-results';
   let quickReads = 0;
   page.on('request', request => { if (request.url().endsWith('/api/analyze')) quickReads++; });
   await page.route('**/api/v1/github/repositories', route => route.fulfill({ json: { items: [
@@ -57,15 +58,11 @@ test('organization → repository → commit keeps real agent work and replay in
   await expect(page).toHaveURL(`${base}/commit/${sha}`);
   await page.getByRole('tab', { name: '7 agents', exact: true }).click();
   const map = page.getByTestId('commit-agent-map');
+  await expect(page.getByTestId('commit-agent-summary')).toBeVisible();
+  await page.getByRole('button', { name: 'Watch the replay' }).click();
   await expect(map.getByRole('navigation', { name: 'Agents in orchestrator order' }).getByRole('button')).toHaveCount(7);
   await expect.poll(async () => Number(await map.getByRole('slider', { name: 'Replay position' }).getAttribute('max')), { timeout: 180_000 }).toBeGreaterThan(1);
   await map.getByRole('slider', { name: 'Replay position' }).press('End');
-  for (const width of [1440, 390]) {
-    await page.setViewportSize({ width, height: 1000 });
-    await expectNoSideScroll(page);
-    await map.scrollIntoViewIfNeeded();
-    await page.screenshot({ path: `/tmp/ari-commit-workspace-${width}.png`, fullPage: true });
-  }
   // Finish this test's run so its approvals cannot leak into later suite cases.
   const bob = await newUser(browser, 'e2e-bob');
   await bob.goto(`/projects/${env('E2E_WORKSPACE_PROJECT_ID')}/assessments/${assessmentId}`);
@@ -81,10 +78,41 @@ test('organization → repository → commit keeps real agent work and replay in
     await expect(decisions).toHaveCount(1 - i);
   }
   await expect(bob.getByRole('heading', { name: /Assessment/ }).getByText('Completed')).toBeVisible({ timeout: 180_000 });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await expectNoSideScroll(page);
+    await page.getByRole('tab', { name: 'Code review', exact: true }).click();
+    await expect(page.getByTestId('commit-reviewer')).toBeVisible();
+    await page.screenshot({ path: `${screenshotDir}/commit-review-${width}.png`, fullPage: true });
+
+    await page.getByRole('tab', { name: '7 agents', exact: true }).click();
+    const summary = page.getByTestId('commit-agent-summary');
+    await expect(summary).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Watch the replay' })).toHaveAttribute('aria-expanded', 'false');
+    await page.screenshot({ path: `${screenshotDir}/commit-agents-${width}.png`, fullPage: true });
+
+    const replayButton = page.getByRole('button', { name: 'Watch the replay' });
+    await replayButton.click();
+    const replayMap = page.getByTestId('commit-agent-map');
+    await expect(replayMap.locator('.amap-grid-compact')).toBeVisible();
+    await expect.poll(async () => Number(await replayMap.getByRole('slider', { name: 'Replay position' }).getAttribute('max')), { timeout: 180_000 }).toBeGreaterThan(1);
+    await replayMap.getByRole('slider', { name: 'Replay position' }).press('End');
+    await replayMap.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `${screenshotDir}/commit-agents-replay-${width}.png`, fullPage: true });
+    await page.getByRole('button', { name: 'Hide replay' }).click();
+  }
   await page.goto(`${base}/commit/${otherSha}`);
   await expect(page.getByRole('heading', { name: 'A different commit' })).toBeVisible();
   await page.getByRole('tab', { name: '7 agents', exact: true }).click();
-  await expect(page.getByTestId('commit-agent-map')).toContainText(/No replay yet|Preview · reasoning over the diff/);
+  const previewMap = page.getByTestId('commit-agent-map');
+  const previewSummary = page.getByTestId('commit-agent-summary');
+  if (await previewSummary.isVisible()) {
+    await expect(previewMap).toContainText('Preview · nothing executed');
+    await page.getByRole('button', { name: 'Watch the replay' }).click();
+    await expect(previewMap.locator('.amap-grid-compact')).toBeVisible();
+  } else {
+    await expect(previewMap).toContainText('No replay yet');
+  }
   await expect(page.locator('main')).not.toContainText('Selected payment change');
   expect(quickReads).toBeGreaterThanOrEqual(1);
 });

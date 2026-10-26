@@ -51,6 +51,11 @@ it('merges GitHub and assessment-only commits and switches to the recorded agent
   expect(screen.getByTestId(`commit-row-${state.sha}`)).toBeTruthy();
   fireEvent.click(screen.getByRole('tab', { name: '7 agents' }));
   const recordedMap = screen.getByTestId('commit-agent-map');
+  expect(recordedMap.querySelector('.amap-grid-compact')).toBeNull();
+  expect([...screen.getByTestId('commit-agent-summary').querySelectorAll('li > span:first-child')].map(node => node.textContent)).toEqual([
+    'Scout', 'Probe', 'Trace', 'Diagnose', 'Patch', 'Fortify', 'Verify',
+  ]);
+  fireEvent.click(screen.getByRole('button', { name: 'Watch the replay' }));
   expect(recordedMap.querySelector('.amap-grid-compact')).toBeTruthy();
   expect(recordedMap.querySelector('.amap-rail-compact')).toBeTruthy();
   expect([...recordedMap.querySelectorAll('.amap-compact-agent-list button')].map(button => button.getAttribute('data-testid'))).toEqual([
