@@ -204,20 +204,27 @@ def _status(
         ),
     ]
 
-    # A disconnected (parked) repository still counts for the repository step —
-    # the row exists and stays readable — but drops out of every connected step.
-    repo_done = bool(all_repos)
+    # Only a live repository completes this step. A disconnected one stays readable as
+    # history, but saying it "is connected" would be false.
+    repo_done = bool(repos)
     installed = [r for r in repos if r["installation_id"] is not None]
+    if repo_done:
+        repo_state, repo_detail = OnboardingStepState.done, f"{repos[0]['full_name']} is connected."
+        repo_subject = repos[0]["id"]
+    elif all_repos:
+        repo_state = OnboardingStepState.todo
+        repo_detail = f"{all_repos[0]['full_name']} is disconnected. Reconnect it to continue."
+        repo_subject = all_repos[0]["id"]
+    else:
+        repo_state = OnboardingStepState.todo
+        repo_detail = "Connect a repository you are allowed to give Ari access to."
+        repo_subject = None
     steps.append(
         OnboardingStep(
             id=OnboardingStepId.repository,
-            state=OnboardingStepState.done if repo_done else OnboardingStepState.todo,
-            detail=(
-                f"{all_repos[0]['full_name']} is connected."
-                if repo_done
-                else "Connect a repository you are allowed to give Ari access to."
-            ),
-            subject_id=all_repos[0]["id"] if all_repos else None,
+            state=repo_state,
+            detail=repo_detail,
+            subject_id=repo_subject,
         )
     )
 

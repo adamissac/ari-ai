@@ -241,6 +241,10 @@ def create_project(
         settings = body.settings or ProjectSettings()
         if role is not MemberRole.owner:  # only owners may authorize Ari to deliver code
             settings = settings.model_copy(update={"delivery_mode": DeliveryMode.manual})
+        elif (
+            settings.delivery_mode is DeliveryMode.auto and not get_settings().auto_delivery_allowed
+        ):
+            settings = settings.model_copy(update={"delivery_mode": DeliveryMode.pull_request})
         settings = _stamp_delivery(settings, ProjectSettings(), user.id)
         _check_budgets(settings, ProjectSettings())
         conn.execute(
@@ -298,6 +302,17 @@ def update_project(project_id: str, body: ProjectUpdate, request: Request) -> Pr
         if body.settings is not None:
             before = project_settings(conn, project_id)
             _check_budgets(body.settings, before)
+            if (
+                body.settings.delivery_mode is DeliveryMode.auto
+                and before.delivery_mode is not DeliveryMode.auto
+                and not get_settings().auto_delivery_allowed
+            ):
+                raise ApiError(
+                    ErrorCode.VALIDATION_FAILED,
+                    "committing fixes straight to the default branch is turned off on this "
+                    "deployment; choose pull request or manual delivery",
+                    422,
+                )
             settings = _stamp_delivery(body.settings, before, user.id)
             values["settings"] = settings.model_dump(mode="json")
             if not before.delivery_authorized_by and settings.delivery_authorized_by:
@@ -399,11 +414,22 @@ def connect_repository(project_id: str, body: RepositoryConnect, request: Reques
             # sign-in); confirm live before recording a repository every GitHub read
             # would fail for.
             verify_installation_access(body.full_name, body.installation_id)
-        if conn.execute(
-            sa.select(repositories.c.id).where(repositories.c.full_name == body.full_name)
-        ).scalar():
+        existing = (
+            conn.execute(sa.select(repositories).where(repositories.c.full_name == body.full_name))
+            .mappings()
+            .first()
+        )
+        if existing is not None:
+            # A repeated connect (double click, second tab) of a live repository in this
+            # same project is a no-op; anything else stays a conflict without leaking ids.
+            if existing["project_id"] == project_id and existing["disconnected_at"] is None:
+                return _repo(existing)
             raise ApiError(
-                ErrorCode.CONFLICT_STATE, "repository already connected to a project", 409
+                ErrorCode.CONFLICT_STATE,
+                "repository is disconnected; reconnect it instead"
+                if existing["project_id"] == project_id
+                else "repository already connected to a project",
+                409,
             )
         rid = new_id(IdPrefix.rep)
         conn.execute(
@@ -1239,12 +1265,15 @@ def list_assessments(
     request: Request,
     limit: int = Query(50, ge=1, le=200),
     cursor: str | None = None,
+    repo_id: str | None = None,
 ) -> dict[str, Any]:
     with transaction() as conn:
         require_project(conn, _user(conn, request), project_id)
         q = sa.select(assessments.c.id, assessments.c.doc).where(
             assessments.c.project_id == project_id
         )
+        if repo_id:
+            q = q.where(assessments.c.repo_id == repo_id)
         if cursor:
             q = q.where(assessments.c.id < cursor)
         rows = [
@@ -1540,11 +1569,28 @@ def assessment_report(assessment_id: str, request: Request) -> dict[str, Any]:
 
 @router.get("/projects/{project_id}/findings")
 def list_findings(
-    project_id: str, request: Request, status: FindingStatus | None = None, kind: str | None = None
+    project_id: str,
+    request: Request,
+    status: FindingStatus | None = None,
+    kind: str | None = None,
+    repo_id: str | None = None,
 ) -> dict[str, Any]:
     with transaction() as conn:
         require_project(conn, _user(conn, request), project_id)
         q = sa.select(findings.c.doc).where(findings.c.project_id == project_id)
+        if repo_id:
+            # By the assessment's repository, or the repository snapshot the finding is pinned
+            # to; never by which assessments a client happened to load.
+            q = q.where(
+                sa.or_(
+                    findings.c.assessment_id.in_(
+                        sa.select(assessments.c.id).where(assessments.c.repo_id == repo_id)
+                    ),
+                    findings.c.doc["snapshot_id"].astext.in_(
+                        sa.select(snapshots.c.id).where(snapshots.c.repo_id == repo_id)
+                    ),
+                )
+            )
         if status:
             q = q.where(findings.c.status == status.value)
         if kind:

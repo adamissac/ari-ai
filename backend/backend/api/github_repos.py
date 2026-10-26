@@ -251,7 +251,11 @@ def list_accessible_repositories(request: Request) -> dict[str, Any]:
     )
     with transaction() as conn:
         rows = conn.execute(
-            sa.select(github_repo_access, repositories.c.id.label("repo_id"))
+            sa.select(
+                github_repo_access,
+                repositories.c.id.label("repo_id"),
+                repositories.c.disconnected_at,
+            )
             .select_from(github_repo_access)
             .join(
                 repositories,
@@ -271,6 +275,8 @@ def list_accessible_repositories(request: Request) -> dict[str, Any]:
                 "default_branch": r["default_branch"],
                 "private": r["private"],
                 "connected_repo_id": r["repo_id"],
+                # The row outlives a disconnect (history); this says whether it is live.
+                "disconnected": r["disconnected_at"] is not None,
             }
             for r in rows
         ]

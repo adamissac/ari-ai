@@ -290,6 +290,15 @@ def test_auto_pushes_to_the_default_branch(wired) -> None:
     assert "delivery.pushed" in _actions()
 
 
+def test_auto_saved_before_the_deployment_gate_opens_a_pr_instead(wired, settings_override) -> None:
+    wired("auto")
+    settings_override(allow_auto_delivery="false")
+    worker.drain(kinds=["deliver_verified_patch"])
+    assert [c[0] for c in FakeApp.calls] == ["push", "pr"]
+    assert FakeApp.calls[0][1].startswith("ari/fix-")
+    assert "delivery.pr_opened" in _actions() and "delivery.pushed" not in _actions()
+
+
 def test_auto_falls_back_to_a_pr_when_the_branch_moved(wired) -> None:
     FakeApp.moved = True
     wired("auto")

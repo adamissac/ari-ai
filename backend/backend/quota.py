@@ -56,7 +56,11 @@ def check_project_quota(
     conn: Connection, project_id: str, now: datetime, *, manual: bool = False
 ) -> QuotaDecision | None:
     """Apply all-trigger automatic or manual-only project quotas and the shared spend cap."""
-    # This is check-then-insert, so concurrent starts can overshoot the limit.
+    # Check-then-insert: the transaction-scoped lock makes concurrent starts for one
+    # project wait here until the caller's insert commits, so counts cannot overshoot.
+    # shortcut: the global spend cap is only as fresh as recorded usage, so in-flight
+    # runs in other projects can still overshoot it; it is a cost bound, not a quota.
+    conn.execute(sa.select(sa.func.pg_advisory_xact_lock(sa.func.hashtext(f"quota:{project_id}"))))
     settings = get_settings()
     hour_window = timedelta(hours=1)
     day_window = timedelta(days=1)

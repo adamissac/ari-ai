@@ -311,7 +311,9 @@ def test_repository_disconnect(project) -> None:
     # The repo record stays readable; deploy-mapping onboarding step re-opens.
     status = alice.get(f"/api/v1/projects/{pid}/onboarding").json()
     assert _step(status, "deploy_mapping")["state"] == "todo"
-    assert _step(status, "repository")["state"] == "done"
+    # ...but a disconnected repository is not reported as connected.
+    assert _step(status, "repository")["state"] == "todo"
+    assert "disconnected" in _step(status, "repository")["detail"]
 
 
 def test_repository_disconnect_authz(client_factory) -> None:

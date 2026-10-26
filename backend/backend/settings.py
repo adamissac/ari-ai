@@ -205,9 +205,17 @@ class Settings(BaseSettings):
                 return None
         return value
 
+    # Direct pushes of verified fixes to the default branch (delivery_mode=auto). Unset
+    # means on only in development/test; pilot deployments stay on PR/manual delivery.
+    allow_auto_delivery: bool | None = None
+
     @property
     def is_dev(self) -> bool:
         return self.app_env in ("development", "test")
+
+    @property
+    def auto_delivery_allowed(self) -> bool:
+        return self.is_dev if self.allow_auto_delivery is None else self.allow_auto_delivery
 
     @property
     def resolved_log_format(self) -> str:

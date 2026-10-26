@@ -454,6 +454,8 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
     from backend.github import GitHubApp
 
     mode = granted[0]
+    if mode is DeliveryMode.auto and not s.auto_delivery_allowed:
+        mode = DeliveryMode.pull_request  # settings saved before the gate; never push direct
     full_name, default_branch = str(repo["full_name"]), str(repo["default_branch"])
     iid = int(repo["installation_id"])
     repo_dir = s.security_workdir / "repos" / f"{repo['id']}.git"
