@@ -88,7 +88,11 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     await expect.poll(() => page.locator('.hero-in').evaluateAll(els => els.every(el => Number(getComputedStyle(el).opacity) >= 0.99))).toBe(true);
     await expect(page.locator('header .hdr-logo')).toHaveCSS('color', 'rgb(255, 255, 255)');
     await expect(heading.locator('.hero-line').first()).toHaveCSS('color', 'rgb(255, 247, 242)');
-    await expect(heading.locator('.hero-line').first()).toHaveCSS('text-shadow', 'none'); // no glow on the headline
+    await expect(page.locator('.hero-orb')).toHaveCount(5);
+    const orbDurations = await page.locator('.hero-orb').evaluateAll(elements => elements.slice(0, 5).map(el => getComputedStyle(el).animationDuration));
+    expect(orbDurations).toEqual(['32s', '38s', '42s', '28s', '45s']);
+    await expect(heading.locator('.hero-line').first()).toHaveAttribute('data-glow', 'FIND THE FLAW.');
+    await expect(heading.locator('.hero-line').first()).toHaveCSS('text-shadow', 'none'); // glow is isolated to an opacity-animated pseudo layer
     await expect.poll(() => page.evaluate(() => document.fonts.status)).toBe('loaded');
     const fonts = await page.evaluate(() => ({
       logo: getComputedStyle(document.querySelector('.ari-wordmark-text')!).fontFamily,
@@ -157,6 +161,8 @@ test('reduced motion keeps the hero, logo and menu visible', async ({ page }) =>
   await expect(page.locator('.intro')).toHaveCount(0);
   await expect(page.locator('.hero-content')).toHaveCSS('opacity', '1');
   await expect(page.locator('.hero-orb').first()).toHaveCSS('animation-name', 'none');
+  await expect(page.locator('.hero-line').first()).toHaveCSS('animation-name', 'none');
+  expect(await page.locator('.hero-line').first().evaluate(el => getComputedStyle(el, '::before').animationName)).toBe('none');
   await expect(page.locator('.nav-secondary')).toHaveCSS('transition-duration', '0s');
   await expect(page.locator('.nav-secondary')).toHaveAttribute('inert', '');
   await page.evaluate(() => window.scrollTo(0, 100));
@@ -167,6 +173,29 @@ test('reduced motion keeps the hero, logo and menu visible', async ({ page }) =>
   await expect(page.getByRole('link', { name: 'ARI home', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Go to projects', exact: true }).first().click();
   await expect(page).toHaveURL(/\/projects$/);
+});
+
+test('problem chapter eases to the short change-check headline', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await page.locator('.story-track-3').evaluate(el => {
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo(0, top + (el.clientHeight - window.innerHeight) * 0.9);
+  });
+  await expect(page.getByText('EVERY CHANGE. CHECKED.', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('story-timeline-capsule')).toHaveCSS('color', 'rgb(255, 255, 255)');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(1440);
+});
+
+test('pricing keeps glass cards, an unboxed CTA and no horizontal overflow', async ({ page }) => {
+  await page.goto('/pricing');
+  await expect(page.getByRole('heading', { level: 1, name: 'ARI pricing' })).toBeVisible();
+  await expect(page.locator('.pricing-cta')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(page.locator('.pricing-cta')).not.toHaveClass(/hero-ink/);
+  for (const width of [1440, 1024, 390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width);
+  }
 });
 
 
