@@ -1,0 +1,18 @@
+{
+  "candidate_sha": "b6d5108b6f0678a6af9546f60d28508716cc4982",
+  "upstream_sha": "ba4ada0d2387a4f6fcb3b0adbfc65bfaf934ce25",
+  "independent_tests": {
+    "passed": 194,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "exit_code": 0,
+    "run_id": 40285189840
+  },
+  "known_original_F1_F10_N1_N9": "PASS",
+  "upstream_629_probes": "PASS",
+  "new_security_findings": [],
+  "security_verdict": "GO for checked exact candidate",
+  "canonical_merge": "HOLD: current-main frontend/test/document conflicts",
+  "customer_deployment": "NOT APPROVED"
+}
