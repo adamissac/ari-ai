@@ -74,21 +74,21 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
             </button>
           </div>
           <p className="lab-now-moment" aria-live="polite">
-            {currentMoment ? <><span className="lab-now-moment-when">Last key moment · step {currentMoment.t}</span> {currentMoment.text}</> : <span className="text-faint">Press play or use the arrows to jump between key moments.</span>}
+            {currentMoment ? <><span className="lab-now-moment-when label-mono text-faint">Last key moment · step {currentMoment.t}</span> {currentMoment.text}</> : <span className="text-faint">Press play or use the arrows to jump between key moments.</span>}
           </p>
         </div>
 
         <aside className="replay-explanation" aria-label="What's happening">
           <div className="lab-now">
-            <p className="label-mono flex justify-between text-white/60"><span>Step {step?.t ?? 0} of {scenario.horizon}</span><span>Recorded</span></p>
+            <p className="label-mono text-faint flex justify-between"><span>Step {step?.t ?? 0} of {scenario.horizon}</span><span>Recorded</span></p>
             <dl className="mt-3 flex flex-col gap-3 text-sm">
-              <div><dt className="lab-q">What’s happening</dt><dd className="text-white/85" data-testid="lab-step-story">{s.now}</dd></div>
+              <div><dt className="lab-q label-mono text-faint">What’s happening</dt><dd className="text-white/85" data-testid="lab-step-story">{s.now}</dd></div>
               <div>
-                <dt className="lab-q">What the AI did</dt>
+                <dt className="lab-q label-mono text-faint">What the AI did</dt>
                 <dd data-testid="lab-step-action"><span className="sr-only">At step {step?.t ?? 0} the defender: </span><strong className="block text-white">{s.did}</strong>{s.tradeoff && <span className="mt-1 block text-white/60">{s.tradeoff}</span>}</dd>
               </div>
-              <div><dt className="lab-q">Why</dt><dd className="text-white/70">{s.why}</dd></div>
-              {s.effect && <div><dt className="lab-q">Did it change anything?</dt><dd className="text-white/85" data-testid="lab-step-effect">{s.effect}</dd></div>}
+              <div><dt className="lab-q label-mono text-faint">Why</dt><dd className="text-white/70">{s.why}</dd></div>
+              {s.effect && <div><dt className="lab-q label-mono text-faint">Did it change anything?</dt><dd className="text-white/85" data-testid="lab-step-effect">{s.effect}</dd></div>}
             </dl>
           </div>
           {selected ? <ServicePanel episode={episode} scenario={scenario} name={selected} t={t} truth={truth} onClose={() => setSelected(null)} /> : (

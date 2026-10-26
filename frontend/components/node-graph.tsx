@@ -17,6 +17,8 @@ import type { HiddenStage } from '@/lib/lab-types';
 
 const W = 1080;
 const H = 480;
+const INITIAL_SCALE = 0.82;
+const fitView = () => ({ k: INITIAL_SCALE, x: W * (1 - INITIAL_SCALE) / 2, y: H * (1 - INITIAL_SCALE) / 2 });
 export const INTERNET_ID = '__internet__';
 
 type Point = { x: number; y: number };
@@ -161,7 +163,7 @@ export interface NetworkMapProps {
 export function NodeGraph({ scenario, states, action = 'noop', t = 0, lastAction, selected = null, onSelect = () => {}, showTruth = false }: NetworkMapProps) {
   const base = useMemo(() => layoutNetwork(scenario), [scenario]);
   const [moved, setMoved] = useState<Map<string, Point>>(new Map());
-  const [view, setView] = useState({ k: 1, x: 0, y: 0 });
+  const [view, setView] = useState(fitView);
   const [hover, setHover] = useState<string | null>(null);
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<{ id: string | null; sx: number; sy: number; ox: number; oy: number; moved: boolean } | null>(null);
@@ -217,10 +219,10 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, lastAction
     else if (d.id !== INTERNET_ID) onSelect(selected === d.id ? null : d.id);
   };
   const zoom = (f: number) => setView(v => {
-    const k = Math.min(2.5, Math.max(0.6, v.k * f));
+    const k = Math.min(2.5, Math.max(0.5, v.k * f));
     return { k, x: W / 2 - ((W / 2 - v.x) * k) / v.k, y: H / 2 - ((H / 2 - v.y) * k) / v.k };
   });
-  const reset = () => { setView({ k: 1, x: 0, y: 0 }); setMoved(new Map()); };
+  const reset = () => { setView(fitView()); setMoved(new Map()); };
 
   const order = views.map(v => v.name);
   const focusNode = (name: string) => requestAnimationFrame(() => svg.current?.querySelector<SVGGElement>(`[data-node="${CSS.escape(name)}"]`)?.focus());
@@ -273,10 +275,11 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, lastAction
         onWheel={e => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); zoom(e.deltaY < 0 ? 1.1 : 0.9); } }}
       >
         <defs>
-          <pattern id="net-dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="0.9" fill="rgba(255,255,255,0.07)" /></pattern>
+          <pattern id="net-dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="0.9" fill="rgba(255,255,255,0.025)" /></pattern>
           <radialGradient id="net-hot"><stop offset="0%" stopColor="#c2452d" stopOpacity="0.42" /><stop offset="100%" stopColor="#c2452d" stopOpacity="0" /></radialGradient>
         </defs>
         <rect width={W} height={H} fill="url(#net-dots)" />
+        <rect width={W} height={H} fill="url(#net-hot)" opacity="0.55" />
         <text x="28" y="30" className="network-zone">OUTSIDE</text><text x="260" y="30" className="network-zone">YOUR APPLICATION</text>
         <line x1="205" x2="205" y1="48" y2={H - 20} className="network-boundary" />
         <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
