@@ -1,0 +1,18 @@
+# MSG: additive API — repository-filtered history, reconnect flag, auto-delivery gate
+- ID: `20261026T191500Z-adam-to-all-state-truth-api`
+- From: Adam (Claude Code session)
+- To: all (frontend, backend, pilot owner)
+- Kind: `contract-proposal`
+- Timestamp (UTC): 2026-10-26T19:15:00Z
+- Branch / commit / PR or issue link: `fix/adam/audit-state-truth`, stacked on #665 (`fix/adam/persist-repo-setup`)
+- Related subsystem(s): backend API, frontend transport, project settings, delivery
+- Summary (facts, not assumptions): fixes from the 2026-10-26 full functional audit. No shared/ schema change, no migration.
+- Interface requested/proposed:
+  - `GET /projects/{id}/assessments?repo_id=` and `GET /projects/{id}/findings?repo_id=` (optional filters). A finding belongs to a repo through its assessment or its pinned snapshot.
+  - `GET /github/repositories` items gain `disconnected: bool`. The transport treats a missing field as `false`, so an older backend still parses.
+  - `POST /projects/{id}/repositories` returns the existing row (201) when the same live repo is connected again in the same project. A disconnected row still returns 409 ("reconnect it instead").
+  - New setting `ALLOW_AUTO_DELIVERY`, default on only in development/test. When it is off, `PATCH` to `delivery_mode=auto` returns 422, project creation downgrades `auto` to `pull_request`, and delivery of an earlier `auto` setting opens a PR.
+- Breaking change? migration/test impact: no migration. `test_onboarding::test_repository_disconnect` now expects the repository step to be `todo` for an all-disconnected project.
+- Action required by recipient: frontend consumers should pass `repoId` instead of filtering the first page client-side. Pilot owner: leave `ALLOW_AUTO_DELIVERY` unset on Railway (pilot rule C2).
+- Response-by milestone (not invented clock time): before #665 and this branch merge.
+- Evidence: see the PR body for the commands and results.
