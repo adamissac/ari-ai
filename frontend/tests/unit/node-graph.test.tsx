@@ -30,6 +30,25 @@ it('does not trap vertical touch scrolling and keeps the topology test id', () =
   expect(svg.style.touchAction).toBe('pan-y');
 });
 
+it('starts and resets zoomed out at the graph center and allows zooming to 50%', () => {
+  const { container } = render(<NodeGraph scenario={scenario} states={states} />);
+  const readView = () => {
+    const transform = container.querySelector('.net-svg > g[transform*="scale"]')?.getAttribute('transform') ?? '';
+    const match = transform.match(/translate\(([-\d.]+) ([-\d.]+)\) scale\(([-\d.]+)\)/);
+    if (!match) throw new Error(`Unexpected graph transform: ${transform}`);
+    return { x: Number(match[1]), y: Number(match[2]), k: Number(match[3]) };
+  };
+
+  expect(readView().x).toBeCloseTo(97.2);
+  expect(readView().y).toBeCloseTo(43.2);
+  expect(readView().k).toBe(0.82);
+  fireEvent.click(screen.getByRole('button', { name: 'Reset view' }));
+  expect(readView().k).toBe(0.82);
+
+  for (let i = 0; i < 5; i++) fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
+  expect(readView().k).toBe(0.5);
+});
+
 it('lays the network out in stable columns from the internet inwards', () => {
   const a = layoutNetwork(scenario);
   const b = layoutNetwork(scenario);
