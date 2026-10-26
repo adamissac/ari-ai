@@ -32,27 +32,20 @@
 :root:not(:has(.hero-full)) .night-footer { border-top: 1px solid var(--ui-edge); margin-top: 48px; padding-block: 28px 32px; }
 .night-footer > p { font-size: 9px; letter-spacing: .08em; max-width: 65ch; }
 
-/* Project rail: a persistent sidebar instead of tab rows. The rail head carries the
-   project name + repo chip; nav groups are mono-labelled; the footer shows live state. */
-.project-layout { display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 32px; align-items: start; }
-.project-rail { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 22px;
-  max-height: calc(100svh - 48px); overflow-y: auto; padding-bottom: 4px; }
-.rail-head { display: flex; flex-direction: column; gap: 6px; }
-.rail-back { font-size: 10px; color: var(--color-faint); text-decoration: none; width: fit-content; }
-.rail-back:hover { color: var(--color-ink); }
-.rail-name { font-family: var(--font-display); font-size: 19px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; overflow-wrap: anywhere; }
-.rail-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--color-muted); }
-.rail-repo { font-family: var(--font-mono); font-size: 10px; overflow-wrap: anywhere; }
-.rail-branch { color: var(--color-faint); }
-.rail-nav { display: flex; flex-direction: column; gap: 18px; }
-.rail-group { display: flex; flex-direction: column; gap: 2px; }
-.rail-group-label { font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--color-faint); padding: 0 10px; margin-bottom: 4px; white-space: nowrap; }
-.rail-link { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px;
-  font-size: 13px; line-height: 1.35; color: var(--color-muted); text-decoration: none;
-  transition: background-color 180ms var(--ease-smooth), color 180ms var(--ease-smooth); }
-.rail-link:hover { background: rgb(28 18 16 / 5%); color: var(--color-ink); }
-.rail-link[aria-current="page"] { color: var(--color-ink); font-weight: 500; background: rgb(28 18 16 / 6%); box-shadow: inset 2px 0 0 var(--color-brand); }
-.project-rail-disclosure { display: none; }
+/* Project tabs scroll independently on narrow screens; the More menu stays in the viewport. */
+.project-tabbar { position: relative; display: flex; min-width: 0; align-items: stretch; border-bottom: 1px solid var(--color-line); }
+.project-tab-scroll { display: flex; min-width: 0; flex: 1; overflow-x: auto; scrollbar-width: none; }
+.project-tab-scroll::-webkit-scrollbar { display: none; }
+.project-tab { display: inline-flex; min-height: 44px; flex: none; align-items: center; gap: 8px; border: 0; border-bottom: 2px solid transparent;
+  background: transparent; padding: 0 13px; color: var(--color-muted); font-size: 12px; text-decoration: none; white-space: nowrap; }
+.project-tab:hover { color: var(--color-ink); }
+.project-tab.is-active { border-bottom-color: var(--color-brand); color: var(--color-ink); font-weight: 600; }
+.project-more { position: relative; flex: none; background: var(--color-bg); }
+.project-more-button { cursor: pointer; }
+.project-more-menu { position: absolute; z-index: 50; top: calc(100% + 8px); right: 0; display: flex; width: min(14rem, calc(100vw - 1.5rem)); flex-direction: column;
+  border: 1px solid var(--color-line); border-radius: var(--ui-radius); background: #231916; padding: 6px; box-shadow: 0 16px 36px -24px #000; }
+.project-more-link { padding: 9px 10px; color: var(--color-muted); font-size: 12px; text-decoration: none; }
+.project-more-link:hover, .project-more-link.is-active { color: var(--color-ink); background: rgb(194 69 45 / 12%); }
 .status-mark { display: inline-block; flex: none; width: 6px; height: 6px; }
 .status-mark-done { background: currentColor; }
 .status-mark-pending { border: 1px solid currentColor; border-radius: 50%; }
@@ -65,40 +58,14 @@
 .account-menu-item:hover { background: rgb(28 18 16 / 5%); }
 .account-menu-item:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
 .account-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
-.rail-foot { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--color-line);
-  display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--color-faint); }
-.rail-status { width: 7px; height: 7px; border-radius: 9999px; background: var(--color-faint); flex: none; }
-.rail-status.is-on { background: var(--color-ok); box-shadow: 0 0 8px rgb(31 122 77 / 50%); }
-
-/* Night skin for the rail (all console pages lack .hero-full). */
-:root:not(:has(.hero-full)) .rail-link { color: rgb(255 247 242 / 55%); }
-:root:not(:has(.hero-full)) .rail-link:hover { background: rgb(255 247 242 / 5%); color: #fff7f2; }
-:root:not(:has(.hero-full)) .rail-link[aria-current="page"] { color: #fff7f2; background: rgb(255 247 242 / 7%); box-shadow: inset 2px 0 0 var(--color-brand); }
-:root:not(:has(.hero-full)) .rail-back { color: rgb(255 247 242 / 40%); }
-:root:not(:has(.hero-full)) .rail-back:hover { color: rgb(255 247 242 / 80%); }
-:root:not(:has(.hero-full)) .rail-name { color: #fff7f2; }
-:root:not(:has(.hero-full)) .rail-meta, :root:not(:has(.hero-full)) .rail-foot { color: rgb(255 247 242 / 45%); }
-:root:not(:has(.hero-full)) .rail-branch { color: rgb(255 247 242 / 35%); }
-:root:not(:has(.hero-full)) .rail-group-label { color: rgb(255 247 242 / 30%); }
-:root:not(:has(.hero-full)) .rail-foot { border-top-color: var(--ui-edge); }
 :root:not(:has(.hero-full)) .account-menu-item { color: #fff7f2; }
 :root:not(:has(.hero-full)) .account-menu-item:hover { background: rgb(255 247 242 / 7%); }
 
-/* commit-stage is a full-bleed viewport breakout for the demo pages; inside the
-   sidebar layout it would overlap the rail, so contain it to the content column. */
-.project-layout .commit-stage { margin-inline: 0; padding-inline: 28px; border-radius: 18px; }
+/* The project shell keeps full-bleed commit stages inside the page content. */
+.project-shell .commit-stage { margin-inline: 0; padding-inline: 28px; border-radius: 18px; }
 
-@media (max-width: 1023px) {
-  .project-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  .project-rail { position: static; max-height: none; overflow: visible; }
-  .project-rail-disclosure { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: space-between; border: 1px solid var(--color-line); border-radius: 10px; background: transparent; padding: 0 12px; color: var(--color-ink); font-family: var(--font-mono); font-size: 12px; text-align: left; }
-  .rail-nav { display: none; gap: 14px; margin-top: 10px; border: 1px solid var(--color-line); border-radius: 12px; padding: 12px; }
-  .rail-nav[data-open="true"] { display: flex; flex-direction: column; }
-  .rail-group { flex-direction: column; align-items: stretch; gap: 2px; }
-  .rail-group-label { margin: 0 0 4px; }
-  :root:not(:has(.hero-full)) .project-rail-disclosure,
-  :root:not(:has(.hero-full)) .rail-nav { border-color: var(--ui-edge); color: #fff7f2; }
-  .rail-foot { margin-top: 0; }
+@media (max-width: 639px) {
+  .project-tab { padding-inline: 10px; }
 }
 
 /* The demo and recorded workspace share one instrument-like frame. */
