@@ -314,3 +314,54 @@ def test_installation_webhook_queues_already_connected_repos(client_factory) -> 
             )
             == 1
         )
+
+
+def test_a_transient_git_failure_retries_then_opens_the_recipe_pr(
+    client_factory, github, monkeypatch
+) -> None:
+    github(SHOP)
+    _connect(client_factory("alice"))
+    from backend.checkouts import CheckoutError
+
+    calls = {"n": 0}
+    real = recipes._default_sha
+
+    def flaky(full_name, branch, token, web):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise CheckoutError("git ls-remote failed: remote: Repository not found.")
+        return real(full_name, branch, token, web)
+
+    monkeypatch.setattr(recipes, "_default_sha", flaky)
+    worker.drain(kinds=["propose_build_recipe"])
+    with transaction() as conn:
+        row = (
+            conn.execute(sa.select(jobs).where(jobs.c.kind == "propose_build_recipe"))
+            .mappings()
+            .one()
+        )
+        assert row["attempts"] == 1 and row["status"] == "queued"
+    assert _audit("recipe.failed") == [] and _audit("recipe.pr_opened") == []
+    with transaction() as conn:
+        conn.execute(sa.update(jobs).values(run_after=sa.func.now()))
+    worker.drain(kinds=["propose_build_recipe"])
+    assert FakeApp.prs and _audit("recipe.pr_opened")
+
+
+def test_a_git_failure_on_the_last_attempt_records_recipe_failed(
+    client_factory, github, monkeypatch
+) -> None:
+    github(SHOP)
+    _connect(client_factory("alice"))
+    from backend.checkouts import CheckoutError
+
+    def always(full_name, branch, token, web):
+        raise CheckoutError("git ls-remote failed: remote: Repository not found.")
+
+    monkeypatch.setattr(recipes, "_default_sha", always)
+    with transaction() as conn:
+        conn.execute(
+            sa.update(jobs).where(jobs.c.kind == "propose_build_recipe").values(max_attempts=1)
+        )
+    worker.drain(kinds=["propose_build_recipe"])
+    assert _audit("recipe.failed") and FakeApp.prs == []
