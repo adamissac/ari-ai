@@ -3,24 +3,21 @@
   "human_owner": "Adam",
   "workstream": "frontend console refinement",
   "state": "READY_FOR_REVIEW",
-  "task": "UI-010: accessible account menu, responsive project navigation, status marks, assessment metadata and commit assessment links",
-  "branch": "feat/adam/console-graphite",
-  "latest_sha": "44c1a3270156e4e6bc02fbbc38a71016c87cfc96",
-  "prs": [],
+  "task": "Merge origin/main into feat/adam/setup-walkthrough, preserving setup behavior and main updates",
+  "branch": "feat/adam/setup-walkthrough",
+  "latest_sha": "4afaaf5197aa6fd582fd6193a3158eb9a670e67b",
+  "prs": [649],
   "claims": [
-    "frontend/components/account-link.tsx",
     "frontend/components/project.tsx",
-    "frontend/components/ui/index.tsx",
-    "frontend/components/commit-assessment-chips.tsx",
-    "frontend/app/(console)/layout.tsx",
-    "frontend/app/(console)/connect/[org]/[repo]/page.tsx",
-    "frontend/app/(console)/projects/[projectId]/assessments/[assessmentId]/page.tsx",
-    "frontend/app/interface.css",
-    "frontend/tests/unit/"
+    "frontend/app/globals.css",
+    "frontend/app/(console)/projects/[projectId]/live-defense/page.tsx",
+    "frontend/tests/e2e/pages.spec.ts",
+    "CHANGELOG.md",
+    "docs/planning/SESSION_HANDOFF.md"
   ],
   "depends_on": [],
   "blockers": [],
-  "last_update_utc": "2026-10-25T12:07:00Z",
-  "tests": "Console refinement: 91 unit files, 391 tests; typecheck/build passed; lint has 1 pre-existing warning. Follow-up: 2 focused unit files, 10 tests; typecheck/lint passed. Nested commit-row anchors caused 2 hydration issues on :3102; fixed. Commit history now has 0 console errors at both viewports. Commit-detail POST /api/analyze returns the same pre-existing 503 on :3101 and :3102.",
-  "next_action": "Commit and push console follow-up; no PR or CI follow-up"
+  "last_update_utc": "2026-10-26T10:21:28Z",
+  "tests": "Transport npm ci/build passed; frontend lint and typecheck passed; Vitest passed 102 files / 436 tests. Vitest emitted a non-fatal jsdom HTMLCanvasElement getContext warning. Frontend dependencies were installed with npm ci after the initial lint attempt found eslint missing.",
+  "next_action": "Await CI and review on #649; the main integration is pushed."
 }

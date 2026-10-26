@@ -12,6 +12,7 @@
 .site-header nav a { border-radius: 5px; font-size: 11px; letter-spacing: .06em; }
 .site-header nav a[aria-current="page"] { background: var(--nav-hover); box-shadow: inset 0 -2px var(--color-brand); }
 :root:not(:has(.hero-full)) main { padding-top: 32px; }
+:root:not(:has(.hero-full)) main:has(.project-shell) { padding-top: 0; }
 :root:not(:has(.hero-full)) .panel,
 :root:not(:has(.hero-full)) .demo-card,
 :root:not(:has(.hero-full)) .glass {
@@ -33,15 +34,16 @@
 .night-footer > p { font-size: 9px; letter-spacing: .08em; max-width: 65ch; }
 
 /* Project tabs scroll independently on narrow screens; the More menu stays in the viewport. */
-.project-tabbar { position: relative; display: flex; min-width: 0; align-items: stretch; border-bottom: 1px solid var(--color-line); }
+.project-tabbar { display: flex; min-width: 0; align-items: stretch; border-bottom: 1px solid var(--color-line); }
 .project-tab-scroll { display: flex; min-width: 0; flex: 1; overflow-x: auto; scrollbar-width: none; }
 .project-tab-scroll::-webkit-scrollbar { display: none; }
 .project-tab { display: inline-flex; min-height: 44px; flex: none; align-items: center; gap: 8px; border: 0; border-bottom: 2px solid transparent;
   background: transparent; padding: 0 13px; color: var(--color-muted); font-size: 12px; text-decoration: none; white-space: nowrap; }
+.project-tab-label { display: inline; flex: none; white-space: nowrap; }
 .project-tab:hover { color: var(--color-ink); }
 .project-tab.is-active { border-bottom-color: var(--color-brand); color: var(--color-ink); font-weight: 600; }
 .project-more { position: relative; flex: none; background: var(--color-bg); }
-.project-more-button { cursor: pointer; }
+.project-more-button { min-width: 44px; cursor: pointer; }
 .project-more-menu { position: absolute; z-index: 50; top: calc(100% + 8px); right: 0; display: flex; width: min(14rem, calc(100vw - 1.5rem)); flex-direction: column;
   border: 1px solid var(--color-line); border-radius: var(--ui-radius); background: #231916; padding: 6px; box-shadow: 0 16px 36px -24px #000; }
 .project-more-link { padding: 9px 10px; color: var(--color-muted); font-size: 12px; text-decoration: none; }
@@ -66,6 +68,7 @@
 
 @media (max-width: 639px) {
   .project-tab { padding-inline: 10px; }
+  .project-more::before { position: absolute; top: 0; bottom: 0; left: -16px; width: 16px; background: linear-gradient(90deg, transparent, var(--color-bg)); content: ""; pointer-events: none; }
 }
 
 /* The demo and recorded workspace share one instrument-like frame. */
@@ -78,6 +81,22 @@
 .commit-recording-map { background-image: radial-gradient(rgb(255 247 242 / 12%) .7px, transparent .7px); background-size: 18px 18px; }
 .commit-recording-node { border-radius: 6px; background: #2a1d18; box-shadow: 0 16px 40px -26px #000; }
 .amap-transport { background: rgb(16 11 9 / 40%); }
+
+@media (min-width: 1280px) {
+  .project-body:has(.amap-grid-compact) > .flex.flex-col.gap-6 { gap: 8px; }
+  .project-body:has(.amap-grid-compact) .page-title { margin-bottom: 0; padding-bottom: 10px; }
+  .project-body:has(.amap-grid-compact) .page-title h1 { font-size: 1.75rem; line-height: 1.1; }
+  .project-body:has(.amap-grid-compact) .page-title .min-w-0 > div { margin-top: 4px; }
+  .project-body:has(.amap-grid-compact) .panel:has(.amap-grid-compact) > header { min-height: 38px; padding-block: 8px; }
+  .project-body:has(.amap-grid-compact) .panel:has(.amap-grid-compact) > div { padding: 8px; }
+  .project-body:has(.amap-grid-compact) .panel:has(.amap-grid-compact) > div > div.border-b { padding-bottom: 8px; }
+  .project-body:has(.amap-grid-compact) .panel:has(.amap-grid-compact) label:has(select) { margin-block: 4px; }
+  .project-body:has(.amap-grid-compact) .panel:has(.amap-grid-compact) [role="tablist"] button { padding-block: 4px; }
+  .project-body:has(.amap-grid-compact) .panel:has(.amap-grid-compact) [role="tabpanel"] { padding-top: 4px; }
+  .project-body:has(.amap-grid-compact) [data-testid="commit-agent-map"] > p.label-mono { margin-bottom: 4px; }
+  .project-body:has(.amap-grid-compact) .amap-head { padding-block: 6px; padding-inline: 12px; }
+  .project-body:has(.amap-grid-compact) .amap-grid-compact .amap-rail-compact { padding-block: 4px; }
+}
 
 /* Marketing chapters retain their scroll choreography, with a sharper editorial finish. */
 .story-stage > .label-mono, .story-stage .label-mono:first-child { letter-spacing: .1em; }
@@ -96,6 +115,7 @@
 @media (max-width: 639px) {
   .site-header-inner { min-height: 68px; }
   .amap-head { padding: 16px; }
+  .amap-phases-compact .amap-phase-compact { gap: 3px; padding-inline: 5px; font-size: 0.68rem; }
   .footer-brand > span { font-size: 42px; }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -36,6 +36,29 @@ from .conftest import LABELS, TARGET_ID, live_scope
 EXPECTED_AGENT_ORDER = ["scout", "probe", "trace", "diagnose", "patch", "verify", "fortify"]
 
 
+def _verify_evidence(**values: Any):
+    from security_agents.agents import verify as verify_agent
+
+    audit = {
+        "version": 1,
+        "complete": True,
+        "phases": {"collection": [], "final": []},
+        "nodeids": [],
+        "outcomes": {},
+    }
+    runs = values.get("test_runs", [])
+    values.setdefault("baseline_pytest_audit", audit)
+    values.setdefault(
+        "suite_pytest_audits",
+        {
+            str(run.get("sandbox_run_id") or ""): audit
+            for run in runs
+            if run.get("selection") == "project_suite"
+        },
+    )
+    return verify_agent.VerifyEvidence(**values)
+
+
 def assert_agent_order(order: list[str]) -> None:
     """Scout then Probe; Diagnose runs alongside Trace, Fortify alongside Patch -> Verify."""
     assert order[:2] == EXPECTED_AGENT_ORDER[:2], order
@@ -482,7 +505,7 @@ def test_verify_rejects_edits_to_preexisting_tests_without_configured_protection
     assert facts["tampered_protected_tests"] == ["tests/test_api.py"]
     assert facts["out_of_scope_files"] == []
     verdict, checks, _ = verify_agent.compute_verdict(
-        verify_agent.VerifyEvidence(
+        _verify_evidence(
             apply_facts=dict(ctx.artifacts["verify_facts"]),
             recheck_runs=[],
             test_runs=[],
@@ -541,7 +564,7 @@ def test_verify_rejects_an_appended_duplicate_test_without_configured_protection
 
     assert facts["tampered_protected_tests"] == ["tests/test_api.py"]
     verdict, checks, _ = verify_agent.compute_verdict(
-        verify_agent.VerifyEvidence(
+        _verify_evidence(
             apply_facts=dict(ctx.artifacts["verify_facts"]),
             recheck_runs=[],
             test_runs=[],
@@ -696,7 +719,7 @@ def _assert_apply_fresh_tampering_rejected(facts: dict[str, Any], ctx: Any) -> N
     from security_agents.agents import verify as verify_agent
 
     verdict, checks, _ = verify_agent.compute_verdict(
-        verify_agent.VerifyEvidence(
+        _verify_evidence(
             apply_facts=dict(ctx.artifacts["verify_facts"]),
             recheck_runs=[],
             test_runs=[],
@@ -733,7 +756,7 @@ def test_unreadable_pinned_tox_ini_fails_closed_through_apply_fresh(
     assert facts["applied"]
     assert unreadable in facts["tampered_protected_tests"]
     verdict, checks, _ = verify_agent.compute_verdict(
-        verify_agent.VerifyEvidence(
+        _verify_evidence(
             apply_facts=dict(ctx.artifacts["verify_facts"]),
             recheck_runs=[],
             test_runs=[],
@@ -865,7 +888,7 @@ def test_invalid_nonconftest_fixture_does_not_block_apply_fresh(
     from security_agents.agents import verify as verify_agent
 
     _, checks, _ = verify_agent.compute_verdict(
-        verify_agent.VerifyEvidence(
+        _verify_evidence(
             apply_facts=dict(ctx.artifacts["verify_facts"]),
             recheck_runs=[],
             test_runs=[],
@@ -1171,7 +1194,7 @@ def test_verify_rejects_suite_evidence_collected_before_patch_apply(
     ctx.artifacts["tests_added"] = ["tests/test_aaa.py"]
     added_run = runner.run(ctx, "added_tests", [])
     added_run["workspace_role"] = "patched"
-    evidence = verify_agent.VerifyEvidence(
+    evidence = _verify_evidence(
         apply_facts=dict(ctx.artifacts["verify_facts"]),
         recheck_runs=[{"template_ref": "synthetic@1", "matches_expectation": True, "parameters": {}}],
         test_runs=[pre_apply_suite, added_run],
@@ -1225,6 +1248,216 @@ def test_verify_project_suite_ignores_patch_loaded_pytest_plugin(
     assert not (suite_root / "tests/plug.py").exists()
     assert _test_files_under(suite_root) == _test_files_under(intel.snapshot.root)
     assert (suite_root / "pkg/app.py").read_bytes() == (verify_root / "pkg/app.py").read_bytes()
+
+
+def _runtime_audit_test_target(tmp_path: Path, *, scenario: str) -> LocalIntel:
+    hook_swap = scenario == "hook_swap"
+    target = tmp_path / f"runtime-{scenario}-target"
+    tests = target / "tests"
+    tests.mkdir(parents=True)
+    (target / "app.py").write_text("VALUE = 1\n", encoding="utf-8")
+    if hook_swap:
+        (tests / "conftest.py").write_text(
+            "def pytest_collection_modifyitems(session, config, items):\n    pass\n\nimport app\n",
+            encoding="utf-8",
+        )
+    (tests / "test_protected.py").write_text(
+        "import app\n\n\ndef test_protected():\n"
+        + (
+            "    assert app.VALUE == 2\n"
+            if scenario == "benign"
+            else "    assert False, 'baseline protected failure'\n"
+        ),
+        encoding="utf-8",
+    )
+    (tests / "test_control.py").write_text(
+        "def test_control_passes():\n    assert True\n",
+        encoding="utf-8",
+    )
+    (target / "build_recipe.json").write_text(
+        json.dumps({"test_roots": ["tests"], "test_command": ["-q", "tests"]}),
+        encoding="utf-8",
+    )
+    snapshot = SnapshotHandle.from_directory(
+        target,
+        tmp_path / "runtime-audit-snapshot",
+        snapshot_id=f"runtime-{scenario}-target",
+        repo_id="repo_runtime_audit",
+    )
+    return LocalIntel(snapshot, expectations=[])
+
+
+def _apply_runtime_audit_patch(
+    intel: LocalIntel,
+    driver: LocalProcessDriver,
+    tmp_path: Path,
+    *,
+    scenario: str,
+) -> tuple[dict[str, Any], Any, dict[str, Any]]:
+    from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+    from security_agents.tools import AuditSink, PatchApplier, ToolContext
+
+    hook_swap = scenario == "hook_swap"
+    patch_id = f"pat_runtime_{scenario}"
+    patched = fresh_checkout(intel.snapshot, tmp_path / "runtime-patch")
+    app_source = (
+        "import sys\n\n"
+        "def _drop_protected(session, config, items):\n"
+        "    items[:] = [\n"
+        "        item for item in items\n"
+        "        if not item.nodeid.endswith('test_protected.py::test_protected')\n"
+        "    ]\n\n"
+        "getattr(\n"
+        "    sys.modules['conftest'],\n"
+        "    'pytest_' + 'collection_modifyitems',\n"
+        ").__code__ = _drop_protected.__code__\n"
+        if hook_swap
+        else (
+            'import pytest\npytest.skip("x", allow_module_level=True)\n'
+            if scenario == "skip"
+            else "VALUE = 2\n"
+        )
+    )
+    (patched / "app.py").write_text(app_source, encoding="utf-8")
+    added_test = patched / "tests/test_added.py"
+    added_test.write_text("def test_candidate_control():\n    assert True\n", encoding="utf-8")
+    diff = unified_diff(intel.snapshot.root, patched, ["app.py", "tests/test_added.py"])
+    protected = ["tests/test_protected.py", "tests/test_control.py"]
+    applier = PatchApplier(
+        intel=intel,
+        artifacts={
+            patch_id: {
+                "diff": diff,
+                "plan_files": ["app.py"],
+                "protected_tests": protected,
+                "tests_added": ["tests/test_added.py"],
+            }
+        },
+        workdir=tmp_path / "runtime-verify",
+    )
+    ctx = ToolContext(
+        assessment_id="asm_runtime_audit",
+        agent=AgentName.VERIFY,
+        run_id=f"run_{patch_id}",
+        step_key="verify",
+        read_root=intel.snapshot.root,
+        audit=AuditSink(),
+    )
+    facts = applier.apply_fresh(ctx, patch_id)
+    assert facts["applied"], facts["apply_error"]
+
+    from security_agents.tools.services import TestRunner
+
+    baseline_ctx = ToolContext(
+        assessment_id="asm_runtime_audit",
+        agent=AgentName.VERIFY,
+        run_id=f"baseline_{patch_id}",
+        step_key="baseline",
+        read_root=intel.snapshot.root,
+        audit=AuditSink(),
+    )
+    baseline_runner = TestRunner(
+        driver=driver,
+        workspace_provider=lambda _ctx: intel.snapshot.root,
+        test_command_args=("-q", "tests"),
+    )
+    baseline = baseline_runner.run(baseline_ctx, "project_suite", [])
+    baseline_audit = (baseline_ctx.artifacts.get("pytest_audits") or {}).get(
+        str(baseline.get("sandbox_run_id") or "")
+    )
+    runner = TestRunner(
+        driver=driver,
+        workspace_provider=lambda run_ctx: run_ctx.artifacts["verify_workspace"],
+        suite_workspace_provider=lambda run_ctx: run_ctx.artifacts["verify_suite_workspace"],
+        test_command_args=("-q", "tests"),
+    )
+    suite = runner.run(ctx, "project_suite", [])
+    ctx.artifacts["tests_added"] = ["tests/test_added.py"]
+    added = runner.run(ctx, "added_tests", [])
+    added["workspace_role"] = "patched"
+    return (
+        facts,
+        ctx,
+        {
+            "patch_id": patch_id,
+            "baseline": baseline,
+            "suite": suite,
+            "added": added,
+            "protected": protected,
+            "baseline_audit": baseline_audit,
+            "suite_audit": (ctx.artifacts.get("pytest_audits") or {}).get(
+                str(suite.get("sandbox_run_id") or "")
+            ),
+        },
+    )
+
+
+@pytest.mark.boundary
+@pytest.mark.parametrize(
+    "scenario",
+    ["skip", "hook_swap", "benign"],
+    ids=["module-skip", "getattr-hook-code-swap", "benign-app-fix"],
+)
+def test_runtime_audit_rejects_import_time_test_hiding(
+    scenario: str,
+    driver: LocalProcessDriver,
+    tmp_path: Path,
+) -> None:
+    from security_agents.agents import verify as verify_agent
+
+    intel = _runtime_audit_test_target(tmp_path, scenario=scenario)
+    facts, ctx, runs = _apply_runtime_audit_patch(
+        intel,
+        driver,
+        tmp_path,
+        scenario=scenario,
+    )
+    baseline = runs["baseline"]
+    suite = runs["suite"]
+    added = runs["added"]
+    assert baseline["failed"] == 1, baseline
+    assert suite["passed"] > 0 and not suite["failing_tests"], suite
+    assert added["passed"] == 1, added
+    evidence = _verify_evidence(
+        apply_facts=dict(ctx.artifacts["verify_facts"]),
+        recheck_runs=[
+            {
+                "template_ref": "synthetic@1",
+                "matches_expectation": True,
+                "parameters": {},
+                "sandbox_run_id": "sbx_runtime_check",
+            }
+        ],
+        test_runs=[suite, added],
+        baseline_failing=list(baseline["failing_tests"]),
+        tests_added=["tests/test_added.py"],
+        protected_tests=runs["protected"],
+        original_check_ref="synthetic@1",
+        original_check_params={},
+        candidate_id=runs["patch_id"],
+        baseline_pytest_audit=runs["baseline_audit"],
+        suite_pytest_audits={
+            str(suite["sandbox_run_id"]): runs["suite_audit"],
+        },
+    )
+
+    verdict, checks, reasons = verify_agent.compute_verdict(evidence)
+    tampering = next(check for check in checks if check.name.value == "no_test_tampering")
+    assert suite["pytest_audit"]["present"] is True
+    assert "nodeids" not in suite["pytest_audit"]
+    assert runs["baseline_audit"]["complete"] is True
+    assert runs["suite_audit"]["complete"] is True
+    if scenario == "benign":
+        assert verdict == "accepted" and tampering.passed, reasons
+    else:
+        assert verdict == "rejected" and not tampering.passed, {
+            "scenario": scenario,
+            "baseline": {key: baseline.get(key) for key in ("passed", "failed", "skipped", "failing_tests")},
+            "suite": {key: suite.get(key) for key in ("passed", "failed", "skipped", "failing_tests")},
+            "tampering_detail": tampering.detail,
+            "reasons": reasons,
+        }
+        assert tampering.detail.startswith("runtime pytest audit: ")
 
 
 @pytest.mark.boundary
@@ -2201,6 +2434,47 @@ def test_unmappable_pinned_pytest_config_path_fails_closed(
             False,
             id="ordinary-attribute-root",
         ),
+        pytest.param(
+            "[pytest_x for pytest_x in xs]\n",
+            False,
+            id="comprehension-target",
+        ),
+        pytest.param(
+            "def f(pytest_x):\n    pytest_x.__code__ = drop.__code__\n",
+            False,
+            id="function-parameter-root-write",
+        ),
+        pytest.param(
+            "class C:\n    pytest_x = object()\n    pytest_x.__code__ = drop.__code__\n",
+            False,
+            id="class-local-root-write",
+        ),
+        pytest.param(
+            "(lambda pytest_x: setattr(pytest_x, '__code__', drop.__code__))\n",
+            False,
+            id="lambda-parameter-root-write",
+        ),
+        pytest.param(
+            "def f():\n    pytest_x = object()\n    pytest_x.__code__ = drop.__code__\n",
+            False,
+            id="same-scope-root-write",
+        ),
+        pytest.param(
+            "def outer():\n"
+            "    pytest_x = object()\n"
+            "    def inner():\n"
+            "        nonlocal pytest_x\n"
+            "        pytest_x.__code__ = drop.__code__\n",
+            False,
+            id="nonlocal-root-write",
+        ),
+        pytest.param(
+            "def f(pytest_x):\n    object.__setattr__(pytest_x, '__code__', drop.__code__)\n",
+            False,
+            id="local-object-setattr",
+        ),
+        pytest.param("pytest_value = 1\n", False, id="literal-pytest-assignment"),
+        pytest.param("pytest_value: int = 1\n", False, id="literal-pytest-annotated-assignment"),
         pytest.param("obj.attr = 1\n", False, id="ordinary-attribute-write"),
         pytest.param("runner = __import__('pluggy')\n", True, id="builtin-pluggy-import"),
         pytest.param("ordinary = 2\n", False, id="ordinary-assignment"),
@@ -2711,7 +2985,7 @@ def test_candidate_switch_cannot_reuse_a_later_patched_workspace(
     assert good_added_runs and good_added_runs[0]["passed"] == 1
 
     def candidate_verdict(candidate_id: str, added_runs: list[dict[str, Any]]) -> str:
-        evidence = verify_agent.VerifyEvidence(
+        evidence = _verify_evidence(
             apply_facts=dict(ctx.artifacts["verify_facts"]),
             recheck_runs=[
                 {
@@ -3079,7 +3353,7 @@ def test_verify_rejects_a_planted_bad_patch_that_edits_a_protected_test(intel, d
     assert facts["out_of_scope_files"] == ["tests/test_api.py"]
     assert facts["new_test_files"] == []
 
-    evidence = verify_agent.VerifyEvidence(
+    evidence = _verify_evidence(
         apply_facts=dict(ctx.artifacts["verify_facts"]),
         recheck_runs=[],
         test_runs=[],
@@ -3131,7 +3405,7 @@ def test_verify_rejects_a_planted_bad_patch_outside_the_plan(intel, driver, libr
     facts = applier.apply_fresh(ctx, "pat_scope")
     assert facts["out_of_scope_files"] == ["payments_lite/store.py"]
     verdict, checks, _ = verify_agent.compute_verdict(
-        verify_agent.VerifyEvidence(
+        _verify_evidence(
             apply_facts=dict(ctx.artifacts["verify_facts"]),
             recheck_runs=[],
             test_runs=[],

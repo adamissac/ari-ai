@@ -111,6 +111,7 @@ class VercelSandboxDriver:
                 "SANDBOX_NETWORK": "none" if spec.network == "none" else "target-only",
                 "SANDBOX_EMIT_OUT": "1",
                 "PYTHONDONTWRITEBYTECODE": "1",
+                "PYTHONHASHSEED": "0",
             }
             if needs_target:
                 box.put_archive(_tar_target(spec), TARGETDIR)

@@ -32,11 +32,11 @@ export function Repositories({ repos }: { repos: Repository[] }) {
     } catch (err) { setError(err); } finally { setBusy(false); }
   };
   return (
-    <Panel title="Repositories" id="connect-repo">
+    <Panel title="Repositories" id="connect-repo" actions={<Link className="text-xs text-brand hover:text-ink" href="/connect">Connect another repository →</Link>}>
       {repos.length === 0 ? <Empty>No repository connected.</Empty> : (
         <>
           <p className="mb-3 text-sm text-muted" data-testid="index-commit-note">{INDEX_COMMIT_NOTE}</p>
-          <ul className="flex flex-col gap-3">
+          <ul className="divide-y divide-line">
             {repos.map(repo => <RepoRow key={repo.id} repo={repo} />)}
           </ul>
         </>
@@ -80,7 +80,7 @@ function RepoRow({ repo }: { repo: Repository }) {
   };
 
   return (
-    <li className="rounded-md border border-line bg-panel-2 p-3">
+    <li className="py-4 first:pt-0 last:pb-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-medium">{repo.full_name}</span>
         <span className="flex flex-wrap items-center gap-3 text-xs text-muted">

@@ -9,7 +9,7 @@ records; the LLM only writes the human summary.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from pydantic import Field
@@ -28,6 +28,7 @@ from ..contracts import (
 )
 from ..intel import CodeIntel
 from ..runtime import AgentSpec, data_block
+from ..tools.pytest_audit import compare_pytest_audits
 
 SYSTEM = """You are Verify, the independent verification agent of an automated security \
 review platform.
@@ -182,6 +183,8 @@ class VerifyEvidence:
     # Platform-run (not model-run) execution of the candidate's added tests on an unpatched
     # fresh checkout. None = not collected (callers outside the orchestrator); a list = required.
     unpatched_added_runs: list[dict[str, Any]] | None = None
+    baseline_pytest_audit: dict[str, Any] | None = None
+    suite_pytest_audits: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 def _transport_problem(ev: VerifyEvidence, run: dict[str, Any]) -> str | None:
@@ -312,6 +315,15 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
     touched = list(ev.apply_facts.get("files_touched") or [])
     out_of_scope = list(ev.apply_facts.get("out_of_scope") or [])
     tampered = list(ev.apply_facts.get("tampered_protected_tests") or [])
+    applied_patch_id = ev.apply_facts.get("patch_id")
+    suite_runs = [
+        r
+        for r in ev.test_runs
+        if r.get("selection") == "project_suite"
+        and not r.get("error")
+        and applied_patch_id is not None
+        and r.get("patch_id") == applied_patch_id
+    ]
 
     # diff_scope_ok
     if not applied:
@@ -338,6 +350,31 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
             False,
             f"protected tests or test-runner configuration were modified or deleted: {tampered}",
         )
+    elif suite_runs:
+        audit_findings: list[str] = []
+        for run in suite_runs:
+            run_id = str(run.get("sandbox_run_id") or "")
+            findings = compare_pytest_audits(
+                ev.baseline_pytest_audit,
+                ev.suite_pytest_audits.get(run_id),
+            )
+            audit_findings.extend(f"{run_id}: {finding}" for finding in findings)
+        if audit_findings:
+            listed = audit_findings[:10]
+            suffix = (
+                f"; {len(audit_findings) - len(listed)} more" if len(audit_findings) > len(listed) else ""
+            )
+            add(
+                VerificationCheckName.NO_TEST_TAMPERING,
+                False,
+                f"runtime pytest audit: {'; '.join(listed)}{suffix}",
+            )
+        else:
+            add(
+                VerificationCheckName.NO_TEST_TAMPERING,
+                True,
+                f"no protected test modified (protected: {len(ev.protected_tests)} file(s))",
+            )
     else:
         add(
             VerificationCheckName.NO_TEST_TAMPERING,
@@ -409,15 +446,6 @@ def compute_verdict(ev: VerifyEvidence) -> tuple[str, list[VerificationCheck], l
             )
 
     # functional_suite_passes
-    applied_patch_id = ev.apply_facts.get("patch_id")
-    suite_runs = [
-        r
-        for r in ev.test_runs
-        if r.get("selection") == "project_suite"
-        and not r.get("error")
-        and applied_patch_id is not None
-        and r.get("patch_id") == applied_patch_id
-    ]
     if not suite_runs:
         add(VerificationCheckName.FUNCTIONAL_SUITE_PASSES, False, "the project test suite was not run")
     else:

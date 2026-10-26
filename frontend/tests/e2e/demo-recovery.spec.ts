@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { env, newUser, expectNoSideScroll } from './helpers';
+import { completeSetup, env, newUser, expectNoSideScroll } from './helpers';
 
 // Real application and backend. Only the deliberate transient HTTP fault is injected.
 test('project assessment list recovers from a lost backend response and survives refresh', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
   const pid = env('E2E_PROJECT_ID');
+  await completeSetup(page);
   let offline = true;
   await page.route(`**/api/v1/projects/${pid}/assessments*`, route =>
     offline ? route.abort('connectionrefused') : route.continue());
@@ -23,6 +24,7 @@ test('project assessment list recovers from a lost backend response and survives
 
 test('a missing assessment shows the real backend error rather than completed results', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
+  await completeSetup(page);
   await page.goto(`/projects/${env('E2E_PROJECT_ID')}/assessments/asm_00000000000000000000000000`);
   await expect(page.getByTestId('error-state')).toContainText('Not found');
   await expect(page.getByTestId('error-state')).toContainText('assessment not found');
@@ -34,6 +36,7 @@ test('project navigation leads with Analytics and Commits and keeps More tools r
   test.setTimeout(60_000);
   const page = await newUser(browser, 'e2e-alice');
   const base = `/projects/${env('E2E_PROJECT_ID')}`;
+  await completeSetup(page);
   await page.goto(base);
   const nav = page.getByRole('navigation', { name: 'Project', exact: true });
   await expect(nav.getByRole('link')).toHaveCount(5);
