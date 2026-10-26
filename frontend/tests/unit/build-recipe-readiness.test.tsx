@@ -1,12 +1,12 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { Repository } from '@hackatl/frontend-transport';
 import { ApiError } from '@hackatl/frontend-transport';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { BuildRecipeReadiness, loadRecipeAudit } from '@/components/onboarding/build-recipe-readiness';
 
-const mocks = vi.hoisted(() => ({ useResource: vi.fn(), auditEvents: vi.fn() }));
+const mocks = vi.hoisted(() => ({ useResource: vi.fn(), auditEvents: vi.fn(), retryBuildRecipe: vi.fn() }));
 vi.mock('@/lib/use-resource', () => ({ useResource: mocks.useResource }));
-vi.mock('@/lib/api', () => ({ api: () => ({ auditEvents: mocks.auditEvents }) }));
+vi.mock('@/lib/api', () => ({ api: () => ({ auditEvents: mocks.auditEvents, retryBuildRecipe: mocks.retryBuildRecipe }) }));
 
 const repo = (installationId: number | null = 42) => ({
   id: 'rep_12345678',
@@ -99,4 +99,19 @@ it('marks a no-result search as truncated after four pages and explains the limi
   render(<BuildRecipeReadiness projectId="prj_12345678" repo={repo()} />);
   expect(screen.getByText('NO RESULT YET')).toBeTruthy();
   expect(screen.getByText('No build-recipe result in the 2,000 most recent audit events for this project.')).toBeTruthy();
+});
+
+it('lets the owner retry a failed or invalid recipe, but not an unsupported one', async () => {
+  const reload = vi.fn();
+  mocks.retryBuildRecipe.mockResolvedValue({ job_id: 'job_1', queued: true });
+  mocks.useResource.mockReturnValue({ status: 'ready', data: { items: [event('recipe.failed', { reason: 'Repository not found' })] }, reload });
+  render(<BuildRecipeReadiness projectId="prj_12345678" repo={repo()} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry build recipe' }));
+  expect(await screen.findByText(/Retry queued/)).toBeTruthy();
+  expect(mocks.retryBuildRecipe).toHaveBeenCalledWith('rep_12345678');
+  expect(reload).toHaveBeenCalled();
+  cleanup();
+  mocks.useResource.mockReturnValue({ status: 'ready', data: { items: [event('recipe.unsupported', { reason: 'Go' })] }, reload });
+  render(<BuildRecipeReadiness projectId="prj_12345678" repo={repo()} />);
+  expect(screen.queryByRole('button', { name: 'Retry build recipe' })).toBeNull();
 });

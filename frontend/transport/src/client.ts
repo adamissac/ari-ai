@@ -179,6 +179,10 @@ export class ApiClient {
   reconnectRepository(repoId: string, options?: RequestOptions): Promise<{ id: string; disconnected: boolean }> {
     return this.request(`/repositories/${segment(repoId)}/reconnect`, RAW, options, {}) as Promise<{ id: string; disconnected: boolean }>;
   }
+  /** Owner re-run of a failed or invalid build-recipe proposal; joins a run that is already pending. */
+  retryBuildRecipe(repoId: string, options?: RequestOptions): Promise<{ job_id: string; queued: boolean }> {
+    return this.request(`/repositories/${segment(repoId)}/recipe/retry`, RAW, options, {}) as Promise<{ job_id: string; queued: boolean }>;
+  }
   onboardingStatus(projectId: string, options?: RequestOptions): Promise<C.OnboardingStatus> {
     return this.request(`/projects/${segment(projectId)}/onboarding`, 'OnboardingStatus', options) as Promise<C.OnboardingStatus>;
   }
