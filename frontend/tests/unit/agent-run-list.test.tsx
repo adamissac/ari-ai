@@ -35,7 +35,7 @@ it('expands the first agent with runs, permits multiple open rows, and renders p
   expect(screen.getByTestId('agent-scout').getAttribute('aria-expanded')).toBe('false');
   expect(screen.getByTestId('agent-run-reviewer-run')).toBeTruthy();
   expect(within(screen.getByTestId('agent-run-reviewer-run')).getByText('Test provider (scripted)')).toBeTruthy();
-  expect(screen.getByTestId('agent-reviewer').textContent).toContain('1 runs · 1 tool calls');
+  expect(screen.getByTestId('agent-reviewer').textContent).toContain('1 run · 1 tool call');
   expect(screen.getByTestId('agent-run-scout-run').closest('[hidden]')).not.toBeNull();
 
   fireEvent.click(screen.getByTestId('agent-scout'));

@@ -46,7 +46,7 @@ export function AgentRunList({ runs, state }: { runs: AgentRun[]; state?: Assess
               </span>
               <span className="shrink-0 text-right">
                 <span className="block text-xs text-faint">{latest ? AGENT_RUN_STATUS[latest.status].label : absentLabel(state).short}</span>
-                {mine.length > 0 && <span className="mt-0.5 block text-xs text-muted">{mine.length} runs · {toolCalls} tool calls</span>}
+                {mine.length > 0 && <span className="mt-0.5 block text-xs text-muted">{mine.length} {mine.length === 1 ? 'run' : 'runs'} · {toolCalls} {toolCalls === 1 ? 'tool call' : 'tool calls'}</span>}
               </span>
             </button>
             <div id={detailsId} hidden={!isExpanded} className="px-4 pb-4 pt-1">
