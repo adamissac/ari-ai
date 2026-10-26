@@ -355,7 +355,7 @@ const STATS: Array<{ n: number; suffix?: string; tag: string; body: string }> = 
 
 export function ProofStats(): ReactNode {
   return (
-    <section aria-labelledby="proof-title" className="band-light proof-light py-20 md:py-28">
+    <section aria-labelledby="proof-title" className="band-light proof-light my-16 px-6 py-14 md:px-12 md:py-16">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-end">
         <div>
           <p className="kicker">Proof, not promises</p>
