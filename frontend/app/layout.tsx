@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <Ambient />
         <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:rounded focus:bg-accent focus:px-2 focus:py-1 focus:text-bg">Skip to content</a>
         <header className="site-header relative z-40">
-          <div className="site-header-inner mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <div className="site-header-inner mx-auto flex flex-wrap items-center justify-between gap-3 px-4 py-3">
             <Link href="/" aria-label={`${BRAND_NAME} home`} className="hdr-logo">
               <Wordmark priority />
             </Link>
@@ -57,10 +57,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <SmoothScroll />
         <RouteTransition />
         <DemoBanner />
-        <main id="main" className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+        <main id="main" className="site-main mx-auto px-4 py-6">{children}</main>
         <SiteFooter />
       </body>
     </html>
   );
 }
-

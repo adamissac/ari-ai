@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { env, newUser } from './helpers';
+import { completeSetup, env, newUser } from './helpers';
 
 // Real HTTP conflict, not a fulfilled error fixture. This project deliberately has
 // no operator source binding, so this test cannot consume the scripted agent run.
@@ -16,6 +16,8 @@ test('a conflicting action requires explicit preparation before a single new sub
   }
   const project = await post(alice, '/projects', { name: 'Explicit conflict recovery' });
   const repo = await post(alice, `/projects/${project.id}/repositories`, { full_name: 'owned/conflict-recovery' });
+  await completeSetup(alice, project.id, repo.id);
+  await completeSetup(bob, project.id, repo.id);
   const scope = await post(alice, `/projects/${project.id}/scopes`, {
     name: 'recovery sandbox', expires_at: new Date(Date.now() + 3600000).toISOString(),
     targets: [{ kind: 'sandbox_build', repo_id: repo.id, build_recipe_ref: 'build_recipe.json' }],

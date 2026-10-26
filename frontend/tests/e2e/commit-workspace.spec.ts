@@ -22,8 +22,8 @@ test('organization → repository → commit keeps real agent work and replay in
   await page.goto(`/connect/${org}`);
   await page.getByTestId(`connect-repo-${full}`).getByRole('button', { name: 'Continue setup' }).click();
   await expect(page).toHaveURL(/\/projects\/[^/]+\/setup\?repo=/);
-  await expect(page.getByTestId('repo-setup')).toBeVisible();
-  await expect(page.locator('[data-testid^="setup-step-"]')).toHaveCount(1);
+  await expect(page.getByTestId('setup-step-1')).toBeVisible();
+  await expect(page.getByRole('progressbar', { name: 'Question 1 of 8' })).toBeVisible();
   await page.goto(base);
   await expect(page).toHaveURL(base);
   await expect(page.locator('main')).not.toContainText('sibling-repository');

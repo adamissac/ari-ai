@@ -21,6 +21,27 @@ export async function newUser(browser: Browser, login: string): Promise<Page> {
   return page;
 }
 
+export async function completeSetup(
+  page: Page,
+  projectId = env('E2E_PROJECT_ID'),
+  repoId = env('E2E_REPO_ID'),
+): Promise<void> {
+  await page.goto(`/projects/${projectId}/setup?repo=${encodeURIComponent(repoId)}`);
+  await expect(page.getByTestId('setup-step-1')).toBeVisible();
+  for (let question = 1; question < 8; question += 1) {
+    if (question === 6) {
+      const approve = page.getByRole('button', { name: /Approve sandbox testing/ });
+      if (await approve.isVisible().catch(() => false)) await approve.click();
+      await expect(page.getByText(/Testing authorized/)).toBeVisible();
+    }
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await expect(page.getByTestId(`setup-step-${question + 1}`)).toBeVisible();
+  }
+  await page.getByRole('button', { name: 'Finish setup', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Tip 1 of 6' })
+    .getByRole('button', { name: 'Skip tour' }).click();
+}
+
 /** Full-page screenshot of real executed test data (never fixtures), kept with the test results. */
 export async function evidenceShot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: `test-results/evidence/${name}.png`, fullPage: true });
