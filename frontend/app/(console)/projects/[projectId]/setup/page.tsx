@@ -32,14 +32,14 @@ const DELIVERY: Array<[DeliveryMode, string, string]> = [
   ['auto', 'Commit to the default branch', 'Ari pushes verified fixes straight to your default branch with no human check.'],
 ];
 const QUESTIONS = [
-  ['Readiness', 'Review the repository, default branch, GitHub App installation, and build-recipe readiness.'],
-  ['PR-comment strictness', 'Choose how strict Ari should be when it leaves pull-request comments.'],
-  ['Automatic-review changes', 'Choose whether automatic reviews may start for pushes and pull requests.'],
-  ['Pull-request comments', 'Decide whether Ari should leave review comments on pull requests.'],
-  ['Project monitoring', 'Choose whether Ari should watch this project for new commits. Testing still requires an approved scope.'],
-  ['Sandbox testing', 'Approve the existing time-limited scope so Ari can test in an isolated sandbox.'],
-  ['Fix delivery', 'Choose how Ari should deliver independently verified fixes.'],
-  ['Review and start', 'Review your choices, optionally start the first assessment, or finish setup.'],
+  ['Readiness', 'Check the repo and branch.'],
+  ['PR-comment strictness', 'Be stricter for fewer comments.'],
+  ['Automatic-review changes', 'Choose when reviews run.'],
+  ['Pull-request comments', 'PR comments are optional.'],
+  ['Project monitoring', 'Watching spots commits; testing needs approval.'],
+  ['Sandbox testing', 'Approve temporary sandbox testing.'],
+  ['Fix delivery', 'Auto-delivery needs confirmation.'],
+  ['Review and start', 'Starting a check is optional.'],
 ] as const;
 const TOUR = [
   ['analytics', 'Analytics summarizes saved checks and findings for the selected repository.'],
@@ -262,12 +262,15 @@ function Walkthrough({
 
         <div className="min-w-0">
           <p className="label-mono text-muted">Setup / {repo.full_name}</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Let&apos;s set up Ari for {repo.full_name.split('/')[1]}</h1>
+          <h1 className="setup-title mt-1 min-w-0 max-w-full whitespace-normal break-words text-2xl font-semibold tracking-tight sm:text-3xl">Let&apos;s set up Ari for {repo.full_name.split('/')[1]}</h1>
           <p className="mt-2 mb-6 text-sm text-muted">Eight questions. You can change these choices later in Settings.</p>
           {error !== null && <div className="mb-4"><ErrorState error={error} /></div>}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="min-w-0">
           <section data-testid={`setup-step-${currentQuestion}`} className="rounded-xl border border-line bg-panel p-5 sm:p-6 motion-safe:animate-[setup-slide-in_250ms_ease-out]">
             <p className="label-mono text-muted">Question {currentQuestion} / 8 {savedAnswer !== undefined && <span role="status" className="ml-2 text-ok">Saved</span>}</p>
-          <h2 data-coach="setup-question" className="mt-1 text-xl font-semibold tracking-tight">{title}</h2>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight">{title}</h2>
+            <div data-coach="setup-interactive" className="mt-28 min-w-0 lg:mt-5">
             <div className="mt-5">
               {currentQuestion === 1 && (
                 <>
@@ -375,23 +378,27 @@ function Walkthrough({
                 </>
               )}
             </div>
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <Button disabled={currentQuestion === 1 || busy !== null} onClick={goBack}>Back</Button>
+              {currentQuestion < 8
+                ? <Button variant="primary" disabled={busy !== null || !canContinue} onClick={() => void continueQuestion()}>{busy === 'save' ? 'Saving…' : 'Continue'}</Button>
+                : <Button variant="primary" disabled={busy !== null} onClick={finishSetup}>Finish setup</Button>}
+            </div>
+            </div>
           </section>
-
-          <div className="mt-5 flex items-center justify-between gap-3">
-            <Button disabled={currentQuestion === 1 || busy !== null} onClick={goBack}>Back</Button>
-            {currentQuestion < 8
-              ? <Button variant="primary" disabled={busy !== null || !canContinue} onClick={() => void continueQuestion()}>{busy === 'save' ? 'Saving…' : 'Continue'}</Button>
-              : <Button variant="primary" disabled={busy !== null} onClick={finishSetup}>Finish setup</Button>}
+          </div>
+          <div aria-hidden="true" className="hidden lg:block" />
           </div>
         </div>
       </div>
 
       {tourStep !== null ? (
         <CoachMark
+          key={`tour-${tourStep}`}
+          mode="tour"
           target={TOUR[tourStep]![0]}
           current={tourStep + 1}
           total={TOUR.length}
-          onBack={() => setTourStep(Math.max(0, tourStep - 1))}
           onNext={() => tourStep === TOUR.length - 1 ? completeTour() : setTourStep(tourStep + 1)}
           onSkip={completeTour}
         >
@@ -399,13 +406,11 @@ function Walkthrough({
         </CoachMark>
       ) : (
         <CoachMark
-          target="setup-question"
+          key={`setup-${currentQuestion}`}
+          mode="setup"
+          target="setup-interactive"
           current={currentQuestion}
           total={8}
-          onBack={goBack}
-          onNext={() => currentQuestion === 8 ? finishSetup() : void continueQuestion()}
-          nextDisabled={busy !== null || (currentQuestion === 6 && !authorized)}
-          nextLabel={currentQuestion === 8 ? 'Finish setup' : 'Next'}
         >
           {QUESTIONS[currentQuestion - 1]?.[1] ?? QUESTIONS[7]![1]}
         </CoachMark>
