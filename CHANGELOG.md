@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Reframed Defense Lab as a recorded network-defense console with recommendation-only status and local demo approvals.
 - Removed the misaligned Setup coach marks and post-setup tour; question guidance now sits inline and completion links to the project workspace.
 - Repository setup answers and completion are now saved on the server (`GET`/`PATCH /api/v1/repositories/{id}/setup`), so setup is never repeated after a reload, sign-out, or on another browser; browser-only progress from earlier builds migrates once. Disconnected repositories are labelled, never auto-selected, and cannot be set up.
 - Signed-out pages stop polling the API every few seconds after a 401.
