@@ -295,6 +295,9 @@ def update_project(project_id: str, body: ProjectUpdate, request: Request) -> Pr
     with transaction() as conn:
         user = _user(conn, request)
         org_id, _ = require_project(conn, user, project_id, MemberRole.owner)
+        # Project row before any audit (organization) lock: the order assessment starts
+        # take (quota, then create_assessment's audit), so the two cannot deadlock.
+        conn.execute(sa.select(projects.c.id).where(projects.c.id == project_id).with_for_update())
         values: dict[str, Any] = {}
         changed_delivery = False
         if body.name is not None:
