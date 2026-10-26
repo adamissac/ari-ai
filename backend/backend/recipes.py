@@ -862,6 +862,11 @@ def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
 
         if isinstance(exc, httpx.HTTPError) and _transient(exc):
             raise  # the queue retries with backoff; the branch and PR steps are idempotent
+        # GitHub needs a moment to make a just-created repo visible to App tokens; a
+        # git/network flap is transient, so let the queue retry while attempts remain.
+        # On the last attempt fall through and record the terminal recipe.failed.
+        if isinstance(exc, CheckoutError) and ctx.job.attempts < ctx.job.max_attempts:
+            raise
         return finish("recipe.failed", reason=str(exc)[:300])
     return finish(
         "recipe.pr_opened", url=url, branch=BRANCH, commit_sha=sha, author=d.author,

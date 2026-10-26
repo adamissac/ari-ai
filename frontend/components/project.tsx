@@ -202,10 +202,14 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   const complete = isSetupComplete({ answers: {}, complete: knownComplete }, setupCheck.status === 'ready' && setupCheck.data);
   const setupRoute = pathname === `${base}/setup` || pathname.startsWith(`${base}/setup/`);
   // First-run surfaces (onboarding checklist, live-defense connect) must stay
-  // reachable before any assessment exists: they are how setup completes.
+  // reachable before any assessment exists: they are how setup completes. A run that
+  // already exists, and the approvals it waits on, stay reachable too: unfinished setup
+  // must never keep a co-owner from a decision another member's run is waiting for.
   const freeRoute = setupRoute
     || pathname === `${base}/onboarding` || pathname.startsWith(`${base}/onboarding/`)
-    || pathname === `${base}/live-defense` || pathname.startsWith(`${base}/live-defense/`);
+    || pathname === `${base}/live-defense` || pathname.startsWith(`${base}/live-defense/`)
+    || pathname.startsWith(`${base}/assessments/`)
+    || pathname === `${base}/approvals` || pathname.startsWith(`${base}/approvals/`);
   // Only lock on a confirmed "not finished" from the server; a disconnected repo has no setup to finish.
   const locked = Boolean(selectedRepo && !selectedRepo.disconnected && setupReady && savedSetup.status === 'ready' && !complete);
   useEffect(() => {
