@@ -223,7 +223,7 @@ function Headline({ bundle }: { bundle: DefenseLabBundle }) {
   });
   if (tiles.length === 0) return null;
   return (
-    <dl className="lab-headline mt-6" data-testid="lab-takeaway" aria-label={keyTakeaway(bundle) ?? undefined}>
+    <dl className="lab-headline mt-6" data-testid="lab-takeaway" aria-label="Performance summary" aria-description={keyTakeaway(bundle) ?? undefined}>
       {tiles.map(({ metric, label, ai, vs }) => (
         <div key={metric.key} className="lab-headline-tile">
           <dt className="sr-only">Trained AI defender: {metric.title}</dt>

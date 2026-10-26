@@ -1,14 +1,24 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Project, Repository } from '@hackatl/frontend-transport';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import SetupPage from '@/app/(console)/projects/[projectId]/setup/page';
-import { setupProgressKey } from '@/lib/setup-progress';
+import { progressToServer, setupProgressKey, type SetupProgress } from '@/lib/setup-progress';
+
+function serverSetup(progress: SetupProgress) {
+  return { repo_id: 'rep_12345678', ...progressToServer(progress), completed_at: null, updated_at: null };
+}
 
 const mocks = vi.hoisted(() => ({
   query: 'repo=rep_12345678',
   useResource: vi.fn(),
   project: null as unknown,
   reloadProject: vi.fn(),
+  server: null as unknown,
+  saveRepositorySetup: vi.fn(),
+}));
+vi.mock('@/lib/api', async importOriginal => ({
+  ...await importOriginal<typeof import('@/lib/api')>(),
+  api: () => ({ saveRepositorySetup: mocks.saveRepositorySetup }),
 }));
 vi.mock('@/components/project', () => ({ useProject: () => mocks.project }));
 vi.mock('@/components/onboarding/build-recipe-readiness', () => ({ BuildRecipeReadiness: () => <p>Recipe readiness</p> }));
@@ -37,7 +47,11 @@ beforeEach(() => {
   localStorage.clear();
   mocks.query = 'repo=rep_12345678';
   mocks.project = { project, reloadProject: vi.fn() };
+  mocks.server = serverSetup({ answers: {}, complete: false });
+  mocks.saveRepositorySetup.mockReset();
+  mocks.saveRepositorySetup.mockImplementation((_id: string, body: unknown) => Promise.resolve({ repo_id: repo.id, completed_at: null, updated_at: null, ...(body as object) }));
   mocks.useResource.mockImplementation((key: string | null) => {
+    if (key?.includes('setup-progress')) return { status: 'ready', data: mocks.server, reload: vi.fn() };
     if (key?.includes('setup-repos')) return { status: 'ready', data: { items: [repo] }, reload: vi.fn() };
     if (key?.includes('setup-scopes')) return { status: 'ready', data: { items: [] }, reload: vi.fn() };
     if (key?.includes('setup-runs')) return { status: 'ready', data: { items: [] }, reload: vi.fn() };
@@ -46,19 +60,52 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-it('resumes from the first unanswered question and announces progress', async () => {
-  localStorage.setItem(setupProgressKey(project.id, repo.id), JSON.stringify({
-    answers: { readiness: true, strictness: '2' },
-    complete: false,
-  }));
+it('resumes from the server copy in a browser that never saw setup', async () => {
+  mocks.server = serverSetup({ answers: { readiness: true, strictness: '2' }, complete: false });
   render(<SetupPage />);
   expect(await screen.findByTestId('setup-step-3')).toBeTruthy();
   expect(screen.getByRole('progressbar', { name: 'Question 3 of 8' })).toBeTruthy();
   expect(screen.getAllByText('SAVED')).toHaveLength(2);
+  expect(mocks.saveRepositorySetup).not.toHaveBeenCalled();
+});
+
+it('moves browser-only progress from an earlier build to the server', async () => {
+  localStorage.setItem(setupProgressKey(project.id, repo.id), JSON.stringify({ answers: { readiness: true }, complete: false }));
+  render(<SetupPage />);
+  expect(await screen.findByTestId('setup-step-2')).toBeTruthy();
+  await waitFor(() => expect(mocks.saveRepositorySetup).toHaveBeenCalledTimes(1));
+  expect(mocks.saveRepositorySetup.mock.calls[0]![1].answers.readiness).toBe(true);
+  await waitFor(() => expect(localStorage.getItem(setupProgressKey(project.id, repo.id))).toBeNull());
+});
+
+it('ignores stale browser progress once the server has saved setup', async () => {
+  mocks.server = serverSetup({ answers: { readiness: true, strictness: '2', reviewChanges: true }, complete: false });
+  localStorage.setItem(setupProgressKey(project.id, repo.id), JSON.stringify({ answers: { readiness: true }, complete: false }));
+  render(<SetupPage />);
+  expect(await screen.findByTestId('setup-step-4')).toBeTruthy();
+  expect(mocks.saveRepositorySetup).not.toHaveBeenCalled();
+});
+
+it('shows a save failure and stays on the question', async () => {
+  mocks.saveRepositorySetup.mockRejectedValueOnce(new Error('offline'));
+  render(<SetupPage />);
+  fireEvent.click(await screen.findByRole('button', { name: /^Continue$/ }));
+  expect(await screen.findByText(/offline/)).toBeTruthy();
+  expect(screen.getByTestId('setup-step-1')).toBeTruthy();
+});
+
+it('does not run setup for a disconnected repository', async () => {
+  mocks.useResource.mockImplementation((key: string | null) => {
+    if (key?.includes('setup-repos')) return { status: 'ready', data: { items: [{ ...repo, disconnected: true }] }, reload: vi.fn() };
+    return { status: 'ready', data: { items: [] }, reload: vi.fn() };
+  });
+  render(<SetupPage />);
+  expect(await screen.findByTestId('setup-disconnected')).toBeTruthy();
+  expect(screen.queryByTestId('setup-step-1')).toBeNull();
 });
 
 it('does not let a URL question parameter skip ahead', async () => {
-  localStorage.setItem(setupProgressKey(project.id, repo.id), JSON.stringify({ answers: { readiness: true }, complete: false }));
+  mocks.server = serverSetup({ answers: { readiness: true }, complete: false });
   mocks.query = 'repo=rep_12345678&step=8';
   render(<SetupPage />);
   expect(await screen.findByTestId('setup-step-2')).toBeTruthy();
@@ -70,12 +117,13 @@ it('saves the readiness answer before advancing', async () => {
   expect(await screen.findByTestId('setup-step-1')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: /^Continue$/ }));
   expect(await screen.findByTestId('setup-step-2')).toBeTruthy();
-  const stored = JSON.parse(localStorage.getItem(setupProgressKey(project.id, repo.id)) ?? '{}');
-  expect(stored.answers.readiness).toBe(true);
+  expect(mocks.saveRepositorySetup).toHaveBeenCalledWith(repo.id, expect.objectContaining({ complete: false }));
+  expect(mocks.saveRepositorySetup.mock.calls[0]![1].answers.readiness).toBe(true);
+  expect(localStorage.getItem(setupProgressKey(project.id, repo.id))).toBeNull();
 });
 
 it('links saved reviews to the Commits assessment history', async () => {
-  localStorage.setItem(setupProgressKey(project.id, repo.id), JSON.stringify({
+  mocks.server = serverSetup({
     answers: {
       readiness: true,
       strictness: '2',
@@ -86,8 +134,9 @@ it('links saved reviews to the Commits assessment history', async () => {
       delivery: 'pull_request',
     },
     complete: false,
-  }));
+  });
   mocks.useResource.mockImplementation((key: string | null) => {
+    if (key?.includes('setup-progress')) return { status: 'ready', data: mocks.server, reload: vi.fn() };
     if (key?.includes('setup-repos')) return { status: 'ready', data: { items: [repo] }, reload: vi.fn() };
     if (key?.includes('setup-scopes')) return { status: 'ready', data: { items: [] }, reload: vi.fn() };
     if (key?.includes('setup-runs')) return { status: 'ready', data: { items: [{ repo_id: repo.id }] }, reload: vi.fn() };

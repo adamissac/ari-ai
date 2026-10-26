@@ -26,6 +26,12 @@ afterEach(() => {
 });
 
 describe('resolveSelectedRepo', () => {
+  it('falls back to a connected repository before a disconnected one', () => {
+    const mixed = [{ ...repos[0]!, disconnected: true }, repos[1]!] as Repository[];
+    expect(resolveSelectedRepo(mixed, null, null)).toBe(mixed[1]);
+    expect(resolveSelectedRepo(mixed, 'repo-1', null)).toBe(mixed[0]);
+  });
+
   it('prefers a valid URL repository over stored selection', () => {
     expect(resolveSelectedRepo(repos, 'repo-2', 'repo-1')).toBe(repos[1]);
   });

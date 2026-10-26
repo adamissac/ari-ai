@@ -1,0 +1,136 @@
+{
+  "additionalProperties": false,
+  "description": "Answers to the eight repository setup questions; ``None`` means unanswered.",
+  "properties": {
+    "comments": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "maxLength": 80,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Comments"
+    },
+    "delivery": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "maxLength": 80,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Delivery"
+    },
+    "readiness": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "maxLength": 80,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Readiness"
+    },
+    "reviewChanges": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "maxLength": 80,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reviewchanges"
+    },
+    "reviewStart": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "maxLength": 80,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reviewstart"
+    },
+    "scope": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "maxLength": 80,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scope"
+    },
+    "strictness": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "maxLength": 80,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Strictness"
+    },
+    "watch": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "maxLength": 80,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Watch"
+    }
+  },
+  "title": "RepositorySetupAnswers",
+  "type": "object"
+}
