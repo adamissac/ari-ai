@@ -15,6 +15,18 @@ adds an entry before ending.
 - Next steps:
 - Warnings for the next session:
 
+### 2026-10-26 — Adam: production #605/#610 deployment and pg_monitor revocation
+- Done: PRs #605 and #610 are merged; Railway deployed `a85885aa`
+  successfully, and `/healthz` reports that `git_sha`.
+- Done: at about 11:30Z on 2026-10-25, the admin connection revoked
+  `pg_monitor` from `ari_app`. The role has no memberships and retains
+  `NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION`; 14 app
+  connections use `ari_app`.
+- Verified: `GET /api/v1/ops/storage` returned 200 with `wal_bytes: null` and
+  `alerts: []`; `/readyz` was ready with 24 workers and 0 queued. WAL size is
+  no longer reported for the app role after #610's savepoint-protected probe.
+- Open: rotate the Anthropic and GitHub App keys; remove public database access last.
+
 ### 2026-10-25 — Devin (agent, Adam) — all-depth pytest hook definitions (#629)
 - Did: restored recording of every `pytest_*` function and async-function
   definition, including nested definitions and plugin-class methods, while
@@ -2620,3 +2632,15 @@ Pin 4fdcf10c vs main e41c9dc2; tip 0098f1d5 report-only. Original F1–F10/N1–
 - E2E coverage exercises the seeded `acme/payments-lite` repository at desktop and narrow mobile widths, including the selected commit's Code review and 7 agents tabs. Browser screenshots are in `/home/ubuntu/classic-audit/repo-workspace/`: `analytics-{1440,390}-{viewport,full}.png`, `commits-code-review-{1440,390}-{viewport,full}.png`, `commits-7-agents-{1440,390}-{viewport,full}.png`, and `more-menu-390-{viewport,full}.png`.
 - Verification passed: frontend lint (0 errors; one existing unused-variable warning), typecheck, unit tests (96 files / 414 tests), production build, journey E2E (3), pages E2E (7), interface E2E, and commit-workspace E2E (1). The setup-resume unit test passed 5/5.
 - The local stack is served at `http://localhost:3205` with API at `localhost:59039`. E2E assessments use the test-only scripted model transport; these captures do not establish live-model provenance.
+
+### Landing motion and pricing atmosphere — 2026-10-26
+
+- Replaced the headline sweep with a reduced-motion-safe ember glow; added five transform-driven lava-lamp blobs, a fixed landing/pricing atmosphere, an eased longer problem chapter, warm-glass walkthrough and pricing cards, and low-opacity decorative vignettes. The hero ant colony remains.
+- Pricing CTA is unboxed and centered. Decorative illustrations remain aria-hidden and are hidden below desktop widths.
+- Before and after viewport/full-page captures and motion frames are stored under `/home/ubuntu/shots/landing-motion/`; check results are in the task handoff.
+
+### Landing timeline ember-glass refinements — 2026-10-26
+
+- Restyled the problem-story “PR review”, “Scanner”, and checked-count chips with translucent brand fill, a lighter border, white mono text, and a soft glow.
+- Cropped close-ups are under `/home/ubuntu/shots/landing-motion/after/crops/`.
+- Verification passed: frontend lint (0 errors; one existing unused-variable warning), typecheck, and the landing-related unit suites (3 files / 13 tests).
