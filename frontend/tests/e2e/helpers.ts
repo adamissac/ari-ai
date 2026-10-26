@@ -27,8 +27,11 @@ export async function completeSetup(
   repoId = env('E2E_REPO_ID'),
 ): Promise<void> {
   await page.goto(`/projects/${projectId}/setup?repo=${encodeURIComponent(repoId)}`);
-  await expect(page.getByTestId('setup-step-1')).toBeVisible();
-  for (let question = 1; question < 8; question += 1) {
+  // Setup is saved on the server, so a second user of the same repo resumes where it was left.
+  const step = page.locator('[data-testid^="setup-step-"]');
+  await expect(step).toBeVisible();
+  const start = Number((await step.getAttribute('data-testid'))!.slice('setup-step-'.length));
+  for (let question = start; question < 8; question += 1) {
     if (question === 6) {
       const approve = page.getByRole('button', { name: /Approve sandbox testing/ });
       if (await approve.isVisible().catch(() => false)) await approve.click();

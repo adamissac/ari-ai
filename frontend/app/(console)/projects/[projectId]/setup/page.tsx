@@ -1,9 +1,9 @@
 'use client';
 
-import type { DeliveryMode, Repository } from '@hackatl/frontend-transport';
+import type { DeliveryMode, Repository, RepositorySetup } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BuildRecipeReadiness } from '@/components/onboarding/build-recipe-readiness';
 import { SetupDone } from '@/components/onboarding/setup-done';
 import { useProject } from '@/components/project';
@@ -12,9 +12,13 @@ import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
 import {
   answerSetupQuestion,
-  parseSetupProgress,
+  clearLegacySetupProgress,
+  initialSetupProgress,
+  progressFromServer,
+  progressToServer,
+  readLegacySetupProgress,
   resumeSetupQuestion,
-  setupProgressKey,
+  SETUP_SAVED_EVENT,
   type SetupProgress,
   type SetupQuestion,
 } from '@/lib/setup-progress';
@@ -53,14 +57,24 @@ export default function SetupPage() {
   if (repos.status === 'error') return <ErrorState error={repos.error} onRetry={repos.reload} />;
   if (scopes.status === 'error') return <ErrorState error={scopes.error} onRetry={scopes.reload} />;
   if (runs.status === 'error') return <ErrorState error={runs.error} onRetry={runs.reload} />;
-  const repo = repos.data.items.find(item => item.id === repoParam) ?? repos.data.items[0];
+  const repo = repos.data.items.find(item => item.id === repoParam)
+    ?? repos.data.items.find(item => !item.disconnected)
+    ?? repos.data.items[0];
   if (!repo) {
     return <div className="text-sm text-muted">No repository is connected yet. <Link className="font-semibold text-brand" href="/connect">Connect one</Link> to start setup.</div>;
+  }
+  if (repo.disconnected) {
+    return (
+      <div className="text-sm text-muted" data-testid="setup-disconnected">
+        <span className="font-mono text-ink">{repo.full_name}</span> is disconnected, so Ari can&apos;t set it up.{' '}
+        <Link className="font-semibold text-brand" href="/connect">Connect a repository</Link> to continue.
+      </div>
+    );
   }
   const scope = scopeStateFor(scopes.data.items, repo.id, new Date());
   const hasRun = runs.data.items.some(assessment => assessment.repo_id === repo.id);
   return (
-    <Walkthrough
+    <SavedWalkthrough
       key={repo.id}
       repo={repo}
       scope={scope}
@@ -70,36 +84,31 @@ export default function SetupPage() {
   );
 }
 
+function SavedWalkthrough(props: { repo: Repository; scope: ReturnType<typeof scopeStateFor>; hasRun: boolean; reload: () => void }) {
+  const setup = useResource(`setup-progress:${props.repo.id}`, signal => api().repositorySetup(props.repo.id, { signal }));
+  if (setup.status === 'loading') return <Loading label="Loading saved setup" />;
+  if (setup.status === 'error') return <ErrorState error={setup.error} onRetry={setup.reload} context="Could not load saved setup" />;
+  return <Walkthrough {...props} saved={setup.data} />;
+}
+
 function Walkthrough({
   repo,
   scope,
   hasRun,
   reload,
+  saved,
 }: {
   repo: Repository;
   scope: ReturnType<typeof scopeStateFor>;
   hasRun: boolean;
   reload: () => void;
+  saved: RepositorySetup;
 }) {
   const { project, reloadProject } = useProject();
   const scopeKeys = useActionKeys('setup-scope');
   const runKeys = useActionKeys('setup-run');
-  const progressKey = setupProgressKey(project.id, repo.id);
-  const storedProgress = useSyncExternalStore(
-    callback => {
-      window.addEventListener('ari-setup-progress', callback);
-      window.addEventListener('storage', callback);
-      return () => {
-        window.removeEventListener('ari-setup-progress', callback);
-        window.removeEventListener('storage', callback);
-      };
-    },
-    () => {
-      try { return window.localStorage.getItem(progressKey); } catch { return null; }
-    },
-    () => null,
-  );
-  const progress: SetupProgress = parseSetupProgress(storedProgress);
+  const [initial] = useState(() => initialSetupProgress(progressFromServer(saved), readLegacySetupProgress(project.id, repo.id)));
+  const [progress, setProgress] = useState<SetupProgress>(initial.progress);
   const [questionOverride, setQuestionOverride] = useState<number | null>(null);
   const currentQuestion = questionOverride ?? resumeSetupQuestion(progress);
   const [busy, setBusy] = useState<string | null>(null);
@@ -118,14 +127,31 @@ function Walkthrough({
   const strictnessLabel = STRICTNESS.find(([value]) => value === strictness)?.[1] ?? 'Unknown';
   const deliveryLabel = DELIVERY.find(([mode]) => mode === project.settings.delivery_mode)?.[1] ?? project.settings.delivery_mode;
 
-  const saveProgress = (next: SetupProgress) => {
-    try { window.localStorage.setItem(progressKey, JSON.stringify(next)); } catch { /* server settings still persist */ }
-    window.dispatchEvent(new Event('ari-setup-progress'));
+  const saveProgress = async (next: SetupProgress) => {
+    const stored = progressFromServer(await api().saveRepositorySetup(repo.id, progressToServer(next)));
+    setProgress(stored);
+    clearLegacySetupProgress(project.id, repo.id);
+    window.dispatchEvent(new Event(SETUP_SAVED_EVENT));
+    return stored;
   };
 
-  const recordAnswer = (key: SetupQuestion, value: string | boolean) => {
-    const next = answerSetupQuestion(progress, key, value);
-    saveProgress(next);
+  // Progress an earlier build kept only in this browser moves to the server once.
+  const migrated = useRef(false);
+  useEffect(() => {
+    if (!initial.migrate || migrated.current) return;
+    migrated.current = true;
+    api().saveRepositorySetup(repo.id, progressToServer(initial.progress)).then(
+      stored => {
+        setProgress(current => (current === initial.progress ? progressFromServer(stored) : current));
+        clearLegacySetupProgress(project.id, repo.id);
+        window.dispatchEvent(new Event(SETUP_SAVED_EVENT));
+      },
+      () => { /* kept locally; the next answer saves everything */ },
+    );
+  }, [initial, project.id, repo.id]);
+
+  const recordAnswer = async (key: SetupQuestion, value: string | boolean) => {
+    await saveProgress(answerSetupQuestion(progress, key, value));
     setQuestionOverride(Math.min(currentQuestion + 1, 8));
   };
 
@@ -143,19 +169,19 @@ function Walkthrough({
   const continueQuestion = () => act('save', async () => {
     switch (currentQuestion) {
       case 1:
-        recordAnswer('readiness', true);
+        await recordAnswer('readiness', true);
         return;
       case 2:
         await persistSettings({ ...project.settings, review: { ...review, strictness } });
-        recordAnswer('strictness', String(strictness));
+        await recordAnswer('strictness', String(strictness));
         return;
       case 3:
         await persistSettings({ ...project.settings, review: { ...review, strictness, review_pushes: pushes, review_pull_requests: pullRequests } });
-        recordAnswer('reviewChanges', true);
+        await recordAnswer('reviewChanges', true);
         return;
       case 4:
         await persistSettings({ ...project.settings, review: { ...review, strictness, review_pushes: pushes, review_pull_requests: pullRequests, comment_on_pull_requests: comments } });
-        recordAnswer('comments', comments);
+        await recordAnswer('comments', comments);
         return;
       case 5:
         await persistSettings({
@@ -163,19 +189,19 @@ function Walkthrough({
           monitoring_policy: { ...project.settings.monitoring_policy, enabled: watch },
           review: { ...review, strictness, review_pushes: pushes, review_pull_requests: pullRequests, comment_on_pull_requests: comments },
         });
-        recordAnswer('watch', watch);
+        await recordAnswer('watch', watch);
         return;
       case 6:
         if (!authorized) return;
-        recordAnswer('scope', true);
+        await recordAnswer('scope', true);
         return;
       case 7:
         if (delivery === 'auto' && !window.confirm('Ari will commit verified fixes straight to your default branch with no human check. Continue?')) return;
         await persistSettings({ ...project.settings, delivery_mode: delivery });
-        recordAnswer('delivery', delivery);
+        await recordAnswer('delivery', delivery);
         return;
       default:
-        finishSetup();
+        await finishSetup();
     }
   });
 
@@ -201,9 +227,9 @@ function Walkthrough({
     setStartedAssessmentId(assessment.id);
   });
 
-  const finishSetup = () => {
+  const finishSetup = async () => {
     const completed = { ...progress, answers: { ...progress.answers, reviewStart: true }, complete: true };
-    saveProgress(completed);
+    await saveProgress(completed);
     setQuestionOverride(8);
     setFinished(true);
   };
@@ -363,7 +389,7 @@ function Walkthrough({
               <Button disabled={currentQuestion === 1 || busy !== null} onClick={goBack}>Back</Button>
               {currentQuestion < 8
                 ? <Button variant="primary" disabled={busy !== null || !canContinue} onClick={() => void continueQuestion()}>{busy === 'save' ? 'Saving…' : 'Continue'}</Button>
-                : <Button variant="primary" disabled={busy !== null} onClick={finishSetup}>Finish setup</Button>}
+                : <Button variant="primary" disabled={busy !== null} onClick={() => void act('save', finishSetup)}>Finish setup</Button>}
             </div>
           </section>
           )}
