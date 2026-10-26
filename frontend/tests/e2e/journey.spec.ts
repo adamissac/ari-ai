@@ -248,5 +248,6 @@ test('connect a repository to a project through the UI', async ({ browser }) => 
 
   // GitHub onboarding remains available whether or not this account already has repositories.
   await page.goto('/connect');
-  await expect(page.getByRole('heading', { name: 'What Ari can access' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'GitHub App permissions' })).toContainText('Contents: read & write');
+  await expect(page.getByText('Revoke or limit access')).toBeVisible();
 });

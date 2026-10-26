@@ -9,7 +9,7 @@ import { api } from '@/lib/api';
 import { AUTO_WARNING, draftOf, parseSettings, type Draft } from '@/lib/settings';
 
 export default function SettingsPage() {
-  const { project, repos, reloadProject } = useProject();
+  const { project, selectedRepo, reloadProject } = useProject();
   const [saved, setSaved] = useState<Project>(project);
   const [draft, setDraft] = useState<Draft>(() => draftOf(project));
   const [busy, setBusy] = useState(false);
@@ -36,9 +36,16 @@ export default function SettingsPage() {
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <PageTitle eyebrow="Configure" title="Settings" subtitle="Project name, languages, budgets and monitoring policy." />
-      <Repositories repos={repos} />
-    <form onSubmit={submit} className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2" aria-label="Project settings">
+      <PageTitle
+        eyebrow="Configure"
+        title="Settings"
+        subtitle={selectedRepo
+          ? <>Settings for <span className="font-mono text-ink">{selectedRepo.full_name}</span>. Changes below apply to all repositories in this project.</>
+          : 'Project settings apply to all repositories in this project; no repository is connected.'}
+      />
+      <Repositories repos={selectedRepo ? [selectedRepo] : []} />
+      <p className="label-mono text-muted">Project settings (all repositories in this project)</p>
+      <form onSubmit={submit} className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2" aria-label="Project settings">
       <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
         <Button type="submit" variant="primary" disabled={busy || !dirty || 'error' in parsed}>Save settings</Button>
         <Button type="button" disabled={busy || !dirty} onClick={() => setDraft(draftOf(saved))}>Discard changes</Button>
