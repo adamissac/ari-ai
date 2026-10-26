@@ -54,10 +54,11 @@ export function IntroLoader({ onReveal }: { onReveal: () => void }) {
   return (
     <div aria-hidden="true" className="intro" data-phase={phase}>
       <LogoMark size={96} decorative className="intro-mark" />
-      <div className="intro-progress">
-        <span className="intro-pct">{pct}%</span>
-        <span className="intro-line" style={{ transform: `scaleX(${pct / 100})` }} />
-      </div>
+      <svg className="intro-ring" viewBox="0 0 200 200">
+        <circle className="intro-ring-track" cx="100" cy="100" r="96" pathLength={100} />
+        <circle className="intro-ring-fill" cx="100" cy="100" r="96" pathLength={100} style={{ strokeDashoffset: 100 - pct }} />
+      </svg>
+      <span className="intro-pct">{pct}%</span>
       <span className="sr-only">{BRAND_NAME}</span>
     </div>
   );

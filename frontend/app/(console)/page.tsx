@@ -13,6 +13,7 @@ import { ExplainerVideo } from '@/components/explainer-video';
 import { DEMO_ONLY } from '@/lib/deployment';
 import { RollText } from '@/components/ui';
 import { HeroExploit } from '@/components/hero-exploit';
+import { HeroAnts } from '@/components/hero-ants';
 
 const LOOP = ASSESSMENT_LOOP;
 
@@ -43,7 +44,8 @@ export default function HomePage() {
               <RollText>How It Works</RollText>
             </a>
           </div>
-          <div className="hero-in mt-16 text-left" style={i(4)}><HeroExploit play={revealed} stages={LOOP} /></div>
+          <div className="hero-in mt-12 text-left" style={i(4)}><HeroExploit play={revealed} stages={LOOP} /></div>
+            <HeroAnts />
         </div>
       </HeroStage>
 
