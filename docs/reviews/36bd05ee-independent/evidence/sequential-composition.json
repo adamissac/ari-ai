@@ -1,0 +1,64 @@
+{
+  "ba4ada0d2387a4f6fcb3b0adbfc65bfaf934ce25": {
+    "steps": [
+      {
+        "step": "01-pr412",
+        "sha": "709c75d7681deec15963544badc1feba0757349e",
+        "exit": 0,
+        "output": "1352a5cb68a4e85826363c7cb53f7f95ab3d670a\n",
+        "stderr": "",
+        "result_commit": "906fc2f8b2acfeb40e7514bb5c29fee89de78d02",
+        "result_tree": "1352a5cb68a4e85826363c7cb53f7f95ab3d670a",
+        "schema": "0.22.0"
+      },
+      {
+        "step": "02-pr458",
+        "sha": "ba7ba2d1217a842239520ed9e1791c94dfade3fc",
+        "exit": 0,
+        "output": "94ac90b89ece09df4bcb1b7784173f8cf5469a40\n",
+        "stderr": "",
+        "result_commit": "89d67e43a2051666d11cdebc379a44189b9cf109",
+        "result_tree": "94ac90b89ece09df4bcb1b7784173f8cf5469a40",
+        "schema": "0.23.0"
+      },
+      {
+        "step": "execution-reliability",
+        "sha": "93b4e79f7564d61b43c1a0a89e3edc80e45ec6ac",
+        "exit": 0,
+        "output": "d0b898880d642bb7e58e851e9f19edd49e24d8b3\n",
+        "stderr": "",
+        "result_commit": "d16397c5e0bec3884ceb825decca8dc8b966aeb5",
+        "result_tree": "d0b898880d642bb7e58e851e9f19edd49e24d8b3",
+        "schema": "0.23.0"
+      },
+      {
+        "step": "investigation-observability",
+        "sha": "931c1f200e2f2f54395684b5818bf5fc2b2d3572",
+        "exit": 0,
+        "output": "f866ef02d38154163ba35bce10db8a7d3164cd60\n",
+        "stderr": "",
+        "result_commit": "135e980b764d6be2d939503e6ef35d4a91181c18",
+        "result_tree": "f866ef02d38154163ba35bce10db8a7d3164cd60",
+        "schema": "0.24.0"
+      },
+      {
+        "step": "pilot-security-hardening",
+        "sha": "93e4a81b43045e61bedcf652550a458185be3d97",
+        "exit": 0,
+        "output": "688219b0ba34455057daaa4e3d2ff2a4058ab9ea\n",
+        "stderr": "",
+        "result_commit": "7a8dc6e38a2c1436f1f32e4f6901bd20dff5c3d0",
+        "result_tree": "688219b0ba34455057daaa4e3d2ff2a4058ab9ea",
+        "schema": "0.25.0"
+      },
+      {
+        "step": "customer-onboarding",
+        "sha": "5ff2254e5bb145a4553565620ce78ce5c65389b5",
+        "exit": 1,
+        "output": "d2d6402d28c0b616463a1e401c871bffa00cef4c\n100644 ed2c376717c2cfecca0b9f93d5c6b17b33b63f64 1\tdocs/planning/SESSION_HANDOFF.md\n100644 15e1f101daa8f140bb0cec23a75337067139c53b 2\tdocs/planning/SESSION_HANDOFF.md\n100644 f72af243e78226b7e7c0d69f9c5500837eccb017 3\tdocs/planning/SESSION_HANDOFF.md\n\nAuto-merging docs/planning/SESSION_HANDOFF.md\nCONFLICT (content): Merge conflict in docs/planning/SESSION_HANDOFF.md\n",
+        "stderr": ""
+      }
+    ],
+    "blocked": true
+  }
+}
