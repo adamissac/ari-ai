@@ -1,4 +1,4 @@
-.scene { position: absolute; inset-inline: 0; bottom: 96px; z-index: 1; height: 64px; opacity: 0.6; pointer-events: none; overflow: hidden; display: none; color: rgb(255 247 242 / 0.55); }
+.scene { position: absolute; inset-inline: 0; bottom: 80px; z-index: 1; height: 64px; opacity: 0.6; pointer-events: none; overflow: hidden; display: none; color: rgb(255 247 242 / 0.55); }
 @media (min-width: 768px) { .scene { display: block; } }
 .ground { position: absolute; left: 0; right: 0; bottom: 10px; height: 1px; background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.12) 15%, color-mix(in srgb, var(--color-brand) 45%, transparent) 88%, transparent); }
 
