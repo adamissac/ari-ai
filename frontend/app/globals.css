@@ -199,21 +199,22 @@ button.label-mono, a.label-mono, nav.label-mono, nav .label-mono {
 .hero-stage[data-covered] .hero-orb { animation-play-state: paused; }
 .hero-orbs { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; transform: translateY(calc(var(--scroll) * 160px)) scale(calc(1 + var(--scroll) * 0.15)); }
 /* The radial ember layers stay on transform-only timelines. */
-.hero-orb { position: absolute; border-radius: 9999px; opacity: 0.36; filter: blur(32px); will-change: transform;
+.hero-orb { position: absolute; border-radius: 9999px; opacity: 0.5; filter: blur(72px); will-change: transform;
   background: radial-gradient(closest-side, var(--orb), transparent 100%); }
-.hero-orb-a { width: 62%; aspect-ratio: 1; left: -16%; top: -48%; --orb: rgb(194 69 45 / 78%); animation: hero-drift-a 32s ease-in-out infinite alternate; }
-.hero-orb-b { width: 48%; aspect-ratio: 1; right: -14%; top: -8%; --orb: rgb(143 47 30 / 82%); animation: hero-drift-b 38s ease-in-out infinite alternate; }
-.hero-orb-c { width: 43%; aspect-ratio: 1; left: 24%; bottom: -46%; --orb: rgb(189 93 42 / 68%); animation: hero-drift-c 42s ease-in-out infinite alternate; }
-.hero-orb-d { width: 35%; aspect-ratio: 1; right: 20%; bottom: -34%; --orb: rgb(226 114 63 / 48%); animation: hero-drift-d 28s ease-in-out infinite alternate; }
-.hero-orb-e { width: 30%; aspect-ratio: 1; left: 42%; top: -40%; --orb: rgb(95 42 32 / 78%); animation: hero-drift-e 45s ease-in-out infinite alternate; }
+.hero-orb-a { width: 78%; height: 70%; left: -22%; top: -24%; --orb: rgb(194 69 45 / 80%); animation: hero-drift-a 26s ease-in-out infinite alternate; }
+.hero-orb-b { width: 64%; height: 82%; right: -20%; top: 4%; --orb: rgb(143 47 30 / 85%); animation: hero-drift-b 31s ease-in-out infinite alternate; }
+.hero-orb-c { width: 70%; height: 58%; left: 10%; bottom: -30%; --orb: rgb(189 93 42 / 72%); animation: hero-drift-c 34s ease-in-out infinite alternate; }
+.hero-orb-d { width: 52%; height: 64%; right: 6%; bottom: -26%; --orb: rgb(226 114 63 / 52%); animation: hero-drift-d 23s ease-in-out infinite alternate; }
+.hero-orb-e { width: 58%; height: 50%; left: 28%; top: -22%; --orb: rgb(95 42 32 / 80%); animation: hero-drift-e 37s ease-in-out infinite alternate; }
 .hero-glow { position: absolute; inset: 0; opacity: 0; transition: opacity 400ms var(--ease-quad);
   background: radial-gradient(420px circle at var(--mx) var(--my), color-mix(in srgb, var(--color-brand) 38%, transparent), transparent 70%); }
 .hero-stage[data-pointer="on"] .hero-glow { opacity: 1; }
-@keyframes hero-drift-a { to { transform: translate(18%, 22%) scale(1.15); } }
-@keyframes hero-drift-b { to { transform: translate(-22%, 16%) scale(0.9); } }
-@keyframes hero-drift-c { to { transform: translate(-16%, -24%) scale(1.2); } }
-@keyframes hero-drift-d { to { transform: translate(-15%, -20%) scale(1.12); } }
-@keyframes hero-drift-e { to { transform: translate(20%, 18%) scale(0.88); } }
+/* Lava-lamp drift: each blob wanders, stretches and turns, so no round edge holds still. */
+@keyframes hero-drift-a { 0% { transform: translate(0, 0) rotate(0deg) scale(1, 1); } 33% { transform: translate(22%, 14%) rotate(28deg) scale(1.25, 0.85); } 66% { transform: translate(8%, 34%) rotate(-12deg) scale(0.9, 1.2); } 100% { transform: translate(30%, 6%) rotate(40deg) scale(1.15, 1); } }
+@keyframes hero-drift-b { 0% { transform: translate(0, 0) rotate(0deg) scale(1, 1); } 33% { transform: translate(-26%, 10%) rotate(-30deg) scale(0.85, 1.2); } 66% { transform: translate(-12%, -16%) rotate(18deg) scale(1.2, 0.9); } 100% { transform: translate(-34%, 18%) rotate(-36deg) scale(1, 1.1); } }
+@keyframes hero-drift-c { 0% { transform: translate(0, 0) rotate(0deg) scale(1, 1); } 33% { transform: translate(18%, -22%) rotate(24deg) scale(1.2, 0.9); } 66% { transform: translate(-14%, -30%) rotate(-20deg) scale(0.9, 1.25); } 100% { transform: translate(10%, -12%) rotate(32deg) scale(1.1, 1); } }
+@keyframes hero-drift-d { 0% { transform: translate(0, 0) rotate(0deg) scale(1, 1); } 33% { transform: translate(-30%, -18%) rotate(-26deg) scale(1.25, 0.85); } 66% { transform: translate(-8%, -36%) rotate(14deg) scale(0.85, 1.2); } 100% { transform: translate(-40%, -24%) rotate(-30deg) scale(1.1, 1.05); } }
+@keyframes hero-drift-e { 0% { transform: translate(0, 0) rotate(0deg) scale(1, 1); } 33% { transform: translate(24%, 26%) rotate(30deg) scale(0.85, 1.2); } 66% { transform: translate(-18%, 18%) rotate(-24deg) scale(1.2, 0.9); } 100% { transform: translate(14%, 34%) rotate(20deg) scale(1, 1.1); } }
 @keyframes ember-breathe { from { opacity: 0.22; } to { opacity: 0.58; } }
 .hero-headline .hero-line { position: relative; isolation: isolate; }
 .hero-headline .hero-line::before {
@@ -415,7 +416,8 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .story-svg-root { fill: #ff8a75; }
 .story-svg-ok { fill: #6fd39f; }
 .story-panel[data-step="0"] .story-svg-node, .story-panel[data-step="1"] .story-svg-node, .story-panel[data-step="2"] .story-svg-node, .story-panel[data-step="3"] .story-svg-node { opacity: 1; stroke: #fff; }
-.story-panel:not([data-step="0"]) .story-svg-path { opacity: 1; }
+.story-panel .story-svg-path { opacity: 1; transition: opacity 400ms, stroke 400ms; }
+.story-panel .story-svg-node[data-pending] { opacity: 0; }
 .story-panel[data-step="2"] .story-svg-node[data-root] { fill: var(--color-brand); stroke: #ff8a75; transform-box: fill-box; transform-origin: center; animation: story-pulse 1.4s ease-in-out infinite; }
 .story-panel[data-step="2"] .story-svg-root { opacity: 1; }
 .story-panel[data-step="3"] .story-svg-path { stroke: #6fd39f; }
@@ -1833,12 +1835,11 @@ body:has(.commit-stage) main { color: #fff; }
 .marketing-atmosphere .hero-ink::after { display: none; }
 .marketing-atmosphere .hero-cover::after,
 .marketing-atmosphere .bleed::after { display: none; }
-.marketing-atmosphere > .hero-full {
-  background:
-    radial-gradient(68% 58% at 50% 100%, rgb(194 69 45 / 20%), transparent 72%),
-    radial-gradient(50% 45% at 88% 15%, rgb(143 47 30 / 14%), transparent 72%),
-    transparent;
-}
+/* The hero covers the page grid and lets only its drifting blobs carry colour: no fixed hot spot. */
+:root .marketing-atmosphere > .hero-full.hero-ink { background: linear-gradient(180deg, #1c1210 0%, #221410 55%, #2e1610 100%); }
+/* Pricing's header is part of the page, not a separate tinted band. */
+:root main .marketing-atmosphere > header.hero-ink { background: transparent; box-shadow: none; -webkit-mask-image: none; mask-image: none; }
+:root main .marketing-atmosphere > header.hero-ink::before { display: none; }
 .marketing-atmosphere .pricing-cta h2 {
   text-shadow: 0 0 18px rgb(246 112 78 / 45%), 0 0 46px rgb(194 69 45 / 28%);
 }
