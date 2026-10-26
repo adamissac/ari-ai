@@ -153,9 +153,8 @@ and regenerates JSON/TypeScript. Migration 0014 resets existing repository switc
 Per-commit full runs require a nonempty `GITHUB_AUTO_COMMIT_AUTHORS` allowlist; both
 the signed push sender and GitHub-attributed commit author must match it. With the
 empty Railway default, enabled repositories use the legacy monitoring policy above.
-Attribution alone is email-derived, not authorization. Automatic starts count all
-project triggers toward 10 assessments per rolling hour and 50 per rolling day;
-manual starts count only manual-trigger assessments against those limits. A $50/day
+Attribution alone is email-derived, not authorization. Manual and automatic starts
+share one project pool of 10 assessments per rolling hour and 50 per rolling day. A $50/day
 spend cap still applies globally across all triggers and projects. Over-quota
 automatic requests are recorded as skipped, not deferred. Full runs use the normal
 project budget, clamped to operator caps. Monitoring and approved sandbox scope

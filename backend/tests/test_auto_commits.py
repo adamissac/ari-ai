@@ -354,7 +354,7 @@ def test_spoofed_author_does_not_authorize_an_unlisted_push_sender(automatic):
     assert records() == []
 
 
-def test_ten_mixed_assessments_skip_automatic_and_allow_manual_start(automatic):
+def test_ten_mixed_assessments_fill_the_shared_pool_for_both_triggers(automatic):
     from shared.base import utcnow
 
     alice, bob, ids, _ = automatic
@@ -385,8 +385,9 @@ def test_ten_mixed_assessments_skip_automatic_and_allow_manual_start(automatic):
     assert rrq["reason"] == "skipped: project review limit reached (10/hour)"
     assert deferred_jobs == 0
 
+    # One pool: the same ten runs also hold back a manual start.
     response = manual_start(alice, ids, "f" * 40)
-    assert response.status_code == 202, response.text
+    assert response.status_code == 429, response.text
 
 
 def test_over_limit_hourly_assessments_report_actual_reset(automatic):
@@ -446,7 +447,7 @@ def test_nine_recent_assessments_allow_next_start(automatic, start_kind):
     assert count == 10
 
 
-def test_manual_start_ignores_monitoring_assessments_for_daily_quota(automatic):
+def test_monitoring_assessments_count_toward_the_manual_daily_quota(automatic):
     from datetime import timedelta
 
     from shared.base import utcnow
@@ -462,30 +463,30 @@ def test_manual_start_ignores_monitoring_assessments_for_daily_quota(automatic):
 
     response = manual_start(alice, ids, "f" * 40)
 
-    assert response.status_code == 202, response.text
+    assert response.status_code == 429, response.text
+    assert "50 per day" in response.json()["error"]["message"]
 
 
-def test_manual_quota_reset_uses_manual_assessments_only(automatic):
+def test_manual_quota_reset_counts_the_shared_pool(automatic):
     from datetime import datetime, timedelta
 
     from shared.base import utcnow
 
     alice, bob, ids, _ = automatic
     assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
-    monitoring_seeded_at = utcnow() - timedelta(hours=20)
-    manual_seeded_at = utcnow() - timedelta(hours=2)
-    manual_created_at = [manual_seeded_at + timedelta(seconds=index) for index in range(52)]
+    start = utcnow() - timedelta(hours=20)
+    monitoring_created_at = [start + timedelta(seconds=index) for index in range(30)]
     seed_assessments(
         alice,
         ids,
-        [AssessmentTrigger.monitoring] * 50,
-        created_at=monitoring_seeded_at,
+        [AssessmentTrigger.monitoring] * 30,
+        created_at=monitoring_created_at,
     )
     seed_assessments(
         alice,
         ids,
-        [AssessmentTrigger.manual] * 52,
-        created_at=manual_created_at,
+        [AssessmentTrigger.manual] * 20,
+        created_at=utcnow() - timedelta(hours=2),
     )
 
     response = manual_start(alice, ids, "f" * 40)
@@ -493,8 +494,9 @@ def test_manual_quota_reset_uses_manual_assessments_only(automatic):
     assert response.status_code == 429
     error = response.json()["error"]
     assert error["code"] == "RATE_LIMITED"
-    assert datetime.fromisoformat(error["details"]["resets_at"]) == manual_created_at[
-        2
+    # The oldest run in the shared pool (an automatic one) frees the next slot.
+    assert datetime.fromisoformat(error["details"]["resets_at"]) == monitoring_created_at[
+        0
     ] + timedelta(days=1)
 
 

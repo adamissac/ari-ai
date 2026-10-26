@@ -127,7 +127,7 @@ def test_concurrent_starts_cannot_overshoot_the_project_quota(client_factory, se
 
     def start(index: int) -> None:
         with transaction() as conn:
-            if check_project_quota(conn, ids["project"], utcnow(), manual=True) is not None:
+            if check_project_quota(conn, ids["project"], utcnow()) is not None:
                 results.append(False)
                 return
             time.sleep(0.3)  # widen the race window between the check and the insert

@@ -20,7 +20,7 @@ explicit exclusion (bottom of document), not a "maybe".
 |---|---|---|
 | Manual assessment budget | 400k tokens / **$10** / 1,800 s wall clock per run | `shared/shared/tenancy.py` `Budget` defaults |
 | Monitoring-run budget | 150k tokens / **$3** / 900 s per push-triggered run | `TriggerPolicy.monitoring_budget` default |
-| Project review quotas | Automatic starts count all triggers toward 10/hour and 50/day; manual starts count only manual-trigger assessments | `project_assessments_per_hour`, `project_assessments_per_day` |
+| Project review quotas | Manual and automatic starts share one pool of 10/hour and 50/day | `project_assessments_per_hour`, `project_assessments_per_day` |
 | API rate limit | 60 mutations/min and 600 GET/HEAD reads/min per user (in-process limiter) | `backend/backend/api/deps.py` |
 | Automatic (push-triggered) runs | Count all project triggers; over-quota runs are recorded as skipped and not retried | `backend/backend/quota.py`, `auto_commits.py` |
 | Global daily assessment spend | **$50/day across all projects and triggers**; over-cap starts are blocked | `settings.assessments_usd_per_day`, `backend/backend/quota.py` |

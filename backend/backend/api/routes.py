@@ -1336,7 +1336,7 @@ def start_assessment(
                     503,
                 )
             commit_sha = commits[0]["sha"]
-        quota = check_project_quota(conn, project_id, utcnow(), manual=True)
+        quota = check_project_quota(conn, project_id, utcnow())
         if quota is not None:
             raise ApiError(
                 ErrorCode.RATE_LIMITED,

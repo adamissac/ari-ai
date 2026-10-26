@@ -362,13 +362,7 @@ def test_ten_mixed_assessments_skip_automatic_and_block_manual_start(automatic):
     assert rrq["reason"] == "skipped: project review limit reached (10/hour)"
     assert deferred_jobs == 0
 
-    # #607: manual starts count manual-trigger assessments only — 6 manual
-    # seeds are below the 10/hour manual limit even though the automatic quota
-    # (which counts every trigger) is already exhausted.
-    response = manual_start(alice, ids, "f" * 40)
-    assert response.status_code == 202
-
-    seed_assessments(alice, ids, [AssessmentTrigger.manual] * 4, created_at=seeded_at)
+    # One shared pool (C10): the 6 manual + 4 automatic runs also block a manual start.
     response = manual_start(alice, ids, "f" * 40)
     assert response.status_code == 429
     error = response.json()["error"]
