@@ -80,7 +80,7 @@ test('Defense Lab shows the recorded defender in its live view with held-out sco
   // The overview command center was merged into the main replay (one game, shown once).
   await page.goto('/lab');
   await expect(page.getByTestId('lab-command')).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Live view' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Network view' })).toBeVisible();
   await expect(page.getByTestId('lab-caveat')).toHaveText('Recorded run · test network');
   await expect(page.getByTestId('score-compromise_rate')).toContainText(/\d+\.\d%/);
 });

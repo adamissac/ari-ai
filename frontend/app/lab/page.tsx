@@ -35,8 +35,7 @@ export default function DefenseLabPage() {
   const defenderEpisodes = readyBundle?.episodes.filter(e => e.policy === 'ddqn') ?? [];
   const scenarios = [...new Set(defenderEpisodes.map(e => e.scenario))];
   const selectedScenario = scenarios.includes(scenarioId) ? scenarioId : scenarios[0] ?? '';
-  const episode = defenderEpisodes.find(e => e.scenario === selectedScenario && !e.compromised)
-    ?? defenderEpisodes.find(e => e.scenario === selectedScenario);
+  const episode = defenderEpisodes.find(e => e.scenario === selectedScenario)
   const scenario = readyBundle?.scenarios.find(s => s.name === episode?.scenario);
   const step = episode?.steps.find(s => s.t === currentStep) ?? episode?.steps[0];
   const openAlerts = step?.nodes.filter(node => observedState(node) === 'attention').length ?? 0;
@@ -174,8 +173,7 @@ function SignedInDefenseProjects() {
 function Lab({ data, scenarioId, onStep }: { data: BundleResponse; scenarioId: string; onStep: (t: number) => void }) {
   const { bundle, provenance } = data;
   const defenderEpisodes = bundle.episodes.filter(e => e.policy === 'ddqn');
-  const episode = defenderEpisodes.find(e => e.scenario === scenarioId && !e.compromised)
-    ?? defenderEpisodes.find(e => e.scenario === scenarioId);
+  const episode = defenderEpisodes.find(e => e.scenario === scenarioId)
   const scenario = bundle.scenarios.find(s => s.name === episode?.scenario);
   return (
     <div className="flex flex-col gap-16">
@@ -316,7 +314,7 @@ function LiveView({ episode, scenario, onStep }: { episode: LabEpisode | undefin
   return (
     <section aria-labelledby="replay-title">
       <p className="lab-eyebrow">Defender activity</p>
-      <h2 id="replay-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Live view</h2>
+      <h2 id="replay-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Network view</h2>
       {!episode || !scenario ? <div className="mt-4"><Empty>This bundle has no recorded episodes.</Empty></div> : (
         <div className="lab-replay-card mt-6 p-5">
           <ReplayStage
