@@ -2162,6 +2162,14 @@ remains OFF pending manual installation and protected credential/session setup.
 - Recaptured setup steps 3 and 7 at 1440×900 and 390×844 in
   `~/research/onboarding/shots/`. The existing `:3101` development server remained available.
 
+### Classic UI restoration
+
+- Restored the seven-step setup and console flows in the pre-redesign style, with a continuous night surface, responsive navigation, and overflow/spacing fixes.
+- Expectations rows use composite keys; the seeded route audit emitted no duplicate-key warnings. The earlier warning's precise emitting record/component was not isolated beyond this runtime check.
+- `/home/ubuntu/classic-audit/after/metrics.json` records 62 route/viewport captures. Every route fit within its viewport and no duplicate-key warning occurred. The only two resource errors were `POST /api/analyze` 503 responses on commit detail at both widths, confirmed from browser response URLs; this is the known unavailable-analysis path. Full screenshots and stitched sheets are under `/home/ubuntu/classic-audit/after/`, including expectations at both widths.
+- Lint, typecheck, frontend unit tests (93 files / 403 tests), transport tests (36), and build passed. The selected E2E set had 19/23 pass before correcting four stale landing-header assertions; afterward `landing.spec.ts` passed all 8 tests, and the other 15 selected tests had already passed.
+- The review UI is served at `http://localhost:3202`; the local API at `localhost:59039` is the manual test stack. Its assessments use TEST-ONLY scripted model transports and do not establish live-model provenance.
+
 ### Independent RC4 review — 2026-10-25
 
 Pinned product 6a72949efa7c0a2d3233eb6884bb7a23dfe71ced; upstream e41c9dc22e6536463cdab9be6a2a4cd76302c866. Original F1–F10/N1–N7 probes pass. New P2 N8: quoted dictionary/typed password literals survive redacted diff storage and actual project-viewer download; unrelated user remains denied. Independent Docker run 40202085130: 182 passed, 5 failed, 0 skipped (four N8 checks plus newer VerifyEvidence constructor incompatibility); fail-closed runner cleanup error retained. Eight-step stack matches RC4 exactly in production on eea084bc; conflicts at S1 on latest main. Original candidate CI 21 success/1 optional live skip verified. No production edits/merge/deploy/approval. Report: docs/reviews/rc4-independent/REPORT.md. Overall/customer/merge NO-GO; known-finding-only GO on pinned product.
@@ -2169,8 +2177,20 @@ Pinned product 6a72949efa7c0a2d3233eb6884bb7a23dfe71ced; upstream e41c9dc22e6536
 ### Repeat RC4/N8 independent review — 2026-10-25
 
 Pin 4fdcf10c vs main e41c9dc2; tip 0098f1d5 report-only. Original F1–F10/N1–N8 pass; upstream composition and VerifyEvidence blockers closed. New N9/P2: annotation regex crosses semicolon into another statement and corrupts non-secret source/stored diff. Final isolated run 40210138609: 187 pass, 3 fail, zero skip (two N9 checks and retained stale legacy GET/write-limit test); independent split-limit control passes. Collector cleanup error retained. Product CI succeeds; missing paid Codex audit is not a product finding. NO-GO pending N9 and final gates. No production edits/merge/deploy/approval. Report: docs/reviews/rc4-n8-independent/REPORT.md.
-
 ### 2026-10-26 — stop polling after a 401
 
 - `useResource` now stops scheduled polling after an API 401; other refresh failures keep polling, and `reload()` retries.
 - Added fake-timer coverage for 500 polling, 401 stopping, and reload after 401. No task ID exists.
+
+### Mobile findings and assessment history — 2026-10-25
+
+- Findings and project assessment history render stacked cards below 640px while keeping desktop tables at `sm` and up. Setup's “See your reviews” link targets the project page's `#assessments` section; project-scoped links were checked against existing routes.
+- Verification passed: lint (0 errors; one existing unused-variable warning), typecheck, setup-resume unit tests (5), build, and journey + pages E2E (9).
+- 390px screenshots: `/home/ubuntu/classic-audit/after3/findings-390.png` and `/home/ubuntu/classic-audit/after3/project-overview-390.png`. Local review server: `http://localhost:3204`.
+
+### Repository-scoped project workspace — 2026-10-26
+
+- Added repository selection and top-level project tabs, repo-scoped Analytics and Findings, and the Commits workspace with selected-commit review, agent runs, and repo-filtered assessment history. Repository management and assessment actions now use Settings and Commits routes.
+- E2E coverage exercises the seeded `acme/payments-lite` repository at desktop and narrow mobile widths, including the selected commit's Code review and 7 agents tabs. Browser screenshots are in `/home/ubuntu/classic-audit/repo-workspace/`: `analytics-{1440,390}-{viewport,full}.png`, `commits-code-review-{1440,390}-{viewport,full}.png`, `commits-7-agents-{1440,390}-{viewport,full}.png`, and `more-menu-390-{viewport,full}.png`.
+- Verification passed: frontend lint (0 errors; one existing unused-variable warning), typecheck, unit tests (96 files / 414 tests), production build, journey E2E (3), pages E2E (7), interface E2E, and commit-workspace E2E (1). The setup-resume unit test passed 5/5.
+- The local stack is served at `http://localhost:3205` with API at `localhost:59039`. E2E assessments use the test-only scripted model transport; these captures do not establish live-model provenance.
