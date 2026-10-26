@@ -121,8 +121,16 @@ test('repo analytics and commits stay scoped to seeded payments-lite data', asyn
     for (const agent of ['scout', 'probe', 'trace', 'diagnose', 'patch', 'verify', 'fortify']) {
       await expect(agents.getByTestId(`agent-${agent}`)).toBeVisible();
     }
+    const agentMap = page.getByTestId('commit-agent-map');
+    await expect(agentMap.getByTestId('commit-agent-summary')).toBeVisible();
+    const replayButton = agentMap.getByRole('button', { name: 'Watch the replay' });
+    await expect(replayButton).toHaveAttribute('aria-expanded', 'false');
+    await replayButton.click();
+    const replayMap = agentMap.locator('.amap-grid-compact');
+    await expect(replayMap).toBeVisible();
     if (width === 1440) {
-      const bounds = await page.locator('.amap-grid-compact').evaluate(root => ({
+      await replayMap.scrollIntoViewIfNeeded();
+      const bounds = await replayMap.evaluate(root => ({
         mapBottom: root.querySelector('.amap-map')!.getBoundingClientRect().bottom,
         inspector: root.querySelector('.amap-inspect')!.getBoundingClientRect(),
       }));
@@ -131,7 +139,7 @@ test('repo analytics and commits stay scoped to seeded payments-lite data', asyn
       expect(bounds.inspector.bottom).toBeLessThanOrEqual(900);
     }
     if (width === 390) {
-      const phasesFit = await page.locator('.amap-phases-compact').evaluate(element => {
+      const phasesFit = await agentMap.locator('.amap-phases-compact').evaluate(element => {
         const bounds = element.getBoundingClientRect();
         return Array.from(element.querySelectorAll('button')).every(button => {
           const buttonBounds = button.getBoundingClientRect();
