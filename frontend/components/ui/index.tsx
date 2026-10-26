@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { cloneElement, isValidElement, useId, type ButtonHTMLAttributes, type ReactElement, type ReactNode } from 'react';
+import { ContractSkewHint } from '@/components/contract-skew';
 import { describeError } from '@/lib/api';
 import type { Resource } from '@/lib/use-resource';
 import type { StatusView, Tone } from '@/lib/status';
@@ -86,6 +87,7 @@ export function ErrorState({ error, onRetry, context }: { error: unknown; onRetr
           {e.code && <>code {e.code}</>}{e.requestId && <> · request {e.requestId}</>}
         </p>
       )}
+      {e.kind === 'protocol' && <ContractSkewHint />}
       {onRetry && <Button className="mt-2" onClick={onRetry}>Retry</Button>}
     </div>
   );
