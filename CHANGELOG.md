@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Reframed Defense Lab as a recorded network-defense console with recommendation-only status and local demo approvals.
 - Signed-out pages stop polling the API every few seconds after a 401.
 - Restyled the landing problem-timeline labels and checked-count chip as ember glass.
 - Added a warm, slow-moving landing hero, continuous ember atmosphere, eased problem-story progression, glass walkthrough/pricing panels, and a reduced-motion static fallback.

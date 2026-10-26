@@ -3,6 +3,15 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-10-26 — Devin (agent, Adam) — Defense Console
+- Did: Reframed `/lab` around the recorded trained-defender view, added live status counts and scenario/run selectors, replaced the replay explanation with activity and demo-only approval rows, and updated focused tests and docs.
+- State of the code: `feat/adam/defense-console` contains the console refinement; approvals only update local presentation state and make no API calls.
+- Commands run and results: Verification and push details are reported with the branch handoff.
+- Decisions made (ADR links): Attacker ground truth stays hidden in the console view; disruptive recommendations are explicitly marked demo-only when approved.
+- Assumptions / open questions (RQ links): None.
+- Next steps: Product Tour work proceeds on its separate branch.
+- Warnings for the next session: No CI checks are monitored after push.
+
 ### 2026-10-26 — Devin (agent, Adam) — runtime pytest Verify audit
 - Did: reproduced import-time `pytest.skip` and dynamic hook `__code__` swaps
   through `apply_fresh`, a real local sandbox suite run, and `compute_verdict`;
