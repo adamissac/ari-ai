@@ -1,0 +1,19 @@
+{
+  "candidate_sha": "36bd05eeebd101064175f33726934ead35515b4b",
+  "canonical_main_sha": "ba4ada0d2387a4f6fcb3b0adbfc65bfaf934ce25",
+  "independent_tests": {
+    "passed": 194,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "exit_code": 0,
+    "run_id": 40291575442
+  },
+  "original_F1_F10_N1_N9": "PASS",
+  "upstream_629": "PASS",
+  "new_findings": [],
+  "direct_main_merge": "CLEAN; main ancestor; candidate tree62c66fcd219ff6202e3351314808942cc6426763",
+  "integrated_candidate_verdict": "GO; technical recommendation, no approval submitted",
+  "alternative_sequential_transfers": "HOLD: documentary conflict at S6; S8 test conflict after documentary-only simulation",
+  "customer_deployment": "NOT APPROVED"
+}

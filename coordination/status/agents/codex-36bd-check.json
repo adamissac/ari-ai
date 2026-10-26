@@ -1,0 +1,15 @@
+{
+  "agent": "codex-36bd-check",
+  "human_owner": "Alan",
+  "state": "READY_FOR_REVIEW",
+  "workstream": "exact integrated 36bd05ee merge-readiness check",
+  "branch": "codex/check-36bd05ee",
+  "latest_sha": "f6883835",
+  "tests": "194pass/0fail/0skip; successful run40291575442; same-SHA product CI passed",
+  "verdict": "GO exact integrated candidate; technical recommendation only",
+  "blockers": [
+    "Customer deployment not approved",
+    "Alternative sequential transfers still need documentary/test conflict resolution"
+  ],
+  "next_action": "Release owner may use exact integrated candidate through normal protected-branch process; no approval/merge/deploy executed"
+}
