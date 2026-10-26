@@ -72,7 +72,6 @@ function LockIcon() {
     <path d="M5 7V4.8a3 3 0 0 1 6 0V7" />
   </svg>;
 }
-
 const matchesRoute = (pathname: string, base: string, route: string) =>
   pathname === `${base}${route}` || pathname.startsWith(`${base}${route}/`);
 

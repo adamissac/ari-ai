@@ -3,10 +3,10 @@
   "human_owner": "Adam",
   "workstream": "frontend console refinement",
   "state": "READY_FOR_REVIEW",
-  "task": "Console sticky header/tab band + Live Defense 320px overflow containment; main merge complete",
-  "branch": "feat/adam/console-polish",
-  "latest_sha": "1e914c0447f1150b4d044736e2cc34cffbe0d727",
-  "prs": [646, 649],
+  "task": "Merge origin/main into feat/adam/setup-walkthrough, preserving setup behavior and main updates",
+  "branch": "feat/adam/setup-walkthrough",
+  "latest_sha": "4afaaf5197aa6fd582fd6193a3158eb9a670e67b",
+  "prs": [649],
   "claims": [
     "frontend/components/project.tsx",
     "frontend/app/globals.css",
@@ -16,10 +16,8 @@
     "docs/planning/SESSION_HANDOFF.md"
   ],
   "depends_on": [],
-  "blockers": [
-    "Do not edit frontend/components/live-defense/*; Alan's lane retains that claim."
-  ],
-  "last_update_utc": "2026-10-26T09:12:39Z",
-  "tests": "Console merge lint passed (0 errors; one existing first-responder.tsx:173 warning), typecheck passed, and unit tests passed (99 files / 419 tests). Setup integration commit e45c194f passed lint (same warning), typecheck, unit tests (101 files / 425 tests), and production build. PR checks were not awaited.",
-  "next_action": "Await review and CI on #646 and #649; console-polish was merged into setup-walkthrough at e45c194f."
+  "blockers": [],
+  "last_update_utc": "2026-10-26T10:21:28Z",
+  "tests": "Transport npm ci/build passed; frontend lint and typecheck passed; Vitest passed 102 files / 436 tests. Vitest emitted a non-fatal jsdom HTMLCanvasElement getContext warning. Frontend dependencies were installed with npm ci after the initial lint attempt found eslint missing.",
+  "next_action": "Await CI and review on #649; the main integration is pushed."
 }
