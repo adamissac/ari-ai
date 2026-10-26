@@ -6,6 +6,15 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Audit follow-up (F06/F08/F10/F17/F21/F22/F24/F25/F27):
+  - Uninstalling the GitHub App or removing a repository from it now also removes the repository from the picker. A confirmed missing personal installation clears the user's own repositories. The picker says when its access list is from the last sign-in.
+  - A newly connected repository joins the project that already holds its owner's repositories, so a renamed project is no longer bypassed. `projectForRepository` reads `project_id` directly.
+  - `GET /repositories/{id}/automation-status` gives one ready/off/blocked answer with every reason. The reasons cover the repository switch, project monitoring, change types, scope, quota, GitHub access and the operator author allowlist. It replaces "Monitoring on/off" in the project header.
+  - Onboarding counts only code-review steps plus the saved setup, and lists Defense Lab steps as optional.
+  - Approvals default to the selected repository (`?repo_id=`), with a Whole project tab.
+  - Every `Async` view and the project shell label stale data with a Retry. Repository connections refresh every 30s.
+  - Manual and automatic starts now share one 10/hour, 50/day project pool (C10).
+  - A contract rejection caused by a deploy now offers a page reload. Validation stays strict.
 - Fixed state the UI reported that did not match the database (full-audit findings F02–F05, F07, F09, F10, F14, F15, F18–F20, F23, F26). Finished setup now shows a "Setup complete" view and is never reopened at "Finish setup". Only a finished manual review counts as evidence that an older repository was already set up; failed, cancelled or automatic runs do not. Disconnected repositories are labelled Disconnected with a Reconnect action everywhere (picker, connect pages, Settings, onboarding). The repository switcher lists them only under "history only". `GET /projects/{id}/assessments` and `/findings` accept `repo_id`, so one repository's history is never hidden behind another repository's first page. Quota checks hold a per-project advisory lock, so concurrent starts cannot overshoot the cap. A repeated connect of a live repository returns it instead of 409. "Run a review" keeps the selected repository. The name-only connect form appears only in development builds. Direct default-branch delivery needs `ALLOW_AUTO_DELIVERY` (off outside development/test); an `auto` setting saved earlier now opens a PR. Owners can retry a failed or invalid build-recipe proposal (`POST /repositories/{id}/recipe/retry`), and recipe jobs skip disconnected repositories.
 - Repository setup answers and completion are now saved on the server (`GET`/`PATCH /api/v1/repositories/{id}/setup`), so setup is never repeated after a reload, sign-out, or on another browser; browser-only progress from earlier builds migrates once. Disconnected repositories are labelled, never auto-selected, and cannot be set up.
 - Signed-out pages stop polling the API every few seconds after a 401.
