@@ -456,3 +456,31 @@ def test_reconnect_reattaches_a_live_repository_whose_grant_was_detached(
     assert alice.post(f"/api/v1/repositories/{rid}/reconnect").status_code == 200
     repo = alice.get(f"/api/v1/repositories/{rid}").json()
     assert repo["disconnected"] is False and repo["installation_id"] == 42
+
+
+def test_connect_rechecks_the_users_own_github_access_live(client_factory, monkeypatch):
+    from backend.settings import get_settings
+
+    alice = client_factory("alice")
+    with transaction() as conn:
+        store_repo_access(conn, alice.me["user"]["id"], [ACME])  # sign-in snapshot says yes
+    production = get_settings().model_copy(update={"app_env": "production"})
+    monkeypatch.setattr("backend.api.github_repos.get_settings", lambda: production)
+    seen: dict[str, str] = {"permission": "read"}
+
+    class GitHub:
+        def installation_repositories(self, installation_id):
+            return [ACME]  # the App still reaches the repository
+
+        def collaborator_permission(self, installation_id, full_name, login):
+            seen["login"] = login
+            return seen["permission"]
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", GitHub)
+    pid = _project(alice)
+    body = {"full_name": "acme/shop", "installation_id": 42, "default_branch": "main"}
+    refused = alice.post(f"/api/v1/projects/{pid}/repositories", json=body)
+    assert refused.status_code == 403 and "write access" in refused.text
+    assert seen["login"] == "alice"
+    seen["permission"] = "write"
+    assert alice.post(f"/api/v1/projects/{pid}/repositories", json=body).status_code == 201

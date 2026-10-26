@@ -86,6 +86,9 @@ export function RouteTransition() {
     r.timers.push(window.setTimeout(() => { if (run.current === r && r.arrived === null) r.arrived = performance.now(); }, GIVE_UP_MS));
   }, [lift, stop]);
 
+  // Unmounting mid-transition must not leave the animation frame or timers running.
+  useEffect(() => stop, [stop]);
+
   // A click on a link into another part of the site starts the veil before Next navigates.
   useEffect(() => {
     const onClick = (e: MouseEvent) => {

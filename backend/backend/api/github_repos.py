@@ -63,6 +63,44 @@ def can_connect(conn: Connection, user_id: str, full_name: str, installation_id:
     )
 
 
+_CAN_GRANT = frozenset({"admin", "maintain", "write"})
+
+
+def verify_user_access(full_name: str, installation_id: int, login: str | None) -> None:
+    """Confirm with GitHub — right now — that `login` may still write to `full_name`.
+
+    The sign-in snapshot says what the user could reach then; it outlives a removal from the
+    organization or the repository. Granting Ari access to a repository needs write or higher
+    today. Dev/test identities have no real GitHub account, so the snapshot stands there.
+    """
+    if get_settings().is_dev:
+        return
+    if not login:
+        raise ApiError(
+            ErrorCode.FORBIDDEN, "sign in with GitHub again to connect repositories", 403
+        )
+    try:
+        permission = GitHubApp().collaborator_permission(installation_id, full_name, login)
+    except GitHubNotConfigured as exc:
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE,
+            "GitHub access can't be verified right now (GitHub App not configured)",
+            503,
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE,
+            "GitHub could not confirm your access to the repository right now — try again",
+            503,
+        ) from exc
+    if permission not in _CAN_GRANT:
+        raise ApiError(
+            ErrorCode.FORBIDDEN,
+            "GitHub no longer gives you write access to this repository",
+            403,
+        )
+
+
 def verify_installation_access(full_name: str, installation_id: int) -> None:
     """Confirm with GitHub — right now — that `installation_id` still grants `full_name`.
 

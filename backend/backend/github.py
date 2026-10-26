@@ -193,6 +193,19 @@ class GitHubApp:
         r.raise_for_status()
         return r.json()
 
+    def collaborator_permission(self, installation_id: int, full_name: str, login: str) -> str:
+        """The user's current effective permission on the repository (admin, maintain, write,
+        triage, read or none); a 404 means GitHub knows no access for them."""
+        try:
+            body = self._get(
+                installation_id, f"/repos/{full_name}/collaborators/{login}/permission"
+            )
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                return "none"
+            raise
+        return str(body.get("role_name") or body.get("permission") or "none")
+
     def user_installation(self, login: str) -> dict[str, Any] | None:
         """Return this App's installation for a GitHub user, if one exists."""
         r = self._client.get(
