@@ -2686,6 +2686,11 @@ Product 45c7cd6d; observed tip 9672cc60. Tested main 59cd0b62; final main edfa9b
 - Verification passed: frontend lint (0 errors; one existing unused-variable warning), typecheck, unit tests (96 files / 414 tests), production build, journey E2E (3), pages E2E (7), interface E2E, and commit-workspace E2E (1). The setup-resume unit test passed 5/5.
 - The local stack is served at `http://localhost:3205` with API at `localhost:59039`. E2E assessments use the test-only scripted model transport; these captures do not establish live-model provenance.
 
+### Independent b6d5108b check — 2026-10-26
+
+Exact b6d5108b6f0678a6af9546f60d28508716cc4982: 194 pass/0 fail/0 skip, exit0, successful isolated run40285189840. Original F1–F10/N1–N9 and #629 pass; no new security finding. Same-SHA product CI executed backend1317/16skip, security839/23skip, frontend405 unit +46 browser pass. Security GO for checked pin. Main ba4ada0d now includes #638; actual merge conflicts in project.tsx, demo-recovery.spec.ts, project-navigation.test.tsx and handoff docs; canonical merge HOLD pending reconciliation/full resulting-SHA CI. No production fixes/merge/deploy/approval/paid calls. Report: docs/reviews/b6d5108b-independent/REPORT.md.
+||||||| ba4ada0d
+
 ### Landing motion and pricing atmosphere — 2026-10-26
 
 - Replaced the headline sweep with a reduced-motion-safe ember glow; added five transform-driven lava-lamp blobs, a fixed landing/pricing atmosphere, an eased longer problem chapter, warm-glass walkthrough and pricing cards, and low-opacity decorative vignettes. The hero ant colony remains.

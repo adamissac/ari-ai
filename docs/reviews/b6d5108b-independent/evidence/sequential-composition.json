@@ -1,0 +1,96 @@
+{
+  "edfa9b8bfb54cae54c2281e42d2989f60cf7ef70": {
+    "steps": [
+      {
+        "step": "01-pr412",
+        "sha": "8f2390f3a0113afa70e0e6aaac3c28c1ada1c1d7",
+        "exit": 0,
+        "output": "0c41dc3e9308b75a4bfd3924b8dbb9feb7b12821\n",
+        "stderr": "",
+        "result_commit": "2e64f91e1fa4ed661db0b6da114f51d08fb34952",
+        "result_tree": "0c41dc3e9308b75a4bfd3924b8dbb9feb7b12821",
+        "schema": "0.22.0"
+      },
+      {
+        "step": "02-pr458",
+        "sha": "27077358fe6b906269025f4d77f8285172e4772a",
+        "exit": 0,
+        "output": "798e6383262540eb1e79610a9898b27d0264bde8\n",
+        "stderr": "",
+        "result_commit": "d2623b59966a677db3afa7b992138e6b34e7568c",
+        "result_tree": "798e6383262540eb1e79610a9898b27d0264bde8",
+        "schema": "0.23.0"
+      },
+      {
+        "step": "execution-reliability",
+        "sha": "07fcec56372badad357114feb6a3c42d1ca5734c",
+        "exit": 0,
+        "output": "912680bed9e987a2dcdd232b76321f29b652111c\n",
+        "stderr": "",
+        "result_commit": "f46af05aef33a9c23815b995030b44260f9243c7",
+        "result_tree": "912680bed9e987a2dcdd232b76321f29b652111c",
+        "schema": "0.23.0"
+      },
+      {
+        "step": "investigation-observability",
+        "sha": "e726c2d5423387825cf8af15a64c2026b5099751",
+        "exit": 0,
+        "output": "2e50a1c3a755c68d63a0b56e3732cea2363e7d1c\n",
+        "stderr": "",
+        "result_commit": "b7197ce6d325b4cc6c6a71ace8fb4f2bf045bcc8",
+        "result_tree": "2e50a1c3a755c68d63a0b56e3732cea2363e7d1c",
+        "schema": "0.24.0"
+      },
+      {
+        "step": "pilot-security-hardening",
+        "sha": "e7a35cc1dd52a543e55d98ce3bbd913173c3d85d",
+        "exit": 0,
+        "output": "6895b69c827e78be2577b503365c223992018323\n",
+        "stderr": "",
+        "result_commit": "8fce1bce8aecaa94e4e1747ef940b9ac6733e6e5",
+        "result_tree": "6895b69c827e78be2577b503365c223992018323",
+        "schema": "0.25.0"
+      },
+      {
+        "step": "customer-onboarding",
+        "sha": "d4da9f43997cedcc3c4828f59919d63224d84c3c",
+        "exit": 1,
+        "output": "23a259b9abbaf080fa9196078764b6dafcd31067\n100644 8271fec7eac554cda72f430e265e253dca68bb9d 1\tdocs/planning/SESSION_HANDOFF.md\n100644 7a654b741aa41da3b5fa48b2251ba302bf0d7d8f 2\tdocs/planning/SESSION_HANDOFF.md\n100644 7cca9bd1135500890791df8eeee8cc05e6c3e233 3\tdocs/planning/SESSION_HANDOFF.md\n\nAuto-merging docs/planning/SESSION_HANDOFF.md\nCONFLICT (content): Merge conflict in docs/planning/SESSION_HANDOFF.md\n",
+        "stderr": ""
+      }
+    ],
+    "blocked": true
+  },
+  "ba4ada0d2387a4f6fcb3b0adbfc65bfaf934ce25": {
+    "steps": [
+      {
+        "step": "01-pr412",
+        "sha": "8f2390f3a0113afa70e0e6aaac3c28c1ada1c1d7",
+        "exit": 0,
+        "output": "1352a5cb68a4e85826363c7cb53f7f95ab3d670a\n",
+        "stderr": "",
+        "result_commit": "a22d973d545dced6c6ddc3c9670158b230aa4e5f",
+        "result_tree": "1352a5cb68a4e85826363c7cb53f7f95ab3d670a",
+        "schema": "0.22.0"
+      },
+      {
+        "step": "02-pr458",
+        "sha": "27077358fe6b906269025f4d77f8285172e4772a",
+        "exit": 0,
+        "output": "94ac90b89ece09df4bcb1b7784173f8cf5469a40\n",
+        "stderr": "",
+        "result_commit": "c2878f2405771034a8da4d1fc6dc78ec35b58ee9",
+        "result_tree": "94ac90b89ece09df4bcb1b7784173f8cf5469a40",
+        "schema": "0.23.0"
+      },
+      {
+        "step": "execution-reliability",
+        "sha": "07fcec56372badad357114feb6a3c42d1ca5734c",
+        "exit": 1,
+        "output": "397430ca9b4bc72cecf0395ea6e8c1e0e2ef4bae\n100644 7e7cbf0b36ee1e86b0b2de6659dcf7cd33fc8972 1\tdocs/planning/SESSION_HANDOFF.md\n100644 73593a6a2d0e4d22a555315dd4868bdfc8dd91eb 2\tdocs/planning/SESSION_HANDOFF.md\n100644 26e934b956e1f5e514a727d07264c5acdfc39f40 3\tdocs/planning/SESSION_HANDOFF.md\n\nAuto-merging CHANGELOG.md\nAuto-merging docs/planning/SESSION_HANDOFF.md\nCONFLICT (content): Merge conflict in docs/planning/SESSION_HANDOFF.md\n",
+        "stderr": ""
+      }
+    ],
+    "blocked": true
+  }
+}
