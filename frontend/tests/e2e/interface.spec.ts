@@ -39,7 +39,7 @@ test('workspace design stays navigable and fits desktop and phone', async ({ bro
     if (screenshots) await page.screenshot({ animations: 'disabled', path: `${screenshots}/repositories-${width}.png`, fullPage: true });
     await page.getByTestId(`connect-repo-${full}`).getByRole('button', { name: 'Continue setup' }).click();
     await expect(page).toHaveURL(/\/projects\/[^/]+\/setup\?repo=/);
-    await expect(page.getByTestId('repo-setup')).toBeVisible();
+    await expect(page.getByTestId('setup-step-1')).toBeVisible();
     await expect(page.locator('[data-testid^="setup-step-"]')).toHaveCount(1);
     await page.goto(`/connect/${org}/${repo}`);
     await expect(page).toHaveURL(`/connect/${org}/${repo}`);

@@ -2656,7 +2656,27 @@ Pin 4fdcf10c vs main e41c9dc2; tip 0098f1d5 report-only. Original F1–F10/N1–
 - Live Defense remains unchanged: `frontend/components/live-defense/overview.tsx` is claimed by another agent, and coordination was unresolved at handoff. Do not edit that component until ownership coordination is resolved.
 - Verification: frontend lint passed with 0 errors and one existing warning in `components/live-defense/first-responder.tsx:173`; typecheck passed; unit suite passed (99 files / 418 tests). The real-stack E2E set passed across the initial run plus focused reruns: 12 tests total, including pages, journey, interface, and commit-workspace coverage. The interface spec now asserts the accessible GitHub App permissions region. The webhook journey test requires `E2E_WEBHOOK_SECRET=e2e-webhook-secret-not-real`, matching the test-only stack configuration.
 - Captures and viewport checks: `/home/ubuntu/shots/console-polish/after/` contains full-page and viewport screenshots for all 11 requested routes at 1440×900 and 390×844, plus 1024×900 and 320×700. Every captured `documentElement.scrollWidth` matched its viewport width. The production build passed.
-- Live Defense remains unchanged: `frontend/components/live-defense/overview.tsx` is claimed by another agent, and coordination was unresolved. Do not edit that component until ownership coordination is resolved.
+
+### Repository-scoped setup walkthrough — 2026-10-26
+
+- Replaced the grouped setup flow with eight resumable questions. Project settings and scope actions save on Continue; answers persist by project/repository, existing assessments satisfy completion, and other project routes redirect to Setup until completion.
+- Added the CoachMark, accessible question progress, first-run locked project tabs, and a one-time Analytics/Commits/Findings/Approvals/Settings/repository-switcher tour after Finish setup.
+- Removed repository automation from Setup; it remains in Settings. Scope authorization retains the 30-day duration and real expiry copy, and automatic delivery retains its confirmation.
+- Added progress/resume/no-skip, coach-mark keyboard, navigation-lock, and fresh-repository redirect coverage.
+- Verification: lint passed with 0 errors and one existing warning at `components/live-defense/first-responder.tsx:173`; typecheck passed; unit tests passed (101 files / 423 tests); production build passed.
+- Real-stack E2E: `commit-workspace.spec.ts` passed (1), including repository connection, Setup question 1/progressbar, and assessment flow; `pages.spec.ts` passed the all-routes/all-widths title/tab-band check (1) and fresh-repository Setup redirect/locked-tabs check (1). In the broader stack run, the assessment-dependent journey timed out at 240 seconds, so data-dependent Analytics/incident page coverage was not established; E2E results are partial, not a full-suite pass.
+- Before and after captures contain all eight questions, coach mark, locked tabs, and post-setup tour at 1440×900 and 390×844 under `/home/ubuntu/shots/setup-walkthrough/{before,after}/`, with viewport and document-width assertions in the capture script. Representative after captures: `q1-readiness-{1440,390}-viewport.png`, `coach-mark-{1440,390}-viewport.png`, `locked-tabs-{1440,390}-viewport.png`, and `post-setup-tour-{1440,390}-viewport.png`.
+- Local Next and API remain at `http://localhost:3205` and `localhost:59039`; E2E uses the test-only scripted model transport.
+
+### Setup walkthrough coach-mark and E2E follow-up — 2026-10-26
+
+- Coach marks now spotlight the answer controls and Continue/Finish row; the answer region remains undimmed and interactive. Per-question tips use “Got it” only to dismiss the bubble, while answering advances to the next question. The post-setup tour targets the five actual project tabs and repository switcher.
+- Long setup titles wrap instead of truncating. Screenshots for all eight questions, coach mark, locked tabs, and tour at 1440×900 and 390×844 are in `/home/ubuntu/shots/setup-walkthrough/after2/`.
+- The full real-stack `tests/e2e/stack.py` run completed once: **39 passed, 7 failed (46 total)**. Six failures were tied to fresh-context tests that didn't prepare first-run setup or used the obsolete `repo-setup` selector. A shared `completeSetup` helper now prepares those flows; the six affected E2E tests passed in a focused rerun (35.9s). The full suite was not rerun after those test-only adaptations.
+- The original 240s timeout's exact Playwright action was not recovered. The setup gate is reachable for the conflict test's fresh project and the adapted conflict E2E passes, which supports the gate as an explanation but does not confirm the historical timeout's exact cause.
+- The original full run also measured 349px document width at a 320px viewport on Live Defense. Live Defense component files are unchanged from `feat/adam/console-polish`; no baseline E2E reproduction was run, so identical reproduction on that branch is unverified. This failure is outside the setup walkthrough and `overview.tsx` remains untouched.
+- Frontend lint passed for the changed E2E files (0 errors), typecheck passed, and the latest full unit suite passed 101 files / 424 tests; production build passed. CoachMark's focused unit test passed 2/2 and the final production build passed after the sticky-header selector refinement.
+- Next on `:3205` and API on `:59039` should be running after handoff; E2E runs use the test-only scripted model transport. The test harness's `XDG_RUNTIME_DIR` warning was non-fatal; `/run/user/1000` exists and is owned by the current user.
 
 ### Console header and tab-band follow-up — 2026-10-26
 

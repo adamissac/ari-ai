@@ -1,12 +1,13 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { env, newUser } from './helpers';
+import { completeSetup, env, newUser } from './helpers';
 
 test('console header and tab band stay stacked while scrolling Analytics', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
   const projectId = env('E2E_PROJECT_ID');
   const repoId = env('E2E_REPO_ID');
+  await completeSetup(page, projectId, repoId);
   const captureDir = process.env.CAPTURE_DIR;
   if (captureDir) await mkdir(captureDir, { recursive: true });
 
