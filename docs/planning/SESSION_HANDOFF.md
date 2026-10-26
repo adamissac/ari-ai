@@ -2234,3 +2234,15 @@ Pin 4fdcf10c vs main e41c9dc2; tip 0098f1d5 report-only. Original F1–F10/N1–
 - E2E coverage exercises the seeded `acme/payments-lite` repository at desktop and narrow mobile widths, including the selected commit's Code review and 7 agents tabs. Browser screenshots are in `/home/ubuntu/classic-audit/repo-workspace/`: `analytics-{1440,390}-{viewport,full}.png`, `commits-code-review-{1440,390}-{viewport,full}.png`, `commits-7-agents-{1440,390}-{viewport,full}.png`, and `more-menu-390-{viewport,full}.png`.
 - Verification passed: frontend lint (0 errors; one existing unused-variable warning), typecheck, unit tests (96 files / 414 tests), production build, journey E2E (3), pages E2E (7), interface E2E, and commit-workspace E2E (1). The setup-resume unit test passed 5/5.
 - The local stack is served at `http://localhost:3205` with API at `localhost:59039`. E2E assessments use the test-only scripted model transport; these captures do not establish live-model provenance.
+
+### Landing motion and pricing atmosphere — 2026-10-26
+
+- Replaced the headline sweep with a reduced-motion-safe ember glow; added five transform-driven lava-lamp blobs, a fixed landing/pricing atmosphere, an eased longer problem chapter, warm-glass walkthrough and pricing cards, and low-opacity decorative vignettes. The hero ant colony remains.
+- Pricing CTA is unboxed and centered. Decorative illustrations remain aria-hidden and are hidden below desktop widths.
+- Before and after viewport/full-page captures and motion frames are stored under `/home/ubuntu/shots/landing-motion/`; check results are in the task handoff.
+
+### Landing timeline ember-glass refinements — 2026-10-26
+
+- Restyled the problem-story “PR review”, “Scanner”, and checked-count chips with translucent brand fill, a lighter border, white mono text, and a soft glow.
+- Cropped close-ups are under `/home/ubuntu/shots/landing-motion/after/crops/`.
+- Verification passed: frontend lint (0 errors; one existing unused-variable warning), typecheck, and the landing-related unit suites (3 files / 13 tests).

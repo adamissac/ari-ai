@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Restyled the landing problem-timeline labels and checked-count chip as ember glass.
+- Added a warm, slow-moving landing hero, continuous ember atmosphere, eased problem-story progression, glass walkthrough/pricing panels, and a reduced-motion static fallback.
 - Verify now compares always-on runtime pytest hook, collection, and outcome audits against baseline runs; missing or incomplete audit evidence fails closed. The application-code scanner also avoids comprehension-target, local-root mutation, and literal-constant false positives. Defense in depth only: it does not resist deliberately hostile in-process patch code (see security-agents/README.md).
 - Added a repository-scoped project workspace with Analytics, Commits, Findings, Approvals, Settings, and More navigation; commit history and assessment records remain scoped to the selected repository.
 - Restored the pre-redesign look and fixed background, overflow and spacing bugs.
