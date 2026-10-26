@@ -13,6 +13,7 @@ from sqlalchemy.engine import Connection
 from backend.db import assessments, projects
 from backend.services import project_settings
 from backend.settings import get_settings
+from shared.base import utcnow
 from shared.assessment import AssessmentTrigger
 
 QuotaReason = Literal["hour", "day", "spend"]
@@ -63,6 +64,9 @@ def check_project_quota(
     # shortcut: the global spend cap is only as fresh as recorded usage, so in-flight
     # runs in other projects can still overshoot it; it is a cost bound, not a quota.
     conn.execute(sa.select(projects.c.id).where(projects.c.id == project_id).with_for_update())
+    # The caller's `now` predates any wait for the lock; a start that committed meanwhile
+    # carries a later created_at and must still count.
+    now = max(now, utcnow())
     settings = get_settings()
     hour_window = timedelta(hours=1)
     day_window = timedelta(days=1)
