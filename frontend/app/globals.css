@@ -1231,7 +1231,7 @@ body:has(.commit-stage) main { color: #fff; }
 :root:not(:has(.hero-full)) .ambient { display: block; position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; --sy: 0; }
 :root:has(.hero-full) .ambient { display: block; position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; --sy: 0; }
 .ambient-blobs { position: absolute; inset: -12%; translate: 0 calc(var(--sy) * -10vh); }
-.ambient-blob { position: absolute; border-radius: 9999px; opacity: var(--blob-alpha, 0.56); filter: blur(72px); will-change: transform;
+.ambient-blob { position: absolute; border-radius: 9999px; opacity: var(--blob-alpha, 0.56); will-change: transform;
   background: radial-gradient(closest-side, var(--orb), transparent 100%); }
 .ambient-blob-a { --orb: rgb(194 69 45 / 80%); animation: hero-drift-a 30s ease-in-out infinite alternate; }
 .ambient-blob-b { --orb: rgb(143 47 30 / 85%); animation: hero-drift-b 36s ease-in-out infinite alternate; }
