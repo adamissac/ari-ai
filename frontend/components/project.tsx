@@ -94,7 +94,7 @@ export function ProjectNavigation({ base, repoId }: { base: string; repoId: stri
               aria-current={active ? 'page' : undefined}
               className={`project-tab ${active ? 'is-active' : ''}`}
             >
-              <NavIcon name={item.icon} /><span>{item.label}</span>
+              <NavIcon name={item.icon} /><span className="project-tab-label">{item.label}</span>
             </Link>
           );
         })}
@@ -108,7 +108,7 @@ export function ProjectNavigation({ base, repoId }: { base: string; repoId: stri
           className={`project-tab project-more-button ${activeMore ? 'is-active' : ''}`}
           onClick={() => setOpen(value => !value)}
         >
-          <NavIcon name="more" /><span>{activeMore?.label ?? 'More'}</span><span aria-hidden="true" className="project-more-chevron">{open ? '▴' : '▾'}</span>
+          <NavIcon name="more" /><span className="project-tab-label">{activeMore?.label ?? 'More'}</span><span aria-hidden="true" className="project-more-chevron">{open ? '▴' : '▾'}</span>
         </button>
         <div id="project-more-menu" className="project-more-menu" hidden={!open}>
           {MORE.map(item => {

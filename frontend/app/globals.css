@@ -908,7 +908,15 @@ body:has(.commit-stage) main { color: #fff; }
 .amap-live { width: 7px; height: 7px; flex: none; border-radius: 9999px; background: rgb(255 255 255 / 30%); }
 .amap-live[data-on] { background: #fff; box-shadow: 0 0 0 4px rgb(255 255 255 / 12%); animation: demo-blink 1.2s ease-in-out infinite; }
 .amap-phases { display: flex; flex-wrap: wrap; gap: 4px; }
+.amap-phases-compact { flex-wrap: nowrap; gap: 0; overflow: hidden; border: 1px solid rgb(255 255 255 / 14%); border-radius: 9999px; }
 .amap-phase { position: relative; padding: 4px 10px 8px; font-size: 0.78rem; color: rgb(255 255 255 / 38%); transition: color 300ms; }
+.amap-phases-compact .amap-phase-compact { display: inline-flex; min-height: 30px; flex: none; align-items: center; gap: 5px; border-left: 1px solid rgb(255 255 255 / 10%); padding: 4px 9px; }
+.amap-phases-compact .amap-phase-compact:first-child { border-left: 0; }
+.amap-phases-compact .amap-phase-compact::after { display: none; }
+.amap-phases-compact .amap-phase-compact[data-state="done"] { color: rgb(255 255 255 / 62%); }
+.amap-phases-compact .amap-phase-compact[data-state="active"] { color: rgb(255 255 255 / 62%); }
+.amap-phases-compact .amap-phase-compact[aria-pressed="true"] { background: rgb(194 69 45 / 24%); color: #fff; }
+.amap-phase-check { color: #5fd49a; font-size: 0.7rem; line-height: 1; }
 .amap-phase::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 2px; border-radius: 2px; background: rgb(255 255 255 / 10%); transition: background-color 300ms; }
 .amap-phase[aria-pressed="true"], .amap-phase[data-state="active"] { color: #fff; }
 .amap-phase[aria-pressed="true"]::after, .amap-phase[data-state="active"]::after { background: #fff; }
@@ -921,17 +929,24 @@ body:has(.commit-stage) main { color: #fff; }
 @media (min-width: 1100px) { .amap-grid { grid-template-columns: 15rem minmax(0, 1fr) 18.5rem; } }
 .amap-grid-compact { grid-template-columns: minmax(0, 1fr); }
 .amap-grid-compact .amap-rail { grid-column: 1 / -1; }
-.amap-rail-compact { flex-direction: row; gap: 8px; overflow-x: auto; }
-.amap-rail-compact .amap-group { flex: none; border-right: 1px solid rgb(255 255 255 / 8%); padding-right: 8px; }
-.amap-rail-compact .amap-group:last-child { border-right: 0; }
-.amap-rail-compact .amap-group-label { display: none; }
-.amap-rail-compact .amap-group ol { flex-direction: row; }
-.amap-rail-compact .amap-agent { width: auto; align-items: center; gap: 6px; padding: 5px 7px; }
+.amap-grid-compact .amap-rail-compact { display: block; overflow: visible; border: 0; border-bottom: 1px solid rgb(255 255 255 / 7%); padding: 8px 12px; }
+.amap-grid-compact .amap-compact-agent-list { display: flex; flex-wrap: nowrap; align-items: center; gap: 4px; overflow-x: auto; margin: 0; padding: 0; list-style: none; scrollbar-width: none; }
+.amap-grid-compact .amap-compact-agent-list::-webkit-scrollbar { display: none; }
+.amap-grid-compact .amap-compact-agent-list > li { flex: none; }
+.amap-grid-compact .amap-rail-compact .amap-agent { width: auto; min-height: 32px; align-items: center; gap: 6px; border: 0; border-radius: 9999px; background: transparent; padding: 4px 8px; }
+.amap-grid-compact .amap-rail-compact .amap-agent[aria-pressed="true"] { background: rgb(255 255 255 / 8%); box-shadow: inset 2px 0 var(--team); }
 .amap-rail-compact .amap-agent-name { white-space: nowrap; font-size: 0.72rem; }
 .amap-rail-compact :is(.amap-agent-status, .amap-agent-job) { display: none; }
-.amap-rail-compact .amap-mark { width: 13px; height: 13px; margin: 0; }
+.amap-compact-dot { display: inline-block; width: 6px; height: 6px; flex: none; border-radius: 9999px; background: rgb(255 255 255 / 28%); }
+.amap-compact-dot[data-status="done"] { background: #5fd49a; }
+.amap-compact-dot[data-status="running"] { background: var(--team); box-shadow: 0 0 8px var(--team); }
+.amap-compact-dot[data-status="failed"] { background: #ff6b52; }
+.amap-compact-dot[data-status="skipped"] { background: rgb(255 255 255 / 25%); }
 .amap-grid-compact .amap-map { height: 320px; min-height: 320px; flex: none; padding: 12px; }
 .amap-grid-compact .amap-inspect { border-top: 1px solid rgb(255 255 255 / 7%); padding: 14px; }
+@media (max-width: 639px) {
+  .amap-grid-compact .amap-compact-agent-list { flex-wrap: wrap; overflow: visible; }
+}
 @media (min-width: 1280px) {
   .amap-grid-compact { grid-template-columns: minmax(0, 3fr) minmax(17rem, 1fr); }
   .amap-grid-compact .amap-rail { grid-column: 1 / -1; }
@@ -1746,10 +1761,10 @@ body:has(.setup-layout) .site-main { max-width: none; padding: 0; }
 body:has(.project-shell) .site-header { position: sticky; top: 0; }
 body:has(.project-shell) .site-header-inner,
 body:has(.setup-layout) .site-header-inner { max-width: 100rem; padding-inline: 1rem; }
-.project-tabbar { position: sticky; top: 4.25rem; z-index: 30; display: flex; min-width: 0; align-items: stretch; margin-inline: -1rem; padding-inline: 1rem; border-block: 1px solid var(--color-line); background: color-mix(in srgb, var(--color-panel) 60%, transparent); }
+.project-tabbar { position: relative; top: auto; display: flex; min-width: 0; align-items: stretch; margin-inline: -1rem; padding-inline: 1rem; border-block: 1px solid var(--color-line); background: color-mix(in srgb, var(--color-panel) 60%, transparent); }
 .project-tab-scroll { display: flex; min-width: 0; flex: 1; align-items: stretch; overflow-x: auto; scrollbar-width: none; }
 .project-tab-scroll::-webkit-scrollbar { display: none; }
-.project-tab { display: inline-flex; align-items: center; gap: 8px; padding: 13px 15px 11px; font-size: 15px; font-weight: 500; white-space: nowrap; text-decoration: none; }
+.project-tab { display: inline-flex; min-height: 44px; min-width: 44px; flex: none; align-items: center; gap: 8px; padding: 13px 15px 11px; font-size: 15px; font-weight: 500; white-space: nowrap; text-decoration: none; }
 .project-tab:hover { color: var(--color-ink); background: color-mix(in srgb, var(--color-panel-2) 50%, transparent); }
 .project-tab::after { content: ""; position: absolute; right: 12px; bottom: -1px; left: 12px; height: 2px; background: var(--color-brand); transform: scaleX(0); transition: transform 250ms var(--ease-smooth); }
 .project-tab[aria-current="page"] { color: var(--color-ink); background: color-mix(in srgb, var(--color-brand) 10%, transparent); }

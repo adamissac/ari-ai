@@ -53,14 +53,24 @@ it('merges GitHub and assessment-only commits and switches to the recorded agent
   const recordedMap = screen.getByTestId('commit-agent-map');
   expect(recordedMap.querySelector('.amap-grid-compact')).toBeTruthy();
   expect(recordedMap.querySelector('.amap-rail-compact')).toBeTruthy();
+  expect([...recordedMap.querySelectorAll('.amap-compact-agent-list button')].map(button => button.getAttribute('data-testid'))).toEqual([
+    'demo-agent-scout', 'demo-agent-probe', 'demo-agent-trace', 'demo-agent-diagnose', 'demo-agent-patch', 'demo-agent-fortify', 'demo-agent-verify',
+  ]);
+  expect(recordedMap.querySelectorAll('.amap-compact-agent-list .amap-compact-dot')).toHaveLength(7);
+  expect(recordedMap.querySelectorAll('.amap-rail-compact .amap-group')).toHaveLength(0);
   expect(recordedMap.nextElementSibling?.getAttribute('data-testid')).toBe('agent-team');
   expect(screen.getByTestId('agent-team').querySelectorAll('button[data-testid^="agent-"]')).toHaveLength(8);
   expect(screen.getByTestId('agent-run-scout-run').textContent).toContain('Test provider (scripted)');
 
   const phase = [...screen.getByTestId('commit-agent-map').querySelectorAll('.amap-phase')]
-    .find(button => button.textContent === 'Trace')!;
+    .find(button => button.textContent?.includes('Trace'))!;
+  expect([...recordedMap.querySelectorAll('.amap-phase')].filter(button => button.getAttribute('aria-pressed') === 'true')).toHaveLength(1);
+  expect([...recordedMap.querySelectorAll('.amap-phase[data-state="done"]')].every(button => button.querySelector('.amap-phase-check'))).toBe(true);
   fireEvent.click(phase);
   expect(phase.getAttribute('aria-pressed')).toBe('true');
   expect(screen.getByTestId('demo-agent-trace').getAttribute('aria-pressed')).toBe('true');
   expect(screen.getByRole('slider', { name: 'Replay position' }).getAttribute('value')).toBe('1');
+  const activeNode = recordedMap.querySelector('.amap-node[data-active]');
+  expect(activeNode).toBeTruthy();
+  expect(activeNode?.getAttribute('style')).toContain('--beam');
 });

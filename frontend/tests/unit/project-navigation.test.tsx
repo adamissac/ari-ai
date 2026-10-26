@@ -23,6 +23,9 @@ it('shows the primary tabs and repo-scoped More destinations', () => {
     ['Approvals', '/projects/p1/approvals?repo=r1'],
     ['Settings', '/projects/p1/settings?repo=r1'],
   ]);
+  expect([...nav.querySelectorAll('.project-tab-scroll .project-tab-label')].map(label => label.textContent)).toEqual([
+    'Analytics', 'Commits', 'Findings', 'Approvals', 'Settings',
+  ]);
   const more = screen.getByRole('button', { name: 'More' });
   expect(more.querySelector('svg')).not.toBeNull();
   fireEvent.click(more);
