@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from helpers import setup_project
 
 from backend.api.github_repos import store_repo_access
-from backend.db import assessments, repositories, transaction
+from backend.db import assessments, github_repo_access, jobs, repositories, transaction
 from backend.quota import check_project_quota
 from backend.services import create_assessment
 from shared.assessment import AssessmentTrigger
@@ -172,3 +172,66 @@ def test_direct_default_branch_delivery_is_refused_when_the_deployment_forbids_i
         json={"settings": {**project["settings"], "delivery_mode": "manual"}},
     )
     assert ok.status_code == 200
+
+
+def _app_repo(client):
+    pid = _project(client, "shop")
+    with transaction() as conn:
+        conn.execute(
+            sa.insert(github_repo_access).values(
+                user_id=client.me["user"]["id"], full_name="acme/shop", installation_id=7,
+                default_branch="main", private=True,
+            )
+        )  # fmt: skip
+    r = client.post(
+        f"/api/v1/projects/{pid}/repositories",
+        json={"full_name": "acme/shop", "installation_id": 7},
+    )
+    assert r.status_code == 201, r.text
+    with transaction() as conn:
+        conn.execute(sa.delete(jobs))  # drop the connect-time proposal
+    return r.json()["id"]
+
+
+def _recipe_jobs():
+    with transaction() as conn:
+        return conn.execute(sa.select(jobs.c.id).where(jobs.c.kind == "propose_build_recipe")).all()
+
+
+def test_owner_can_retry_a_build_recipe_once_at_a_time(client_factory):
+    alice, bob = client_factory("alice"), client_factory("bob")
+    rid = _app_repo(alice)
+    url = f"/api/v1/repositories/{rid}/recipe/retry"
+    assert bob.post(url).status_code == 404  # another tenant cannot see it
+    first = alice.post(url)
+    assert first.status_code == 202 and first.json()["queued"] is True
+    again = alice.post(url)  # double click joins the pending run
+    assert again.json() == {"job_id": first.json()["job_id"], "queued": False}
+    assert len(_recipe_jobs()) == 1
+    alice.post(f"/api/v1/repositories/{rid}/disconnect")
+    assert alice.post(url).status_code == 409
+
+
+def test_recipe_retry_needs_the_github_app(client_factory):
+    alice = client_factory("alice")
+    rid = _connect(alice, _project(alice)).json()["id"]
+    assert alice.post(f"/api/v1/repositories/{rid}/recipe/retry").status_code == 422
+    assert _recipe_jobs() == []
+
+
+def test_installation_events_never_queue_a_disconnected_repository(client_factory):
+    from helpers import post_webhook
+
+    from backend import worker
+
+    alice = client_factory("alice")
+    rid = _app_repo(alice)
+    alice.post(f"/api/v1/repositories/{rid}/disconnect")
+    added = {
+        "action": "added",
+        "installation": {"id": 7},
+        "repositories_added": [{"full_name": "acme/shop"}],
+    }
+    assert post_webhook(alice, added, event="installation_repositories").status_code == 202
+    worker.drain(kinds=["process_github_delivery"])
+    assert _recipe_jobs() == []

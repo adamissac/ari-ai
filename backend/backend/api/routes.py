@@ -726,6 +726,51 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
         return {"id": repo_id, "disconnected": False}
 
 
+@router.post("/repositories/{repo_id}/recipe/retry", status_code=202)
+def retry_build_recipe(repo_id: str, request: Request) -> dict[str, Any]:
+    """Owner re-run of the build-recipe proposal after a failed or invalid result. The job
+    re-reads the repository through the GitHub App, so revoked access fails again honestly;
+    a recipe that already exists is still skipped, never overwritten."""
+    with transaction() as conn:
+        user = _user(conn, request)
+        repo = _owner_repo(conn, user, repo_id)
+        if repo["disconnected_at"] is not None:
+            raise ApiError(ErrorCode.CONFLICT_STATE, "repository is disconnected", 409)
+        if repo["installation_id"] is None:
+            raise ApiError(
+                ErrorCode.VALIDATION_FAILED,
+                "build recipes are proposed only for repositories connected through the GitHub App",
+                422,
+            )
+        active = conn.execute(
+            sa.select(jobs_table.c.id).where(
+                jobs_table.c.kind == "propose_build_recipe",
+                jobs_table.c.payload["repo_id"].astext == repo_id,
+                jobs_table.c.status.in_(["queued", "waiting", "running"]),
+            )
+        ).scalar()
+        if active is not None:  # a double click or second tab joins the pending run
+            return {"job_id": active, "queued": False}
+        limiter.check(f"recipe_retry:{repo_id}", 5, 3600)
+        job_id, _ = jobs.enqueue(
+            conn,
+            "propose_build_recipe",
+            {"repo_id": repo_id},
+            dedupe_key=f"recipe:{repo_id}:retry:{new_id(IdPrefix.job)}",
+        )
+        _audit(
+            conn,
+            project_org(conn, repo["project_id"]),
+            repo["project_id"],
+            user,
+            "repository.recipe_retry_requested",
+            "repository",
+            repo_id,
+            job_id=job_id,
+        )
+        return {"job_id": job_id, "queued": True}
+
+
 @router.post("/repositories/{repo_id}/snapshots", status_code=202, response_model=Snapshot)
 def request_snapshot(repo_id: str, body: SnapshotCreate, request: Request) -> Snapshot:
     with transaction() as conn:
