@@ -13,8 +13,8 @@ from sqlalchemy.engine import Connection
 from backend.db import assessments, projects
 from backend.services import project_settings
 from backend.settings import get_settings
-from shared.base import utcnow
 from shared.assessment import AssessmentTrigger
+from shared.base import utcnow
 
 QuotaReason = Literal["hour", "day", "spend"]
 
