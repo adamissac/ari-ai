@@ -519,3 +519,336 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - Synced origin/main (59cd0b62). No new messages addressed to Adam. Nothing changed in rl-defense/, examples/payments-lite or Adam's CI/docs since run 27. `gh` not authenticated; used git/MCP only.
 - Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 658 files, 0 problems. rl-defense suite NOT re-run (unchanged since run 23's 569 passed). No live-LLM tests, no training/eval.
 - No-op. Open: none.
+||||||| merged common ancestors
+
+## 2026-10-17 08:45Z — frontend gap pages (Devin session for Adam)
+- Branch `devin/1792226026-frontend-gaps`: `/projects/[id]/expectations`, `/incidents`, `/settings` + additive transport PATCH methods.
+- Executed: transport 27 passed; ESLint, tsc, Vitest 29 passed, Next build; browser e2e (stack.py) 11 passed incl. 3 new. Scripted model transports, not live.
+- Next owner action: Vihaan review of the PR; Alan continues functional remediation (#73).
+
+## 2026-10-17 09:40Z — incident closure UI (Devin session for Adam)
+- Branch `devin/1792226619-incident-closure`: closure panel on `/incidents` (link findings + accepted verifications, closure criteria satisfied with hash-pinned artifact evidence, lessons learned, communications, readiness list).
+- Executed: tsc, ESLint, Vitest 32 passed; browser e2e (stack.py) 12 passed incl. new closure spec. Scripted model transports, not live.
+- Blocker (other lanes): no producer sets `proposed_test_artifact_id`, so lessons learned → closure is unreachable for hosted assessments; stored diff hash ≠ `diff_sha256` after redaction. See coordination message 20261017T093000Z.
+
+## 2026-10-17 cloud run (unattended) — no-op
+- Synced origin/main (48c941a); no messages to-adam; gh unauthenticated in this env (git only).
+- Executed: rl-defense 91 passed; payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems. Nothing broken, no changes to Adam areas.
+
+## 2026-10-17 cloud run (unattended, ~19:30Z) — no-op
+- Synced origin/main (882daa2); no messages addressed to Adam since the last entry; gh unauthenticated (git only for sync).
+- Executed: rl-defense 92 passed; payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems. Nothing broken; no changes to Adam areas.
+
+## 2026-10-18 cloud run (unattended) — partial, rl-defense tests NOT run
+- Synced origin/main (9ebc524). Only message mentioning Adam: Srihith's 20261018T010448Z (informational, frontend demo replay; no ask). gh unauthenticated (git/MCP only).
+- Executed: payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- NOT executed: rl-defense pytest. `uv pip install -e '.[dev]'` stalled for >1h downloading CUDA torch/nvidia wheels (88K venv, no progress); abandoned. rl-defense/shared changed since 882daa2: contracts 0.11 `Assessment.repo_id` (b50c3ae), not yet verified against the RL adapter.
+- Open: next run should try a CPU-only torch index (or a warmed uv cache) so the install completes; check the RL adapter against contracts 0.11.
+
+## 2026-10-18 cloud run (unattended, later) — healthy, no changes to Adam areas
+- Synced origin/main (eaa43ae). Only message mentioning Adam: Srihith's 20261018T010448Z / 20261018T023000Z (informational, frontend demo replay; no ask). gh unauthenticated (git/MCP only).
+- Executed: rl-defense 92 passed (against contracts 0.11, so the RL adapter works with `Assessment.repo_id`); payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- Env note: download.pytorch.org is blocked by the egress proxy here, so the CPU-torch index cannot be used. A plain `uv pip install -e '.[dev]'` from PyPI completed in ~10 min (5.4G venv, CUDA wheels) and the earlier stall did not recur.
+- Open: none.
+
+## 2026-10-18 cloud run (unattended, ~16:00Z) — no-op
+- Synced origin/main (5b6a20f, unchanged since the previous entry); no new messages to Adam; gh unauthenticated (git/MCP only).
+- Executed: rl-defense 92 passed; payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems. Nothing broken; no changes to Adam areas.
+
+## 2026-10-18 cloud run (unattended, ~18:00Z) — no-op
+- Synced origin/main (c8fb94b: contracts 0.12, RuntimeSource "drill"); no new messages to Adam; gh unauthenticated (git/MCP only).
+- Executed: rl-defense 92 passed (against contracts 0.12); payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems. Nothing broken; no changes to Adam areas.
+
+## 2026-10-18 cloud run (unattended, ~20:00Z) — no-op
+- Synced origin/main (fd794c3; no code change since c8fb94b, only status merges); no new messages to Adam; gh unauthenticated (git/MCP only).
+- Executed: payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- NOT executed: rl-defense pytest (skipped the ~10 min CUDA-torch install because nothing in rl-defense/shared/standards changed since the 18:00Z run, which passed 92). No changes to Adam areas.
+
+## 2026-10-18 cloud run (unattended, ~22:00Z) — no-op
+- Synced origin/main (0ca748c; only status merges since fd794c3); no new messages to Adam; gh unauthenticated (git/MCP only).
+- Executed: payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- NOT executed: rl-defense pytest (skipped the CUDA-torch install; no rl-defense/shared/standards change since the 18:00Z run, which passed 92). No changes to Adam areas.
+
+## 2026-10-19 cloud run (unattended, ~00:00Z) — no-op
+- Synced origin/main (6f3daf1; unchanged since the 22:00Z run); no new messages to Adam; gh unauthenticated (git/MCP only).
+- Executed: payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- NOT executed: rl-defense pytest (skipped the CUDA-torch install; no rl-defense/shared/standards change since the 18:00Z run, which passed 92). No changes to Adam areas.
+
+## 2026-10-19 cloud run (unattended, ~02:00Z) — no-op
+- Synced origin/main (9d26c86; only status merges since the 00:00Z run); no new messages to Adam; gh unauthenticated (git/MCP only).
+- Executed: payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- NOT executed: rl-defense pytest (skipped the CUDA-torch install; no rl-defense/shared/standards change since the 18:00Z run, which passed 92). No changes to Adam areas.
+
+## 2026-10-18 cloud run (unattended, ~18:15Z) — no-op
+- Synced origin/main (1e081cb; only status merges since the previous run); no new messages to Adam; gh unauthenticated (git/MCP only).
+- Executed: payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- NOT executed: rl-defense pytest (skipped the CUDA-torch install; no rl-defense/shared/standards change since the 18:00Z run, which passed 92). No changes to Adam areas.
+
+## 2026-10-19 cloud run (unattended, ~04:00Z) — no-op
+- Synced origin/main (b6ed4f2; only status merges since the previous run); no new messages to Adam; gh unauthenticated (git/MCP only).
+- Executed: payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- NOT executed: rl-defense pytest (skipped the CUDA-torch install; no rl-defense/shared/standards change since the 18:00Z run, which passed 92). No changes to Adam areas.
+
+## 2026-10-18 cloud run (unattended, ~20:15Z) — no-op
+- Synced origin/main (6af20f0; only status merges since the previous run); no new messages to Adam; gh unauthenticated (git/MCP only).
+- Executed: payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- NOT executed: rl-defense pytest (skipped the CUDA-torch install; no rl-defense/shared/standards change since the 18:00Z run, which passed 92). No changes to Adam areas.
+
+## 2026-10-19 cloud run (unattended, ~00:16Z) — no-op
+- Synced origin/main (06aa032; only status merges since c8fb94b); no new messages to Adam; gh unauthenticated (git/MCP only).
+- Executed: payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- NOT executed: rl-defense pytest (skipped the CUDA-torch install; no rl-defense/shared/standards change since the 18:00Z run on 2026-10-18, which passed 92). No changes to Adam areas.
+
+## 2026-10-19 cloud run (unattended, ~02:17Z) — no-op
+- Synced origin/main (c613ff5; only status merges since c8fb94b); no new messages to Adam; gh unauthenticated (git/MCP only).
+- Executed: payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- NOT executed: rl-defense pytest (skipped the CUDA-torch install; no rl-defense/shared/standards change since the 18:00Z run on 2026-10-18, which passed 92). No changes to Adam areas.
+
+## 2026-10-19 cloud run (unattended, ~06:00Z) — no-op
+- Synced origin/main (baa7fae; new since last run: #315 live defense loop slice in rl-defense/, #316 contributors rewrite); no new messages to Adam needing a reply; gh unauthenticated (git/MCP only).
+- Executed: rl-defense pytest 103 passed (CPU-less install via default torch wheel); payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- No changes to Adam areas needed.
+
+## 2026-10-19 cloud run (unattended, ~06:23Z) — no-op
+- Synced origin/main (dd81316; new since baa7fae: live v3 verdict (#333), block_principal in shared.rl (#324), Srihith handover, CI backend<->rl integration). Messages to Adam are FYI only (block_principal sign-off, long-block proposal); no reply required. gh unauthenticated (git/MCP only).
+- Executed: rl-defense pytest 145 passed, ruff check + format clean; payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- No changes to Adam areas needed. DefenseSimEnv (22 actions, 48 features) and protocol-v1 unchanged.
+
+## 2026-10-19 — Defense Lab simplification
+- Branch `feat/adam/simplify-defense-lab`: `/lab` rebuilt to lead with the three headline numbers; deep reviewer detail (metric explorer, reward parts, checkpoint hashes) removed, provenance kept in a collapsed footer. Replay trimmed (no cost row / technical-details block). Lint, typecheck, 275 unit tests and `next build` executed; e2e spec updated but the e2e stack not run.
+
+## 2026-10-19 — `/lab` restyle on `feat/adam/polish-defense-lab`
+- Same content as the simplification pass; new look: hero now carries the intro + caveat, stat chips row under it, and "The numbers" is a dark command-console panel (brand glow, grid, ember numerals, AI defender highlighted). Kairo.security-inspired.
+- Verified: lint/typecheck/276 unit tests/build pass; lab honesty e2e passes vs `next dev`.
+
+## 2026-10-19 cloud run (unattended, ~10:00Z) — no-op
+- Synced origin/main (then at 7ba9af4; since dd81316: live v3/v4 verdicts, serve-v2 recommendations, Haiku 5.5 default ADR-0015, explainer player polish); no new messages to Adam needing a reply; gh unauthenticated (git/MCP only).
+- Executed: rl-defense pytest 164 passed; payments-lite target 13 passed, label_checks 11 passed; check_links 0 problems.
+- Cloud run itself made no code changes (UI polish landed separately).
+
+## 2026-10-19 — `/lab` redesign v2 on `feat/adam/lab-redesign-v2`
+- White "The numbers" section breaks up the orange; sections numbered 01/02; map nodes are light cards with dark labels. Same content/tests.
+
+## 2026-10-19 — #359 DQfD review fixes
+- Branch `fix/adam/dqfd-review`: selected-prefix lineage, full experiment provenance, complete evidence export, exact update count and servability/evidence promotion guards.
+- Original v6 bytes remain unavailable; historical report limitations explicitly documented. No promotion or fresh holdout_v6 evaluation. Tests/results recorded in PR.
+
+## 2026-10-19 — Alan GitHub review follow-up
+- Reviewed recent coordination messages and open PRs #359/#360. Recent Alan messages to Adam are FYI/decisions.
+- Fixed all four #360 serving findings on `fix/adam/live-v3-review`, with targeted regression coverage (10 passed) and clean ruff checks. Full results in PR.
+- No promotion, paid training or deployment. #359 has separate evidence/lineage findings; its original checkpoint and experience bytes are not in Git.
+
+## Landing redesign
+- Branch `feat/adam/landing-redesign`: owner-requested hero/footer redesign and readable process interactions. No API/shared contract changes. Desktop/mobile previews captured through Playwright; tests and design study linked in PR.
+
+Owner correction: restore the original landing hero, scroll-driven story animations and original wheel easing; remove the reading-distance cap and manual controls. Keep the new Ari-colored footer. Branch `fix/adam/restore-landing`; validation in PR.
+
+Footer correction: use a conventional aligned footer with Ari branding/tagline on the left, two navigation columns on the right, and a separated copyright/back-to-top row. Stack branding above the link columns on mobile. Preserve Ari colors and restored hero/scroll animations. Validation recorded in PR.
+
+Refine the landing headline with tighter two-line rhythm, a stronger cream first line and a lighter warm-ivory second line. Preserve wording, centered layout, pointer spotlight and scroll animations. Branch `fix/adam/hero-headline`; validation in PR.
+
+Add staggered proof-card/footer entrances and subtle button, workflow-chip, process-evidence and footer-link motion. Reduce hero ants from 10–34 to 6–16. Honor reduced motion; preserve existing scroll traversal. Branch `feat/adam/landing-motion`; validation in PR.
+
+Simplify project navigation to Code review and 7 agents. Move settings, scopes, approvals and other records into More; lead with run/replay and starting a check; disclose findings, repositories and progress on demand. Keep all routes and approval requirements. Branch `feat/adam/project-simplify`; validation in PR.
+
+Keep organization/repository/commit navigation scoped to the selected repository and SHA. Real commit runs stay inline in a two-tab reviewer/seven-agent workspace with demo-style agent rail and recorded replay; no redirect to shared project history. Resolve the repository’s actual project, search older run pages, reject mismatched results and retain scoped remediation approvals. Optional narrated quick reads are explicitly requested and separate from executed records. Branch `fix/adam/commit-workspace`; validation in PR.
+
+Review follow-up: retain accepted starts while history refreshes to prevent duplicate paid runs; lift newly connected repository IDs into the commit workspace; correct replay indexing; bound project lookup concurrency and tolerate unrelated project errors. Added regression coverage for these cases.
+
+## Automatic commit assessments — 2026-10-21
+
+IMPLEMENTED in [PR #377](https://github.com/adamissac/ari-ai/pull/377), pending merge/deployment verification: signed pushes fan out into durable per-commit jobs; GitHub API author allowlist, exact SHA, duplicate protection, no docs-only skip/coalescing loss, scope-approval resume. Railway defaults to `adamissac`; configurable for other accounts. Full runs use the normal project assessment budget (operator-capped), not the deliberately cheaper legacy monitoring budget. Shared contracts unchanged. Full-chain fixture tests use scripted model responses, not live provider evidence. Validation: 181 local backend/monitoring/security tests passed (7 optional/dependency skips); 12 final focused scheduling tests passed. Full-chain fixture covers reviewer and all seven roles with required repair approvals. All GitHub checks passed on cbc0782; checks rerun after integrating newer main documentation/RL changes. Production readiness is reachable; authenticated production worker/run verification remains outstanding.
+### 2026-10-20 — interface polish
+
+Polish the shared ARI interface using Kairo’s restrained grids and technical typography in ARI’s warm charcoal/ember palette. Add consistent workspace headers, numbered organization cards, clearer repository rows, quieter panels and a precise replay frame. Preserve the original hero and scroll choreography; keep Projects highlighted throughout the organization/repository/commit flow. Branch `feat/adam/ui-polish`; validation and screenshots recorded in PR.
+
+### Automatic/manual mode and Haiku-only follow-up (#377 / #380)
+
+Implemented per-repository persisted ON/OFF, owner-only API, migration 0009 and proposed additive schema 0.15.0; manual Run shown when OFF. Added signed-sender gate and per-project start quotas that defer every excess commit durably. Production/staging gateway, Railway startup and quick-read enforce Haiku 5.5. Historical evidence labels preserved. Contract review requested from Alan; full test/CI and deployment verification remain pending.
+
+### 2026-10-21 — automatic commit review fixes (#377)
+
+Finalized deferred requests as skipped when repository/rollout policy disables them; added regression coverage. Updated operator docs and ADR-0015 to the explicit Haiku-only production policy. Latest focused scheduling/migration verification: 26 passed; Ruff passed. Prior frontend verification: 305 tests, TypeScript, lint, production build and two real-stack browser checks passed. Integrating latest main; final CI and Alan contract approval remain required. No authenticated live-provider run has been verified.
+
+### 2026-10-23 — scheduled cloud health run
+- Synced origin/main (8bbc01e2). No new messages addressed to Adam since the last entry (only Alan's FYI/phase notes; Phase 1 constrained-RL review request is already answered by later merges).
+- Health: rl-defense 427 passed (23 min); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 538 files, 0 problems. No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-21 — automation opt-in reset
+
+Owner requested AI automation and Defense Lab OFF until explicitly enabled. Branch `fix/adam/automation-opt-in`: schema 0.15.1 changes Repository.automatic_assessments and TriggerPolicy.enabled defaults to false; migration 0010 resets stored switches, requests cancellation of unfinished automatic assessments, and wakes deferred jobs. Worker checks cancellation before checkout. Manual runs and historical results remain intact. Focused PostgreSQL/monitoring checks: 36 passed. Full tests pending. Railway plugin is installed but no callable Railway tools/credentials are exposed in this conversation; live deployment/settings verification remains blocked on access. Alan review requested for default semantics and backend migration.
+
+### 2026-10-23 — scheduled cloud health run (2)
+- Synced origin/main (2280b7e5). No new messages addressed to Adam (newer Alan notes are all-hands live-defense phase 4/5). Shared contracts gained LiveControl models; rl-defense still passes against them.
+- Health: rl-defense 427 passed (20m46s); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 545 files, 0 problems. No live-LLM tests, no training/eval. `gh` not authenticated (GH_TOKEN rejected); used git/MCP only.
+- No code changes. Open: none.
+
+### 2026-10-23 — scheduled cloud health run (3)
+- Synced origin/main (9c1e89d9). No new messages addressed to Adam (newer Alan notes are all-hands live-defense phase 4/5). `gh` not authenticated; used git/MCP only.
+- Health: rl-defense 427 passed (26m17s); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 549 files, 0 problems. No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-23 — scheduled cloud health run (4)
+- Synced origin/main (235ef3f2). No new messages addressed to Adam. New since run 3: PR #407 (rl payment_read_lab binding fix, Adam's area) — covered by existing tests. `gh` not authenticated; used git/MCP only.
+- Health: rl-defense 439 passed (21m25s); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 550 files, 0 problems. No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-23 — scheduled cloud health run (5)
+- Synced origin/main (74a0a3c2). No new messages addressed to Adam (newer Alan notes: feasibility readiness audit, live-defense phase 6). New in Adam's area: PR #410 (rl feasibility readiness audit) — covered by new tests. `gh` not authenticated; used git/MCP only.
+- Health: rl-defense 457 passed (21m45s); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 557 files, 0 problems. No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-23 — scheduled cloud health run (6)
+- Synced origin/main (b2b7d53b). No new messages addressed to Adam (Alan's authorization-provider proposal is an FYI to shared/backend/RL owners; PR #414 research authorization provider landed in rl-defense and is covered by its new tests). `gh` not authenticated; used git/MCP only.
+- Health: rl-defense 471 passed (27m39s); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 557 files, 0 problems. No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-23 — scheduled cloud health run (7)
+- Synced origin/main (47095ec9). No new messages addressed to Adam. New in Adam's area: PR #418 (deploy trained policy; protocol-v1-retrain results). `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 562 files, 0 problems.
+- rl-defense tests NOT run this time: the PyTorch CPU index was unreachable through the proxy and the PyPI torch install did not finish within the time box. Last verified rl-defense result is run 6 (471 passed). No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-23 — scheduled cloud health run (8)
+- Synced origin/main (6997695d). No new messages addressed to Adam (Alan's adaptive-defense readiness note is all-hands). New in Adam's area since run 7: RL-CMDP-007 adaptive-defense readiness work and evidence-window fixes (late/same-tick evidence) — covered by new tests. `gh` not authenticated; used git/MCP only.
+- Health: rl-defense 494 passed (20m19s); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 574 files, 0 problems. This supersedes run 7's missing rl-defense result. No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-24 — scheduled cloud health run (9)
+- Synced origin/main (b36ef18b). No new messages addressed to Adam. New on main since run 8 are security-agents/backend changes (other owners); nothing in Adam's areas. `gh` not authenticated; used git/MCP only.
+- Health: rl-defense 494 passed (28m48s; PyTorch CPU index unreachable through the proxy, used PyPI torch); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 574 files, 0 problems. No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-24 — scheduled cloud health run (10)
+- Synced origin/main (211c2b24). No new messages addressed to Adam. New in Adam's area since run 9: RL resource-exhaustion/feasibility research (PRs #430, #433, #435; rl-defense tests + scripts/research/resource_bounds.py) — covered by their new tests. `gh` not authenticated; used git/MCP only.
+- Health: rl-defense 546 passed (23m27s; CPU torch index used); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 582 files, 0 problems. No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-24 — Devin — code-intelligence pipeline audit
+- Branch `feat/adam/intel-pipeline-audit` (carries `7a5b329f` = PR #441 redaction fix verbatim). Findings: non-literal route decorators were silently dropped → now flagged as IndexIssue; labeled retrieval recall 82% payments-lite / 63% ari-ai with honest missing-evidence list; per-commit/profile/tenant isolation verified by executed SQLite + Postgres tests.
+- Executed: `code-intelligence/tests` 57 passed 1 skipped; backend intel suite 9 passed (real Postgres); index benchmarks 0.16s/8f, 4.11s/127f, 92.4s/1798f (617MB heap).
+- Artifacts: `docs/research/intel-pipeline-audit/README.md`, `code-intelligence/evidence/m2-index-retrieval-audit.json`, `code-intelligence/evidence/index_benchmark.py`, `tests/test_retrieval_quality.py`.
+- Blockers: none. Open: PR #531 pending.
+
+### 2026-10-24 — scheduled cloud health run (11)
+- Synced origin/main (bbf63acf). No new messages addressed to Adam. Since run 10 main gained only backend/sandbox perf and recipe-generator work (other owners) plus a SESSION_HANDOFF.md note; nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 584 files, 0 problems. rl-defense suite NOT re-run (no changes in rl-defense since run 10's 546 passed). No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-24 — scheduled cloud health run (12)
+- Synced origin/main (c5c2b47d). No new messages addressed to Adam. New in Adam's area since run 11: first-responder research (rl-defense/rl_defense/research/first_responder.py, tests, docs/research/first-responder, scripts/research) — covered by new tests. `gh` not authenticated; used git/MCP only.
+- Health: rl-defense 569 passed (18m57s); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 595 files, 0 problems. No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-24 — scheduled cloud health run (13)
+- Synced origin/main (074780d8). No new messages addressed to Adam. Since run 12 main gained webhook redelivery (#457), Patch cause-code and live-defense phase 7a contracts in shared/ (other owners); nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
+- Health: rl-defense 569 passed (25m32s; CPU torch index unreachable through the proxy, used PyPI torch); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 597 files, 0 problems. No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-24 — scheduled cloud health run (14)
+- Synced origin/main (ca597df0). No new messages addressed to Adam. 12 commits since run 13 (agent/verify perf and Fortify ordering fixes by other owners); nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 599 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-24 — scheduled cloud health run (15)
+- Synced origin/main (f8388733). No new messages addressed to Adam. 12 commits since run 14 (reviewer/index/Patch perf by other owners); nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 597 files, 0 problems (run 14 reported 599; file count differs, no problems either way). rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-24 — scheduled cloud health run (16)
+- Synced origin/main (1d27a8b3). No new messages addressed to Adam. Since run 15 main gained only a backend/llm.py validation-error message change (other owner); nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 599 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-24 — scheduled cloud health run (17)
+- Synced origin/main (2e0c07f9). No new messages addressed to Adam. Since run 16 main gained only a backend/llm.py parallel-calls change (other owner); nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 599 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-24 — scheduled cloud health run (18)
+- Synced origin/main (58fc015a). No new messages addressed to Adam. Since run 17 main gained frontend agent-visibility labels, eval-set expansion and checks/sweep fixes (other owners); nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 598 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-24 — scheduled cloud health run (19)
+- Synced origin/main (35e8b32c). No new messages addressed to Adam. Since run 18 main gained only security-agents eval-set expansion and specialists Scout training changes (other owners); nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 598 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-24 — scheduled cloud health run (20)
+- Synced origin/main (466df4b7). No new messages addressed to Adam. Since run 19 main gained only eval scoring/serialization and an access_control.role check template (other owners); nothing changed in rl-defense/, examples/ or Adam's CI/docs. `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 598 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+### 2026-10-24 — first-user usability workstream (PR #538, feat/adam/first-user-usability)
+- PR #538 open against feat/adam/commit-review-navigation (#496). Changes: named approval cards (rmp_ subjects resolved to finding titles), two-step approve confirm on the on-page gate AND the /approvals inbox, plain-English replay + recorded-tool-call names, friendly quick-read error, repo-relative finding paths. New: docs/planning/FIRST_USER_FLOW_AND_USABILITY.md (flow map + blocker list).
+- Verified: unit 11 passed; typecheck/lint clean; e2e stack.py — 9/9 specs pass incl. journey + commit-workspace + incident closure. Testing agent verified desktop/mobile/keyboard on the live stack (evidence comment on the PR).
+- Coordination notes: gitleaks `git` scans ALL fetched objects — planted tok-* on rehearsal/ledgerlite-v2 failed every PR; fixed repo-wide by #544 on main (my redundant #547 closed). #441 (intel redaction) merged. #535 closed — content already on main.
+- Open: Decline one-click asymmetry (logged in blockers doc); video artifact missing (recording post-processing failed).
+
+
+### 2026-10-25 — scheduled cloud health run (21)
+- Synced origin/main (3af0fa72). No new messages addressed to Adam (newest: devin-integration-lead coordination-system notice, informational). Since run 20 main gained examples/inventory-lite (rehearsal fixture), a .gitleaks.toml addition, scripts/rehearsal and the coordination board (other agents); nothing changed in rl-defense/. `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; inventory-lite target 8 passed, label_checks 10 passed (informational, not Adam's); scripts/check_links.py 612 files, 0 problems. rl-defense suite NOT re-run (no changes there since run 13's 569 passed). No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+
+### 2026-10-24 — code-review eval lane (session 0068155b, PR #529)
+- Done: executed functional-reviewer eval report (`code-review/eval/REVIEWER_EVAL_2026-10-24.md`); offline suite 90 passed/4 skipped; corpus labels 10/10 proven; PR #516 serialization defect reproduced + locked with `security-agents/tests/test_eval_score_api.py` (5 tests); coordination notes filed for findings `paths` contract and #531/#535 privacy-chain coherence.
+- Outstanding dependency: PR #530 (release gate) must merge first — it edits the same `score_api.py` region (keeps `_finding_paths` nested; #529 hoists it). Rebase plan documented on #529: keep module-level `_finding_paths` + all 5 tests + #530's `scored`/`unscored_reason` fields.
+- Sent to release-gate agent: `last_error` sanitization spec (raw exception text `f"{type(exc).__name__}: {exc}"[:500]` persists + reaches project members via `GET /projects/{id}/jobs`; reuse `backend/redaction.py`; member-safe `{code, category}`; secret regression tests) + NULL-safe `score.py` paths/metrics nits.
+- Next action: on #530 merge → rebase #529, run suite, verify scoring across security/functional/unscored/missing-paths cases, confirm 8/8 CI.
+
+
+
+### 2026-10-25 — code-review eval lane (session 0068155b, PR #529 MERGED)
+- #529 merged as `586370b0` (squash): eval report + scorer path-fallback regression tests + coordination notes are on main. CI was 8/8 green at merge.
+- Merge order flipped: `score_api.py`'s `_finding_paths` is now MODULE-level on main. #530 (feat/adam/release-gate) owns the now-inverted conflict — resolution sent directly to the release-gate session (keep module-level fn, drop their nested copy, keep all scored/unscored_reason additions).
+- Lane complete pending #530's rebase + my final verification of combined scoring (security/functional/unscored/missing-paths).
+### 2026-10-25 — release-gate lane (session f3c02abe, #530 MERGED + follow-ups)
+- #530 merged as `22454ef2`: always-on path gates, pilot-verify.yml, dead-letter jobs endpoint, scored-only evals, load probe, release doc — all on main. 19/19 checks green at merge.
+- Fixed `main` breakage again: `gitleaks` red at head `dc9a623a` — 11 planted fake-secret literals in two since-deleted test files (commits `5dcddb61` + `78067f94`, redaction test suites). History can't be rewritten → path-scoped `condition=AND` allowlist of the exact planted values in `.gitleaks.toml`. Merged via #571 (`2c8ad50d`).
+- Unblocked #570 (integration-lead redaction PR): fixed its `intel-tests` ruff E501 + merged main in (picks up the gitleaks allowlist). Comment posted on the PR. Its `intel-tests`+`gitleaks` should now pass; still integration-lead's to land.
+- #572 open (test-only): cross-org isolation regression for `GET /projects/{id}/jobs` (org-B member → 404; payload OR-clause arms covered) — the commander's remaining #530-review ask. Driver-DSN/kv scrub test deliberately dropped (redundant with #570's suite).
+- Parked branch `fix/adam/redaction-dsn-kv` superseded — redaction regex fixes now live in #570 (integration-lead owns them per commander stand-down). Commander's pilot-verify label map filed in `coordination/messages/2026-10-25T01Z-adam-to-commander-pilot-verify-labels.md` (riding #572).
+- Open fleet: #570, #572 (mine), #540, #538, #536, #532, #458, #412. Still needs Adam: branch protection on `main` (second unprotected breakage today), hosted URL + Anthropic key for live-model/hosted-smoke gates, merge sign-offs.
+
+### 2026-10-25 — scheduled cloud health run (22)
+- Synced origin/main (c65a8ed0). No new messages addressed to Adam. Since run 21 nothing changed in rl-defense/ or examples/payments-lite; `.github/workflows/rl.yml` gained the path-gate (release-gate lane, #530). `gh` not authenticated; used git only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 645 files, 0 problems. rl-defense suite started (installed with default CUDA torch, not CI's CPU wheel) but exceeded the time-box after ~21 CPU-min and was killed, so NOT confirmed this run; last full pass remains run 13's 569 passed. Next run: install torch from the CPU index as rl.yml does.
+- No code changes. No live-LLM tests, no training/eval. Open: none.
+
+### 2026-10-25 — scheduled cloud health run (23)
+- Synced origin/main (8d897f7e). No new messages addressed to Adam. Nothing changed in rl-defense/, examples/payments-lite or Adam's CI/docs since run 22. `gh` not authenticated; used git/MCP only.
+- Health: rl-defense 569 passed (20 min; the CPU torch index was unreachable through the proxy, so torch came from PyPI instead of rl.yml's CPU wheel); payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 648 files, 0 problems. No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-25 — scheduled cloud health run (24)
+- Synced origin/main (eea084bc). No new messages addressed to Adam. Nothing changed in rl-defense/, examples/payments-lite or Adam's CI/docs since run 23. `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 649 files, 0 problems. rl-defense suite NOT re-run (unchanged since run 23's 569 passed). No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-25 — scheduled cloud health run (25)
+- Synced origin/main (191b461b). No new messages addressed to Adam. Nothing changed in rl-defense/, examples/payments-lite or Adam's CI/docs since run 24 (12 commits landed from other owners). `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 649 files, 0 problems. rl-defense suite NOT re-run (unchanged since run 23's 569 passed). No live-LLM tests, no training/eval.
+- No code changes. Open: none.
+
+### 2026-10-25 — scheduled cloud health run (26)
+- Synced origin/main (6c5d2625). No new messages addressed to Adam. Nothing changed in rl-defense/, examples/payments-lite or Adam's CI/docs since run 25. `gh` not authenticated for GraphQL; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 653 files, 0 problems. rl-defense suite NOT re-run (unchanged since run 23's 569 passed). No live-LLM tests, no training/eval.
+- No-op. Open: none.
+
+### 2026-10-25 — scheduled cloud health run (27)
+- Synced origin/main (e41c9dc2). No new messages addressed to Adam. Nothing changed in rl-defense/, examples/payments-lite or Adam's CI/docs since run 26. `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 654 files, 0 problems. rl-defense suite NOT re-run (unchanged since run 23's 569 passed). No live-LLM tests, no training/eval.
+- No-op. Open: none.
+
+### 2026-10-25 — scheduled cloud health run (28)
+- Synced origin/main (59cd0b62). No new messages addressed to Adam. Nothing changed in rl-defense/, examples/payments-lite or Adam's CI/docs since run 27. `gh` not authenticated; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 658 files, 0 problems. rl-defense suite NOT re-run (unchanged since run 23's 569 passed). No live-LLM tests, no training/eval.
+- No-op. Open: none.
+
+### 2026-10-26 — scheduled cloud health run (29)
+- Synced origin/main (eb2d8bb2). No new messages addressed to Adam. Since run 28 only rl-defense/README.md (docs) and scripts/check_links.py changed in Adam's areas, plus two new workflows (codex-release-review, live-defense-e2e). `gh` GraphQL unavailable; used git/MCP only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 735 files, 0 problems. rl-defense suite NOT re-run (no code change since run 23's 569 passed). No live-LLM tests, no training/eval.
+- No-op. Open: none.

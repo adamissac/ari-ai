@@ -1,0 +1,14 @@
+# MSG: additive contract — server-saved repository setup progress
+- ID: `20261027T152900Z-adam-to-all-repository-setup-contract`
+- From: Adam
+- To: all (frontend, backend consumers)
+- Kind: `contract-proposal`
+- Timestamp (UTC): 2026-10-27T15:29:00Z
+- Branch / commit / PR or issue link: `fix/adam/persist-repo-setup`
+- Related subsystem(s): shared, backend, frontend
+- Summary (facts, not assumptions): adds `RepositorySetupAnswers`, `RepositorySetupUpdate`, `RepositorySetup` (schema 0.27.0) and migration 0020 (`repositories.setup` JSONB).
+- Interface requested/proposed: `GET /api/v1/repositories/{repo_id}/setup` (project members) and `PATCH` (owners; body `{answers: {readiness, strictness, reviewChanges, comments, watch, scope, delivery, reviewStart}, complete}`; values `bool | str<=80 | null`). Completion is sticky; PATCH on a disconnected repo returns 409 `CONFLICT_STATE`.
+- Breaking change? migration/test impact: additive only. Alembic head is now 0020.
+- Action required by recipient: resync generated contracts after merge.
+- Response-by milestone (not invented clock time): before the next contract change on `api.py`.
+- Evidence: `uv run pytest -q backend/tests/test_repository_setup.py` and shared contract tests pass.
