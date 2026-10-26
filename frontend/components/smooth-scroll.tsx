@@ -38,19 +38,29 @@ export function SmoothScroll() {
     let holdingVideo = false;
     let videoArrival = 0;
     let lastVideoWheel = 0;
+    // While gliding to an in-page anchor, its position is re-read every frame, so layout that
+    // shifts mid-glide (late images, fonts, animated sections) cannot leave the page short of it.
+    let anchor: HTMLElement | null = null;
 
     const max = () => document.documentElement.scrollHeight - window.innerHeight;
-    const stop = () => { cancelAnimationFrame(frame); animating = false; };
+    const stop = () => { cancelAnimationFrame(frame); animating = false; anchor = null; };
+    const anchorTop = (el: HTMLElement) => {
+      const marginTop = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+      return Math.max(0, Math.min(max(), el.getBoundingClientRect().top + window.scrollY - marginTop));
+    };
     let last = 0;
     const tick = (now: number) => {
-      // Frame-rate independent: the same glide on 60 Hz and 120 Hz screens.
-      const dt = last ? Math.max(1, Math.min(64, now - last)) : FRAME;
+      // Time-based, not frame-based: the same glide on 60 Hz and 120 Hz screens, and a busy
+      // device painting a few frames a second still arrives on time instead of creeping.
+      const dt = last ? Math.max(1, Math.min(1000, now - last)) : FRAME;
       last = now;
+      if (anchor) target = anchorTop(anchor);
       current += (target - current) * (1 - Math.pow(1 - EASE, dt / FRAME));
       if (Math.abs(target - current) < 0.5) current = target;
       animating = current !== target;
       window.scrollTo(0, current);
       if (animating) frame = requestAnimationFrame(tick);
+      else anchor = null;
     };
     const start = () => { if (!animating) { animating = true; last = 0; frame = requestAnimationFrame(tick); } };
 
@@ -60,6 +70,7 @@ export function SmoothScroll() {
       const dy = e.deltaMode === 1 ? e.deltaY * LINE : e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY;
       if (e.target instanceof Element && scrollableParent(e.target, dy)) return;
       e.preventDefault();
+      anchor = null;
       if (!animating) { current = window.scrollY; target = current; }
       const now = performance.now();
       if (holdingVideo) {
@@ -100,9 +111,9 @@ export function SmoothScroll() {
       const el = document.getElementById(decodeURIComponent(a.hash.slice(1)));
       if (!el) return;
       e.preventDefault();
-      const marginTop = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
       current = window.scrollY;
-      target = Math.max(0, Math.min(max(), el.getBoundingClientRect().top + window.scrollY - marginTop));
+      anchor = el;
+      target = anchorTop(el);
       // Explicit anchor navigation is intentional, so never pull it back to the video.
       holdingVideo = false;
       videoStopUsed = true;
