@@ -195,7 +195,7 @@ test('incident closure: link verified finding, criteria with evidence, communica
 
 test('expectations page shows the version-pinned snapshot view', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
-  await page.goto(`/projects/${project()}/expectations`);
+  await page.goto(`/projects/${project()}/expectations?repo=${env('E2E_REPO_ID')}`);
   await expect(page.getByRole('button', { name: 'Expectations' })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByText(/No indexed snapshot|awaiting a human decision/)).toBeVisible();
   await evidenceShot(page, 'expectations');

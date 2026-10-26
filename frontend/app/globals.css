@@ -908,17 +908,36 @@ body:has(.commit-stage) main { color: #fff; }
 .amap-live { width: 7px; height: 7px; flex: none; border-radius: 9999px; background: rgb(255 255 255 / 30%); }
 .amap-live[data-on] { background: #fff; box-shadow: 0 0 0 4px rgb(255 255 255 / 12%); animation: demo-blink 1.2s ease-in-out infinite; }
 .amap-phases { display: flex; flex-wrap: wrap; gap: 4px; }
-.amap-phases li { position: relative; padding: 4px 10px 8px; font-size: 0.78rem; color: rgb(255 255 255 / 38%); transition: color 300ms; }
-.amap-phases li::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 2px; border-radius: 2px; background: rgb(255 255 255 / 10%); transition: background-color 300ms; }
-.amap-phases li[data-state="active"] { color: #fff; }
-.amap-phases li[data-state="active"]::after { background: #fff; }
-.amap-phases li[data-state="done"] { color: rgb(255 255 255 / 72%); }
-.amap-phases li[data-state="done"]::after { background: rgb(255 255 255 / 45%); }
-.amap-phases li[data-state="skipped"] { color: rgb(255 255 255 / 28%); text-decoration: line-through; text-decoration-color: rgb(255 255 255 / 25%); }
-.amap-phases li[data-state="skipped"]::after { background: transparent; }
+.amap-phase { position: relative; padding: 4px 10px 8px; font-size: 0.78rem; color: rgb(255 255 255 / 38%); transition: color 300ms; }
+.amap-phase::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 2px; border-radius: 2px; background: rgb(255 255 255 / 10%); transition: background-color 300ms; }
+.amap-phase[aria-pressed="true"], .amap-phase[data-state="active"] { color: #fff; }
+.amap-phase[aria-pressed="true"]::after, .amap-phase[data-state="active"]::after { background: #fff; }
+.amap-phase[data-state="done"] { color: rgb(255 255 255 / 72%); }
+.amap-phase[data-state="done"]::after { background: rgb(255 255 255 / 45%); }
+.amap-phase[data-state="skipped"] { color: rgb(255 255 255 / 28%); text-decoration: line-through; text-decoration-color: rgb(255 255 255 / 25%); }
+.amap-phase[data-state="skipped"]::after { background: transparent; }
 
 .amap-grid { display: grid; align-items: stretch; }
 @media (min-width: 1100px) { .amap-grid { grid-template-columns: 15rem minmax(0, 1fr) 18.5rem; } }
+.amap-grid-compact { grid-template-columns: minmax(0, 1fr); }
+.amap-grid-compact .amap-rail { grid-column: 1 / -1; }
+.amap-rail-compact { flex-direction: row; gap: 8px; overflow-x: auto; }
+.amap-rail-compact .amap-group { flex: none; border-right: 1px solid rgb(255 255 255 / 8%); padding-right: 8px; }
+.amap-rail-compact .amap-group:last-child { border-right: 0; }
+.amap-rail-compact .amap-group-label { display: none; }
+.amap-rail-compact .amap-group ol { flex-direction: row; }
+.amap-rail-compact .amap-agent { width: auto; align-items: center; gap: 6px; padding: 5px 7px; }
+.amap-rail-compact .amap-agent-name { white-space: nowrap; font-size: 0.72rem; }
+.amap-rail-compact :is(.amap-agent-status, .amap-agent-job) { display: none; }
+.amap-rail-compact .amap-mark { width: 13px; height: 13px; margin: 0; }
+.amap-grid-compact .amap-map { height: 320px; min-height: 320px; flex: none; padding: 12px; }
+.amap-grid-compact .amap-inspect { border-top: 1px solid rgb(255 255 255 / 7%); padding: 14px; }
+@media (min-width: 1280px) {
+  .amap-grid-compact { grid-template-columns: minmax(0, 3fr) minmax(17rem, 1fr); }
+  .amap-grid-compact .amap-rail { grid-column: 1 / -1; }
+  .amap-grid-compact .amap-stage { grid-column: 1; }
+  .amap-grid-compact .amap-inspect { grid-column: 2; grid-row: 2; max-height: 320px; border-top: 0; border-left: 1px solid rgb(255 255 255 / 7%); }
+}
 .amap-rail { display: flex; flex-direction: column; gap: 14px; padding: 16px 12px; border-bottom: 1px solid rgb(255 255 255 / 7%); }
 @media (min-width: 1100px) { .amap-rail { border-bottom: 0; border-right: 1px solid rgb(255 255 255 / 7%); } }
 .amap-group-label { padding: 0 8px 4px; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.02em; color: rgb(255 255 255 / 40%); }
