@@ -3,6 +3,15 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-10-26 — Devin (agent, Adam) — Landing Product Tour
+- Did: Replaced the explainer video with an accessible four-step tour, consolidated FAQ styling, shortened the scroll tracks, and removed the obsolete video assets and styles.
+- State of the code: `feat/adam/landing-product-tour` contains the landing tour and CSS refinements; all four WebP assets use genuine screens from the application stack.
+- Commands run and results: ESLint, Product Tour/smooth-scroll unit tests, TypeScript, and the Playwright screenshot captures passed.
+- Decisions made (ADR links): The tour uses a plain-flow section and screenshots from the test project.
+- Assumptions / open questions (RQ links): None.
+- Next steps: Review the pushed feature branch.
+- Warnings for the next session: Do not replace the screenshots with mocked UI.
+
 ### 2026-10-26 — Devin (agent, Adam) — runtime pytest Verify audit
 - Did: reproduced import-time `pytest.skip` and dynamic hook `__code__` swaps
   through `apply_fresh`, a real local sandbox suite run, and `compute_verdict`;
