@@ -220,6 +220,8 @@ test('owner opts into defense from OFF and the setting persists after reload', a
 test('simulated incident: triage, owner, two-person containment approval', async ({ browser }) => {
   const alice = await newUser(browser, 'e2e-alice');
   const bob = await newUser(browser, 'e2e-bob');
+  await completeSetup(alice);
+  await completeSetup(bob);
   const title = `drill-${Date.now()}`;
   await alice.goto(`/projects/${project()}/incidents`);
   await alice.getByLabel('Title').fill(title);
@@ -258,6 +260,8 @@ test('incident closure: link verified finding, criteria with evidence, communica
   const bob = await newUser(browser, 'e2e-bob');
   alice.setDefaultTimeout(20_000);
   bob.setDefaultTimeout(20_000);
+  await completeSetup(alice);
+  await completeSetup(bob);
   const title = `closure-${Date.now()}`;
   await alice.goto(`/projects/${project()}/incidents`);
   await alice.getByLabel('Title').fill(title);
