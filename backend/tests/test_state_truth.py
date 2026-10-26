@@ -440,3 +440,19 @@ def test_automation_status_reads_the_quota_without_locking_the_project(client_fa
         )
         status = alice.get(f"/api/v1/repositories/{ids['repo']}/automation-status")
         assert status.status_code == 200
+
+
+def test_reconnect_reattaches_a_live_repository_whose_grant_was_detached(
+    client_factory, monkeypatch
+):
+    from backend.settings import get_settings
+
+    alice = client_factory("alice")
+    rid = _connect(alice, _project(alice), "acme/shop").json()["id"]  # live, no installation
+    with transaction() as conn:
+        store_repo_access(conn, alice.me["user"]["id"], [ACME])  # the App reaches it again
+    production = get_settings().model_copy(update={"app_env": "production"})
+    monkeypatch.setattr("backend.api.routes.get_settings", lambda: production)
+    assert alice.post(f"/api/v1/repositories/{rid}/reconnect").status_code == 200
+    repo = alice.get(f"/api/v1/repositories/{rid}").json()
+    assert repo["disconnected"] is False and repo["installation_id"] == 42

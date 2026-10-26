@@ -86,6 +86,14 @@ function DisconnectedRow({ repo }: { repo: Repository }) {
 }
 
 function ConnectedRow({ repo }: { repo: Repository }) {
+  const { reloadRepos } = useProject();
+  const [reattach, setReattach] = useState<{ busy: boolean; error: unknown }>({ busy: false, error: null });
+  // An uninstall detaches the grant but keeps the row live; reconnect re-verifies and records a new one.
+  const reattachApp = async () => {
+    setReattach({ busy: true, error: null });
+    try { await api().reconnectRepository(repo.id); reloadRepos(); setReattach({ busy: false, error: null }); }
+    catch (err) { setReattach({ busy: false, error: err }); }
+  };
   const [sha, setSha] = useState('');
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -116,6 +124,7 @@ function ConnectedRow({ repo }: { repo: Repository }) {
         <span className="font-medium">{repo.full_name}</span>
         <span className="flex flex-wrap items-center gap-3 text-xs text-muted">
           {repo.default_branch} · {repo.installation_id ? 'GitHub App installed' : 'no GitHub App installation'}
+          {!repo.installation_id && !NAME_ONLY_CONNECT && <Button disabled={reattach.busy} onClick={() => void reattachApp()}>{reattach.busy ? 'Checking GitHub…' : 'Reattach GitHub App'}</Button>}
           <Link className="text-brand hover:underline" href={`/projects/${repo.project_id}/simulate?repo=${encodeURIComponent(repo.id)}`} data-testid={`simulate-${repo.full_name}`}>Attack walkthrough →</Link>
         </span>
       </div>
@@ -131,6 +140,7 @@ function ConnectedRow({ repo }: { repo: Repository }) {
           {snapshot.error_message && <span className="text-bad">{snapshot.error_message}</span>}
         </p>
       )}
+      {reattach.error !== null && <div className="mt-2"><ErrorState error={reattach.error} context="Reattach failed" /></div>}
       {error !== null && <div className="mt-2"><ErrorState error={error} context="Snapshot" /></div>}
     </li>
   );

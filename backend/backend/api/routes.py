@@ -789,7 +789,8 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
                     "you no longer have access to this repository through its installation",
                     403,
                 )
-        if repo["disconnected_at"] is not None:
+        # Also for a live row whose grant an uninstall detached: record the verified one.
+        if repo["disconnected_at"] is not None or installation_id != repo["installation_id"]:
             conn.execute(
                 sa.update(repositories)
                 .where(repositories.c.id == repo_id)
@@ -804,6 +805,7 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
                 "repository",
                 repo_id,
                 full_name=repo["full_name"],
+                installation_id=installation_id,
             )
         return {"id": repo_id, "disconnected": False}
 
