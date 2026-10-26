@@ -3,6 +3,40 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-10-26 — Devin (agent, Adam) — runtime pytest Verify audit
+- Did: reproduced import-time `pytest.skip` and dynamic hook `__code__` swaps
+  through `apply_fresh`, a real local sandbox suite run, and `compute_verdict`;
+  added an always-on runtime hook/collection/outcome audit, comparator, Verify
+  evidence plumbing, static-scan false-positive relaxations, regression tests,
+  documentation, and persistence of baseline audit evidence across approval
+  checkpoint resumes.
+- State of the code: working on `fix/adam/verify-runtime-hook-audit`; changes
+  are verified, not yet committed or pushed. The host-adapter functional-verify
+  check (`tamper_ok = not protected_paths`) remains unchanged and out of scope.
+- Commands run and results: origin-main Verify reproduction — 2 failed, 213
+  deselected (`/Users/devin/.devin-files/verify-runtime-audit-red-origin-main.log`),
+  confirming both scenarios were accepted before the implementation. Direct
+  origin-main static-scan checks also recorded the comprehension target,
+  function-local hook root, and module literal false positives. The first full
+  suite run found one approval-resume regression (818 passed, 24 skipped,
+  1 failed): the durable checkpoint restored `baseline_failing` but not its
+  audit. The checkpoint now preserves that audit without changing the setter's
+  `None` behavior; the focused recovery test passed. Final full suite:
+  819 passed, 24 skipped. Ruff check, Ruff format check, and `git diff --check`
+  passed.
+- Decisions made (ADR links): audit details remain internal evidence and only a
+  compact summary is returned to the model; the host-adapter functional path is
+  explicitly outside this audit. Approval checkpoint resume explicitly
+  restores an available baseline audit; older checkpoints without it remain
+  fail-closed.
+- Assumptions / open questions (RQ links): in-process plugin/data tampering and
+  hook swaps restored between snapshots remain residual risks.
+- Next steps: fetch and review `origin/main`, install git hooks, commit with
+  canonical identity, audit the message, and push without monitoring CI.
+- Warnings for the next session: no commit, push, or post-push CI check has
+  occurred. The full suite was run a second time after fixing the discovered
+  approval-resume regression.
+
 ## Template
 
 ```

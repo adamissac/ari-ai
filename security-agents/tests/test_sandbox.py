@@ -250,6 +250,49 @@ def test_sandbox_collects_out_files(snapshot, driver):
     assert res.out_json("result.json") == {"ok": True}
 
 
+@pytest.mark.boundary
+def test_pytest_audit_records_phases_outcomes_and_directory_independent_hashes(driver, tmp_path):
+    results = []
+    for name in ("workspace-one", "workspace-two"):
+        workspace = tmp_path / name
+        (workspace / "tests").mkdir(parents=True)
+        (workspace / "tests/test_audit.py").write_text(
+            "import pytest\n\n"
+            "def test_passes():\n"
+            "    assert True\n\n"
+            "def test_skips():\n"
+            "    pytest.skip('expected')\n",
+            encoding="utf-8",
+        )
+        result = driver.run(
+            SandboxSpec(
+                profile=SandboxProfile.TEST_RUNNER,
+                network="none",
+                workspace=workspace,
+                mode="pytest",
+                args=["-q", "tests"],
+                labels={"assessment_id": "asm_audit", "step_key": "pytest-audit"},
+            )
+        )
+        audit = result.out_json("pytest_audit.json")
+        assert audit is not None, result.stderr
+        assert audit["version"] == 1
+        assert audit["complete"] is True
+        assert set(audit["phases"]) == {"collection", "final"}
+        assert audit["phases"]["collection"] and audit["phases"]["final"]
+        assert set(audit["nodeids"]) == {
+            "tests/test_audit.py::test_passes",
+            "tests/test_audit.py::test_skips",
+        }
+        assert audit["outcomes"] == {
+            "tests/test_audit.py::test_passes": "passed",
+            "tests/test_audit.py::test_skips": "skipped",
+        }
+        results.append(audit)
+
+    assert results[0]["phases"] == results[1]["phases"]
+
+
 def test_sandbox_env_is_scrubbed(snapshot, driver, monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-should-never-be-visible")
     leaker = (

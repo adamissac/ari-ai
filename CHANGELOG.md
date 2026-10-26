@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Verify now compares always-on runtime pytest hook, collection, and outcome audits against baseline runs; missing or incomplete audit evidence fails closed. The application-code scanner also avoids comprehension-target, local-root mutation, and literal-constant false positives.
 - Setup now shows the actual expiry of the sandbox scope being approved; landing copy states the default and maximum authorization durations.
 - Refined the console account menu, mobile project navigation, status marks, assessment headers, and commit-to-assessment links.
 - Added opt-in bounded exact-SHA release review automation with isolated strict

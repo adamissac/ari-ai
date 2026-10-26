@@ -891,6 +891,8 @@ class HostOrchestrator:
         )
         orchestrator.result.usage = Usage.model_validate(checkpoint["usage"])
         orchestrator._baseline_failing = list(checkpoint.get("baseline_failing") or [])
+        baseline_audit = checkpoint.get("baseline_pytest_audit")
+        orchestrator._baseline_audit = baseline_audit if isinstance(baseline_audit, dict) else None
         sink = orchestrator.sink
         if isinstance(sink, HostSink):
             sink.sandbox_charged = float(checkpoint.get("sandbox_charged") or 0)
@@ -1171,6 +1173,7 @@ def _save_checkpoint(host: AssessmentHostLike, orchestrator: Orchestrator, intel
             ),
             "usage": orchestrator.result.usage.model_dump(mode="json"),
             "baseline_failing": list(orchestrator._baseline_failing),
+            "baseline_pytest_audit": orchestrator._baseline_audit,
             "sandbox_charged": charged,
         },
     )

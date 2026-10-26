@@ -149,24 +149,32 @@ sandbox environment is scrubbed and transcripts pass through the redactor.
   pytest hook definitions, hookimpl decorators, context-aware `pytest_*`
   bindings (including imports and global stores), writes rooted at `pytest_*`
   attributes or subscripts, `_pytest` / pluggy imports including literal
-  dynamic imports, and `pytest_plugins` assignments. Function-local names and
-  subscript index names are not treated as bindings. Attribute/subscript writes
-  and `setattr` roots are checked throughout function bodies. Packaging settings
+  dynamic imports, and `pytest_plugins` assignments. Function-local names,
+  comprehension targets, local roots and subscript index names are not treated
+  as bindings. Attribute/subscript writes and `setattr` roots are checked
+  throughout function bodies. Packaging settings
   in `setup.py` are not semantically inspected, but `setup.py` is covered by
   the changed-Python-file hook, import, and `pytest_plugins` scan.
+- **Runtime pytest audit is always on.** Each pytest sandbox run records the
+  collection and final hook implementations, canonical code hashes, collected
+  node IDs, and per-test outcomes. Verify compares each matching patched-suite
+  audit with the baseline; changed/added/removed hooks, missing protected test
+  IDs, and baseline-passed tests that no longer execute fail
+  `no_test_tampering`. Missing, malformed, or incomplete audit artifacts fail
+  closed. The complete audit is retained as evidence, not included in
+  model-facing test results.
 - **Known limitation:** a pre-existing path under a recipe test root longer
   than 400 characters is rejected by `safe_rel_path`; Verify fails closed and
   rejects every patch for that repository. The longest tracked paths currently
   under this repository's `tests/` and `scripts/rehearsal/target-app/` are 40
   (`security/test_owasp_llm_agent_runtime.py`) and 17 (`build_recipe.json`)
   characters, respectively. This is a blocked fix, not a bypass.
-- **Residual risk:** Verify's project suite runs with the test roots restored to
-  the pinned snapshot, so patch-added test files cannot affect protected tests.
-  Dynamic or nonliteral `pytest_plugins` declarations are recorded but are not
-  statically expanded to arbitrary Python files. Obfuscated or dynamic
-  registration through `globals()[...]`, `setattr(sys.modules[...], ...)`, or
-  computed import names is not detected and remains within the broader risk
-  that hostile patched application code executes in the suite; Verify does not
+- **Residual risk:** in-process patched code can tamper with the audit plugin or
+  its data, or swap and restore a hook between the collection and final
+  snapshots. Closures and default argument values are not included in hook code
+  hashes. The host-adapter functional-verify path is not covered by this runtime
+  pytest audit. Dynamic or nonliteral `pytest_plugins` declarations are recorded
+  but are not statically expanded to arbitrary Python files. Verify does not
   protect against arbitrary hostile code in the patch.
   Unsupported or quoted diff path headers fail closed before patch application.
 - **Model output carries no authority.** No output schema has a field that
