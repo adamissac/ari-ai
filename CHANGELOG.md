@@ -6,8 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
-- Replaced the landing explainer video with a four-step real-screen product tour and shortened the scroll-driven story tracks.
-- Aligned the pricing FAQ answers to a consistent divider and question-text baseline.
+- Removed the landing explainer video without a replacement for now, aligned the pricing FAQ answers to a consistent divider and question-text baseline, and shortened the scroll-driven story tracks.
 - Reframed Defense Lab as a recorded network-defense console with recommendation-only status and local demo approvals.
 - Repository setup answers and completion are now saved on the server (`GET`/`PATCH /api/v1/repositories/{id}/setup`), so setup is never repeated after a reload, sign-out, or on another browser; browser-only progress from earlier builds migrates once. Disconnected repositories are labelled, never auto-selected, and cannot be set up.
 - Signed-out pages stop polling the API every few seconds after a 401.

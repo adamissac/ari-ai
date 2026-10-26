@@ -11,6 +11,7 @@ adds an entry before ending.
 - Assumptions / open questions (RQ links): None.
 - Next steps: Review the pushed feature branch.
 - Warnings for the next session: Do not replace the screenshots with mocked UI.
+- Follow-up: The product tour was removed at Adam's request; the explainer video remains deleted without a replacement for now.
 
 ### 2026-10-26 — Devin (agent, Adam) — Defense Console
 - Did: Reframed `/lab` around the recorded trained-defender view, added live status counts and scenario/run selectors, replaced the replay explanation with activity and demo-only approval rows, and updated focused tests and docs.

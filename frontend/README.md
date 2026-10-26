@@ -61,7 +61,6 @@ every RL metric and provenance) is kept, one click away. All counts come from re
 
 ## Landing, header and motion
 
-- `components/product-tour.tsx`: the landing's four-step interactive tour, with authentic application screenshots and reduced-motion-aware auto-advance.
 - `components/hero.tsx`, `intro-loader.tsx`, `story.tsx`: the landing's hero, once-per-sign-in
   intro and scroll-told chapters. Chapters pin and scrub only at `lg` with motion allowed;
   otherwise they render their final, readable state.
