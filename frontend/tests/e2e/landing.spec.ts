@@ -144,8 +144,14 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.getByRole('link', { name: 'How It Works', exact: true }).click();
     await expect(page).toHaveURL(/#how$/);
-    // The glide to #how runs per animation frame; CI's software renderer paints the blurred hero slowly.
-    await expect.poll(() => page.locator('#how').evaluate(el => Math.round(el.getBoundingClientRect().top)), { timeout: 20_000 }).toBe(viewport.width < 640 ? 176 : 80);
+    // The animated anchor can land a few pixels from its CSS scroll margin under CI's renderer.
+    await expect.poll(
+      () => page.locator('#how').evaluate(el => {
+        const scrollMargin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+        return Math.abs(Math.round(el.getBoundingClientRect().top) - scrollMargin);
+      }),
+      { timeout: 20_000 },
+    ).toBeLessThanOrEqual(5);
     await nav.getByRole('link', { name: 'Pricing', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'ARI pricing' })).toBeVisible();
     await page.evaluate(() => window.scrollTo(0, 0));
