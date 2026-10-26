@@ -149,6 +149,19 @@ def verify_installation_access(full_name: str, installation_id: int) -> None:
         )
 
 
+def _drop_own_login_rows(user_id: str, login: str) -> None:
+    """Forget this user's access rows for repositories under `login`'s own account."""
+    with transaction() as conn:
+        conn.execute(
+            sa.delete(github_repo_access).where(
+                github_repo_access.c.user_id == user_id,
+                sa.func.lower(github_repo_access.c.full_name).startswith(
+                    f"{login.casefold()}/", autoescape=True
+                ),
+            )
+        )
+
+
 def _refresh_personal_installation_repositories(
     user_id: str, login: str | None, github_id: int | None, *, strict: bool = False
 ) -> bool:
@@ -181,15 +194,7 @@ def _refresh_personal_installation_repositories(
         if installation is None:
             # GitHub confirms the user has no personal installation (uninstalled): rows for
             # repositories under their own account came from it and are no longer reachable.
-            with transaction() as conn:
-                conn.execute(
-                    sa.delete(github_repo_access).where(
-                        github_repo_access.c.user_id == user_id,
-                        sa.func.lower(github_repo_access.c.full_name).startswith(
-                            f"{login.casefold()}/", autoescape=True
-                        ),
-                    )
-                )
+            _drop_own_login_rows(user_id, login)
             return False
         account = installation.get("account")
         installation_id = installation.get("id")
@@ -207,6 +212,10 @@ def _refresh_personal_installation_repositories(
                 isinstance(account_login, str) and account_login.casefold() == login.casefold()
             )
         if not trusted:
+            # The login now names a different account (renamed and re-registered): repositories
+            # under it are that account's, so this user's rows for them are stale.
+            if account.get("type") == "User" and github_id is not None:
+                _drop_own_login_rows(user_id, login)
             return False
         repositories_for_installation = app.installation_repositories(installation_id)
     except GitHubNotConfigured:

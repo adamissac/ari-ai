@@ -506,3 +506,27 @@ def test_collaborator_permission_uses_the_base_permission_not_a_custom_role_name
     monkeypatch.setattr(app, "_get", get, raising=False)
     assert app.collaborator_permission(1, "acme/shop", "custom") == "write"
     assert app.collaborator_permission(1, "acme/shop", "nobody") == "none"
+
+
+def test_rows_for_a_login_now_owned_by_another_account_are_dropped(client_factory, monkeypatch):
+    from backend.api.github_repos import _refresh_personal_installation_repositories
+    from backend.settings import Settings
+
+    alice = client_factory("alice")
+    uid = alice.me["user"]["id"]
+    with transaction() as conn:
+        store_repo_access(conn, uid, [{**ACME, "full_name": "alice/app"}, ACME])
+    monkeypatch.setattr(
+        "backend.api.github_repos.get_settings", lambda: Settings(app_env="production")
+    )
+
+    class Renamed:
+        def user_installation(self, login):  # "alice" now belongs to account 999
+            return {"id": 5, "account": {"type": "User", "id": 999, "login": "alice"}}
+
+        def installation_repositories(self, installation_id):
+            raise AssertionError("must not list another account's repositories")
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", Renamed)
+    assert _refresh_personal_installation_repositories(uid, "alice", 123) is False
+    assert _access(uid) == ["acme/shop"]  # organization access stays; old personal rows gone
