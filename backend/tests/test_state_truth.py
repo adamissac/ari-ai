@@ -206,6 +206,15 @@ def test_owner_can_retry_a_build_recipe_once_at_a_time(client_factory):
     assert bob.post(url).status_code == 404  # another tenant cannot see it
     first = alice.post(url)
     assert first.status_code == 202 and first.json()["queued"] is True
+    with transaction() as conn:  # counted against its project's queue limits
+        assert (
+            conn.execute(
+                sa.select(jobs.c.project_id).where(jobs.c.id == first.json()["job_id"])
+            ).scalar_one()
+            == conn.execute(
+                sa.select(repositories.c.project_id).where(repositories.c.id == rid)
+            ).scalar_one()
+        )
     again = alice.post(url)  # double click joins the pending run
     assert again.json() == {"job_id": first.json()["job_id"], "queued": False}
     assert len(_recipe_jobs()) == 1

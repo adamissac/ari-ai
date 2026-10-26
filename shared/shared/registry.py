@@ -213,6 +213,8 @@ MODELS: tuple[type[BaseModel], ...] = (
     api.RepositorySetupAnswers,
     api.RepositorySetupUpdate,
     api.RepositorySetup,
+    api.AccessibleRepository,
+    api.AccessibleRepositoryList,
     api.AutomationReason,
     api.AutomationStatus,
     api.RecipeRetryAccepted,

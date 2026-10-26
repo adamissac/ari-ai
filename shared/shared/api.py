@@ -173,6 +173,32 @@ class RepositorySetup(StrictModel):
     updated_at: UtcDatetime | None = None
 
 
+class AccessibleRepository(StrictModel):
+    """A repository the signed-in user can reach through the GitHub App, and its Ari row."""
+
+    full_name: str = Field(pattern=r"^[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+$")
+    installation_id: int = Field(ge=1)
+    default_branch: ShortText
+    private: bool
+    connected_repo_id: RepositoryId | None = Field(
+        default=None, description="The Ari repository row; kept after a disconnect as history"
+    )
+    disconnected: bool = Field(
+        default=False, description="That row is disconnected: Ari reads nothing until reconnect"
+    )
+
+
+class AccessibleRepositoryList(StrictModel):
+    """GET /github/repositories: the picker list and the App's install link."""
+
+    items: list[AccessibleRepository]
+    install_url: str | None = Field(default=None, pattern=r"^https://")
+    live_checked: bool = Field(
+        description="False: access is as of the last GitHub sign-in, not re-checked just now"
+    )
+    next_cursor: None = None
+
+
 class AutomationReason(StrictModel):
     code: ShortText
     message: ShortText

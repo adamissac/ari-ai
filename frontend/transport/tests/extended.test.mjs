@@ -181,24 +181,24 @@ test('monitoring feed forwards limit and cursor (the feed used to truncate silen
   assert.throws(() => api.monitoringEvents('prj_12345678', { limit: 500 }), ProtocolError);
 });
 
-test('GitHub repository picker validates every row and the install link', async () => {
-  const repo = { full_name: 'acme/shop', installation_id: 42, default_branch: 'main', private: true, connected_repo_id: null };
-  const ok = await client(() => json({ items: [repo], install_url: 'https://github.com/apps/ari-ai/installations/new', next_cursor: null })).githubRepositories();
+test('GitHub repository picker is decoded as the shared AccessibleRepositoryList', async () => {
+  const repo = { full_name: 'acme/shop', installation_id: 42, default_branch: 'main', private: true, connected_repo_id: null, disconnected: false };
+  const list = (items, extra = {}) => ({ items, install_url: 'https://github.com/apps/ari-ai/installations/new', live_checked: true, next_cursor: null, ...extra });
+  const ok = await client(() => json(list([repo]))).githubRepositories();
   assert.equal(ok.items[0].installation_id, 42);
-  assert.equal(ok.items[0].disconnected, false);
-  assert.equal(ok.live_checked, null);
-  const checked = await client(() => json({ items: [], install_url: null, live_checked: false, next_cursor: null })).githubRepositories();
-  assert.equal(checked.live_checked, false);
-  const parked = await client(() => json({ items: [{ ...repo, connected_repo_id: 'rep_1', disconnected: true }], install_url: null, next_cursor: null })).githubRepositories();
-  assert.equal(parked.items[0].disconnected, true);
+  assert.equal(ok.live_checked, true);
   assert.equal(ok.install_url, 'https://github.com/apps/ari-ai/installations/new');
+  const parked = await client(() => json(list([{ ...repo, connected_repo_id: 'rep_12345678', disconnected: true }], { live_checked: false }))).githubRepositories();
+  assert.equal(parked.items[0].disconnected, true);
+  assert.equal(parked.live_checked, false);
   for (const body of [
-    { items: [{ ...repo, full_name: 'acme/shop;rm' }], install_url: null, next_cursor: null },
-    { items: [{ ...repo, installation_id: '42' }], install_url: null, next_cursor: null },
-    { items: [repo], install_url: 'javascript:alert(1)', next_cursor: null },
-    { items: [repo], install_url: null, next_cursor: 'more' },
-    { items: [{ ...repo, disconnected: 'yes' }], install_url: null, next_cursor: null },
-    { items: [repo], install_url: null, live_checked: 'no', next_cursor: null },
+    list([{ ...repo, full_name: 'acme/shop;rm' }]),
+    list([{ ...repo, installation_id: '42' }]),
+    list([repo], { install_url: 'javascript:alert(1)' }),
+    list([repo], { next_cursor: 'more' }),
+    list([{ ...repo, disconnected: 'yes' }]),
+    list([repo], { live_checked: 'no' }),
+    { items: [repo], install_url: null, next_cursor: null },  // live_checked missing
   ]) {
     await assert.rejects(client(() => json(body)).githubRepositories(), ProtocolError);
   }

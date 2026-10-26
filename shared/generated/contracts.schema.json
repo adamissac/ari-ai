@@ -16,6 +16,105 @@
       "title": "AcceptRisk",
       "type": "object"
     },
+    "AccessibleRepository": {
+      "additionalProperties": false,
+      "description": "A repository the signed-in user can reach through the GitHub App, and its Ari row.",
+      "properties": {
+        "connected_repo_id": {
+          "anyOf": [
+            {
+              "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The Ari repository row; kept after a disconnect as history",
+          "title": "Connected Repo Id"
+        },
+        "default_branch": {
+          "maxLength": 500,
+          "title": "Default Branch",
+          "type": "string"
+        },
+        "disconnected": {
+          "default": false,
+          "description": "That row is disconnected: Ari reads nothing until reconnect",
+          "title": "Disconnected",
+          "type": "boolean"
+        },
+        "full_name": {
+          "pattern": "^[A-Za-z0-9_.\\-]+/[A-Za-z0-9_.\\-]+$",
+          "title": "Full Name",
+          "type": "string"
+        },
+        "installation_id": {
+          "minimum": 1,
+          "title": "Installation Id",
+          "type": "integer"
+        },
+        "private": {
+          "title": "Private",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "full_name",
+        "installation_id",
+        "default_branch",
+        "private",
+        "connected_repo_id",
+        "disconnected"
+      ],
+      "title": "AccessibleRepository",
+      "type": "object"
+    },
+    "AccessibleRepositoryList": {
+      "additionalProperties": false,
+      "description": "GET /github/repositories: the picker list and the App's install link.",
+      "properties": {
+        "install_url": {
+          "anyOf": [
+            {
+              "pattern": "^https://",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Install Url"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/AccessibleRepository"
+          },
+          "title": "Items",
+          "type": "array"
+        },
+        "live_checked": {
+          "description": "False: access is as of the last GitHub sign-in, not re-checked just now",
+          "title": "Live Checked",
+          "type": "boolean"
+        },
+        "next_cursor": {
+          "default": null,
+          "title": "Next Cursor",
+          "type": "null"
+        }
+      },
+      "required": [
+        "items",
+        "install_url",
+        "live_checked",
+        "next_cursor"
+      ],
+      "title": "AccessibleRepositoryList",
+      "type": "object"
+    },
     "ActionScore": {
       "additionalProperties": false,
       "properties": {
@@ -15191,5 +15290,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.28.0"
+  "x-schema-version": "0.29.0"
 }

@@ -471,25 +471,8 @@ export class ApiClient {
   }
   /** Repositories the user can connect through the GitHub App, and the App's install link. */
   async githubRepositories(options?: RequestOptions): Promise<AccessibleRepositories> {
-    const record = object(await this.request('/github/repositories', RAW, options), 'repository list');
-    const install = record.install_url;
-    const live = record.live_checked;
-    if (!Array.isArray(record.items) || !(install === null || (typeof install === 'string' && /^https:\/\//.test(install))) || record.next_cursor !== null
-      || !(live === undefined || typeof live === 'boolean')) {
-      throw new ProtocolError('Invalid repository list');
-    }
-    const items = record.items.map(raw => {
-      const r = object(raw, 'repository');
-      if (typeof r.full_name !== 'string' || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(r.full_name)
-        || !Number.isSafeInteger(r.installation_id) || typeof r.default_branch !== 'string'
-        || typeof r.private !== 'boolean' || !(r.connected_repo_id === null || typeof r.connected_repo_id === 'string')
-        // Absent on backends that predate the field; never trusted when present but malformed.
-        || !(r.disconnected === undefined || typeof r.disconnected === 'boolean')) {
-        throw new ProtocolError('Invalid repository list');
-      }
-      return { full_name: r.full_name, installation_id: r.installation_id as number, default_branch: r.default_branch, private: r.private, connected_repo_id: r.connected_repo_id as string | null, disconnected: r.disconnected === true };
-    });
-    return { items, install_url: install as string | null, live_checked: typeof live === 'boolean' ? live : null };
+    const { items, install_url, live_checked } = await this.request('/github/repositories', 'AccessibleRepositoryList', options) as C.AccessibleRepositoryList;
+    return { items, install_url, live_checked };
   }
   /** Whether a new push/PR on this repository would really be reviewed, with every reason it would not. */
   automationStatus(repoId: string, options?: RequestOptions): Promise<C.AutomationStatus> {
@@ -578,23 +561,10 @@ export interface SnapshotQuery { status?: C.SnapshotStatus; limit?: number; curs
 export interface CancelResult { assessment_id: string; cancelled: boolean; cancel_requested: true }
 export interface LabeledPage<T> extends Page<T> { label: string }
 /** A repository the signed-in user can connect through the GitHub App (captured at sign-in). */
-export interface AccessibleRepository {
-  full_name: string;
-  installation_id: number;
-  default_branch: string;
-  private: boolean;
-  /** The Ari repository row, kept after a disconnect so its history stays reachable. */
-  connected_repo_id: string | null;
-  /** True when that row is disconnected: Ari no longer reads the repository until it is reconnected. */
-  disconnected: boolean;
-}
+/** A repository the signed-in user can connect through the GitHub App (shared contract). */
+export type AccessibleRepository = C.AccessibleRepository;
 export interface JobState { id: string; kind: string; status: string; result: unknown; error: string | null }
-export interface AccessibleRepositories {
-  items: AccessibleRepository[];
-  install_url: string | null;
-  /** false: access is as of the last GitHub sign-in, not checked just now (null: older backend, unknown). */
-  live_checked: boolean | null;
-}
+export type AccessibleRepositories = Omit<C.AccessibleRepositoryList, 'next_cursor'>;
 export interface RepositoryCommit { sha: string; message: string; author: string; committed_at: string | null; html_url: string | null }
 export interface RepositoryCommits { items: RepositoryCommit[]; available: boolean; reason: string | null }
 export interface ArtifactText { id: string; text: string; sha256: string; hashVerified: boolean; mediaType: string }

@@ -859,6 +859,7 @@ def retry_build_recipe(repo_id: str, request: Request) -> RecipeRetryAccepted:
             "propose_build_recipe",
             {"repo_id": repo_id},
             dedupe_key=f"recipe:{repo_id}:retry:{new_id(IdPrefix.job)}",
+            project_id=repo["project_id"],  # project backpressure and concurrency apply
         )
         _audit(
             conn,

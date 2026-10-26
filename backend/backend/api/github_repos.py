@@ -29,6 +29,7 @@ from backend.db import (
 )
 from backend.github import GitHubApp, GitHubNotConfigured
 from backend.settings import get_settings
+from shared.api import AccessibleRepository, AccessibleRepositoryList
 from shared.errors import ErrorCode
 
 log = logging.getLogger(__name__)
@@ -287,8 +288,8 @@ def _refresh_personal_installation_repositories(
     return True
 
 
-@router.get("/github/repositories")
-def list_accessible_repositories(request: Request) -> dict[str, Any]:
+@router.get("/github/repositories", response_model=AccessibleRepositoryList)
+def list_accessible_repositories(request: Request) -> AccessibleRepositoryList:
     """Repositories the user can connect, and whether each is already connected."""
     with transaction() as conn:
         user = require_user(conn, request)
@@ -336,28 +337,27 @@ def list_accessible_repositories(request: Request) -> dict[str, Any]:
             .order_by(github_repo_access.c.full_name)
         ).mappings()
         items = [
-            {
-                "full_name": r["full_name"],
-                "installation_id": r["installation_id"],
-                "default_branch": r["default_branch"],
-                "private": r["private"],
-                "connected_repo_id": r["repo_id"],
+            AccessibleRepository(
+                full_name=r["full_name"],
+                installation_id=r["installation_id"],
+                default_branch=r["default_branch"],
+                private=r["private"],
+                connected_repo_id=r["repo_id"],
                 # The row outlives a disconnect (history); this says whether it is live.
-                "disconnected": r["disconnected_at"] is not None,
-            }
+                disconnected=r["disconnected_at"] is not None,
+            )
             for r in rows
         ]
     s = get_settings()
     slug = s.github_app_slug
-    return {
-        "items": items,
-        "install_url": f"{s.github_web_url}/apps/{slug}/installations/new" if slug else None,
+    return AccessibleRepositoryList(
+        items=items,
+        install_url=f"{s.github_web_url}/apps/{slug}/installations/new" if slug else None,
         # False: no live re-check ran (no personal installation, or GitHub failed); rows are
         # from the last sign-in and webhooks. Organization rows are never re-listed here.
         # Connecting always re-verifies with GitHub, so a stale row can never be connected.
-        "live_checked": live_checked,
-        "next_cursor": None,
-    }
+        live_checked=live_checked,
+    )
 
 
 @router.get("/repositories/{repo_id}/commits")
