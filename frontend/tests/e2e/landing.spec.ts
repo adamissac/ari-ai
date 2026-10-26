@@ -90,7 +90,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     await expect(heading.locator('.hero-line').first()).toHaveCSS('color', 'rgb(255, 247, 242)');
     await expect(page.locator('.hero-orb')).toHaveCount(5);
     const orbDurations = await page.locator('.hero-orb').evaluateAll(elements => elements.slice(0, 5).map(el => getComputedStyle(el).animationDuration));
-    expect(orbDurations).toEqual(['32s', '38s', '42s', '28s', '45s']);
+    expect(orbDurations).toEqual(['26s', '31s', '34s', '23s', '37s']);
     await expect(heading.locator('.hero-line').first()).toHaveAttribute('data-glow', 'FIND THE FLAW.');
     await expect(heading.locator('.hero-line').first()).toHaveCSS('text-shadow', 'none'); // glow is isolated to an opacity-animated pseudo layer
     await expect.poll(() => page.evaluate(() => document.fonts.status)).toBe('loaded');
