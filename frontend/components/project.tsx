@@ -47,6 +47,7 @@ const MORE = [
   { href: '/scopes', label: 'Authorized scopes' },
   { href: '/expectations', label: 'Expectations' },
   { href: '/simulate', label: 'Simulate' },
+  { href: '/onboarding', label: 'Onboarding' },
   { href: '/setup', label: 'Setup' },
 ] as const;
 
