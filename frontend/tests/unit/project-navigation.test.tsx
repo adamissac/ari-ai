@@ -71,8 +71,8 @@ it('locks every destination except Setup before onboarding is complete', () => {
   expect(nav.querySelectorAll('.project-tab-scroll [aria-disabled="true"]')).toHaveLength(5);
   expect(nav.querySelectorAll('.project-tab-scroll .project-lock-icon').length).toBe(5);
   fireEvent.click(screen.getByRole('button', { name: 'More' }));
-  expect(nav.querySelectorAll('.project-more-menu a')).toHaveLength(1);
+  expect(nav.querySelectorAll('.project-more-menu a')).toHaveLength(3);
   expect(screen.getByRole('link', { name: 'Setup' }).getAttribute('href')).toBe('/projects/p1/setup?repo=r1');
-  expect(nav.querySelectorAll('.project-more-menu [aria-disabled="true"]')).toHaveLength(7);
-  expect(nav.querySelectorAll('.project-more-menu .project-lock-icon').length).toBe(7);
+  expect(nav.querySelectorAll('.project-more-menu [aria-disabled="true"]')).toHaveLength(5);
+  expect(nav.querySelectorAll('.project-more-menu .project-lock-icon').length).toBe(5);
 });

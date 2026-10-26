@@ -131,7 +131,8 @@ export function ProjectNavigation({ base, repoId, locked = false }: { base: stri
         <div id="project-more-menu" className="project-more-menu" hidden={!open}>
           {MORE.map(item => {
             const active = activeMore?.href === item.href;
-            if (locked && item.href !== '/setup') {
+            const firstRun = item.href === '/setup' || item.href === '/onboarding' || item.href === '/live-defense';
+            if (locked && !firstRun) {
               return <span key={item.label} aria-disabled="true" title="Finish setup first" className="project-more-link text-faint">{item.label} <LockIcon /></span>;
             }
             return (
@@ -187,20 +188,25 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   const setupReady = setupCheck.status !== 'loading' || storedProgress.complete;
   const complete = isSetupComplete({ answers: {}, complete: storageReady && storedProgress.complete }, setupCheck.status === 'ready' && setupCheck.data);
   const setupRoute = pathname === `${base}/setup` || pathname.startsWith(`${base}/setup/`);
+  // First-run surfaces (onboarding checklist, live-defense connect) must stay
+  // reachable before any assessment exists: they are how setup completes.
+  const freeRoute = setupRoute
+    || pathname === `${base}/onboarding` || pathname.startsWith(`${base}/onboarding/`)
+    || pathname === `${base}/live-defense` || pathname.startsWith(`${base}/live-defense/`);
   const locked = Boolean(selectedRepo && storageReady && setupReady && !complete);
   useEffect(() => {
-    if (locked && !setupRoute && selectedRepo) {
+    if (locked && !freeRoute && selectedRepo) {
       router.replace(`${base}/setup?repo=${encodeURIComponent(selectedRepo.id)}`);
     }
-  }, [base, locked, router, selectedRepo, setupRoute]);
+  }, [base, freeRoute, locked, router, selectedRepo]);
 
   if (project.status === 'loading' || repos.status === 'loading') return <Loading label="Loading project" />;
   if (project.status === 'error') return <ErrorState error={project.error} onRetry={project.reload} context="Could not load project" />;
   if (repos.status === 'error') return <ErrorState error={repos.error} onRetry={repos.reload} context="Could not load repositories" />;
   const monitoring = project.data.settings.monitoring_policy.enabled;
   const selected = selectedRepo ?? repoItems[0] ?? null;
-  if (selectedRepo && !setupRoute && (!storageReady || !setupReady)) return <Loading label="Checking setup" />;
-  if (locked && !setupRoute) return <Loading label="Opening setup" />;
+  if (selectedRepo && !freeRoute && (!storageReady || !setupReady)) return <Loading label="Checking setup" />;
+  if (locked && !freeRoute) return <Loading label="Opening setup" />;
   return (
     <ProjectContext.Provider value={{ project: project.data, repos: repoItems, selectedRepo, selectRepo, reloadRepos: repos.reload, reloadProject: project.reload }}>
       <div className="project-shell min-w-0">
