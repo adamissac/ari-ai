@@ -3,10 +3,10 @@
   "human_owner": "Adam",
   "workstream": "frontend console refinement",
   "state": "READY_FOR_REVIEW",
-  "task": "Console sticky header/tab band + Live Defense 320px overflow containment",
-  "branch": "feat/adam/console-polish",
-  "latest_sha": "e61f29eb1f22ec832e90ffc492daf4127ca0e747",
-  "prs": [646, 649],
+  "task": "Merge origin/main into feat/adam/setup-walkthrough, preserving setup behavior and main updates",
+  "branch": "feat/adam/setup-walkthrough",
+  "latest_sha": "4afaaf5197aa6fd582fd6193a3158eb9a670e67b",
+  "prs": [649],
   "claims": [
     "frontend/components/project.tsx",
     "frontend/app/globals.css",
@@ -16,10 +16,8 @@
     "docs/planning/SESSION_HANDOFF.md"
   ],
   "depends_on": [],
-  "blockers": [
-    "Do not edit frontend/components/live-defense/*; Alan's lane retains that claim."
-  ],
-  "last_update_utc": "2026-10-26T07:24:15Z",
-  "tests": "Lint, typecheck, and 99-file/418-test unit suite passed. Targeted pages/tab-band E2E passed 2/2; Analytics scroll assertions passed at 1440/390 and Live Defense document width was 320px. E2E production build passed. Full pages.spec attempt was 4/9 without a preceding journey; three remaining data/selector failures are documented and not claimed as pre-existing.",
-  "next_action": "Merge the pushed console-polish branch into setup-walkthrough and push the merge commit."
+  "blockers": [],
+  "last_update_utc": "2026-10-26T10:21:28Z",
+  "tests": "Transport npm ci/build passed; frontend lint and typecheck passed; Vitest passed 102 files / 436 tests. Vitest emitted a non-fatal jsdom HTMLCanvasElement getContext warning. Frontend dependencies were installed with npm ci after the initial lint attempt found eslint missing.",
+  "next_action": "Await CI and review on #649; the main integration is pushed."
 }
