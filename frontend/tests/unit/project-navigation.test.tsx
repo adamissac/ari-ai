@@ -36,6 +36,7 @@ it('shows the primary tabs and repo-scoped More destinations', () => {
     ['Authorized scopes', '/projects/p1/scopes?repo=r1'],
     ['Expectations', '/projects/p1/expectations?repo=r1'],
     ['Simulate', '/projects/p1/simulate?repo=r1'],
+    ['Onboarding', '/projects/p1/onboarding?repo=r1'],
     ['Setup', '/projects/p1/setup?repo=r1'],
   ]);
 });
