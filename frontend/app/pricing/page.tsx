@@ -64,8 +64,7 @@ export default function PricingPage() {
     <div className="pricing marketing-atmosphere">
       <header className="hero-ink bleed-hero -mt-6 px-6 pb-20 pt-16 md:px-12 md:pb-28 md:pt-24" aria-labelledby="pricing-title">
         <div className="mx-auto max-w-7xl">
-          <p className="pricing-pill label-mono">Pricing</p>
-          <h1 id="pricing-title" className="display mt-5 text-5xl font-semibold md:text-7xl">{BRAND_NAME} pricing</h1>
+          <h1 id="pricing-title" className="display text-5xl font-semibold md:text-7xl">{BRAND_NAME} pricing</h1>
           <p className="mt-4 max-w-xl text-sm text-white/70 md:text-base">Know what every change does, prove every fix, and keep checking as your code moves.</p>
           <p className="mt-3 text-xs text-white/60" data-testid="pricing-proposal">Hackathon preview: plans are proposals, nothing can be purchased.</p>
           <div className="mt-7"><Cta href={START} tone="light">Open the console</Cta></div>
@@ -101,14 +100,14 @@ export default function PricingPage() {
         })}
       </section>
 
-      <section aria-label="What every plan includes" className="mt-6 grid gap-4 lg:grid-cols-2">
-        <div className="pricing-card pricing-card-light">
+      <section aria-label="What every plan includes" className="mt-10 grid border-t border-white/10 pt-8 md:grid-cols-2 md:divide-x md:divide-white/10">
+        <div className="md:pr-10">
           <p className="label-mono text-faint">Every plan includes</p>
           <ul className="mt-4 flex flex-col gap-3 text-sm text-ink">
             {INCLUDED.map(f => <li key={f} className="flex gap-3"><Check />{f}</li>)}
           </ul>
         </div>
-        <div className="pricing-card pricing-card-light">
+        <div className="mt-8 md:mt-0 md:pl-10">
           <p className="label-mono text-faint">Enterprise adds</p>
           <ul className="mt-4 flex flex-col gap-3 text-sm text-ink">
             {ENTERPRISE_ADDS.map(f => <li key={f} className="flex gap-3"><Check />{f}</li>)}
@@ -116,23 +115,22 @@ export default function PricingPage() {
         </div>
       </section>
 
-      <p className="mt-4 text-center text-xs text-faint" data-testid="pricing-preview">Hackathon preview: these plans are proposals and nothing can be purchased yet. Prices in USD.</p>
+      <p className="mt-14 text-center text-xs text-faint md:mt-16" data-testid="pricing-preview">Hackathon preview: these plans are proposals and nothing can be purchased yet. Prices in USD.</p>
 
       <Reveal>
-        <section aria-labelledby="faq-title" className="pricing-faq mt-24 grid items-start gap-10 py-16 md:grid-cols-12 md:gap-6 md:py-24">
-          <div className="faq-aside md:col-span-4">
-            <p className="faq-pill label-mono">FAQ</p>
+        <section aria-labelledby="faq-title" className="pricing-faq mx-auto mt-24 max-w-3xl py-16 md:py-24">
+          <div className="faq-aside flex flex-col items-center text-center">
             <h2 id="faq-title" className="display mt-5 text-4xl font-semibold md:text-5xl">Questions, answered</h2>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">How plans, assessments and assessed lines would work, and what {BRAND_NAME} will and won’t do to your code.</p>
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-muted">How plans, assessments and assessed lines would work, and what {BRAND_NAME} will and won’t do to your code.</p>
             <Link href="/#how" className="label-mono mt-6 inline-flex items-center gap-2 text-brand hover:text-brand-deep">See how it works <span aria-hidden="true">→</span></Link>
           </div>
-          <div className="md:col-span-8"><Faq items={FAQ} /></div>
+          <div className="mt-10"><Faq items={FAQ} /></div>
         </section>
       </Reveal>
 
       <Reveal>
-      <section aria-labelledby="pricing-cta" className="pricing-cta mb-16 mt-16 px-6 py-14 text-center md:px-12 md:py-20">
-        <h2 id="pricing-cta" className="display mx-auto max-w-3xl text-3xl font-semibold md:text-5xl">See what your code really does before an attacker does.</h2>
+      <section aria-labelledby="pricing-cta" className="pricing-cta mb-16 mt-16 border-t border-white/10 px-6 py-12 text-center md:px-12 md:py-16">
+        <h2 id="pricing-cta" className="display mx-auto max-w-2xl text-2xl font-semibold md:text-3xl">See what your code really does before an attacker does.</h2>
         <div className="mt-8 flex flex-wrap justify-center gap-2">
           <Cta href={START} tone="light">Open the console</Cta>
           <Link href="/#how" className="group label-mono inline-flex h-10 items-center rounded-md bg-white/10 px-4 text-white transition-colors duration-[250ms] hover:bg-white/20">

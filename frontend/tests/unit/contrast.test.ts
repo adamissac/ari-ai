@@ -93,7 +93,7 @@ it('uses slow transform-only hero blobs and a static reduced-motion glow', () =>
   const durations = [...css.matchAll(/\.hero-orb-[a-e][^{]*\{[^}]*animation: hero-drift-[a-e] ([\d.]+)s/g)]
     .map(match => Number(match[1]))
     .sort((a, b) => a - b);
-  expect(durations).toEqual([28, 32, 38, 42, 45]);
+  expect(durations).toEqual([23, 26, 31, 34, 37]);
   expect(css).toContain('animation: ember-breathe 6s ease-in-out infinite alternate');
   expect(css).toMatch(/prefers-reduced-motion: reduce\)[\s\S]*?\.hero-headline \.hero-line::before \{ animation: none/);
 });

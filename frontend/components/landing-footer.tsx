@@ -10,7 +10,8 @@ const GROUPS = [
 export function LandingFooter() {
   return (
     <footer className="landing-footer" data-testid="landing-footer">
-      <div className="footer-ruler" aria-hidden="true" />
+      <div aria-hidden="true" className="footer-glow" />
+      <div aria-hidden="true" className="footer-line" />
       <Reveal className="footer-top">
         <div className="footer-identity">
           <Link href="/" aria-label="Back to Ari home" className="footer-brand"><LogoMark size={36} decorative /><span className="ari-wordmark-text">ARI</span></Link>
