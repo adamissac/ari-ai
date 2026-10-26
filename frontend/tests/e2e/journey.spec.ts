@@ -16,16 +16,16 @@ test('one real assessment from scope approval to verified patch', async ({ brows
 
   // Alice requests a sandbox scope. As an owner she may explicitly approve it,
   // but this journey exercises independent approval by Bob.
-  await alice.goto(`/projects/${project()}/scopes`);
+  await alice.goto(`/projects/${project()}/scopes?repo=${env('E2E_REPO_ID')}`);
   await alice.getByLabel('Name').fill('payments-lite sandbox');
-  await alice.getByLabel('Repository (sandbox build target)').selectOption({ label: env('E2E_REPO') });
+  await expect(alice.getByTestId('scope-selected-repo')).toContainText(env('E2E_REPO'));
   await alice.getByRole('button', { name: 'Request scope' }).click();
   const scopeRow = alice.locator('[data-testid^="scope-"]').filter({ hasText: 'payments-lite sandbox' });
   await expect(scopeRow.getByText('Pending approval')).toBeVisible();
   await expect(scopeRow.getByRole('button', { name: 'Approve scope' })).toBeEnabled();
 
   // Bob approves it.
-  await bob.goto(`/projects/${project()}/scopes`);
+  await bob.goto(`/projects/${project()}/scopes?repo=${env('E2E_REPO_ID')}`);
   const bobPendingScope = bob.locator('[data-testid^="scope-"]')
     .filter({ hasText: 'payments-lite sandbox' })
     .filter({ hasText: 'Pending approval' });
@@ -197,7 +197,7 @@ test('signed GitHub push appears in the monitoring feed', async ({ browser, requ
     headers: { 'Content-Type': 'application/json', 'X-GitHub-Event': 'push', 'X-GitHub-Delivery': randomUUID(), 'X-Hub-Signature-256': signature },
   });
   expect(res.status()).toBe(202);
-  await page.goto(`/projects/${project()}/monitoring`);
+  await page.goto(`/projects/${project()}/monitoring?repo=${env('E2E_REPO_ID')}`);
   const feed = page.getByTestId('monitoring-feed');
   await expect(feed).toContainText('github');
   await expect(feed).toContainText('push');
@@ -248,5 +248,6 @@ test('connect a repository to a project through the UI', async ({ browser }) => 
 
   // GitHub onboarding remains available whether or not this account already has repositories.
   await page.goto('/connect');
-  await expect(page.getByRole('heading', { name: 'What Ari can access' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'GitHub App permissions' })).toContainText('Contents: read & write');
+  await expect(page.getByText('Revoke or limit access')).toBeVisible();
 });

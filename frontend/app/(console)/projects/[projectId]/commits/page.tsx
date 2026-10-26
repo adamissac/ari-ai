@@ -1,11 +1,12 @@
 'use client';
 
-import type { Assessment, RepositoryCommit } from '@hackatl/frontend-transport';
+import type { Assessment, AssessmentDetail, RepositoryCommit } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { AgentRunList } from '@/components/agent-run-list';
 import { AssessmentList } from '@/components/assessment-history';
+import { belongsToCommit, RecordedSectorMap } from '@/components/commit-run-workspace';
 import { CommitAssessmentChip, CommitAssessmentProvider } from '@/components/commit-assessment-chips';
 import { useProject } from '@/components/project';
 import { StartAssessment } from '@/components/start-assessment';
@@ -89,7 +90,7 @@ export default function CommitsPage() {
                               const items = page.items.filter(f => f.assessment_id === activeRun?.id && f.kind !== 'security');
                               return items.length ? <ul className="divide-y divide-line">{items.map(f => <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-3"><Link className="text-sm hover:text-brand" href={`/projects/${project.id}/findings/${f.id}?repo=${encodeURIComponent(selectedRepo.id)}`}>{f.title}</Link><span className="flex gap-2"><Badge view={FINDING_STATUS[f.status]} />{f.severity && <Badge view={SEVERITY[f.severity.level]} />}</span></li>)}</ul> : <p className="text-sm text-muted">No functional findings in this run.</p>;
                             }}</Async>}
-                            {view === 'agents' && <RecordedAgents run={activeRun ?? null} projectId={project.id} />}
+                            {view === 'agents' && <RecordedAgents run={activeRun ?? null} projectId={project.id} fullName={selectedRepo.full_name} />}
                           </div>
                         </>
                       )}
@@ -121,8 +122,17 @@ function mergeCommits(github: RepositoryCommit[], assessments: Assessment[]): Co
   return [...bySha.values()].sort((a, b) => Date.parse(b.committed_at ?? '') - Date.parse(a.committed_at ?? ''));
 }
 
-function RecordedAgents({ run, projectId }: { run: Assessment | null; projectId: string }) {
-  const result = useResource(run ? `commit-agent-run:${run.id}` : null, signal => run ? api().agentRuns(run.id, { signal }) : Promise.resolve({ items: [], next_cursor: null }));
+function RecordedAgents({ run, projectId, fullName }: { run: Assessment | null; projectId: string; fullName: string }) {
+  const result = useResource<AssessmentDetail | null>(run ? `commit-agent-detail:${run.id}` : null,
+    signal => run ? api().assessment(run.id, { signal }) : Promise.resolve(null));
   if (!run) return <p className="text-sm text-muted">Not reviewed yet.</p>;
-  return <Async resource={result} label="agent runs">{page => <><AgentRunList runs={page.items} state={run.state} /><Link className="mt-3 inline-block text-sm text-brand hover:underline" href={`/projects/${projectId}/assessments/${run.id}?repo=${encodeURIComponent(run.repo_id ?? '')}`}>Open full run &amp; replay →</Link></>}</Async>;
+  return <Async resource={result} label="recorded run">{detail => {
+    if (!detail || !belongsToCommit(detail, run.repo_id ?? '', run.commit_sha)) return <p role="alert">This run does not match the selected repository and commit.</p>;
+    const agentRuns = detail.agent_runs.filter(agentRun => agentRun.assessment_id === detail.assessment.id);
+    return <>
+      <RecordedSectorMap detail={detail} sha={run.commit_sha} fullName={fullName} compact />
+      <AgentRunList runs={agentRuns} state={run.state} />
+      <Link className="mt-3 inline-block text-sm text-brand hover:underline" href={`/projects/${projectId}/assessments/${run.id}?repo=${encodeURIComponent(run.repo_id ?? '')}`}>Open full run &amp; replay →</Link>
+    </>;
+  }}</Async>;
 }
