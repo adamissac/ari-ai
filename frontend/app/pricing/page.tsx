@@ -101,7 +101,7 @@ export default function PricingPage() {
         })}
       </section>
 
-      <div className="band-light pricing-light mt-16 px-6 py-14 md:mt-20 md:px-12 md:py-16">
+      <div className="band-light pricing-light mt-20 py-20 md:mt-24 md:py-28">
         <section aria-label="What every plan includes" className="grid gap-10 md:grid-cols-12 md:gap-6">
           <div className="md:col-span-4">
             <p className="kicker">Included</p>

@@ -1869,14 +1869,16 @@ body:has(.commit-stage) main { color: #fff; }
 @keyframes vignette-clock { to { transform: rotate(360deg); } }
 @keyframes vignette-patrol { to { transform: translate(58px, -17px); } }
 .pricing-cta { text-align: center; }
-/* Light box: a rounded warm paper panel on the dark page, with the light tokens restored inside. */
+/* Light section: a full-bleed warm paper band between dark ones (never two in a row), with the light tokens restored. */
 .band-light {
   --color-ink: #1c1210; --color-ink-2: #2b1d19; --color-muted: #6b5752; --color-faint: #806b65;
   --color-line: #e6d5ce; --color-panel: #ffffff; --color-panel-2: #f6ece7; --color-control: #9a857f;
   --color-accent: #c2452d; --color-ember: #a8361f; --color-brand-soft: #f8e7e3;
   position: relative; isolation: isolate; color: var(--color-ink); color-scheme: light;
-  border-radius: 28px; background: linear-gradient(180deg, #fbf6f2, #f3e8e2);
-  box-shadow: 0 40px 90px -50px rgb(0 0 0 / 80%);
+}
+.band-light::before {
+  content: ""; position: absolute; z-index: -1; inset-block: 0; inset-inline: calc(50% - 50vw); pointer-events: none;
+  background: linear-gradient(180deg, #fbf6f2, #f3e8e2);
 }
 :root .band-light :is(.text-brand, .text-accent) { color: #a8361f; }
 :root .band-light :is(.hover\:text-brand-deep, .hover\:text-brand):hover { color: var(--color-brand-deep); }
