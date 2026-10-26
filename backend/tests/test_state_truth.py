@@ -389,3 +389,19 @@ def test_a_start_that_waited_for_the_lock_counts_runs_committed_meanwhile(
     for t in threads:
         t.join()
     assert allowed == {"first": True, "second": False}
+
+
+def test_reconnect_outside_dev_refuses_when_github_cannot_verify(client_factory, monkeypatch):
+    from backend.settings import get_settings
+
+    alice = client_factory("alice")
+    rid = _connect(alice, _project(alice), "acme/shop").json()["id"]
+    alice.post(f"/api/v1/repositories/{rid}/disconnect")
+    with transaction() as conn:
+        store_repo_access(conn, alice.me["user"]["id"], [ACME])  # only the sign-in snapshot
+    production = get_settings().model_copy(update={"app_env": "production"})
+    monkeypatch.setattr("backend.api.routes.get_settings", lambda: production)
+    monkeypatch.setattr("backend.api.github_repos.get_settings", lambda: production)
+    r = alice.post(f"/api/v1/repositories/{rid}/reconnect")
+    assert r.status_code == 503, r.text  # App not configured in tests: never trust the snapshot
+    assert alice.get(f"/api/v1/repositories/{rid}").json()["disconnected"] is True

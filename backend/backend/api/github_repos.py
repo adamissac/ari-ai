@@ -68,12 +68,19 @@ def verify_installation_access(full_name: str, installation_id: int) -> None:
 
     The sign-in snapshot (`can_connect`) goes stale when the installation was deleted, the
     repository was removed from it, or the App was reconfigured since the user signed in.
-    When the App isn't configured (dev/test), the snapshot check stands alone.
+    When the App isn't configured, the snapshot check stands alone only in dev/test;
+    elsewhere a grant that cannot be checked live is refused.
     """
     try:
         app = GitHubApp()
-    except GitHubNotConfigured:
-        return
+    except GitHubNotConfigured as exc:
+        if get_settings().is_dev:
+            return
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE,
+            "GitHub access can't be verified right now (GitHub App not configured)",
+            503,
+        ) from exc
     try:
         names = {r["full_name"] for r in app.installation_repositories(installation_id)}
     except httpx.HTTPStatusError as exc:
