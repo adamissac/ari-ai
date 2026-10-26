@@ -65,6 +65,7 @@ export function RepoPicker({ projectId, onConnected }: { projectId: string; onCo
           ))}
         </ul>
       )}
+      {list.data.live_checked === false && <p className="mt-2 text-xs text-muted" data-testid="repo-access-unverified">Access shown is from your last GitHub sign-in. Ari confirms access with GitHub when you connect.</p>}
       {error !== null && <div className="mt-2"><ErrorState error={error} context="Connect failed" /></div>}
       {refreshLink}
     </section>

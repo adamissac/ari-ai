@@ -49,7 +49,14 @@ def _detach(
     full_names: list[str] | None,
     why: str,
 ) -> list[str]:
-    """Clear installation_id so reads/clones stop using a dead credential."""
+    """Clear installation_id so reads/clones stop using a dead credential, and drop the
+    matching picker access rows so nobody is offered a repository the App can't reach."""
+    access = sa.delete(github_repo_access)
+    if installation_id is not None:
+        access = access.where(github_repo_access.c.installation_id == installation_id)
+    if full_names is not None:
+        access = access.where(github_repo_access.c.full_name.in_(full_names))
+    conn.execute(access)
     stmt = sa.update(repositories).values(installation_id=None)
     if installation_id is not None:
         stmt = stmt.where(repositories.c.installation_id == installation_id)

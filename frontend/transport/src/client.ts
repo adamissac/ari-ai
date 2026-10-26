@@ -116,8 +116,10 @@ export class ApiClient {
     const query = options?.repoId === undefined ? '' : `?repo_id=${segment(options.repoId)}`;
     return this.list(`/projects/${segment(projectId)}/findings${query}`, 'Finding', options?.signal ? { signal: options.signal } : undefined);
   }
-  approvals(projectId: string, options?: RequestOptions): Promise<Page<C.Approval>> {
-    return this.list(`/projects/${segment(projectId)}/approvals`, 'Approval', options);
+  /** All of the project's approvals, or one repository's (linked on the server by assessment or scope target). */
+  approvals(projectId: string, options?: RequestOptions & { repoId?: string }): Promise<Page<C.Approval>> {
+    const query = options?.repoId === undefined ? '' : `?repo_id=${segment(options.repoId)}`;
+    return this.list(`/projects/${segment(projectId)}/approvals${query}`, 'Approval', options?.signal ? { signal: options.signal } : undefined);
   }
   async auditEvents(projectId: string, options?: RequestOptions & { cursor?: string; limit?: number }): Promise<{
     items: Array<Pick<C.AuditEvent, 'action' | 'subject_id' | 'at' | 'details'>>;
@@ -471,7 +473,9 @@ export class ApiClient {
   async githubRepositories(options?: RequestOptions): Promise<AccessibleRepositories> {
     const record = object(await this.request('/github/repositories', RAW, options), 'repository list');
     const install = record.install_url;
-    if (!Array.isArray(record.items) || !(install === null || (typeof install === 'string' && /^https:\/\//.test(install))) || record.next_cursor !== null) {
+    const live = record.live_checked;
+    if (!Array.isArray(record.items) || !(install === null || (typeof install === 'string' && /^https:\/\//.test(install))) || record.next_cursor !== null
+      || !(live === undefined || typeof live === 'boolean')) {
       throw new ProtocolError('Invalid repository list');
     }
     const items = record.items.map(raw => {
@@ -485,7 +489,21 @@ export class ApiClient {
       }
       return { full_name: r.full_name, installation_id: r.installation_id as number, default_branch: r.default_branch, private: r.private, connected_repo_id: r.connected_repo_id as string | null, disconnected: r.disconnected === true };
     });
-    return { items, install_url: install as string | null };
+    return { items, install_url: install as string | null, live_checked: typeof live === 'boolean' ? live : null };
+  }
+  /** Whether a new push/PR on this repository would really be reviewed, with every reason it would not. */
+  async automationStatus(repoId: string, options?: RequestOptions): Promise<AutomationStatus> {
+    const r = object(await this.request(`/repositories/${segment(repoId)}/automation-status`, RAW, options), 'automation status');
+    if (r.repo_id !== repoId || !(r.state === 'ready' || r.state === 'off' || r.state === 'blocked') || !Array.isArray(r.reasons)
+      || !(r.resets_at === null || typeof r.resets_at === 'string')) {
+      throw new ProtocolError('Invalid automation status');
+    }
+    const reasons = r.reasons.map(raw => {
+      const reason = object(raw, 'automation reason');
+      if (typeof reason.code !== 'string' || typeof reason.message !== 'string') throw new ProtocolError('Invalid automation status');
+      return { code: reason.code, message: reason.message };
+    });
+    return { repo_id: repoId, state: r.state, reasons, resets_at: r.resets_at };
   }
   /** Recent commits on a connected repository's default branch, read live from GitHub. */
   async repositoryCommits(repoId: string, options?: RequestOptions): Promise<RepositoryCommits> {
@@ -580,8 +598,20 @@ export interface AccessibleRepository {
   /** True when that row is disconnected: Ari no longer reads the repository until it is reconnected. */
   disconnected: boolean;
 }
+export interface AutomationStatus {
+  repo_id: string;
+  /** ready: a new push/PR is reviewed. off: an owner switch is off. blocked: enabled but cannot run. */
+  state: 'ready' | 'off' | 'blocked';
+  reasons: Array<{ code: string; message: string }>;
+  resets_at: string | null;
+}
 export interface JobState { id: string; kind: string; status: string; result: unknown; error: string | null }
-export interface AccessibleRepositories { items: AccessibleRepository[]; install_url: string | null }
+export interface AccessibleRepositories {
+  items: AccessibleRepository[];
+  install_url: string | null;
+  /** false: access is as of the last GitHub sign-in, not checked just now (null: older backend, unknown). */
+  live_checked: boolean | null;
+}
 export interface RepositoryCommit { sha: string; message: string; author: string; committed_at: string | null; html_url: string | null }
 export interface RepositoryCommits { items: RepositoryCommit[]; available: boolean; reason: string | null }
 export interface ArtifactText { id: string; text: string; sha256: string; hashVerified: boolean; mediaType: string }

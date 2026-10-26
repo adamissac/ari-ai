@@ -128,7 +128,7 @@ def test_concurrent_starts_cannot_overshoot_the_project_quota(client_factory, se
     def start(index: int) -> None:
         requested_at = utcnow()  # captured before waiting on the lock, as routes do
         with transaction() as conn:
-            if check_project_quota(conn, ids["project"], requested_at, manual=True) is not None:
+            if check_project_quota(conn, ids["project"], requested_at) is not None:
                 results.append(False)
                 return
             time.sleep(0.3)  # widen the race window between the check and the insert
@@ -236,6 +236,104 @@ def test_installation_events_never_queue_a_disconnected_repository(client_factor
     assert post_webhook(alice, added, event="installation_repositories").status_code == 202
     worker.drain(kinds=["process_github_delivery"])
     assert _recipe_jobs() == []
+
+
+def _access(user_id):
+    with transaction() as conn:
+        return sorted(
+            conn.execute(
+                sa.select(github_repo_access.c.full_name).where(
+                    github_repo_access.c.user_id == user_id
+                )
+            ).scalars()
+        )
+
+
+def test_uninstalling_the_app_removes_its_repositories_from_the_picker(client_factory):
+    from helpers import post_webhook
+
+    from backend import worker
+
+    alice = client_factory("alice")
+    uid = alice.me["user"]["id"]
+    org = {**ACME, "installation_id": 7}
+    other = {**ACME, "full_name": "beta/api", "installation_id": 9}
+    with transaction() as conn:
+        store_repo_access(conn, uid, [org, other])
+    deleted = {"action": "deleted", "installation": {"id": 7}}
+    assert post_webhook(alice, deleted, event="installation").status_code == 202
+    worker.drain(kinds=["process_github_delivery"])
+    assert _access(uid) == ["beta/api"]
+    removed = {
+        "action": "removed",
+        "installation": {"id": 9},
+        "repositories_removed": [{"full_name": "beta/api"}],
+    }
+    post_webhook(alice, removed, event="installation_repositories")
+    worker.drain(kinds=["process_github_delivery"])
+    assert _access(uid) == []
+
+
+def test_a_removed_personal_installation_clears_the_users_own_repositories(
+    client_factory, monkeypatch
+):
+    from backend.settings import Settings
+
+    alice = client_factory("alice")
+    uid = alice.me["user"]["id"]
+    with transaction() as conn:
+        store_repo_access(conn, uid, [{**ACME, "full_name": "Alice/app"}, ACME])
+    monkeypatch.setattr(
+        "backend.api.github_repos.get_settings",
+        lambda: Settings(auth_dev_login_enabled=False),
+    )
+
+    class Uninstalled:
+        def user_installation(self, login):
+            return None
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", Uninstalled)
+    body = alice.get("/api/v1/github/repositories").json()
+    assert [r["full_name"] for r in body["items"]] == ["acme/shop"]  # org access stays
+    assert body["live_checked"] is False
+
+
+def test_automation_status_names_every_reason_a_push_would_not_be_reviewed(
+    client_factory, settings_override
+):
+    settings_override(github_auto_commit_authors="")
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)  # scope approved, repo automatic, monitoring on
+    url = f"/api/v1/repositories/{ids['repo']}/automation-status"
+    with transaction() as conn:
+        conn.execute(
+            sa.update(repositories)
+            .where(repositories.c.id == ids["repo"])
+            .values(installation_id=5)
+        )
+    status = alice.get(url).json()
+    assert status["state"] == "ready" and status["reasons"] == []
+    alice.patch(f"/api/v1/repositories/{ids['repo']}", json={"automatic_assessments": False})
+    status = alice.get(url).json()
+    assert status["state"] == "off" and status["reasons"][0]["code"] == "repository_off"
+    settings_override(github_auto_commit_authors="someone")
+    assert "author_allowlist" in [r["code"] for r in alice.get(url).json()["reasons"]]
+    alice.post(f"/api/v1/repositories/{ids['repo']}/disconnect")
+    status = alice.get(url).json()
+    assert status["state"] == "blocked" and status["reasons"][0]["code"] == "disconnected"
+    assert client_factory("mallory").get(url).status_code == 404
+
+
+def test_approvals_can_be_listed_for_one_repository(client_factory):
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)  # one scope approval targeting ids["repo"]
+    other = _connect(alice, ids["project"], "acme/other").json()["id"]
+    url = f"/api/v1/projects/{ids['project']}/approvals"
+    everything = alice.get(url).json()["items"]
+    assert everything and all(a["subject_type"] == "scope" for a in everything)
+    mine = alice.get(url, params={"repo_id": ids["repo"]}).json()["items"]
+    assert [a["id"] for a in mine] == [a["id"] for a in everything]
+    assert alice.get(url, params={"repo_id": other}).json()["items"] == []
 
 
 def test_reconnecting_a_detached_repository_needs_a_current_app_grant(client_factory, monkeypatch):

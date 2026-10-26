@@ -64,6 +64,7 @@ from backend.quota import check_project_quota, rate_limit_message
 from backend.redaction import redact, redact_text
 from backend.services import (
     DomainError,
+    active_scope_for_repo,
     budget_over_cap,
     cancel_queued_assessment,
     create_assessment,
@@ -504,6 +505,63 @@ def update_repository(repo_id: str, body: RepositoryUpdate, request: Request) ->
             .mappings()
             .one()
         )
+
+
+@router.get("/repositories/{repo_id}/automation-status")
+def automation_status(repo_id: str, request: Request) -> dict[str, Any]:
+    """Whether a new push or pull request on this repository would actually be reviewed, and
+    every reason it would not. Mirrors the gates in backend.auto_commits (schedule and
+    assess_commit), so the UI shows one derived answer instead of separate toggles."""
+    from backend.auto_commits import authors
+
+    with transaction() as conn:
+        repo = _repo_access(conn, _user(conn, request), repo_id)
+        project_id = repo["project_id"]
+        settings = project_settings(conn, project_id)
+        blocked: list[tuple[str, str]] = []
+        off: list[tuple[str, str]] = []
+        if repo["disconnected_at"] is not None:
+            blocked.append(("disconnected", "The repository is disconnected. Reconnect it first."))
+        elif repo["installation_id"] is None:
+            blocked.append(("no_github_app", "Ari has no GitHub App access to this repository."))
+        if not repo["automatic_assessments"]:
+            off.append(("repository_off", "Automatic reviews are off for this repository."))
+        if not settings.monitoring_policy.enabled:
+            off.append(("project_monitoring_off", "Project monitoring is off."))
+        review = settings.review
+        if not review.review_pushes and not review.review_pull_requests:
+            off.append(
+                ("no_change_types", "Neither pushes nor pull requests are selected for review.")
+            )
+        if active_scope_for_repo(conn, project_id, repo_id) is None:
+            blocked.append(
+                ("no_active_scope", "No approved, unexpired testing scope covers this repository.")
+            )
+        resets_at = None
+        quota = check_project_quota(conn, project_id, utcnow())
+        if quota is not None:
+            resets_at = quota.resets_at.isoformat()
+            blocked.append(("quota_reached", rate_limit_message(quota)))
+        notes: list[tuple[str, str]] = []
+        if authors():
+            notes.append(
+                (
+                    "author_allowlist",
+                    "On this deployment, only commits by authors the Ari operator approved "
+                    "are reviewed automatically.",
+                )
+            )
+    # A repository Ari can't reach is blocked whatever the switches say; otherwise a switch
+    # the owner turned off is the headline, and missing scope/quota block an enabled setup.
+    unreachable = [r for r in blocked if r[0] in ("disconnected", "no_github_app")]
+    state = "blocked" if unreachable else "off" if off else "blocked" if blocked else "ready"
+    ordered = unreachable + off + [r for r in blocked if r not in unreachable] + notes
+    return {
+        "repo_id": repo_id,
+        "state": state,
+        "reasons": [{"code": c, "message": m} for c, m in ordered],
+        "resets_at": resets_at,
+    }
 
 
 def _setup(repo: dict[str, Any]) -> RepositorySetup:
@@ -1154,11 +1212,31 @@ def _decide_subject_approval(
 
 @router.get("/projects/{project_id}/approvals")
 def list_approvals(
-    project_id: str, request: Request, status: ApprovalStatus | None = None
+    project_id: str,
+    request: Request,
+    status: ApprovalStatus | None = None,
+    repo_id: str | None = None,
 ) -> dict[str, Any]:
     with transaction() as conn:
         require_project(conn, _user(conn, request), project_id)
         q = sa.select(approvals.c.doc).where(approvals.c.project_id == project_id)
+        if repo_id:
+            # Linked server-side: an assessment on this repository, or a scope targeting it.
+            q = q.where(
+                sa.or_(
+                    approvals.c.assessment_id.in_(
+                        sa.select(assessments.c.id).where(assessments.c.repo_id == repo_id)
+                    ),
+                    sa.and_(
+                        approvals.c.subject_type == ApprovalSubject.scope.value,
+                        approvals.c.subject_id.in_(
+                            sa.select(authorized_scopes.c.id).where(
+                                authorized_scopes.c.doc["targets"].contains([{"repo_id": repo_id}])
+                            )
+                        ),
+                    ),
+                )
+            )
         if status:
             q = q.where(approvals.c.status == status.value)
         return {
@@ -1287,7 +1365,7 @@ def start_assessment(
                     503,
                 )
             commit_sha = commits[0]["sha"]
-        quota = check_project_quota(conn, project_id, utcnow(), manual=True)
+        quota = check_project_quota(conn, project_id, utcnow())
         if quota is not None:
             raise ApiError(
                 ErrorCode.RATE_LIMITED,

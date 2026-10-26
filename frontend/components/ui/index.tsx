@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { cloneElement, isValidElement, useId, type ButtonHTMLAttributes, type ReactElement, type ReactNode } from 'react';
+import { ContractSkewHint } from '@/components/contract-skew';
 import { describeError } from '@/lib/api';
 import type { Resource } from '@/lib/use-resource';
 import type { StatusView, Tone } from '@/lib/status';
@@ -86,6 +87,7 @@ export function ErrorState({ error, onRetry, context }: { error: unknown; onRetr
           {e.code && <>code {e.code}</>}{e.requestId && <> · request {e.requestId}</>}
         </p>
       )}
+      {e.kind === 'protocol' && <ContractSkewHint />}
       {onRetry && <Button className="mt-2" onClick={onRetry}>Retry</Button>}
     </div>
   );
@@ -103,7 +105,17 @@ export function Loading({ label = 'Loading' }: { label?: string }) {
 export function Async<T>({ resource, label, children }: { resource: Resource<T>; label: string; children: (data: T) => ReactNode }) {
   if (resource.status === 'loading') return <Loading label={`Loading ${label}`} />;
   if (resource.status === 'error') return <ErrorState error={resource.error} onRetry={resource.reload} context={`Could not load ${label}`} />;
-  return <>{children(resource.data)}</>;
+  return <>{resource.refreshError !== undefined && <StaleNotice what={label} onRetry={resource.reload} />}{children(resource.data)}</>;
+}
+
+/** Shown whenever a background refresh failed and the page is still showing the last good copy. */
+export function StaleNotice({ what, onRetry }: { what: string; onRetry: () => void }) {
+  return (
+    <p role="status" className="mb-3 flex flex-wrap items-center gap-2 text-xs text-warn" data-testid="stale-notice">
+      Could not refresh {what}. Showing the last loaded copy, which may be out of date.
+      <button type="button" className="font-semibold underline-offset-2 hover:underline" onClick={onRetry}>Retry</button>
+    </p>
+  );
 }
 
 export function Mono({ children, className = '' }: { children: ReactNode; className?: string }) {

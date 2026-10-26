@@ -74,11 +74,19 @@ function errorText(e: unknown): string {
   return e instanceof Error ? e.message : 'Something went wrong';
 }
 
+/** Steps every customer needs for code review; the rest set up the optional Defense Lab. */
+const CORE_STEPS = new Set(['sign_in', 'organization', 'repository', 'github_access', 'snapshot', 'scope']);
+
 export default function OnboardingPage() {
-  const { project, repos } = useProject();
+  const { project, selectedRepo } = useProject();
+  const repoId = selectedRepo?.id;
   const status = useResource(`onboarding:${project.id}`, s => api().onboardingStatus(project.id, { signal: s }), 8000);
-  const done = status.status === 'ready' ? status.data.steps.filter(s => s.state === 'done').length : 0;
-  const total = status.status === 'ready' ? status.data.steps.length : 0;
+  // The same server record the Setup walkthrough writes: one answer to "is setup finished?".
+  const setup = useResource(repoId ? `onboarding-setup:${repoId}` : null, s => api().repositorySetup(repoId!, { signal: s }));
+  const setupDone = setup.status === 'ready' && setup.data.complete;
+  const core = status.status === 'ready' ? status.data.steps.filter(s => CORE_STEPS.has(s.id)) : [];
+  const done = core.filter(s => s.state === 'done').length + (setupDone ? 1 : 0);
+  const total = core.length + (repoId ? 1 : 0);
   return (
     <div className="flex flex-col gap-4">
       <header>
@@ -86,9 +94,9 @@ export default function OnboardingPage() {
         <h2 className="mt-1 text-xl font-semibold tracking-tight" data-testid="onboarding-title">
           Set up {project.name} for its first investigation
         </h2>
-        <p className="mt-1 max-w-2xl text-sm text-muted">
+        <p className="mt-1 max-w-2xl text-sm text-muted" data-testid="onboarding-progress">
           Each step below is read from what is actually configured — nothing is marked done
-          until the backend sees it. Progress: {done} of {total} steps.
+          until the backend sees it. Code review: {done} of {total} steps. Defense Lab steps are optional.
         </p>
       </header>
       <Panel title="What Ari asks for — and why" actions={<Tag tone="info">read-only by default</Tag>}>
@@ -102,22 +110,40 @@ export default function OnboardingPage() {
         </ul>
       </Panel>
       <Async resource={status} label="onboarding status">
-        {data => (
-          <ol className="flex flex-col gap-3" data-testid="onboarding-steps">
-            {data.steps.map((step, i) => (
-              <StepRow
-                key={step.id}
-                index={i + 1}
-                step={step}
-                projectId={project.id}
-                repoId={repos[0]?.id}
-                onChanged={status.reload}
-              />
-            ))}
-          </ol>
-        )}
+        {data => {
+          const optional = data.steps.filter(step => !CORE_STEPS.has(step.id));
+          const row = (step: OnboardingStep, i: number) => (
+            <StepRow key={step.id} index={i + 1} step={step} projectId={project.id} repoId={repoId} onChanged={status.reload} />
+          );
+          return (
+            <>
+              <section aria-label="Code review setup">
+                <p className="label-mono mb-2 text-faint">Code review (required)</p>
+                <ol className="flex flex-col gap-3" data-testid="onboarding-steps">
+                  {core.map(row)}
+                  {repoId && (
+                    <li className="rounded-xl border border-line bg-panel p-4" data-testid="onboarding-step-setup" data-state={setupDone ? 'done' : 'todo'}>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium">Review settings for {selectedRepo!.full_name}</p>
+                          <p className="mt-0.5 max-w-xl text-sm text-muted">{setupDone ? 'Saved to your account. Change them any time in Settings.' : 'Eight short questions, saved to your account as you go.'}</p>
+                        </div>
+                        <Tag tone={setupDone ? STATE_TONE.done : STATE_TONE.todo}>{setupDone ? STATE_LABEL.done : STATE_LABEL.todo}</Tag>
+                      </div>
+                      {!setupDone && <Link className="mt-3 inline-block text-sm font-semibold text-brand" href={`/projects/${project.id}/setup?repo=${encodeURIComponent(repoId)}`}>Open setup</Link>}
+                    </li>
+                  )}
+                </ol>
+              </section>
+              <section aria-label="Defense Lab setup">
+                <p className="label-mono mb-2 mt-2 text-faint">Defense Lab (optional: staging traffic and monitoring)</p>
+                <ol className="flex flex-col gap-3" data-testid="onboarding-optional-steps">{optional.map(row)}</ol>
+              </section>
+            </>
+          );
+        }}
       </Async>
-      <DisconnectPanel projectId={project.id} repoId={repos[0]?.id} onChanged={status.reload} />
+      <DisconnectPanel projectId={project.id} repoId={repoId} onChanged={status.reload} />
     </div>
   );
 }
