@@ -318,7 +318,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
   .site-header-inner { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; }
   .site-header .hdr-logo { grid-column: 1; grid-row: 1; }
   .site-header .site-nav { display: contents; }
-  .site-header .site-nav > a { grid-column: 4; grid-row: 1; }
+  .site-header .site-nav > :last-child { grid-column: 4; grid-row: 1; justify-self: end; }
   .nav-menu-toggle { display: inline-flex; align-items: center; grid-column: 3; grid-row: 1; }
   .nav-secondary { grid-column: 1 / -1; grid-row: 2; justify-content: flex-end; }
   .site-header nav a { padding-inline: 10px; }

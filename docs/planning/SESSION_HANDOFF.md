@@ -2183,3 +2183,10 @@ Pin 4fdcf10c vs main e41c9dc2; tip 0098f1d5 report-only. Original F1–F10/N1–
 - Findings and project assessment history render stacked cards below 640px while keeping desktop tables at `sm` and up. Setup's “See your reviews” link targets the project page's `#assessments` section; project-scoped links were checked against existing routes.
 - Verification passed: lint (0 errors; one existing unused-variable warning), typecheck, setup-resume unit tests (5), build, and journey + pages E2E (9).
 - 390px screenshots: `/home/ubuntu/classic-audit/after3/findings-390.png` and `/home/ubuntu/classic-audit/after3/project-overview-390.png`. Local review server: `http://localhost:3204`.
+
+### Repository-scoped project workspace — 2026-10-26
+
+- Added repository selection and top-level project tabs, repo-scoped Analytics and Findings, and the Commits workspace with selected-commit review, agent runs, and repo-filtered assessment history. Repository management and assessment actions now use Settings and Commits routes.
+- E2E coverage exercises the seeded `acme/payments-lite` repository at desktop and narrow mobile widths, including the selected commit's Code review and 7 agents tabs. Browser screenshots are in `/home/ubuntu/classic-audit/repo-workspace/`: `analytics-{1440,390}-{viewport,full}.png`, `commits-code-review-{1440,390}-{viewport,full}.png`, `commits-7-agents-{1440,390}-{viewport,full}.png`, and `more-menu-390-{viewport,full}.png`.
+- Verification passed: frontend lint (0 errors; one existing unused-variable warning), typecheck, unit tests (96 files / 414 tests), production build, journey E2E (3), pages E2E (7), interface E2E, and commit-workspace E2E (1). The setup-resume unit test passed 5/5.
+- The local stack is served at `http://localhost:3205` with API at `localhost:59039`. E2E assessments use the test-only scripted model transport; these captures do not establish live-model provenance.

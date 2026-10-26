@@ -20,7 +20,7 @@ export function ProjectReviewCta({ repoId }: { repoId: string | null }) {
   if (!repoId || !projectId || scopes.status !== 'ready') return null;
 
   const activeScope = scopeStateFor(scopes.data.items, repoId, new Date()).kind === 'active';
-  const href = activeScope ? `/projects/${projectId}#start-assessment` : `/projects/${projectId}/setup?repo=${encodeURIComponent(repoId)}`;
+  const href = activeScope ? `/projects/${projectId}/commits#start-assessment` : `/projects/${projectId}/setup?repo=${encodeURIComponent(repoId)}`;
   const label = activeScope ? 'Run a review' : 'Set up & run your first review';
 
   return (
