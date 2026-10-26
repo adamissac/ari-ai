@@ -239,7 +239,7 @@ function Walkthrough({
 
   return (
     <>
-      <div className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-6 px-4 py-5 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8 lg:px-10 lg:py-8">
+      <div className="grid w-full min-w-0 grid-cols-1 gap-6 pb-10 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10 lg:pt-2">
         <nav aria-label="Setup progress">
           <p className="font-mono text-xs text-muted lg:hidden">Question {currentQuestion} of 8 · {title}</p>
           <div role="progressbar" aria-label={`Question ${currentQuestion} of 8`} aria-valuemin={1} aria-valuemax={8} aria-valuenow={currentQuestion} className="mt-2 h-px bg-panel-2 lg:sr-only">
@@ -250,7 +250,7 @@ function Walkthrough({
               const number = index + 1;
               const done = progress.answers[QUESTION_KEYS[index] as SetupQuestion] !== undefined;
               return (
-                <li key={label} aria-current={currentQuestion === number ? 'step' : undefined} className={`flex items-center gap-3 border-l-2 px-3 py-2 text-sm ${currentQuestion === number ? 'border-brand bg-panel text-ink' : done ? 'border-line-3 text-muted' : 'border-transparent text-faint'}`}>
+                <li key={label} aria-current={currentQuestion === number ? 'step' : undefined} className={`flex items-center gap-3 border-l-2 px-3 py-2 text-sm ${currentQuestion === number ? 'border-brand bg-brand/10 text-ink' : done ? 'border-line-3 text-muted' : 'border-transparent text-faint'}`}>
                   <span className="w-6 shrink-0 font-mono text-[10px] tabular-nums">{String(number).padStart(2, '0')}</span>
                   <span>{label}</span>
                   {done && <span className="ml-auto font-mono text-[10px] text-muted">SAVED</span>}

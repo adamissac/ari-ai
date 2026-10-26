@@ -1826,7 +1826,8 @@ body:has(.project-shell) { --project-site-header-height: 77px; }
 body:has(.project-shell) .site-header { position: sticky; top: 0; z-index: 60; background: var(--color-bg); }
 body:has(.project-shell) .site-header-inner,
 body:has(.setup-layout) .site-header-inner { max-width: 100rem; padding-inline: 1rem; }
-.project-tabbar { position: sticky; top: var(--project-site-header-height); z-index: 50; display: flex; min-width: 0; align-items: stretch; margin-inline: -1rem; padding-inline: 1rem; border-block: 1px solid var(--color-line); background: var(--color-bg); }
+.project-head { margin-inline: -1rem; padding-inline: 1rem; background: var(--color-bg); }
+.project-tabbar { position: sticky; top: var(--project-site-header-height); z-index: 50; display: flex; min-width: 0; align-items: stretch; margin-inline: -1rem; padding-inline: 1rem; border-bottom: 1px solid var(--color-line); background: var(--color-bg); }
 .project-tab-scroll { display: flex; min-width: 0; flex: 1; align-items: stretch; overflow-x: auto; scrollbar-width: none; }
 .project-tab-scroll::-webkit-scrollbar { display: none; }
 .project-tab { display: inline-flex; min-height: 44px; min-width: 44px; flex: none; align-items: center; gap: 8px; padding: 13px 15px 11px; font-size: 15px; font-weight: 500; white-space: nowrap; text-decoration: none; }
@@ -1862,13 +1863,13 @@ body:has(.setup-layout) .site-header-inner { max-width: 100rem; padding-inline: 
   body:has(.project-shell) .site-main { padding-inline: 1.5rem; }
   body:has(.project-shell) .site-header-inner,
   body:has(.setup-layout) .site-header-inner { padding-inline: 1.5rem; }
-  .project-tabbar { margin-inline: -1.5rem; padding-inline: 1.5rem; }
+  .project-tabbar, .project-head { margin-inline: -1.5rem; padding-inline: 1.5rem; }
 }
 @media (min-width: 1024px) {
   body:has(.project-shell) .site-main { padding-inline: 2.5rem; }
   body:has(.project-shell) .site-header-inner,
   body:has(.setup-layout) .site-header-inner { padding-inline: 2.5rem; }
-  .project-tabbar { margin-inline: -2.5rem; padding-inline: 2.5rem; }
+  .project-tabbar, .project-head { margin-inline: -2.5rem; padding-inline: 2.5rem; }
 }
 @media (max-width: 639px) {
   body:has(.project-shell) { --project-site-header-height: 121px; }
