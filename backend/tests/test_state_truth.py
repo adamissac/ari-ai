@@ -126,8 +126,9 @@ def test_concurrent_starts_cannot_overshoot_the_project_quota(client_factory, se
     results: list[bool] = []
 
     def start(index: int) -> None:
+        requested_at = utcnow()  # captured before waiting on the lock, as routes do
         with transaction() as conn:
-            if check_project_quota(conn, ids["project"], utcnow()) is not None:
+            if check_project_quota(conn, ids["project"], requested_at) is not None:
                 results.append(False)
                 return
             time.sleep(0.3)  # widen the race window between the check and the insert
@@ -355,3 +356,36 @@ def test_reconnecting_a_detached_repository_needs_a_current_app_grant(client_fac
     assert alice.post(url).status_code == 200
     repo = alice.get(f"/api/v1/repositories/{rid}").json()
     assert repo["disconnected"] is False and repo["installation_id"] == 42
+
+
+def test_a_start_that_waited_for_the_lock_counts_runs_committed_meanwhile(
+    client_factory, settings_override
+):
+    settings_override(project_assessments_per_hour="1")
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    uid = alice.me["user"]["id"]
+    allowed: dict[str, bool] = {}
+
+    def first() -> None:  # starts after the second captured its time, holds the lock
+        time.sleep(0.05)
+        with transaction() as conn:
+            allowed["first"] = check_project_quota(conn, ids["project"], utcnow()) is None
+            time.sleep(0.3)
+            create_assessment(
+                conn, project_id=ids["project"], repo_id=ids["repo"], scope_id=ids["scope"],
+                commit_sha="a" * 40, trigger=AssessmentTrigger.manual, budget=None, created_by=uid,
+            )  # fmt: skip
+
+    def second() -> None:  # captured `now` before the first run existed, then waits
+        requested_at = utcnow()
+        time.sleep(0.1)
+        with transaction() as conn:
+            allowed["second"] = check_project_quota(conn, ids["project"], requested_at) is None
+
+    threads = [threading.Thread(target=first), threading.Thread(target=second)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert allowed == {"first": True, "second": False}
