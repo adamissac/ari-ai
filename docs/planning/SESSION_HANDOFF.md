@@ -12,6 +12,15 @@ adds an entry before ending.
 - Next steps: Review the pushed feature branch.
 - Warnings for the next session: Do not replace the screenshots with mocked UI.
 
+### 2026-10-26 — Devin (agent, Adam) — Defense Console
+- Did: Reframed `/lab` around the recorded trained-defender view, added live status counts and scenario/run selectors, replaced the replay explanation with activity and demo-only approval rows, and updated focused tests and docs.
+- State of the code: `feat/adam/defense-console` contains the console refinement; approvals only update local presentation state and make no API calls.
+- Commands run and results: Verification and push details are reported with the branch handoff.
+- Decisions made (ADR links): Attacker ground truth stays hidden in the console view; disruptive recommendations are explicitly marked demo-only when approved.
+- Assumptions / open questions (RQ links): None.
+- Next steps: Product Tour work proceeds on its separate branch.
+- Warnings for the next session: No CI checks are monitored after push.
+
 ### 2026-10-26 — Devin (agent, Adam) — runtime pytest Verify audit
 - Did: reproduced import-time `pytest.skip` and dynamic hook `__code__` swaps
   through `apply_fresh`, a real local sandbox suite run, and `compute_verdict`;
@@ -2676,7 +2685,7 @@ Pin 4fdcf10c vs main e41c9dc2; tip 0098f1d5 report-only. Original F1–F10/N1–
 ### RC5 independent check — N9 closed, selected landing suite green
 
 Product 45c7cd6d; observed tip 9672cc60. Tested main 59cd0b62; final main edfa9b8b differs only coordination/status/ADAM.md. Original F1–F10/N1–N9 pass. Actual candidate: 192 pass/2 fail (new upstream #629 Verify checks). Review-only latest-main landing 0aa68ffb046a90bae0ae11c909142e939de842d8: 194 pass/0 fail/0 skip, receipt exit0, successful run 40243984093. Only documentary SESSION_HANDOFF conflict resolved for simulation; no production edit. Collector cleanup repaired within disposable results only. Security GO for checked union, actual PR merge HOLD until main incorporated/document conflict reconciled/full required CI on real final SHA. No merge/deploy/approval/paid calls. Report: docs/reviews/rc5-independent/REPORT.md.
-||||||| 59cd0b62
+
 ### 2026-10-26 — stop polling after a 401
 
 - `useResource` now stops scheduled polling after an API 401; other refresh failures keep polling, and `reload()` retries.
@@ -2698,13 +2707,10 @@ Product 45c7cd6d; observed tip 9672cc60. Tested main 59cd0b62; final main edfa9b
 ### 36bd05ee independent check — exact integrated candidate GO (2026-10-26)
 
 Pin36bd05eeebd101064175f33726934ead35515b4b vs mainba4ada0d: original F1–F10/N1–N9/#629 PASS; 194pass/0fail/0skip, exit0, successful run40291575442. Product same-SHA CI verified (backend1317/16skip, security839/23skip, frontend427unit +51browser). Direct canonical merge clean, main ancestor, tree62c66fcd unchanged. Frontend #638 resolution preserves main +onboarding menu/test addition; demo recovery spec identical to main. No new defect. Technical GO for exact integrated candidate, no GitHub approval/merge/deploy. Individual transfer reconstruction still needs documentary S6/test S8 reconciliation; not blanket standalone PR approval. Customer deployment not approved. Report docs/reviews/36bd05ee-independent/REPORT.md.
-||||||| ba4ada0d
 
-||||||| 4fa8d3c4
 ### Independent b6d5108b check — 2026-10-26
 
 Exact b6d5108b6f0678a6af9546f60d28508716cc4982: 194 pass/0 fail/0 skip, exit0, successful isolated run40285189840. Original F1–F10/N1–N9 and #629 pass; no new security finding. Same-SHA product CI executed backend1317/16skip, security839/23skip, frontend405 unit +46 browser pass. Security GO for checked pin. Main ba4ada0d now includes #638; actual merge conflicts in project.tsx, demo-recovery.spec.ts, project-navigation.test.tsx and handoff docs; canonical merge HOLD pending reconciliation/full resulting-SHA CI. No production fixes/merge/deploy/approval/paid calls. Report: docs/reviews/b6d5108b-independent/REPORT.md.
-||||||| ba4ada0d
 
 ### Landing motion and pricing atmosphere — 2026-10-26
 
