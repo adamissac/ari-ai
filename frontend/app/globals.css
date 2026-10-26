@@ -94,6 +94,10 @@ body { background: linear-gradient(180deg, var(--color-bg) 0%, color-mix(in srgb
   0%, 100% { opacity: 0.4; transform: scale(0.9); }
   50% { opacity: 1; transform: scale(1.1); }
 }
+@keyframes setup-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* Enhanced empty state */
 .empty-state {
@@ -1757,7 +1761,7 @@ body:has(.commit-stage) main { color: #fff; }
 /* Project workspace width and sticky, full-width tab band. */
 .site-main { max-width: 80rem; }
 .site-header-inner { max-width: 80rem; }
-body:has(.project-shell) .site-main { max-width: 100rem; padding-inline: 1rem; }
+body:has(.project-shell) .site-main { width: 100vw; max-width: 100rem; padding-inline: 1rem; }
 body:has(.setup-layout) .site-main { max-width: none; padding: 0; }
 body:has(.project-shell) .site-header { position: sticky; top: 0; }
 body:has(.project-shell) .site-header-inner,

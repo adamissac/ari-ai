@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Replaced the grouped project setup flow with eight resumable one-question steps, coach marks, persisted per-repository answers, first-run tab gating, and a one-time post-setup workspace tour.
 - Added a repository-scoped project workspace with Analytics, Commits, Findings, Approvals, Settings, and More navigation; commit history and assessment records remain scoped to the selected repository.
 - Flattened Expectations, Incidents, Monitoring, Scopes, and Simulate around the selected repository, labeling project-wide or unscoped records explicitly. The Commits 7 agents view now places a compact, phase-seekable map above persisted agent-run details.
 - Restored the pre-redesign look and fixed background, overflow and spacing bugs.

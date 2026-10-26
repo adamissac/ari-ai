@@ -127,6 +127,34 @@ test('repo analytics and commits stay scoped to seeded payments-lite data', asyn
   }
 });
 
+test('fresh repository redirects Analytics to setup and locks project tabs', async ({ browser }) => {
+  const page = await newUser(browser, 'e2e-alice');
+  const me = await page.request.get(`${env('E2E_API')}/me`);
+  const csrf = (await me.json()).csrf_token as string;
+  const created = await page.request.post(`${env('E2E_API')}/projects`, {
+    data: { name: `Setup gate ${Date.now()}` },
+    headers: { 'X-CSRF-Token': csrf },
+  });
+  expect(created.status()).toBe(201);
+  const project = await created.json();
+  const connected = await page.request.post(`${env('E2E_API')}/projects/${project.id}/repositories`, {
+    data: { full_name: 'acme/setup-walkthrough', installation_id: null },
+    headers: { 'X-CSRF-Token': csrf },
+  });
+  expect(connected.status()).toBe(201);
+  const repo = await connected.json();
+
+  await page.goto(`/projects/${project.id}?repo=${repo.id}`);
+  await expect(page).toHaveURL(new RegExp(`/projects/${project.id}/setup\\?repo=${repo.id}`));
+  await expect(page.getByTestId('setup-step-1')).toBeVisible();
+  const tabs = page.locator('.project-tab-scroll');
+  await expect(tabs.locator('[aria-disabled="true"]')).toHaveCount(5);
+  await expect(tabs.getByRole('link')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Setup' }).click();
+  await expect(page.getByRole('link', { name: 'Setup' })).toBeVisible();
+  await expect(page.locator('.project-more-menu [aria-disabled="true"]')).toHaveCount(6);
+});
+
 test('owner edits project settings and they persist on reload', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
   await page.goto(`/projects/${project()}/settings`);
