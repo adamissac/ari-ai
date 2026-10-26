@@ -484,3 +484,25 @@ def test_connect_rechecks_the_users_own_github_access_live(client_factory, monke
     assert seen["login"] == "alice"
     seen["permission"] = "write"
     assert alice.post(f"/api/v1/projects/{pid}/repositories", json=body).status_code == 201
+
+
+def test_collaborator_permission_uses_the_base_permission_not_a_custom_role_name(monkeypatch):
+    import httpx
+
+    from backend.github import GitHubApp
+
+    app = GitHubApp.__new__(GitHubApp)
+    answers = {
+        "custom": {"permission": "write", "role_name": "security-engineer"},
+        "nobody": None,
+    }
+
+    def get(installation_id, path, **params):
+        body = answers[path.rsplit("/", 2)[-2]]
+        if body is None:
+            raise httpx.HTTPStatusError("404", request=None, response=httpx.Response(404))
+        return body
+
+    monkeypatch.setattr(app, "_get", get, raising=False)
+    assert app.collaborator_permission(1, "acme/shop", "custom") == "write"
+    assert app.collaborator_permission(1, "acme/shop", "nobody") == "none"

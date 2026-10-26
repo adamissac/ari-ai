@@ -9,10 +9,17 @@ import { api, idempotencyKey } from '@/lib/api';
  */
 export async function projectFor(org: string): Promise<string> {
   const owner = org.toLowerCase();
-  const sibling = (await api().githubRepositories()).items
+  const [accessible, me, projects] = await Promise.all([api().githubRepositories(), api().session(), api().projects()]);
+  // Connecting needs the owner role, so only projects in organizations this user owns qualify.
+  const owned = new Set(me.memberships.filter(m => m.role === 'owner').map(m => m.organization.id));
+  const writable = projects.items.filter(p => owned.has(p.org_id));
+  const sibling = accessible.items
     .find(repo => repo.connected_repo_id && repo.full_name.slice(0, repo.full_name.indexOf('/')).toLowerCase() === owner);
-  if (sibling) return projectForRepository(sibling.connected_repo_id!);
-  const existing = (await api().projects()).items.find(p => p.name === org);
+  if (sibling) {
+    const siblingProject = await projectForRepository(sibling.connected_repo_id!);
+    if (writable.some(p => p.id === siblingProject)) return siblingProject;
+  }
+  const existing = writable.find(p => p.name === org);
   if (existing) return existing.id;
   return (await api().createProject({ name: org, org_id: null, settings: null }, { idempotencyKey: idempotencyKey('project') })).id;
 }

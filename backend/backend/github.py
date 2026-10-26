@@ -194,8 +194,11 @@ class GitHubApp:
         return r.json()
 
     def collaborator_permission(self, installation_id: int, full_name: str, login: str) -> str:
-        """The user's current effective permission on the repository (admin, maintain, write,
-        triage, read or none); a 404 means GitHub knows no access for them."""
+        """The user's current base permission on the repository: admin, write, read or none.
+
+        ``permission`` maps maintain to write and triage to read, and a custom role to the base
+        role it inherits; ``role_name`` can be a custom name, so it is not used to authorize.
+        A 404 means GitHub knows no access for them."""
         try:
             body = self._get(
                 installation_id, f"/repos/{full_name}/collaborators/{login}/permission"
@@ -204,7 +207,7 @@ class GitHubApp:
             if exc.response.status_code == 404:
                 return "none"
             raise
-        return str(body.get("role_name") or body.get("permission") or "none")
+        return str(body.get("permission") or "none")
 
     def user_installation(self, login: str) -> dict[str, Any] | None:
         """Return this App's installation for a GitHub user, if one exists."""

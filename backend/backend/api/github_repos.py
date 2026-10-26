@@ -63,7 +63,7 @@ def can_connect(conn: Connection, user_id: str, full_name: str, installation_id:
     )
 
 
-_CAN_GRANT = frozenset({"admin", "maintain", "write"})
+_CAN_GRANT = frozenset({"admin", "write"})  # base permissions (maintain reports as write)
 
 
 def verify_user_access(full_name: str, installation_id: int, login: str | None) -> None:
