@@ -132,6 +132,7 @@ def main(argv: list[str]) -> int:
             ANTHROPIC_API_KEY="",
             GITHUB_WEBHOOK_SECRET=WEBHOOK_SECRET,
             RATE_LIMIT_PER_MINUTE="100000",
+            RATE_LIMIT_READ_PER_MINUTE="100000",
             REPOSITORY_BINDINGS_FILE=str(bindings),
             SECURITY_SANDBOX="local-dev",
             SECURITY_WORKDIR=str(tmp / "work"),
