@@ -209,7 +209,7 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   return (
     <ProjectContext.Provider value={{ project: project.data, repos: repoItems, selectedRepo, selectRepo, reloadRepos: repos.reload, reloadProject: project.reload }}>
       <div className="project-shell min-w-0">
-        <header className="flex min-w-0 flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <header className="project-head flex min-w-0 flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2">
             <Link href="/connect" className="label-mono shrink-0 text-muted hover:text-ink">← Projects</Link>
             <p className="min-w-0 break-words font-display text-lg font-semibold tracking-tight" data-testid="project-title">{project.data.name}</p>

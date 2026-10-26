@@ -1,20 +1,22 @@
 'use client';
 
-import type { AgentRun, AssessmentDetail } from '@hackatl/frontend-transport';
+import Link from 'next/link';
+import type { AssessmentDetail } from '@hackatl/frontend-transport';
 import { useMemo, useState } from 'react';
 import { CancelButton } from '@/components/assessment-cancel';
 import { ApprovalGate } from '@/components/assessment-approval-gate';
 import { AgentMap } from '@/components/demo/agent-map';
 import { CommitAnalysis, agentStatus, timeline, type LiveRun } from '@/components/demo/commit-analysis';
+import { ArtifactPeek } from '@/components/evidence';
 import { fullEventLog } from '@/lib/journey';
 import { ErrorState, Loading } from '@/components/ui';
 import { api } from '@/lib/api';
-import { plainToolName, ticks } from '@/lib/demo/agent-map';
+import { ticks } from '@/lib/demo/agent-map';
 import type { DemoCommit, DemoRepo } from '@/lib/demo/data';
 import { useReplay } from '@/lib/demo/replay';
-import type { Analysis } from '@/lib/demo/scenarios';
-import { fallbackSectors, recordedAnalysis, recordedStatuses } from '@/lib/recorded-analysis';
-import { agentRunSummary, AGENT_RUN_STATUS, providerLabel, ASSESSMENT_STATE, FINDING_STATUS, SEVERITY, TERMINAL_STATES } from '@/lib/status';
+import { AGENT_ORDER, type AgentId, type Analysis } from '@/lib/demo/scenarios';
+import { fallbackSectors, recordedAnalysis, recordedStatuses, type SectorMapStatus } from '@/lib/recorded-analysis';
+import { providerLabel, ASSESSMENT_STATE, FINDING_STATUS, SEVERITY, TERMINAL_STATES } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
 /** A run may only be rendered inside the repository and exact commit that created it. */
@@ -63,14 +65,20 @@ export function CommitRunWorkspace({ assessmentId, repoId, sha, fullName, liveVi
 // ------------------------------------------------------------------ code review
 
 function ReviewPanel({ detail, liveView, liveState }: { detail: AssessmentDetail | null; liveView: LiveCommitView | null; liveState: LiveState | null }) {
-  const functional = detail?.findings.filter(f => f.kind === 'functional') ?? [];
-  const reviewerRuns = detail?.agent_runs.filter(r => r.agent === 'reviewer') ?? [];
   return <div className="flex flex-col gap-6">
-    {detail && <section className="glass p-6" data-testid="commit-reviewer">
-      <p className="label-mono text-white/55">Recorded review</p>
-      <h2 className="mt-3 text-xl font-semibold">{agentRunSummary(reviewerRuns)}</h2>
-      <WorkerEvidence runs={reviewerRuns} />
-      {functional.map(f => <FindingCard key={f.id} finding={f} />)}
+    {detail && <section className="divide-y divide-white/10" data-testid="commit-reviewer">
+      {detail.findings.slice(0, 3).map(finding => (
+        <ReviewFinding key={finding.id} finding={finding} projectId={detail.assessment.project_id} />
+      ))}
+      {detail.findings.length === 0 && <p className="py-3 text-sm text-white/55">No findings recorded for this commit.</p>}
+      {detail.findings.length > 3 && (
+        <p className="py-3 text-sm text-white/55">
+          +{detail.findings.length - 3} more ·{' '}
+          <Link className="text-brand hover:underline" href={`/projects/${detail.assessment.project_id}/assessments/${detail.assessment.id}?repo=${encodeURIComponent(detail.assessment.repo_id ?? '')}`}>
+            Open full run
+          </Link>
+        </p>
+      )}
     </section>}
     {liveState?.status === 'loading' && <section className="glass p-6"><Loading label="Reading the real diff" /></section>}
     {liveState?.status === 'error' && (
@@ -104,7 +112,7 @@ function ReviewPanel({ detail, liveView, liveState }: { detail: AssessmentDetail
 // ------------------------------------------------------------------ agent replay
 
 function AgentsPanel({ detail, sha, fullName, liveView }: { detail: AssessmentDetail | null; sha: string; fullName: string; liveView: LiveCommitView | null }) {
-  if (detail) return <RecordedSectorMap detail={detail} sha={sha} fullName={fullName} liveView={liveView} />;
+  if (detail) return <RecordedSectorMap detail={detail} sha={sha} fullName={fullName} liveView={liveView} compact />;
   if (liveView) return <PreviewSectorMap view={liveView} />;
   return (
     <section className="glass p-6" data-testid="commit-agent-map">
@@ -127,67 +135,157 @@ function sectorRepo(liveView: LiveCommitView | null, fullName: string, detail: A
 export function RecordedSectorMap({ detail, sha, fullName, liveView = null, compact = false }: { detail: AssessmentDetail; sha: string; fullName: string; liveView?: LiveCommitView | null; compact?: boolean }) {
   const repo = useMemo(() => sectorRepo(liveView, fullName, detail), [liveView, fullName, detail]);
   const analysis = useMemo(() => recordedAnalysis(detail, repo, liveView?.analysis.review.diff ?? []), [detail, repo, liveView]);
-  const all = useMemo(() => ticks(analysis, repo), [analysis, repo]);
-  const replay = useReplay(all.length, 700);
   const statuses = useMemo(() => recordedStatuses(detail, TERMINAL_STATES.has(detail.assessment.state)), [detail]);
   const verify = detail.agent_runs.filter(r => r.agent === 'verify').at(-1);
   const accepted = verify?.status === 'succeeded';
-  const security = detail.findings.filter(f => f.kind === 'security');
+  const [showReplay, setShowReplay] = useState(false);
+  const rows = AGENT_ORDER.map(role => {
+    const runs = detail.agent_runs.filter(run => run.agent === role.agent);
+    const runIds = new Set(runs.map(run => run.id));
+    const findingCount = detail.findings.filter(finding => finding.produced_by_run_id !== null && runIds.has(finding.produced_by_run_id)).length;
+    return {
+      agent: role.agent,
+      name: role.label,
+      status: RECORDED_STATUS_LABEL[statuses[role.agent]],
+      outcome: findingCount > 0
+        ? `${findingCount} finding${findingCount === 1 ? '' : 's'}`
+        : runs.length > 0 ? 'No findings recorded' : 'No recorded work',
+    };
+  });
   return (
     <div data-testid="commit-agent-map">
       <p className="label-mono mb-3 text-white/45" title="Every step below is a persisted tool call from the recorded run.">
         Recorded run · {ASSESSMENT_STATE[detail.assessment.state].label}
         {detail.agent_runs.some(r => r.provider_mode !== 'live') ? ` · ${providerLabel(detail.agent_runs.find(r => r.provider_mode !== 'live')!.provider_mode).label}` : detail.agent_runs.length === 0 ? ' · no runs yet' : ' · live provider'}
       </p>
-      <AgentMap repo={repo} commitSha={sha} analysis={analysis} statuses={statuses} played={replay.position} started playback={replay} accepted={accepted} offset={0} compact={compact} />
-      {security.length > 0 && (
-        <section className="glass mt-4 p-6" data-testid="commit-security-findings">
-          <p className="label-mono text-white/55">Security findings · {security.length}</p>
-          {security.map(f => <FindingCard key={f.id} finding={f} />)}
-        </section>
-      )}
+      <AgentSummaryRows rows={rows} />
+      <button
+        type="button"
+        aria-expanded={showReplay}
+        aria-controls="commit-agent-replay"
+        className="mt-3 text-sm text-brand hover:underline"
+        onClick={() => setShowReplay(open => !open)}
+      >
+        {showReplay ? 'Hide replay' : 'Watch the replay'}
+      </button>
+      {showReplay && <RecordedReplay repo={repo} sha={sha} analysis={analysis} statuses={statuses} accepted={accepted} compact={compact} />}
     </div>
   );
 }
 
 /** No recorded run: the quick read's reasoning replayed on the same map, labelled as a preview. */
 function PreviewSectorMap({ view }: { view: LiveCommitView }) {
-  const t = useMemo(() => timeline(view.analysis), [view.analysis]);
-  const replay = useReplay(t.total);
-  const statuses = Object.fromEntries(view.analysis.agents.map(a => [a.agent, agentStatus(a, t, replay.position)])) as Parameters<typeof AgentMap>[0]['statuses'];
-  const played = Math.max(0, replay.position - t.agentsStart);
+  const [showReplay, setShowReplay] = useState(false);
+  const rows = AGENT_ORDER.map(role => {
+    const agent = view.analysis.agents.find(item => item.agent === role.agent);
+    return {
+      agent: role.agent,
+      name: role.label,
+      status: agent ? (agent.status === 'done' ? 'Done' : 'Not run') : 'No data',
+      outcome: agent?.outcome ?? 'No preview data',
+    };
+  });
   return (
     <div data-testid="commit-agent-map">
       <p className="label-mono mb-3 text-white/45" title="One Claude pass over the diff — a preview of what the agents check, not an executed run.">
-        Preview · reasoning over the diff, nothing executed — run the 7 agents to record a real replay
+        Preview · nothing executed
       </p>
-      <AgentMap repo={view.repo} commitSha={view.commit.sha} analysis={view.analysis} statuses={statuses} played={played} started={replay.position >= t.agentsStart} playback={replay} accepted={view.commit.verdict === 'fixed'} offset={t.agentsStart} />
+      <AgentSummaryRows rows={rows} />
+      <button
+        type="button"
+        aria-expanded={showReplay}
+        aria-controls="commit-agent-replay"
+        className="mt-3 text-sm text-brand hover:underline"
+        onClick={() => setShowReplay(open => !open)}
+      >
+        {showReplay ? 'Hide replay' : 'Watch the replay'}
+      </button>
+      {showReplay && <PreviewReplay view={view} />}
     </div>
   );
 }
 
 // ------------------------------------------------------------------ shared bits
 
-function FindingCard({ finding }: { finding: AssessmentDetail['findings'][number] }) {
+function ReviewFinding({ finding, projectId }: { finding: AssessmentDetail['findings'][number]; projectId: string }) {
+  const patches = useResource(`commit-review-patches:${finding.id}`, signal => api().patches(finding.id, { signal }));
+  const latest = patches.status === 'ready' ? patches.data.items.at(-1) : undefined;
   const status = FINDING_STATUS[finding.status];
   const severity = finding.severity?.level ? SEVERITY[finding.severity.level] : null;
-  const where = (finding.evidence.find(e => e.path)?.path ?? finding.subject_refs[0])?.replace(/^target\//, '');
-  return <article className="mt-4 border-t border-white/10 pt-4" data-testid="commit-finding">
+  const evidence = finding.evidence.find(item => item.path);
+  const path = (evidence?.path ?? finding.subject_refs[0])?.replace(/^target\//, '');
+  const where = path && evidence?.span ? `${path}:${evidence.span.start_line}–${evidence.span.end_line}` : path;
+  const verificationLabel = latest?.verification
+    ? latest.verification.verdict === 'accepted' ? 'Verified ✓' : 'Not verified'
+    : 'Pending';
+  return <article className="py-4" data-testid="commit-finding">
     <p className="flex flex-wrap items-center gap-2">
       {severity && <span className={`demo-chip ${severity.tone === 'bad' ? 'demo-chip-bad' : severity.tone === 'warn' ? 'demo-chip-warn' : 'demo-chip-info'}`}>{severity.label}</span>}
-      <span className="font-medium">{finding.title}</span>
+      <Link className="font-medium hover:underline" href={`/projects/${projectId}/findings/${finding.id}`}>{finding.title}</Link>
       <span className={`demo-chip ${status.tone === 'ok' ? 'demo-chip-ok' : status.tone === 'bad' ? 'demo-chip-bad' : status.tone === 'warn' ? 'demo-chip-warn' : 'demo-chip-info'}`}>{status.label}</span>
     </p>
-    {where && <p className="mt-1.5 font-mono text-xs text-white/50">{where}</p>}
+    {where && <p className="mt-1 font-mono text-xs text-white/50">{where}</p>}
+    <div className="mt-1 text-xs text-white/55">
+      {patches.status === 'loading' && <span>Loading fix…</span>}
+      {patches.status === 'error' && <span>Could not load fix</span>}
+      {patches.status === 'ready' && !latest && <span>No fix yet</span>}
+      {latest && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="break-all">{latest.patch.files_changed.join(', ') || '—'}</span>
+          <span>{verificationLabel}</span>
+          <details className="basis-full">
+            <summary className="cursor-pointer text-brand hover:underline">Show the fix</summary>
+            <ArtifactPeek key={latest.patch.diff_artifact_id} id={latest.patch.diff_artifact_id} label="diff" asDiff />
+          </details>
+        </div>
+      )}
+    </div>
   </article>;
 }
 
-function WorkerEvidence({ runs }: { runs: AgentRun[] }) {
-  return <>{runs.map(run => <div key={run.id} className="mt-4 text-sm">
-    <p className="text-white/55">{AGENT_RUN_STATUS[run.status].label} · {providerLabel(run.provider_mode).label}</p>
-    {run.error && <p role="alert" className="mt-2">{run.error.message}</p>}
-    <details className="mt-3"><summary>Recorded tool calls ({run.tool_calls.length})</summary><ol className="mt-2 space-y-2">{run.tool_calls.map((call, i) => <li key={i} className="break-words text-xs text-white/65">{plainToolName(call.tool_name)} · {call.outcome}{call.error_code ? ` · ${call.error_code}` : ''}</li>)}</ol></details>
-  </div>)}</>;
+const RECORDED_STATUS_LABEL: Record<SectorMapStatus, string> = {
+  queued: 'Queued',
+  running: 'Running',
+  done: 'Done',
+  skipped: 'Not run',
+  failed: 'Failed',
+};
+
+function AgentSummaryRows({ rows }: { rows: { agent: AgentId; name: string; status: string; outcome: string }[] }) {
+  return <ol data-testid="commit-agent-summary" className="divide-y divide-white/10 border-y border-white/10">
+    {rows.map(row => (
+      <li key={row.agent} className="grid min-w-0 grid-cols-[5rem_4.5rem_minmax(0,1fr)] items-start gap-2 py-2 text-xs sm:grid-cols-[7rem_5rem_minmax(0,1fr)]">
+        <span>{row.name}</span>
+        <span className="font-mono text-[10px] uppercase text-white/45">{row.status}</span>
+        <span className="min-w-0 truncate text-white/60" title={row.outcome}>{row.outcome}</span>
+      </li>
+    ))}
+  </ol>;
+}
+
+function RecordedReplay({ repo, sha, analysis, statuses, accepted, compact }: {
+  repo: DemoRepo;
+  sha: string;
+  analysis: Analysis;
+  statuses: Record<AgentId, SectorMapStatus>;
+  accepted: boolean;
+  compact: boolean;
+}) {
+  const all = useMemo(() => ticks(analysis, repo), [analysis, repo]);
+  const replay = useReplay(all.length, 700);
+  return <div id="commit-agent-replay" className="mt-4">
+    <AgentMap repo={repo} commitSha={sha} analysis={analysis} statuses={statuses} played={replay.position} started playback={replay} accepted={accepted} offset={0} compact={compact} />
+  </div>;
+}
+
+function PreviewReplay({ view }: { view: LiveCommitView }) {
+  const t = useMemo(() => timeline(view.analysis), [view.analysis]);
+  const replay = useReplay(t.total);
+  const statuses = Object.fromEntries(view.analysis.agents.map(agent => [agent.agent, agentStatus(agent, t, replay.position)])) as Parameters<typeof AgentMap>[0]['statuses'];
+  const played = Math.max(0, replay.position - t.agentsStart);
+  return <div id="commit-agent-replay" className="mt-4">
+    <AgentMap repo={view.repo} commitSha={view.commit.sha} analysis={view.analysis} statuses={statuses} played={played} started={replay.position >= t.agentsStart} playback={replay} accepted={view.commit.verdict === 'fixed'} offset={t.agentsStart} compact />
+  </div>;
 }
 
 function CommitApproval({ assessmentId, projectId, findings, onDecided }: { assessmentId: string; projectId: string; findings: AssessmentDetail['findings']; onDecided: () => void }) {
