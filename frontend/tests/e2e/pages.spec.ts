@@ -139,7 +139,7 @@ test('repo analytics and commits stay scoped to seeded payments-lite data', asyn
       expect(bounds.inspector.bottom).toBeLessThanOrEqual(900);
     }
     if (width === 390) {
-      const phasesFit = await replayMap.locator('.amap-phases-compact').evaluate(element => {
+      const phasesFit = await agentMap.locator('.amap-phases-compact').evaluate(element => {
         const bounds = element.getBoundingClientRect();
         return Array.from(element.querySelectorAll('button')).every(button => {
           const buttonBounds = button.getBoundingClientRect();
