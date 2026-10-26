@@ -3,7 +3,7 @@
 
 # Agent board — live coordination dashboard
 
-Regenerated 2026-10-26 07:25 UTC. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
+Regenerated 2026-10-26 09:12 UTC. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
 
 ## Active agents
 
@@ -14,7 +14,7 @@ Regenerated 2026-10-26 07:25 UTC. Comms channel: [issue #559](https://github.com
 | codex-rc4-n8-review | Alan | repeat independent integration code review | READY_FOR_REVIEW | Review N8-remediated RC4 at 4fdcf10c | codex/rc4-n8-independent-review | 99bf3d6d |
 | codex-rc4-review | Alan | independent RC4 security audit | READY_FOR_REVIEW | Exact-SHA RC4 review | codex/rc4-independent-audit | 78dc57bc |
 | codex-review-automation | Alan | bounded independent release review automation | READY_FOR_REVIEW | Devin → CI → immutable-SHA independent Codex review | codex/ari-review-cycle | ed68a7bd |
-| devin-console-refinement | Adam | frontend console refinement | READY_FOR_REVIEW | Console sticky header/tab band + Live Defense 320px overflow containment | feat/adam/console-polish | 78a1fad55bfe255a9d6f27c4267af327b1d6221e |
+| devin-console-refinement | Adam | frontend console refinement | READY_FOR_REVIEW | Console sticky header/tab band + Live Defense 320px overflow containment; main merge complete | feat/adam/console-polish | 1e914c0447f1150b4d044736e2cc34cffbe0d727 |
 | devin-defense-lab | Adam | Defense Lab pilot audit + two-org rehearsal + live-deployment rehearsal leg | BLOCKED | Live leg on adamissac/pilot-rehearsal-target: 2 pushes delivered 202 (recipe merge 256c8e8 @00:40, re-trigger 7cf48de @01:06) — no assessment/fix PR after ~25min; outcome only visible in prod UI/DB | feat/adam/defense-lab-pilot-audit | 6ffaccda |
 | devin-frontend-ui | Adam | frontend UI — landing rework + SaaS sidebar console revamp; pilot-readiness support (coordination lane) | READY_FOR_REVIEW | PR #536 landing + console revamp green/mergeable (owner review required); tracked #570 redaction fix — commander ruling adopted over-redaction, in CI; assessing remaining pilot work | feat/adam/home-deep-sea-landing | 9e89652e |
 | devin-frontend-ux | Adam | first-user usability — pilot UX workstream (PR #538 on #496) | READY_FOR_REVIEW | Named approval cards, two-step approve/confirm on assessment page + approvals inbox, plain-English replay (plainToolName), honest quick-read errors, flow map + blockers doc | feat/adam/first-user-usability | c890e2c9 |
@@ -56,18 +56,16 @@ Regenerated 2026-10-26 07:25 UTC. Comms channel: [issue #559](https://github.com
 | #573 | ? | ? | ? | integration-lead | 30 |
 | #580 | ? | ? | ? | devin-pipeline-fixer | 15 |
 | #614 | ? | ? | ? | codex-review-automation | 4 |
-| #646 | feat(frontend): clearer project tabs, full-width console and repo-scoped settings | feat/adam/console-polish | 78a1fad5 | devin-console-refinement | 5 |
-| #649 | feat(frontend): one-question setup walkthrough with coach marks and first-run gate | feat/adam/setup-walkthrough | 30e2f488 | devin-console-refinement | 6 |
-| #579 | docs(pilot): record production rehearsal, ari_app cutover and NO-GO launch decision | docs/pilot-prod-rehearsal | edf87164 | unassigned | — |
+| #646 | feat(frontend): clearer project tabs, full-width console and repo-scoped settings | feat/adam/console-polish | 1e914c04 | devin-console-refinement | 5 |
+| #649 | feat(frontend): one-question setup walkthrough with coach marks and first-run gate | feat/adam/setup-walkthrough | 5cd8b883 | devin-console-refinement | 6 |
+| #579 | docs(pilot): record production rehearsal, ari_app cutover and NO-GO launch decision | docs/pilot-prod-rehearsal | b848b0e0 | unassigned | — |
 | #639 | docs(review): N9 closed and RC5 latest-main landing security suite passes | codex/rc5-independent-check | 7394af90 | unassigned | — |
-| #640 | docs(adam): scheduled cloud health run 29 handoff | feat/adam/cloud-20261026-0018 | 8f0d56b2 | unassigned | — |
-| #641 | docs(adam): scheduled cloud health run 29 handoff | feat/adam/cloud-20261026-0217 | 7e326702 | unassigned | — |
-| #643 | fix(frontend): stop polling after a 401 | fix/adam/stop-polling-after-401 | a96632ba | unassigned | — |
-| #644 | fix(verify): runtime pytest hook/collection audit; fix static-scan false rejections | fix/adam/verify-runtime-hook-audit | 50499920 | unassigned | — |
-| #645 | docs(adam): scheduled cloud health run 29 handoff | feat/adam/cloud-20261026-run29 | 0a3ec7f3 | unassigned | — |
-| #647 | feat(frontend): lava-lamp hero, continuous landing background and warm-glass pricing | feat/adam/landing-motion | c50b6ed0 | unassigned | — |
-| #648 | docs(adam): scheduled cloud health run 29 handoff | feat/adam/cloud-20261026-0623 | df054dd2 | unassigned | — |
+| #643 | fix(frontend): stop polling after a 401 | fix/adam/stop-polling-after-401 | f078716f | unassigned | — |
+| #644 | fix(verify): runtime pytest hook/collection audit; fix static-scan false rejections | fix/adam/verify-runtime-hook-audit | ac793731 | unassigned | — |
 | #650 | docs(review): b6d5108b security passes; latest frontend merge gates remain | codex/check-b6d5108b | 68504a0e | unassigned | — |
+| #651 | docs(adam): scheduled cloud health run 29 handoff | feat/adam/cloud-20261026-0818 | a35ea408 | unassigned | — |
+| #652 | docs(review): exact integrated 36bd05ee receives technical GO | codex/check-36bd05ee | afe159d2 | unassigned | — |
+| #653 | Integration/2026 11 02 release | integration/2026-11-02-release | b73a44c8 | unassigned | — |
 
 ## File / subsystem claims
 
@@ -124,7 +122,7 @@ Regenerated 2026-10-26 07:25 UTC. Comms channel: [issue #559](https://github.com
 - **codex-rc4-n8-review**: Redaction owner fixes statement-boundary handling; cascade and re-review; no merge/deploy
 - **codex-rc4-review**: Owners fix N8 and reconcile latest-main composition; fresh independent review; no merge/deploy
 - **codex-review-automation**: Human review/manual installation; configure protected credentials and validate first pinned candidate cycle
-- **devin-console-refinement**: Push the normal merge to setup-walkthrough, then await PR review.
+- **devin-console-refinement**: Await review and CI on #646 and #649; console-polish was merged into setup-walkthrough at e45c194f.
 - **devin-defense-lab**: owner checks prod project Assessments view; merge #571 then #532 goes green
 - **devin-frontend-ui**: monitor #570 CI + prod recovery; pick up unblocked pilot staging prep that does not need owner credentials
 - **devin-frontend-ux**: hold for integration-lead merge after #496; watch CI on current head

@@ -3,9 +3,9 @@
   "human_owner": "Adam",
   "workstream": "frontend console refinement",
   "state": "READY_FOR_REVIEW",
-  "task": "Console sticky header/tab band + Live Defense 320px overflow containment",
+  "task": "Console sticky header/tab band + Live Defense 320px overflow containment; main merge complete",
   "branch": "feat/adam/console-polish",
-  "latest_sha": "78a1fad55bfe255a9d6f27c4267af327b1d6221e",
+  "latest_sha": "1e914c0447f1150b4d044736e2cc34cffbe0d727",
   "prs": [646, 649],
   "claims": [
     "frontend/components/project.tsx",
@@ -19,7 +19,7 @@
   "blockers": [
     "Do not edit frontend/components/live-defense/*; Alan's lane retains that claim."
   ],
-  "last_update_utc": "2026-10-26T07:25:49Z",
-  "tests": "Lint, typecheck, and 99-file/418-test unit suite passed. Targeted pages/tab-band E2E passed 2/2; Analytics scroll assertions passed at 1440/390 and Live Defense document width was 320px. E2E production build passed. Full pages.spec attempt was 4/9 without a preceding journey; three remaining data/selector failures are documented and not claimed as pre-existing.",
-  "next_action": "Push the normal merge to setup-walkthrough, then await PR review."
+  "last_update_utc": "2026-10-26T09:12:39Z",
+  "tests": "Console merge lint passed (0 errors; one existing first-responder.tsx:173 warning), typecheck passed, and unit tests passed (99 files / 419 tests). Setup integration commit e45c194f passed lint (same warning), typecheck, unit tests (101 files / 425 tests), and production build. PR checks were not awaited.",
+  "next_action": "Await review and CI on #646 and #649; console-polish was merged into setup-walkthrough at e45c194f."
 }
