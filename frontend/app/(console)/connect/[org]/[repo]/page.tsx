@@ -11,7 +11,7 @@ import { ProjectReviewCta } from '@/components/project-review-cta';
 import { Button, Empty, ErrorState, Loading } from '@/components/ui';
 import { api } from '@/lib/api';
 import { relativeTime } from '@/lib/demo/data';
-import { connectRepo } from '@/lib/github-connect';
+import { connectRepo, liveRepoId } from '@/lib/github-connect';
 import { useAccessibleRepo } from '@/lib/real-repo';
 import { minutesSince } from '@/lib/simulated-attack';
 import { useResource } from '@/lib/use-resource';
@@ -40,7 +40,7 @@ export default function RepoCommitsPage() {
 function Commits({ org, name, repo, onConnected }: { org: string; name: string; repo: AccessibleRepository; onConnected: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const id = repo.connected_repo_id;
+  const id = liveRepoId(repo);
   const commits = useResource(id ? `commits:${id}` : null, signal => api().repositoryCommits(id!, { signal }));
   const connect = async () => {
     setBusy(true);
@@ -57,8 +57,8 @@ function Commits({ org, name, repo, onConnected }: { org: string; name: string; 
       {id && <div className="mb-4"><ProjectReviewCta repoId={id} /></div>}
       {!id && (
         <div className="rounded-2xl border border-line bg-panel p-6">
-          <p className="text-sm text-muted">Connect this repository to read its commits.</p>
-          <Button variant="primary" className="mt-3" onClick={() => void connect()} disabled={busy}>{busy ? 'Connecting…' : 'Connect'}</Button>
+          <p className="text-sm text-muted">{repo.disconnected ? 'This repository is disconnected. Reconnect it to read its commits; automatic reviews stay off until you turn them on.' : 'Connect this repository to read its commits.'}</p>
+          <Button variant="primary" className="mt-3" onClick={() => void connect()} disabled={busy}>{busy ? 'Connecting…' : repo.disconnected ? 'Reconnect' : 'Connect'}</Button>
           {error !== null && <div className="mt-3"><ErrorState error={error} context="Could not connect" /></div>}
         </div>
       )}

@@ -9,14 +9,15 @@ import { Async, Badge, Empty, ErrorState, Loading, PageTitle, Panel, Time } from
 import { api } from '@/lib/api';
 import { shortSha } from '@/lib/format';
 import { projectOverview } from '@/lib/overview';
-import { findingsForRepo, repoAnalytics } from '@/lib/repo-analytics';
+import { repoAnalytics } from '@/lib/repo-analytics';
 import { effectiveScopeStatus, FINDING_STATUS, SEVERITY } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
 export default function ProjectOverview() {
   const { project, selectedRepo } = useProject();
-  const assessments = useResource(`asm:${project.id}`, signal => api().assessments(project.id, { signal }), 5000);
-  const findings = useResource(`fnd:${project.id}`, signal => api().findings(project.id, { signal }), 10000);
+  const repoId = selectedRepo?.id;
+  const assessments = useResource(`asm:${project.id}:${repoId}`, signal => api().assessments(project.id, { signal, ...(repoId ? { repoId } : {}) }), 5000);
+  const findings = useResource(`fnd:${project.id}:${repoId}`, signal => api().findings(project.id, { signal, ...(repoId ? { repoId } : {}) }), 10000);
   const scopes = useResource(`scopes:${project.id}`, signal => api().scopes(project.id, { signal }));
   const snapshots = useResource(
     selectedRepo ? `snapshots:${selectedRepo.id}` : null,
@@ -40,17 +41,11 @@ export default function ProjectOverview() {
                 <Async resource={snapshots} label="saved snapshots">
                   {snapshotPage => {
                     const repoAssessments = assessmentPage.items.filter(assessment => assessment.repo_id === selectedRepo.id);
-                    const repoFindings = findingsForRepo(
-                      selectedRepo.id,
-                      assessmentPage.items,
-                      findingPage.items,
-                      snapshotPage.items.map(snapshot => snapshot.id),
-                    );
+                    const repoFindings = findingPage.items;
                     const analytics = repoAnalytics({
                       repoId: selectedRepo.id,
                       assessments: assessmentPage.items,
                       findings: findingPage.items,
-                      snapshotIds: snapshotPage.items.map(snapshot => snapshot.id),
                       now: new Date(),
                     });
                     const activeScopeCount = scopes.status === 'ready'

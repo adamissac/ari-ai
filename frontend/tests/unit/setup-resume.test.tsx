@@ -147,3 +147,42 @@ it('links saved reviews to the Commits assessment history', async () => {
   expect(screen.getByRole('link', { name: 'See your reviews' }).getAttribute('href'))
     .toBe(`/projects/${project.id}/commits?repo=${encodeURIComponent(repo.id)}#assessments`);
 });
+
+const ALL_ANSWERS = {
+  readiness: true,
+  strictness: '2',
+  reviewChanges: true,
+  comments: false,
+  watch: false,
+  scope: true,
+  delivery: 'pull_request',
+} as const;
+
+it('shows finished setup as complete instead of asking the questions again', async () => {
+  mocks.server = { ...serverSetup({ answers: { ...ALL_ANSWERS, reviewStart: true }, complete: true }), completed_at: '2026-10-26T12:00:00Z' };
+  render(<SetupPage />);
+  expect(await screen.findByTestId('setup-complete')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull();
+  expect(screen.queryByTestId('setup-step-8')).toBeNull();
+  expect(screen.getByRole('link', { name: 'Open dashboard' }).getAttribute('href')).toBe(`/projects/${project.id}?repo=${repo.id}`);
+  fireEvent.click(screen.getByRole('button', { name: 'Review answers' }));
+  expect(await screen.findByTestId('setup-step-1')).toBeTruthy();
+});
+
+it('leaves the walkthrough once setup is finished', async () => {
+  localStorage.setItem(`ari-tour:${project.id}`, 'complete');
+  mocks.server = serverSetup({ answers: ALL_ANSWERS, complete: false });
+  render(<SetupPage />);
+  expect(await screen.findByTestId('setup-step-8')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Finish setup' }));
+  expect(await screen.findByTestId('setup-complete')).toBeTruthy();
+  expect(mocks.saveRepositorySetup).toHaveBeenCalledWith(repo.id, expect.objectContaining({ complete: true }));
+});
+
+it('does not offer direct commits to the default branch', async () => {
+  mocks.server = serverSetup({ answers: { readiness: true, strictness: '2', reviewChanges: true, comments: false, watch: false, scope: true }, complete: false });
+  render(<SetupPage />);
+  expect(await screen.findByTestId('setup-step-7')).toBeTruthy();
+  expect(screen.getByText('Open a pull request')).toBeTruthy();
+  expect(screen.queryByText('Commit to the default branch')).toBeNull();
+});

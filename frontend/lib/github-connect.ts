@@ -8,8 +8,20 @@ export async function projectFor(org: string): Promise<string> {
   return (await api().createProject({ name: org, org_id: null, settings: null }, { idempotencyKey: idempotencyKey('project') })).id;
 }
 
-/** Connect a repository the user reached through the GitHub App; returns its repository id. */
+/** The Ari repository id while Ari may still read it; a disconnected row needs reconnecting first. */
+export function liveRepoId(repo: AccessibleRepository): string | null {
+  return repo.disconnected ? null : repo.connected_repo_id;
+}
+
+/**
+ * Connect a repository the user reached through the GitHub App; returns its repository id.
+ * A disconnected one is reconnected, which re-checks the GitHub grant on the server.
+ */
 export async function connectRepo(org: string, repo: AccessibleRepository): Promise<string> {
+  if (repo.connected_repo_id && repo.disconnected) {
+    await api().reconnectRepository(repo.connected_repo_id);
+    return repo.connected_repo_id;
+  }
   if (repo.connected_repo_id) return repo.connected_repo_id;
   const pid = await projectFor(org);
   return (await api().connectRepository(pid, { full_name: repo.full_name, default_branch: repo.default_branch, installation_id: repo.installation_id })).id;

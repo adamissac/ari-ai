@@ -30,22 +30,6 @@ export interface RepoAnalytics {
   topOpen: Finding[];
 }
 
-export function findingsForRepo(
-  repoId: string,
-  assessments: readonly Assessment[],
-  findings: readonly Finding[],
-  snapshotIds: readonly string[],
-): Finding[] {
-  const repoAssessmentIds = new Set(
-    assessments.filter(assessment => assessment.repo_id === repoId).map(assessment => assessment.id),
-  );
-  const repoSnapshotIds = new Set(snapshotIds);
-  return findings.filter(finding =>
-    repoAssessmentIds.has(finding.assessment_id)
-    || (finding.snapshot_id !== null && repoSnapshotIds.has(finding.snapshot_id)),
-  );
-}
-
 function outcome(state: string): 'completed' | 'active' | 'failed' {
   if (state === 'COMPLETED') return 'completed';
   if (FAILED.has(state)) return 'failed';
@@ -64,18 +48,16 @@ function median(values: number[]): number | null {
 export function repoAnalytics({
   repoId,
   assessments,
-  findings,
-  snapshotIds,
+  findings: repoFindings,
   now,
 }: {
   repoId: string;
   assessments: readonly Assessment[];
+  /** This repository's findings, filtered on the server (`findings(projectId, { repoId })`). */
   findings: readonly Finding[];
-  snapshotIds: readonly string[];
   now: Date;
 }): RepoAnalytics {
   const repoAssessments = assessments.filter(assessment => assessment.repo_id === repoId);
-  const repoFindings = findingsForRepo(repoId, repoAssessments, findings, snapshotIds);
   const statusCounts = { open: 0, fixed: 0, closed: 0 };
   const bySeverity: Record<SeverityLevel | 'unassessed', number> = {
     info: 0,

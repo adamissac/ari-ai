@@ -8,7 +8,7 @@ import { useSelectedRepo } from '@/lib/selected-repo';
 import { api } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
 import { ErrorState, Loading, Mono, inputClass } from '@/components/ui';
-import { isSetupComplete, progressToServer, readLegacySetupProgress, SETUP_SAVED_EVENT } from '@/lib/setup-progress';
+import { isLegacySetupEvidence, isSetupComplete, progressToServer, readLegacySetupProgress, SETUP_SAVED_EVENT } from '@/lib/setup-progress';
 
 interface ProjectValue {
   project: Project;
@@ -169,7 +169,7 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   );
   const setupCheck = useResource(
     selectedRepoId ? `setup-check:${id}:${selectedRepoId}` : null,
-    signal => hasRepoAssessment(id, selectedRepoId!, signal),
+    signal => hasLegacySetupEvidence(id, selectedRepoId!, signal),
   );
   const reloadSavedSetup = savedSetup.reload;
   useEffect(() => {
@@ -239,7 +239,12 @@ export function ProjectShell({ children }: { children: ReactNode }) {
                     value={selectedRepo?.id ?? ''}
                     onChange={event => selectRepo(event.target.value)}
                   >
-                    {repoItems.map(repo => <option key={repo.id} value={repo.id}>{repo.full_name} · {repo.disconnected ? 'disconnected' : repo.default_branch}</option>)}
+                    {repoItems.filter(repo => !repo.disconnected).map(repo => <option key={repo.id} value={repo.id}>{repo.full_name} · {repo.default_branch}</option>)}
+                    {repoItems.some(repo => repo.disconnected) && (
+                      <optgroup label="Disconnected (history only)">
+                        {repoItems.filter(repo => repo.disconnected).map(repo => <option key={repo.id} value={repo.id}>{repo.full_name} · disconnected</option>)}
+                      </optgroup>
+                    )}
                   </select>
                   <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m7 10 5 5 5-5" /></svg>
                 </span>
@@ -267,11 +272,11 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   );
 }
 
-async function hasRepoAssessment(projectId: string, repoId: string, signal: AbortSignal): Promise<boolean> {
+async function hasLegacySetupEvidence(projectId: string, repoId: string, signal: AbortSignal): Promise<boolean> {
   let cursor: string | undefined;
   do {
-    const page = await api().assessments(projectId, { ...(cursor ? { cursor } : {}), signal });
-    if (page.items.some(assessment => assessment.repo_id === repoId)) return true;
+    const page = await api().assessments(projectId, { repoId, ...(cursor ? { cursor } : {}), signal });
+    if (page.items.some(isLegacySetupEvidence)) return true;
     cursor = page.next_cursor ?? undefined;
   } while (cursor);
   return false;

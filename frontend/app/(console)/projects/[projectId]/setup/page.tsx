@@ -60,12 +60,10 @@ export default function SetupPage() {
   const repoParam = searchParams.get('repo');
   const repos = useResource(`setup-repos:${project.id}`, signal => api().repositories(project.id, { signal }));
   const scopes = useResource(`setup-scopes:${project.id}`, signal => api().scopes(project.id, { signal }));
-  const runs = useResource(`setup-runs:${project.id}`, signal => api().assessments(project.id, { signal }));
 
-  if (repos.status === 'loading' || scopes.status === 'loading' || runs.status === 'loading') return <Loading label="Loading setup" />;
+  if (repos.status === 'loading' || scopes.status === 'loading') return <Loading label="Loading setup" />;
   if (repos.status === 'error') return <ErrorState error={repos.error} onRetry={repos.reload} />;
   if (scopes.status === 'error') return <ErrorState error={scopes.error} onRetry={scopes.reload} />;
-  if (runs.status === 'error') return <ErrorState error={runs.error} onRetry={runs.reload} />;
   const repo = repos.data.items.find(item => item.id === repoParam)
     ?? repos.data.items.find(item => !item.disconnected)
     ?? repos.data.items[0];
@@ -81,23 +79,25 @@ export default function SetupPage() {
     );
   }
   const scope = scopeStateFor(scopes.data.items, repo.id, new Date());
-  const hasRun = runs.data.items.some(assessment => assessment.repo_id === repo.id);
   return (
     <SavedWalkthrough
       key={repo.id}
       repo={repo}
       scope={scope}
-      hasRun={hasRun}
-      reload={() => { scopes.reload(); runs.reload(); reloadProject(); }}
+      reload={() => { scopes.reload(); reloadProject(); }}
     />
   );
 }
 
-function SavedWalkthrough(props: { repo: Repository; scope: ReturnType<typeof scopeStateFor>; hasRun: boolean; reload: () => void }) {
+function SavedWalkthrough(props: { repo: Repository; scope: ReturnType<typeof scopeStateFor>; reload: () => void }) {
+  const { project } = useProject();
   const setup = useResource(`setup-progress:${props.repo.id}`, signal => api().repositorySetup(props.repo.id, { signal }));
-  if (setup.status === 'loading') return <Loading label="Loading saved setup" />;
+  // Filtered on the server: another repository's newer runs can't hide this one's.
+  const runs = useResource(`setup-runs:${project.id}:${props.repo.id}`, signal => api().assessments(project.id, { signal, repoId: props.repo.id }));
+  if (setup.status === 'loading' || runs.status === 'loading') return <Loading label="Loading saved setup" />;
   if (setup.status === 'error') return <ErrorState error={setup.error} onRetry={setup.reload} context="Could not load saved setup" />;
-  return <Walkthrough {...props} saved={setup.data} />;
+  if (runs.status === 'error') return <ErrorState error={runs.error} onRetry={runs.reload} />;
+  return <Walkthrough {...props} hasRun={runs.data.items.length > 0} reload={() => { runs.reload(); props.reload(); }} saved={setup.data} />;
 }
 
 function Walkthrough({
@@ -132,6 +132,9 @@ function Walkthrough({
   const [comments, setComments] = useState(review.comment_on_pull_requests);
   const [watch, setWatch] = useState(project.settings.monitoring_policy.enabled);
   const [delivery, setDelivery] = useState<DeliveryMode>(project.settings.delivery_mode);
+  const [reviewing, setReviewing] = useState(false);
+  // Direct default-branch commits are off for pilot deployments; only show the choice already in effect.
+  const deliveryChoices = DELIVERY.filter(([mode]) => mode !== 'auto' || project.settings.delivery_mode === 'auto');
   const authorized = scope.kind === 'active';
   const savedAnswer = progress.answers[QUESTION_KEYS[currentQuestion - 1] as SetupQuestion];
   const strictnessLabel = STRICTNESS.find(([value]) => value === strictness)?.[1] ?? 'Unknown';
@@ -240,7 +243,8 @@ function Walkthrough({
   const finishSetup = async () => {
     const completed = { ...progress, answers: { ...progress.answers, reviewStart: true }, complete: true };
     await saveProgress(completed);
-    setQuestionOverride(8);
+    setReviewing(false);
+    setQuestionOverride(null);
     try {
       if (window.localStorage.getItem(tourKey) !== 'complete') setTourStep(0);
     } catch {
@@ -262,6 +266,50 @@ function Walkthrough({
   const scopeLabel = authorized ? 'Approved' : scope.kind === 'pending' ? 'Pending approval' : 'Not approved';
   const title = QUESTIONS[currentQuestion - 1]?.[0] ?? QUESTIONS[7]![0];
   const canContinue = currentQuestion !== 6 || authorized;
+  const repoQuery = `?repo=${encodeURIComponent(repo.id)}`;
+
+  const tour = tourStep !== null && (
+    <CoachMark
+      key={`tour-${tourStep}`}
+      mode="tour"
+      target={TOUR[tourStep]![0]}
+      current={tourStep + 1}
+      total={TOUR.length}
+      onNext={() => tourStep === TOUR.length - 1 ? completeTour() : setTourStep(tourStep + 1)}
+      onSkip={completeTour}
+    >
+      {TOUR[tourStep]![1]}
+    </CoachMark>
+  );
+
+  if (progress.complete && !reviewing) {
+    const completedAt = saved.completed_at ? new Date(saved.completed_at).toLocaleDateString() : null;
+    return (
+      <>
+        <section data-testid="setup-complete" className="max-w-2xl rounded-xl border border-line bg-panel p-5 sm:p-6">
+          <p className="label-mono text-muted">Setup / {repo.full_name}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Setup complete</h1>
+          <p className="mt-2 text-sm text-muted">
+            Ari saved these choices to your account{completedAt ? ` on ${completedAt}` : ''}, so you won&apos;t be asked again on another browser or device.
+          </p>
+          <dl className="mt-4 divide-y divide-line border-y border-line">
+            <Summary label="Comment strictness" value={strictnessLabel} />
+            <Summary label="Watch project" value={project.settings.monitoring_policy.enabled ? 'Yes' : 'No'} />
+            <Summary label="Testing scope" value={scope.kind === 'active' ? 'Approved' : scope.kind === 'pending' ? 'Pending approval' : 'Not approved or expired'} />
+            <Summary label="Fix delivery" value={deliveryLabel} />
+          </dl>
+          {!authorized && <p className="mt-3 text-sm text-warn">Reviews need an approved testing scope. Approve one in Authorized scopes before the next run.</p>}
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <Link className="inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-deep" href={`/projects/${project.id}${repoQuery}`}>Open dashboard</Link>
+            <Link className="text-sm font-semibold text-brand" href={`/projects/${project.id}/commits${repoQuery}${hasRun ? '#assessments' : '#start-assessment'}`}>{hasRun ? 'See your reviews' : 'Run a review'}</Link>
+            <Link className="text-sm font-semibold text-brand" href={`/projects/${project.id}/settings${repoQuery}`}>Edit settings</Link>
+            <Button onClick={() => { setReviewing(true); setQuestionOverride(1); }}>Review answers</Button>
+          </div>
+        </section>
+        {tour}
+      </>
+    );
+  }
 
   return (
     <>
@@ -372,7 +420,7 @@ function Walkthrough({
                 <fieldset>
                   <legend className="mb-3 text-sm font-medium">How should Ari deliver verified fixes?</legend>
                   <div className="divide-y divide-line">
-                    {DELIVERY.map(([mode, label, hint]) => (
+                    {deliveryChoices.map(([mode, label, hint]) => (
                       <label key={mode} className="flex cursor-pointer items-start gap-3 py-3 text-sm">
                         <input type="radio" name="delivery" checked={delivery === mode} onChange={() => setDelivery(mode)} />
                         <span><span className="block font-semibold">{label}</span><span className="mt-1 block text-xs text-muted">{hint}</span></span>
@@ -418,19 +466,7 @@ function Walkthrough({
         </div>
       </div>
 
-      {tourStep !== null ? (
-        <CoachMark
-          key={`tour-${tourStep}`}
-          mode="tour"
-          target={TOUR[tourStep]![0]}
-          current={tourStep + 1}
-          total={TOUR.length}
-          onNext={() => tourStep === TOUR.length - 1 ? completeTour() : setTourStep(tourStep + 1)}
-          onSkip={completeTour}
-        >
-          {TOUR[tourStep]![1]}
-        </CoachMark>
-      ) : (
+      {tour || (
         <CoachMark
           key={`setup-${currentQuestion}`}
           mode="setup"

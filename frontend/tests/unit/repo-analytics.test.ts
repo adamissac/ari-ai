@@ -1,6 +1,6 @@
 import type { Assessment, Finding } from '@hackatl/frontend-transport';
 import { describe, expect, it } from 'vitest';
-import { findingsForRepo, repoAnalytics } from '@/lib/repo-analytics';
+import { repoAnalytics } from '@/lib/repo-analytics';
 
 const assessment = (overrides: Partial<Assessment>): Assessment => ({
   id: 'assessment-1',
@@ -45,6 +45,7 @@ const finding = (overrides: Partial<Finding>): Finding => ({
 
 describe('repoAnalytics', () => {
   it('counts only the selected repo and reuses Findings status groups', () => {
+    // Findings arrive already filtered to the repository by the server.
     const assessments = [
       assessment({ id: 'a1', commit_sha: 'sha-1', created_at: '2026-10-25T00:00:00Z', completed_at: '2026-10-25T00:04:12Z' }),
       assessment({ id: 'a2', commit_sha: 'sha-1', state: 'AWAITING_APPROVAL', created_at: '2026-10-26T00:00:00Z', completed_at: null }),
@@ -53,15 +54,12 @@ describe('repoAnalytics', () => {
     const findings = [
       finding({ id: 'open', assessment_id: 'a1', snapshot_id: null }),
       finding({ id: 'fixed', assessment_id: 'a2', status: 'verified', severity: null }),
-      finding({ id: 'closed', assessment_id: 'a3', status: 'closed' }),
       finding({ id: 'snapshot', assessment_id: 'other', snapshot_id: 'selected-snapshot', status: 'hypothesis' }),
-      finding({ id: 'other-snapshot', assessment_id: 'other', snapshot_id: 'other-snapshot' }),
     ];
     const result = repoAnalytics({
       repoId: 'repo-1',
       assessments,
       findings,
-      snapshotIds: ['selected-snapshot'],
       now: new Date('2026-10-27T12:00:00Z'),
     });
     expect(result.commitsChecked).toBe(1);
@@ -81,7 +79,6 @@ describe('repoAnalytics', () => {
       repoId: 'repo-1',
       assessments: [],
       findings: [],
-      snapshotIds: [],
       now: new Date('2026-10-27T12:00:00Z'),
     });
     expect(result).toMatchObject({
@@ -94,19 +91,5 @@ describe('repoAnalytics', () => {
       topOpen: [],
     });
     expect(result.checksPerDay).toHaveLength(30);
-  });
-
-  it('filters by the selected assessment or saved snapshot ids', () => {
-    const items = [
-      finding({ id: 'assessment-match', assessment_id: 'repo-1-assessment' }),
-      finding({ id: 'snapshot-match', assessment_id: 'other', snapshot_id: 'repo-1-snapshot' }),
-      finding({ id: 'other-repo', assessment_id: 'repo-2-assessment', snapshot_id: 'repo-2-snapshot' }),
-    ];
-    expect(findingsForRepo(
-      'repo-1',
-      [assessment({ id: 'repo-1-assessment' }), assessment({ id: 'repo-2-assessment', repo_id: 'repo-2' })],
-      items,
-      ['repo-1-snapshot'],
-    ).map(item => item.id)).toEqual(['assessment-match', 'snapshot-match']);
   });
 });

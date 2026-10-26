@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CommitRunWorkspace, type LiveCommitView } from '@/components/commit-run-workspace';
 import { ProjectReviewCta } from '@/components/project-review-cta';
 import { RealAssessmentPanel } from '@/components/real-assessment-panel';
+import { liveRepoId } from '@/lib/github-connect';
 import { Avatar, VerdictChip } from '@/components/demo/ui';
 import { Empty, ErrorState, Loading } from '@/components/ui';
 import type { DemoCommit, DemoRepo } from '@/lib/demo/data';
@@ -33,7 +34,7 @@ export default function RealCommitPage() {
 function SelectedCommit({ org, name, sha, repo, onConnected }: {
   org: string; name: string; sha: string; repo: NonNullable<ReturnType<typeof useAccessibleRepo>['data']>; onConnected: () => void;
 }) {
-  const [connectedRepoId, setConnectedRepoId] = useState(repo.connected_repo_id);
+  const [connectedRepoId, setConnectedRepoId] = useState(liveRepoId(repo));
   const metadata = useResource(connectedRepoId ? `selected-commit:${connectedRepoId}:${sha}` : null, signal => api().repositoryCommits(connectedRepoId!, { signal }));
   const selectedCommit = metadata.data?.items.find(commit => commit.sha === sha || commit.sha.startsWith(sha));
   const fullSha = selectedCommit?.sha ?? sha;
@@ -100,7 +101,7 @@ function SelectedCommit({ org, name, sha, repo, onConnected }: {
       </p>
     )}
     <div className="mb-4"><ProjectReviewCta repoId={connectedRepoId} /></div>
-    <RealAssessmentPanel org={org} repo={{ ...repo, connected_repo_id: connectedRepoId }} sha={fullSha} onConnected={id => { setConnectedRepoId(id); onConnected(); }} onRunSelected={setAssessmentId} />
+    <RealAssessmentPanel org={org} repo={{ ...repo, connected_repo_id: connectedRepoId ?? repo.connected_repo_id }} sha={fullSha} onConnected={id => { setConnectedRepoId(id); onConnected(); }} onRunSelected={setAssessmentId} />
     <CommitRunWorkspace assessmentId={assessmentId} repoId={connectedRepoId} sha={fullSha} fullName={repo.full_name} liveView={view} liveState={liveState} />
   </div>;
 }

@@ -24,7 +24,7 @@ export function AssessmentList({ projectId, repoId, page }: { projectId: string;
     setBusy(true);
     setError(null);
     try {
-      const result = await api().assessments(projectId, { cursor: nextCursor });
+      const result = await api().assessments(projectId, { cursor: nextCursor, repoId });
       setOlder(prev => {
         const base = prev !== null && prev.anchor === page.next_cursor && prev.repoId === repoId ? prev.items : [];
         const have = new Set([...scopedPage, ...base].map(assessment => assessment.id));

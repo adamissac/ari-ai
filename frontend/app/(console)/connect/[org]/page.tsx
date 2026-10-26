@@ -70,11 +70,11 @@ export default function ConnectReposPage() {
                         <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                           <span className="min-w-0 max-w-[min(54vw,32rem)] truncate font-semibold group-hover:text-brand" title={name.length > 32 ? repo.full_name : undefined}>{name}</span>
                           <Tag>{repo.private ? 'private' : 'public'}</Tag>
-                          {repo.connected_repo_id && <Tag tone="info">Connected</Tag>}
+                          {repo.connected_repo_id && (repo.disconnected ? <Tag>Disconnected</Tag> : <Tag tone="info">Connected</Tag>)}
                         </span>
                         <span className="flex shrink-0 items-center gap-2 text-sm text-muted">
                           <span className="font-mono text-xs">{repo.default_branch}</span>
-                          <span>{busy === repo.full_name ? 'Connecting…' : repo.connected_repo_id ? 'Continue setup' : 'Connect'}</span>
+                          <span>{busy === repo.full_name ? 'Connecting…' : !repo.connected_repo_id ? 'Connect' : repo.disconnected ? 'Reconnect' : 'Continue setup'}</span>
                           <span aria-hidden="true">→</span>
                         </span>
                       </button>

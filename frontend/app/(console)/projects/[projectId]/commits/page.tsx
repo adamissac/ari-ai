@@ -26,8 +26,8 @@ export default function CommitsPage() {
   const [view, setView] = useState<ViewTab>('review');
   const [runId, setRunId] = useState('');
   const github = useResource(selectedRepo ? `commits:${selectedRepo.id}` : null, signal => selectedRepo ? api().repositoryCommits(selectedRepo.id, { signal }) : Promise.resolve({ items: [], available: false, reason: null }));
-  const assessments = useResource(selectedRepo ? `commits-asm:${project.id}` : null, signal => api().assessments(project.id, { signal }), 5000);
-  const findings = useResource(selectedRepo ? `commits-findings:${project.id}` : null, signal => api().findings(project.id, { signal }));
+  const assessments = useResource(selectedRepo ? `commits-asm:${project.id}:${selectedRepo.id}` : null, signal => api().assessments(project.id, { signal, repoId: selectedRepo!.id }), 5000);
+  const findings = useResource(selectedRepo ? `commits-findings:${project.id}:${selectedRepo.id}` : null, signal => api().findings(project.id, { signal, repoId: selectedRepo!.id }));
   const selectedSha = search.get('commit');
   const commitQuery = (sha: string | null) => {
     const params = new URLSearchParams(search.toString());

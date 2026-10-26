@@ -20,7 +20,8 @@ export function RepoPicker({ projectId, onConnected }: { projectId: string; onCo
     setBusy(repo.full_name);
     setError(null);
     try {
-      await api().connectRepository(projectId, { full_name: repo.full_name, default_branch: repo.default_branch, installation_id: repo.installation_id });
+      if (repo.connected_repo_id && repo.disconnected) await api().reconnectRepository(repo.connected_repo_id);
+      else await api().connectRepository(projectId, { full_name: repo.full_name, default_branch: repo.default_branch, installation_id: repo.installation_id });
       list.reload();
       onConnected();
     } catch (err) { setError(err); } finally { setBusy(null); }
@@ -48,9 +49,11 @@ export function RepoPicker({ projectId, onConnected }: { projectId: string; onCo
                 {repo.private && <Tag>private</Tag>}
                 <span className="text-xs text-faint">{repo.default_branch}</span>
               </span>
-              {repo.connected_repo_id
+              {repo.connected_repo_id && !repo.disconnected
                 ? <span className="text-xs text-ok">Connected</span>
-                : <Button variant="primary" aria-label={`Connect ${repo.full_name}`} disabled={busy !== null} onClick={() => void connect(repo)}>{busy === repo.full_name ? 'Connecting…' : 'Connect'}</Button>}
+                : repo.connected_repo_id
+                  ? <span className="flex items-center gap-2"><span className="text-xs text-warn">Disconnected</span><Button aria-label={`Reconnect ${repo.full_name}`} disabled={busy !== null} onClick={() => void connect(repo)}>{busy === repo.full_name ? 'Reconnecting…' : 'Reconnect'}</Button></span>
+                  : <Button variant="primary" aria-label={`Connect ${repo.full_name}`} disabled={busy !== null} onClick={() => void connect(repo)}>{busy === repo.full_name ? 'Connecting…' : 'Connect'}</Button>}
             </li>
           ))}
         </ul>

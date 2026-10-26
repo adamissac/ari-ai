@@ -14,6 +14,8 @@ import { RepoCommits } from '@/components/repo-commits';
 import { RepoPicker } from '@/components/repo-picker';
 
 const SHA = /^[0-9a-f]{7,40}$/;
+// The API refuses name-only connections outside development/test, so only dev builds offer the form.
+const NAME_ONLY_CONNECT = process.env.NEXT_PUBLIC_DEV_LOGIN === '1';
 
 export function Repositories({ repos }: { repos: Repository[] }) {
   const { project, reloadRepos } = useProject();
@@ -42,19 +44,48 @@ export function Repositories({ repos }: { repos: Repository[] }) {
         </>
       )}
       <div className="mt-4 border-t border-line pt-3"><RepoPicker projectId={project.id} onConnected={reloadRepos} /></div>
-      <p className="label-mono mt-4 text-faint">Or by name (an operator provides the checkout)</p>
-      <p className="mt-1 text-sm text-muted" data-testid="connect-repository-note">{CONNECT_REPOSITORY_NOTE}</p>
-      <form onSubmit={connect} className="mt-2 grid gap-2 sm:grid-cols-[2fr_1fr_auto] sm:items-end">
-        <Field label="owner/name"><input className={inputClass} value={fullName} onChange={event => setFullName(event.target.value)} required pattern="[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+" name="full_name" /></Field>
-        <Field label="Default branch"><input className={inputClass} value={branch} onChange={event => setBranch(event.target.value)} name="default_branch" /></Field>
-        <Button type="submit" disabled={busy || !fullName.trim()}>Connect</Button>
-      </form>
+      {NAME_ONLY_CONNECT && <>
+        <p className="label-mono mt-4 text-faint">Or by name (development only: an operator provides the checkout)</p>
+        <p className="mt-1 text-sm text-muted" data-testid="connect-repository-note">{CONNECT_REPOSITORY_NOTE}</p>
+        <form onSubmit={connect} className="mt-2 grid gap-2 sm:grid-cols-[2fr_1fr_auto] sm:items-end">
+          <Field label="owner/name"><input className={inputClass} value={fullName} onChange={event => setFullName(event.target.value)} required pattern="[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+" name="full_name" /></Field>
+          <Field label="Default branch"><input className={inputClass} value={branch} onChange={event => setBranch(event.target.value)} name="default_branch" /></Field>
+          <Button type="submit" disabled={busy || !fullName.trim()}>Connect</Button>
+        </form>
+      </>}
       {error !== null && <div className="mt-2"><ErrorState error={error} context="Connect failed" /></div>}
     </Panel>
   );
 }
 
 function RepoRow({ repo }: { repo: Repository }) {
+  if (repo.disconnected) return <DisconnectedRow repo={repo} />;
+  return <ConnectedRow repo={repo} />;
+}
+
+/** A disconnected repository keeps its history but Ari reads nothing until it is reconnected. */
+function DisconnectedRow({ repo }: { repo: Repository }) {
+  const { reloadRepos } = useProject();
+  const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  const reconnect = async () => {
+    setBusy(true);
+    setError(null);
+    try { await api().reconnectRepository(repo.id); reloadRepos(); } catch (err) { setError(err); } finally { setBusy(false); }
+  };
+  return (
+    <li className="py-4 first:pt-0 last:pb-0" data-testid={`repo-disconnected-${repo.full_name}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-medium">{repo.full_name} <span className="text-xs font-normal text-warn">· Disconnected</span></span>
+        <Button disabled={busy} onClick={() => void reconnect()}>{busy ? 'Reconnecting…' : 'Reconnect'}</Button>
+      </div>
+      <p className="mt-2 text-xs text-muted">Ari stopped reading this repository. Past reviews stay visible. Reconnecting re-checks your GitHub access; automatic reviews stay off until you turn them on.</p>
+      {error !== null && <div className="mt-2"><ErrorState error={error} context="Reconnect failed" /></div>}
+    </li>
+  );
+}
+
+function ConnectedRow({ repo }: { repo: Repository }) {
   const [sha, setSha] = useState('');
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [error, setError] = useState<unknown>(null);
