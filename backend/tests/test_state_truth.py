@@ -235,3 +235,63 @@ def test_installation_events_never_queue_a_disconnected_repository(client_factor
     assert post_webhook(alice, added, event="installation_repositories").status_code == 202
     worker.drain(kinds=["process_github_delivery"])
     assert _recipe_jobs() == []
+
+
+def _access(user_id):
+    with transaction() as conn:
+        return sorted(
+            conn.execute(
+                sa.select(github_repo_access.c.full_name).where(
+                    github_repo_access.c.user_id == user_id
+                )
+            ).scalars()
+        )
+
+
+def test_uninstalling_the_app_removes_its_repositories_from_the_picker(client_factory):
+    from helpers import post_webhook
+
+    from backend import worker
+
+    alice = client_factory("alice")
+    uid = alice.me["user"]["id"]
+    org = {**ACME, "installation_id": 7}
+    other = {**ACME, "full_name": "beta/api", "installation_id": 9}
+    with transaction() as conn:
+        store_repo_access(conn, uid, [org, other])
+    deleted = {"action": "deleted", "installation": {"id": 7}}
+    assert post_webhook(alice, deleted, event="installation").status_code == 202
+    worker.drain(kinds=["process_github_delivery"])
+    assert _access(uid) == ["beta/api"]
+    removed = {
+        "action": "removed",
+        "installation": {"id": 9},
+        "repositories_removed": [{"full_name": "beta/api"}],
+    }
+    post_webhook(alice, removed, event="installation_repositories")
+    worker.drain(kinds=["process_github_delivery"])
+    assert _access(uid) == []
+
+
+def test_a_removed_personal_installation_clears_the_users_own_repositories(
+    client_factory, monkeypatch
+):
+    from backend.settings import Settings
+
+    alice = client_factory("alice")
+    uid = alice.me["user"]["id"]
+    with transaction() as conn:
+        store_repo_access(conn, uid, [{**ACME, "full_name": "Alice/app"}, ACME])
+    monkeypatch.setattr(
+        "backend.api.github_repos.get_settings",
+        lambda: Settings(auth_dev_login_enabled=False),
+    )
+
+    class Uninstalled:
+        def user_installation(self, login):
+            return None
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", Uninstalled)
+    body = alice.get("/api/v1/github/repositories").json()
+    assert [r["full_name"] for r in body["items"]] == ["acme/shop"]  # org access stays
+    assert body["live_checked"] is False

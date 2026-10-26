@@ -471,7 +471,9 @@ export class ApiClient {
   async githubRepositories(options?: RequestOptions): Promise<AccessibleRepositories> {
     const record = object(await this.request('/github/repositories', RAW, options), 'repository list');
     const install = record.install_url;
-    if (!Array.isArray(record.items) || !(install === null || (typeof install === 'string' && /^https:\/\//.test(install))) || record.next_cursor !== null) {
+    const live = record.live_checked;
+    if (!Array.isArray(record.items) || !(install === null || (typeof install === 'string' && /^https:\/\//.test(install))) || record.next_cursor !== null
+      || !(live === undefined || typeof live === 'boolean')) {
       throw new ProtocolError('Invalid repository list');
     }
     const items = record.items.map(raw => {
@@ -485,7 +487,7 @@ export class ApiClient {
       }
       return { full_name: r.full_name, installation_id: r.installation_id as number, default_branch: r.default_branch, private: r.private, connected_repo_id: r.connected_repo_id as string | null, disconnected: r.disconnected === true };
     });
-    return { items, install_url: install as string | null };
+    return { items, install_url: install as string | null, live_checked: typeof live === 'boolean' ? live : null };
   }
   /** Recent commits on a connected repository's default branch, read live from GitHub. */
   async repositoryCommits(repoId: string, options?: RequestOptions): Promise<RepositoryCommits> {
@@ -581,7 +583,12 @@ export interface AccessibleRepository {
   disconnected: boolean;
 }
 export interface JobState { id: string; kind: string; status: string; result: unknown; error: string | null }
-export interface AccessibleRepositories { items: AccessibleRepository[]; install_url: string | null }
+export interface AccessibleRepositories {
+  items: AccessibleRepository[];
+  install_url: string | null;
+  /** false: access is as of the last GitHub sign-in, not checked just now (null: older backend, unknown). */
+  live_checked: boolean | null;
+}
 export interface RepositoryCommit { sha: string; message: string; author: string; committed_at: string | null; html_url: string | null }
 export interface RepositoryCommits { items: RepositoryCommit[]; available: boolean; reason: string | null }
 export interface ArtifactText { id: string; text: string; sha256: string; hashVerified: boolean; mediaType: string }

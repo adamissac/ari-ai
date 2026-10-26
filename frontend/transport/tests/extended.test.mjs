@@ -186,6 +186,9 @@ test('GitHub repository picker validates every row and the install link', async 
   const ok = await client(() => json({ items: [repo], install_url: 'https://github.com/apps/ari-ai/installations/new', next_cursor: null })).githubRepositories();
   assert.equal(ok.items[0].installation_id, 42);
   assert.equal(ok.items[0].disconnected, false);
+  assert.equal(ok.live_checked, null);
+  const checked = await client(() => json({ items: [], install_url: null, live_checked: false, next_cursor: null })).githubRepositories();
+  assert.equal(checked.live_checked, false);
   const parked = await client(() => json({ items: [{ ...repo, connected_repo_id: 'rep_1', disconnected: true }], install_url: null, next_cursor: null })).githubRepositories();
   assert.equal(parked.items[0].disconnected, true);
   assert.equal(ok.install_url, 'https://github.com/apps/ari-ai/installations/new');
@@ -195,6 +198,7 @@ test('GitHub repository picker validates every row and the install link', async 
     { items: [repo], install_url: 'javascript:alert(1)', next_cursor: null },
     { items: [repo], install_url: null, next_cursor: 'more' },
     { items: [{ ...repo, disconnected: 'yes' }], install_url: null, next_cursor: null },
+    { items: [repo], install_url: null, live_checked: 'no', next_cursor: null },
   ]) {
     await assert.rejects(client(() => json(body)).githubRepositories(), ProtocolError);
   }

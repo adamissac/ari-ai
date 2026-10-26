@@ -131,6 +131,17 @@ def _refresh_personal_installation_repositories(
         app = GitHubApp()
         installation = app.user_installation(login)
         if installation is None:
+            # GitHub confirms the user has no personal installation (uninstalled): rows for
+            # repositories under their own account came from it and are no longer reachable.
+            with transaction() as conn:
+                conn.execute(
+                    sa.delete(github_repo_access).where(
+                        github_repo_access.c.user_id == user_id,
+                        sa.func.lower(github_repo_access.c.full_name).startswith(
+                            f"{login.casefold()}/", autoescape=True
+                        ),
+                    )
+                )
             return False
         account = installation.get("account")
         installation_id = installation.get("id")
@@ -231,10 +242,9 @@ def list_accessible_repositories(request: Request) -> dict[str, Any]:
             .mappings()
             .one_or_none()
         )
-    if identity is not None:
-        _refresh_personal_installation_repositories(
-            user.id, identity["github_login"], identity["github_id"]
-        )
+    live_checked = identity is not None and _refresh_personal_installation_repositories(
+        user.id, identity["github_login"], identity["github_id"]
+    )
 
     # The joined repo row must be in a project the user belongs to — shared
     # GitHub visibility of a full_name is not Ari tenant membership.
@@ -285,6 +295,10 @@ def list_accessible_repositories(request: Request) -> dict[str, Any]:
     return {
         "items": items,
         "install_url": f"{s.github_web_url}/apps/{slug}/installations/new" if slug else None,
+        # False: no live re-check ran (no personal installation, or GitHub failed); rows are
+        # from the last sign-in and webhooks. Organization rows are never re-listed here.
+        # Connecting always re-verifies with GitHub, so a stale row can never be connected.
+        "live_checked": live_checked,
         "next_cursor": None,
     }
 
