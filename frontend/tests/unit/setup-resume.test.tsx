@@ -161,12 +161,12 @@ const ALL_ANSWERS = {
 it('shows finished setup as complete instead of asking the questions again', async () => {
   mocks.server = { ...serverSetup({ answers: { ...ALL_ANSWERS, reviewStart: true }, complete: true }), completed_at: '2026-10-26T12:00:00Z' };
   render(<SetupPage />);
-  expect(await screen.findByTestId('setup-complete')).toBeTruthy();
+  expect(await screen.findByTestId('setup-done')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull();
   expect(screen.queryByTestId('setup-step-8')).toBeNull();
-  expect(screen.getByRole('link', { name: 'Open dashboard' }).getAttribute('href')).toBe(`/projects/${project.id}?repo=${repo.id}`);
-  fireEvent.click(screen.getByRole('button', { name: 'Review answers' }));
-  expect(await screen.findByTestId('setup-step-1')).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Go to Analytics' }).getAttribute('href')).toBe(`/projects/${project.id}?repo=${repo.id}`);
+  fireEvent.click(screen.getByRole('button', { name: 'Back to setup' }));
+  expect(screen.queryByTestId('setup-done')).toBeNull();
 });
 
 it('leaves the walkthrough once setup is finished', async () => {
@@ -175,7 +175,7 @@ it('leaves the walkthrough once setup is finished', async () => {
   render(<SetupPage />);
   expect(await screen.findByTestId('setup-step-8')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Finish setup' }));
-  expect(await screen.findByTestId('setup-complete')).toBeTruthy();
+  expect(await screen.findByTestId('setup-done')).toBeTruthy();
   expect(mocks.saveRepositorySetup).toHaveBeenCalledWith(repo.id, expect.objectContaining({ complete: true }));
 });
 

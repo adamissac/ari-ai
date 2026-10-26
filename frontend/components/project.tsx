@@ -107,7 +107,6 @@ export function ProjectNavigation({ base, repoId, locked = false }: { base: stri
                 key={item.label}
                 href={routeHref(base, item.href, repoId)}
                 aria-current={active ? 'page' : undefined}
-                data-coach={item.href === '' ? 'analytics' : item.href.slice(1)}
                 className={`project-tab ${active ? 'is-active' : ''}`}
               >
                 <NavIcon name={item.icon} /><span className="project-tab-label">{item.label}</span>
@@ -140,7 +139,6 @@ export function ProjectNavigation({ base, repoId, locked = false }: { base: stri
                 key={item.label}
                 href={routeHref(base, item.href, repoId)}
                 aria-current={active ? 'page' : undefined}
-                data-coach={item.href === '/setup' ? 'setup' : undefined}
                 className={`project-more-link ${active ? 'is-active' : ''}`}
                 onClick={() => setOpen(false)}
               >
@@ -240,7 +238,6 @@ export function ProjectShell({ children }: { children: ReactNode }) {
                     id="project-repo-switcher"
                     aria-label="Repository"
                     data-testid="repo-switcher"
-                    data-coach="repo-switcher"
                     className={`${inputClass} min-w-0 max-w-full appearance-none border-line-2 pr-9 hover:border-brand`}
                     value={selectedRepo?.id ?? ''}
                     onChange={event => selectRepo(event.target.value)}
@@ -256,7 +253,7 @@ export function ProjectShell({ children }: { children: ReactNode }) {
                 </span>
               </div>
               : repoItems.length === 1
-                ? <span data-testid="repo-switcher" data-coach="repo-switcher" className="flex min-w-0 flex-wrap items-baseline gap-x-1 text-sm">
+                ? <span data-testid="repo-switcher" className="flex min-w-0 flex-wrap items-baseline gap-x-1 text-sm">
                   <Mono className="text-ink">{selected!.full_name}</Mono>
                   <span className="text-muted">· {selected!.default_branch}</span>
                   {selected!.disconnected && <span className="text-warn" data-testid="repo-disconnected">· Disconnected</span>}

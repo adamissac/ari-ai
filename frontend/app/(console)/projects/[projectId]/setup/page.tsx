@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { BuildRecipeReadiness } from '@/components/onboarding/build-recipe-readiness';
-import { CoachMark } from '@/components/onboarding/coach-mark';
+import { SetupDone } from '@/components/onboarding/setup-done';
 import { useProject } from '@/components/project';
 import { Button, ErrorState, Loading } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -45,15 +45,6 @@ const QUESTIONS = [
   ['Fix delivery', 'Auto-delivery needs confirmation.'],
   ['Review and start', 'Starting a check is optional.'],
 ] as const;
-const TOUR = [
-  ['analytics', 'Analytics summarizes saved checks and findings for the selected repository.'],
-  ['commits', 'Commits shows repository history, reviews, and recorded agent work.'],
-  ['findings', 'Findings lists issues from this repository’s saved assessments.'],
-  ['approvals', 'Approvals is where pending decisions are reviewed.'],
-  ['settings', 'Settings keeps project and repository controls together.'],
-  ['repo-switcher', 'Use the repository switcher to move between connected repositories.'],
-] as const;
-
 export default function SetupPage() {
   const { project, reloadProject } = useProject();
   const searchParams = useSearchParams();
@@ -116,14 +107,14 @@ function Walkthrough({
   const { project, reloadProject } = useProject();
   const scopeKeys = useActionKeys('setup-scope');
   const runKeys = useActionKeys('setup-run');
-  const tourKey = `ari-tour:${project.id}`;
   const [initial] = useState(() => initialSetupProgress(progressFromServer(saved), readLegacySetupProgress(project.id, repo.id)));
   const [progress, setProgress] = useState<SetupProgress>(initial.progress);
   const [questionOverride, setQuestionOverride] = useState<number | null>(null);
   const currentQuestion = questionOverride ?? resumeSetupQuestion(progress);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
-  const [tourStep, setTourStep] = useState<number | null>(null);
+  // Finished setup opens on the completed view; it is never asked again (Back to setup reopens it).
+  const [finished, setFinished] = useState(initial.progress.complete);
   const [startedAssessmentId, setStartedAssessmentId] = useState<string | null>(null);
   const review = project.settings.review;
   const [strictness, setStrictness] = useState(review.strictness);
@@ -132,7 +123,6 @@ function Walkthrough({
   const [comments, setComments] = useState(review.comment_on_pull_requests);
   const [watch, setWatch] = useState(project.settings.monitoring_policy.enabled);
   const [delivery, setDelivery] = useState<DeliveryMode>(project.settings.delivery_mode);
-  const [reviewing, setReviewing] = useState(false);
   // Direct default-branch commits are off for pilot deployments; only show the choice already in effect.
   const deliveryChoices = DELIVERY.filter(([mode]) => mode !== 'auto' || project.settings.delivery_mode === 'auto');
   const authorized = scope.kind === 'active';
@@ -243,18 +233,8 @@ function Walkthrough({
   const finishSetup = async () => {
     const completed = { ...progress, answers: { ...progress.answers, reviewStart: true }, complete: true };
     await saveProgress(completed);
-    setReviewing(false);
-    setQuestionOverride(null);
-    try {
-      if (window.localStorage.getItem(tourKey) !== 'complete') setTourStep(0);
-    } catch {
-      setTourStep(0);
-    }
-  };
-
-  const completeTour = () => {
-    try { window.localStorage.setItem(tourKey, 'complete'); } catch { /* tour is still dismissed for this visit */ }
-    setTourStep(null);
+    setQuestionOverride(8);
+    setFinished(true);
   };
 
   const goBack = () => {
@@ -266,53 +246,8 @@ function Walkthrough({
   const scopeLabel = authorized ? 'Approved' : scope.kind === 'pending' ? 'Pending approval' : 'Not approved';
   const title = QUESTIONS[currentQuestion - 1]?.[0] ?? QUESTIONS[7]![0];
   const canContinue = currentQuestion !== 6 || authorized;
-  const repoQuery = `?repo=${encodeURIComponent(repo.id)}`;
-
-  const tour = tourStep !== null && (
-    <CoachMark
-      key={`tour-${tourStep}`}
-      mode="tour"
-      target={TOUR[tourStep]![0]}
-      current={tourStep + 1}
-      total={TOUR.length}
-      onNext={() => tourStep === TOUR.length - 1 ? completeTour() : setTourStep(tourStep + 1)}
-      onSkip={completeTour}
-    >
-      {TOUR[tourStep]![1]}
-    </CoachMark>
-  );
-
-  if (progress.complete && !reviewing) {
-    const completedAt = saved.completed_at ? new Date(saved.completed_at).toLocaleDateString() : null;
-    return (
-      <>
-        <section data-testid="setup-complete" className="max-w-2xl rounded-xl border border-line bg-panel p-5 sm:p-6">
-          <p className="label-mono text-muted">Setup / {repo.full_name}</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Setup complete</h1>
-          <p className="mt-2 text-sm text-muted">
-            Ari saved these choices to your account{completedAt ? ` on ${completedAt}` : ''}, so you won&apos;t be asked again on another browser or device.
-          </p>
-          <dl className="mt-4 divide-y divide-line border-y border-line">
-            <Summary label="Comment strictness" value={strictnessLabel} />
-            <Summary label="Watch project" value={project.settings.monitoring_policy.enabled ? 'Yes' : 'No'} />
-            <Summary label="Testing scope" value={scope.kind === 'active' ? 'Approved' : scope.kind === 'pending' ? 'Pending approval' : 'Not approved or expired'} />
-            <Summary label="Fix delivery" value={deliveryLabel} />
-          </dl>
-          {!authorized && <p className="mt-3 text-sm text-warn">Reviews need an approved testing scope. Approve one in Authorized scopes before the next run.</p>}
-          <div className="mt-5 flex flex-wrap items-center gap-3">
-            <Link className="inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-medium text-on-brand hover:bg-brand-deep" href={`/projects/${project.id}${repoQuery}`}>Open dashboard</Link>
-            <Link className="text-sm font-semibold text-brand" href={`/projects/${project.id}/commits${repoQuery}${hasRun ? '#assessments' : '#start-assessment'}`}>{hasRun ? 'See your reviews' : 'Run a review'}</Link>
-            <Link className="text-sm font-semibold text-brand" href={`/projects/${project.id}/settings${repoQuery}`}>Edit settings</Link>
-            <Button onClick={() => { setReviewing(true); setQuestionOverride(1); }}>Review answers</Button>
-          </div>
-        </section>
-        {tour}
-      </>
-    );
-  }
 
   return (
-    <>
       <div className="grid w-full min-w-0 grid-cols-1 gap-6 pb-10 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-10 lg:pt-2">
         <nav aria-label="Setup progress">
           <p className="font-mono text-xs text-muted lg:hidden">Question {currentQuestion} of 8 · {title}</p>
@@ -322,9 +257,9 @@ function Walkthrough({
           <ol className="hidden space-y-1 lg:block">
             {QUESTIONS.map(([label], index) => {
               const number = index + 1;
-              const done = progress.answers[QUESTION_KEYS[index] as SetupQuestion] !== undefined;
+              const done = finished || progress.answers[QUESTION_KEYS[index] as SetupQuestion] !== undefined;
               return (
-                <li key={label} aria-current={currentQuestion === number ? 'step' : undefined} className={`flex items-center gap-3 border-l-2 px-3 py-2 text-sm ${currentQuestion === number ? 'border-brand bg-brand/10 text-ink' : done ? 'border-line-3 text-muted' : 'border-transparent text-faint'}`}>
+                <li key={label} aria-current={!finished && currentQuestion === number ? 'step' : undefined} className={`flex items-center gap-3 border-l-2 px-3 py-2 text-sm ${!finished && currentQuestion === number ? 'border-brand bg-brand/10 text-ink' : done ? 'border-line-3 text-muted' : 'border-transparent text-faint'}`}>
                   <span className="w-6 shrink-0 font-mono text-[10px] tabular-nums">{String(number).padStart(2, '0')}</span>
                   <span>{label}</span>
                   {done && <span className="ml-auto font-mono text-[10px] text-muted">SAVED</span>}
@@ -339,12 +274,13 @@ function Walkthrough({
           <h1 className="setup-title mt-1 min-w-0 max-w-full whitespace-normal break-words text-2xl font-semibold tracking-tight sm:text-3xl">Let&apos;s set up Ari for {repo.full_name.split('/')[1]}</h1>
           <p className="mt-2 mb-6 text-sm text-muted">Eight questions. You can change these choices later in Settings.</p>
           {error !== null && <div className="mb-4"><ErrorState error={error} /></div>}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <div className="min-w-0">
+          {finished ? (
+            <SetupDone projectId={project.id} repoId={repo.id} onBack={() => setFinished(false)} />
+          ) : (
           <section data-testid={`setup-step-${currentQuestion}`} className="rounded-xl border border-line bg-panel p-5 sm:p-6 motion-safe:animate-[setup-slide-in_250ms_ease-out]">
             <p className="label-mono text-muted">Question {currentQuestion} / 8 {savedAnswer !== undefined && <span role="status" className="ml-2 text-ok">Saved</span>}</p>
             <h2 className="mt-1 text-xl font-semibold tracking-tight">{title}</h2>
-            <div data-coach="setup-interactive" className="mt-28 min-w-0 lg:mt-5">
+            <p className="mt-1 text-sm text-muted">{QUESTIONS[currentQuestion - 1]![1]}</p>
             <div className="mt-5">
               {currentQuestion === 1 && (
                 <>
@@ -458,26 +394,10 @@ function Walkthrough({
                 ? <Button variant="primary" disabled={busy !== null || !canContinue} onClick={() => void continueQuestion()}>{busy === 'save' ? 'Saving…' : 'Continue'}</Button>
                 : <Button variant="primary" disabled={busy !== null} onClick={() => void act('save', finishSetup)}>Finish setup</Button>}
             </div>
-            </div>
           </section>
-          </div>
-          <div aria-hidden="true" className="hidden lg:block" />
-          </div>
+          )}
         </div>
       </div>
-
-      {tour || (
-        <CoachMark
-          key={`setup-${currentQuestion}`}
-          mode="setup"
-          target="setup-interactive"
-          current={currentQuestion}
-          total={8}
-        >
-          {QUESTIONS[currentQuestion - 1]?.[1] ?? QUESTIONS[7]![1]}
-        </CoachMark>
-      )}
-    </>
   );
 }
 

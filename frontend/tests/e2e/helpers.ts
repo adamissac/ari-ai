@@ -29,7 +29,7 @@ export async function completeSetup(
   await page.goto(`/projects/${projectId}/setup?repo=${encodeURIComponent(repoId)}`);
   // Setup is saved on the server, so a second user of the same repo resumes where it was left.
   const step = page.locator('[data-testid^="setup-step-"]');
-  const done = page.getByTestId('setup-complete');
+  const done = page.getByTestId('setup-done');
   await expect(step.or(done)).toBeVisible();
   // Setup already finished (by this or another user): it is shown as complete, never asked again.
   if (await done.isVisible()) return;
@@ -44,10 +44,7 @@ export async function completeSetup(
     await expect(page.getByTestId(`setup-step-${question + 1}`)).toBeVisible();
   }
   await page.getByRole('button', { name: 'Finish setup', exact: true }).click();
-  const tour = page.getByRole('dialog', { name: 'Tip 1 of 6' });
-  if (await tour.waitFor({ timeout: 5_000 }).then(() => true, () => false)) {
-    await tour.getByRole('button', { name: 'Skip tour' }).click();
-  }
+  await expect(page.getByTestId('setup-done')).toBeVisible();
 }
 
 /** Full-page screenshot of real executed test data (never fixtures), kept with the test results. */
