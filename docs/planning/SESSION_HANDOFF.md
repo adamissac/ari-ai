@@ -3,6 +3,50 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-10-26 — Devin (agent, Adam) — runtime pytest Verify audit
+- Did: reproduced import-time `pytest.skip` and dynamic hook `__code__` swaps
+  through `apply_fresh`, a real local sandbox suite run, and `compute_verdict`;
+  added an always-on runtime hook/collection/outcome audit, comparator, Verify
+  evidence plumbing, static-scan false-positive relaxations, regression tests,
+  documentation, and persistence of baseline audit evidence across approval
+  checkpoint resumes.
+- State of the code: `fix/adam/verify-runtime-hook-audit` contains feature commit
+  `11b25d60` and integrates `origin/main` at `ba4ada0d` (front-end, docs, and
+  hook-installer changes only; no security-agent source changed on main). The
+  host-adapter functional-verify check (`tamper_ok = not protected_paths`)
+  remains unchanged and out of scope.
+- Commands run and results: origin-main Verify reproduction — 2 failed, 213
+  deselected (`/Users/devin/.devin-files/verify-runtime-audit-red-origin-main.log`),
+  confirming both scenarios were accepted before the implementation. Direct
+  origin-main static-scan checks also recorded the comprehension target,
+  function-local hook root, and module literal false positives. The first full
+  suite run found one approval-resume regression (818 passed, 24 skipped,
+  1 failed): the durable checkpoint restored `baseline_failing` but not its
+  audit. The checkpoint now preserves that audit without changing the setter's
+  `None` behavior; the focused recovery test passed. Final full suite:
+  819 passed, 24 skipped. Ruff check, Ruff format check, and `git diff --check`
+  passed.
+- Decisions made (ADR links): audit details remain internal evidence and only a
+  compact summary is returned to the model; the host-adapter functional path is
+  explicitly outside this audit. Approval checkpoint resume explicitly
+  restores an available baseline audit; older checkpoints without it remain
+  fail-closed.
+- Assumptions / open questions (RQ links): in-process plugin/data tampering and
+  hook swaps restored between snapshots remain residual risks.
+- Independent review of `89f218ac` confirmed four remaining in-process
+  bypasses: patched code can overwrite `pytest_audit.json` in writable `/out` or
+  flip plugin state. It can replace `pytest.Function.runtest` with a no-op. It
+  can rewrite test functions and restore its own code before the final snapshot.
+  It can rebind a module-global helper called by an unchanged hook. Review
+  verdict on 89f218ac: recommend merge with follow-ups. Follow-ups: out-of-process
+  audit channel, per-item function code hashes, hashing defaults/closures/globals,
+  per-call hook snapshots.
+- Next steps: owner to open the PR and re-brief the CI loop; no PR or CI action
+  was requested for this delivery.
+- Warnings for the next session: no post-push CI checks were monitored. The
+  full suite was run a second time after fixing the discovered approval-resume
+  regression; the later main integration touched no security-agent source.
+
 ## Template
 
 ```
