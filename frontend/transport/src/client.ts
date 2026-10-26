@@ -489,6 +489,20 @@ export class ApiClient {
     });
     return { items, install_url: install as string | null, live_checked: typeof live === 'boolean' ? live : null };
   }
+  /** Whether a new push/PR on this repository would really be reviewed, with every reason it would not. */
+  async automationStatus(repoId: string, options?: RequestOptions): Promise<AutomationStatus> {
+    const r = object(await this.request(`/repositories/${segment(repoId)}/automation-status`, RAW, options), 'automation status');
+    if (r.repo_id !== repoId || !(r.state === 'ready' || r.state === 'off' || r.state === 'blocked') || !Array.isArray(r.reasons)
+      || !(r.resets_at === null || typeof r.resets_at === 'string')) {
+      throw new ProtocolError('Invalid automation status');
+    }
+    const reasons = r.reasons.map(raw => {
+      const reason = object(raw, 'automation reason');
+      if (typeof reason.code !== 'string' || typeof reason.message !== 'string') throw new ProtocolError('Invalid automation status');
+      return { code: reason.code, message: reason.message };
+    });
+    return { repo_id: repoId, state: r.state, reasons, resets_at: r.resets_at };
+  }
   /** Recent commits on a connected repository's default branch, read live from GitHub. */
   async repositoryCommits(repoId: string, options?: RequestOptions): Promise<RepositoryCommits> {
     const record = object(await this.request(`/repositories/${segment(repoId)}/commits`, RAW, options), 'commit list');
@@ -581,6 +595,13 @@ export interface AccessibleRepository {
   connected_repo_id: string | null;
   /** True when that row is disconnected: Ari no longer reads the repository until it is reconnected. */
   disconnected: boolean;
+}
+export interface AutomationStatus {
+  repo_id: string;
+  /** ready: a new push/PR is reviewed. off: an owner switch is off. blocked: enabled but cannot run. */
+  state: 'ready' | 'off' | 'blocked';
+  reasons: Array<{ code: string; message: string }>;
+  resets_at: string | null;
 }
 export interface JobState { id: string; kind: string; status: string; result: unknown; error: string | null }
 export interface AccessibleRepositories {

@@ -295,3 +295,29 @@ def test_a_removed_personal_installation_clears_the_users_own_repositories(
     body = alice.get("/api/v1/github/repositories").json()
     assert [r["full_name"] for r in body["items"]] == ["acme/shop"]  # org access stays
     assert body["live_checked"] is False
+
+
+def test_automation_status_names_every_reason_a_push_would_not_be_reviewed(
+    client_factory, settings_override
+):
+    settings_override(github_auto_commit_authors="")
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)  # scope approved, repo automatic, monitoring on
+    url = f"/api/v1/repositories/{ids['repo']}/automation-status"
+    with transaction() as conn:
+        conn.execute(
+            sa.update(repositories)
+            .where(repositories.c.id == ids["repo"])
+            .values(installation_id=5)
+        )
+    status = alice.get(url).json()
+    assert status["state"] == "ready" and status["reasons"] == []
+    alice.patch(f"/api/v1/repositories/{ids['repo']}", json={"automatic_assessments": False})
+    status = alice.get(url).json()
+    assert status["state"] == "off" and status["reasons"][0]["code"] == "repository_off"
+    settings_override(github_auto_commit_authors="someone")
+    assert "author_allowlist" in [r["code"] for r in alice.get(url).json()["reasons"]]
+    alice.post(f"/api/v1/repositories/{ids['repo']}/disconnect")
+    status = alice.get(url).json()
+    assert status["state"] == "blocked" and status["reasons"][0]["code"] == "disconnected"
+    assert client_factory("mallory").get(url).status_code == 404

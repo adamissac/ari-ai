@@ -204,6 +204,16 @@ test('GitHub repository picker validates every row and the install link', async 
   }
 });
 
+test('automation status is validated and keeps every reason', async () => {
+  const body = { repo_id: 'rep_12345678', state: 'off', reasons: [{ code: 'repository_off', message: 'off' }], resets_at: null };
+  const ok = await client(() => json(body)).automationStatus('rep_12345678');
+  assert.equal(ok.state, 'off');
+  assert.deepEqual(ok.reasons, [{ code: 'repository_off', message: 'off' }]);
+  for (const bad of [{ ...body, state: 'on' }, { ...body, repo_id: 'rep_other123' }, { ...body, reasons: [{ code: 1, message: 'x' }] }]) {
+    await assert.rejects(client(() => json(bad)).automationStatus('rep_12345678'), ProtocolError);
+  }
+});
+
 test('repository commits are validated: full SHAs and https links only', async () => {
   const commit = { sha: 'a'.repeat(40), message: 'feat: x', author: 'alice', committed_at: '2026-10-17T00:00:00Z', html_url: 'https://github.com/acme/shop/commit/aaa' };
   const ok = await client(() => json({ items: [commit], next_cursor: null, available: true, reason: null })).repositoryCommits('rep_12345678');

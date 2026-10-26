@@ -7,6 +7,7 @@ import { createContext, useContext, useEffect, useState, useSyncExternalStore, t
 import { useSelectedRepo } from '@/lib/selected-repo';
 import { api } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
+import { AutomationStatus } from '@/components/automation-status';
 import { ErrorState, Loading, Mono, inputClass } from '@/components/ui';
 import { isLegacySetupEvidence, isSetupComplete, progressToServer, readLegacySetupProgress, SETUP_SAVED_EVENT } from '@/lib/setup-progress';
 
@@ -260,10 +261,12 @@ export function ProjectShell({ children }: { children: ReactNode }) {
                   <Link className="text-brand hover:underline" href={`${base}/settings#connect-repo`}>Connect one</Link>
                 </span>}
           </div>
-          <span className="flex shrink-0 items-center gap-2 text-xs text-muted" aria-label={`Monitoring ${monitoring ? 'on' : 'off'}`}>
-            <span aria-hidden="true" className={`h-2 w-2 rounded-full ${monitoring ? 'bg-ok' : 'bg-faint'}`} />
-            Monitoring {monitoring ? 'on' : 'off'}
-          </span>
+          {selectedRepo
+            ? <AutomationStatus repoId={selectedRepo.id} />
+            : <span className="flex shrink-0 items-center gap-2 text-xs text-muted" aria-label={`Monitoring ${monitoring ? 'on' : 'off'}`}>
+              <span aria-hidden="true" className={`h-2 w-2 rounded-full ${monitoring ? 'bg-ok' : 'bg-faint'}`} />
+              Monitoring {monitoring ? 'on' : 'off'}
+            </span>}
         </header>
         <ProjectNavigation base={base} repoId={selectedRepo?.id ?? null} locked={locked} />
         <div className="project-body min-w-0 pt-6">{children}</div>
