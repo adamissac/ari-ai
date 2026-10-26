@@ -1869,39 +1869,6 @@ body:has(.commit-stage) main { color: #fff; }
 @keyframes vignette-clock { to { transform: rotate(360deg); } }
 @keyframes vignette-patrol { to { transform: translate(58px, -17px); } }
 .pricing-cta { text-align: center; }
-/* Light section: a full-bleed warm paper band between dark ones (never two in a row), with the light tokens restored. */
-.band-light {
-  --color-ink: #1c1210; --color-ink-2: #2b1d19; --color-muted: #6b5752; --color-faint: #806b65;
-  --color-line: #e6d5ce; --color-panel: #ffffff; --color-panel-2: #f6ece7; --color-control: #9a857f;
-  --color-accent: #c2452d; --color-ember: #a8361f; --color-brand-soft: #f8e7e3;
-  position: relative; isolation: isolate; color: var(--color-ink); color-scheme: light;
-}
-.band-light::before {
-  content: ""; position: absolute; z-index: -1; inset-block: 0; inset-inline: calc(50% - 50vw); pointer-events: none;
-  background: linear-gradient(180deg, #fbf6f2, #f3e8e2);
-}
-:root .band-light :is(.text-brand, .text-accent) { color: #a8361f; }
-:root .band-light :is(.hover\:text-brand-deep, .hover\:text-brand):hover { color: var(--color-brand-deep); }
-.band-light .kicker { color: var(--color-brand-deep); }
-.band-light .kicker::before { box-shadow: none; }
-.band-light .display { text-shadow: none; }
-/* Pricing lists and FAQ: plain rows with dividers, no boxes. */
-.pricing-list { display: flex; flex-direction: column; border-top: 1px solid var(--color-line); }
-.pricing-list li { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--color-line); font-size: 0.875rem; line-height: 1.5; color: var(--color-ink); }
-.marketing-atmosphere .pricing-faq .faq { gap: 0; border-top: 1px solid var(--color-line); }
-.marketing-atmosphere .pricing-faq .faq-item { border-radius: 0; background: transparent; box-shadow: none; border-bottom: 1px solid var(--color-line); }
-.marketing-atmosphere .pricing-faq .faq-item:hover { background: transparent; }
-.marketing-atmosphere .pricing-faq .faq-item[data-open] { background: transparent; box-shadow: none; }
-.marketing-atmosphere .pricing-faq .faq-q { padding: 22px 0; border-radius: 0; color: var(--color-ink); }
-.marketing-atmosphere .pricing-faq .faq-q:hover, .marketing-atmosphere .pricing-faq .faq-item[data-open] .faq-q { color: var(--color-ember); }
-.marketing-atmosphere .pricing-faq .faq-icon { background: transparent; box-shadow: inset 0 0 0 1px var(--color-line); color: var(--color-ink); }
-.marketing-atmosphere .pricing-faq .faq-item[data-open] .faq-icon { background: var(--color-ink); color: #1c1210; box-shadow: none; }
-.marketing-atmosphere .pricing-faq .faq-a p { margin: 0 0 24px calc(1.6rem + 24px); padding: 0 48px 0 0; border-top: 0; color: var(--color-muted); }
-@media (max-width: 479px) { .marketing-atmosphere .pricing-faq .faq-a p { margin-left: 0; padding-right: 0; } }
-/* Proof stats in the light box: three open columns under a rule. */
-.home-deep .band-light .story-stat { border-radius: 0; padding: 20px 0 0; background: transparent; box-shadow: none; border-top: 1px solid var(--color-ink); }
-.home-deep .band-light .story-stat:hover { background: transparent; box-shadow: none; }
-.home-deep .band-light .stat-num { color: var(--color-ink); }
 .pricing-card-dark, .pricing-card-light { border-radius: 20px; }
 @media (prefers-reduced-motion: reduce) {
   .vignette-threat, .vignette-shield, .vignette-clock-hand, .vignette-patrol-dot { animation: none; }
