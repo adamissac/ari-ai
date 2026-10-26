@@ -129,6 +129,7 @@ test('repo analytics and commits stay scoped to seeded payments-lite data', asyn
     const replayMap = agentMap.locator('.amap-grid-compact');
     await expect(replayMap).toBeVisible();
     if (width === 1440) {
+      await replayMap.scrollIntoViewIfNeeded();
       const bounds = await replayMap.evaluate(root => ({
         mapBottom: root.querySelector('.amap-map')!.getBoundingClientRect().bottom,
         inspector: root.querySelector('.amap-inspect')!.getBoundingClientRect(),
