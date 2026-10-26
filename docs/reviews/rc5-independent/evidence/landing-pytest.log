@@ -1,0 +1,12 @@
+........................................................................ [ 37%]
+........................................................................ [ 73%]
+..................................................                       [ 98%]fatal: not a git repository: /home/runner/work/ari-ai/ari-ai/landing/.git/worktrees/independent-suite
+
+=============================== warnings summary ===============================
+::test_compat_per_project_concurrency_is_fair
+  /suite/backend/tests/conftest.py:182: PytestWarning: Value of environment variable JOB_MAX_RUNNING_PER_PROJECT type should be str, but got 1 (type: int); converted to str implicitly
+    monkeypatch.setenv(k.upper(), v)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+------------------- generated xml file: /evidence/pytest.xml -------------------
+194 passed, 1 warning in 31.55s

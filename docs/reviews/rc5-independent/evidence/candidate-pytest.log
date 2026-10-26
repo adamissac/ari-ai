@@ -1,0 +1,104 @@
+........................................................................ [ 37%]
+........................................................................ [ 73%]
+..............................................FF..                       [ 98%]fatal: not a git repository: /home/runner/work/ari-ai/ari-ai/candidate/.git/worktrees/independent-suite
+
+=================================== FAILURES ===================================
+____________ test_imported_pytest_hook_code_replacement_is_flagged _____________
+
+tmp_path = PosixPath('/tmp/pytest-of-unknown/pytest-0/test_imported_pytest_hook_code0')
+
+    @pytest.mark.boundary
+    def test_imported_pytest_hook_code_replacement_is_flagged(tmp_path: Path) -> None:
+        pinned = "def pytest_collection_modifyitems(items):\n    return None\n"
+        patched = (
+            pinned
+            + "\ndef drop(items):\n"
+            + "    items.clear()\n"
+            + "pytest_collection_modifyitems.__code__ = drop.__code__\n"
+        )
+        tampered = _runner_config_tampering_for_test(
+            tmp_path,
+            config_files={},
+            changed_path="app.py",
+            pinned_text=pinned,
+            patched_text=patched,
+            pinned_files={
+                "tests/conftest.py": "from app import pytest_collection_modifyitems\n",
+            },
+        )
+    
+>       assert "app.py" in tampered
+E       AssertionError: assert 'app.py' in []
+
+/suite/security-agents/tests/test_ari_latest_protected.py:2260: AssertionError
+_ test_rootdir_symlinked_pyproject_checks_resolved_target[pytest-section-edit] _
+
+patched_text = '[tool.pytest.ini_options]\naddopts = "--deselect=test_case"\n[project]\ndependencies = ["base"]\n'
+expected_tampered = True
+intel = <security_agents.intel.port.LocalIntel object at 0x7f66f2670cb0>
+tmp_path = PosixPath('/tmp/pytest-of-unknown/pytest-0/test_rootdir_symlinked_pyproje0')
+
+    @pytest.mark.boundary
+    @pytest.mark.parametrize(
+        ("patched_text", "expected_tampered"),
+        [
+            pytest.param(
+                '[tool.pytest.ini_options]\naddopts = "--deselect=test_case"\n'
+                '[project]\ndependencies = ["base"]\n',
+                True,
+                id="pytest-section-edit",
+            ),
+            pytest.param(
+                '[tool.pytest.ini_options]\naddopts = "-q"\n[project]\ndependencies = ["base", "extra"]\n',
+                False,
+                id="non-pytest-edit",
+            ),
+        ],
+    )
+    def test_rootdir_symlinked_pyproject_checks_resolved_target(
+        patched_text: str,
+        expected_tampered: bool,
+        intel: LocalIntel,
+        tmp_path: Path,
+    ) -> None:
+        from security_agents.sandbox.workspace import fresh_checkout, unified_diff
+    
+        variant = _variant_intel(
+            intel,
+            tmp_path,
+            recipe_changes={"test_command": ["-q", "--rootdir", "sub", "tests"]},
+        )
+        snapshot_root = variant.snapshot.root
+        target = snapshot_root / "settings" / "project-settings.toml"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        original_text = '[tool.pytest.ini_options]\naddopts = "-q"\n[project]\ndependencies = ["base"]\n'
+        target.write_text(original_text, encoding="utf-8")
+        pyproject = snapshot_root / "sub" / "pyproject.toml"
+        pyproject.parent.mkdir(parents=True, exist_ok=True)
+        pyproject.symlink_to("../settings/project-settings.toml")
+        candidate_root = fresh_checkout(variant.snapshot, tmp_path / "candidate")
+        (candidate_root / "settings" / "project-settings.toml").write_text(
+            patched_text,
+            encoding="utf-8",
+        )
+        changed_path = "settings/project-settings.toml"
+        diff = unified_diff(snapshot_root, candidate_root, [changed_path])
+    
+        facts, ctx = _apply_fresh_diff(variant, tmp_path, diff, [changed_path])
+    
+        if expected_tampered:
+>           assert changed_path in facts["tampered_protected_tests"]
+E           AssertionError: assert 'settings/project-settings.toml' in []
+
+/suite/security-agents/tests/test_ari_latest_protected.py:2386: AssertionError
+=============================== warnings summary ===============================
+::test_compat_per_project_concurrency_is_fair
+  /suite/backend/tests/conftest.py:182: PytestWarning: Value of environment variable JOB_MAX_RUNNING_PER_PROJECT type should be str, but got 1 (type: int); converted to str implicitly
+    monkeypatch.setenv(k.upper(), v)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+------------------- generated xml file: /evidence/pytest.xml -------------------
+=========================== short test summary info ============================
+FAILED ../config::test_imported_pytest_hook_code_replacement_is_flagged - Ass...
+FAILED ../config::test_rootdir_symlinked_pyproject_checks_resolved_target[pytest-section-edit]
+2 failed, 192 passed, 1 warning in 31.72s

@@ -1,0 +1,8 @@
+{
+  "tested_upstream_sha": "59cd0b623e1687a71de4b7653ad8171b0c569344",
+  "final_observed_main_sha": "edfa9b8bfb54cae54c2281e42d2989f60cf7ef70",
+  "changed_paths": [
+    "coordination/status/ADAM.md"
+  ],
+  "production_unchanged": true
+}
