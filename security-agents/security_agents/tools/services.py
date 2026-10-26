@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import ast
 import configparser
+import hashlib
 import json
 import os
 import posixpath
@@ -205,98 +206,255 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
         if name.startswith("pytest_"):
             record("pytest-assignment", name, binding_statement(node))
 
-    def declared_globals(statements: list[ast.stmt]) -> set[str]:
-        names: set[str] = set()
+    def arguments_bound(args: ast.arguments) -> set[str]:
+        bound = {arg.arg for arg in [*args.posonlyargs, *args.args, *args.kwonlyargs]}
+        if args.vararg is not None:
+            bound.add(args.vararg.arg)
+        if args.kwarg is not None:
+            bound.add(args.kwarg.arg)
+        return bound
 
-        def visit(node: ast.AST) -> None:
+    def scope_facts(
+        nodes: list[ast.AST],
+        *,
+        parameters: set[str] | None = None,
+        kind: str,
+    ) -> dict[str, set[str] | str]:
+        local_names = set(parameters or ())
+        global_names: set[str] = set()
+        nonlocal_names: set[str] = set()
+
+        def collect(node: ast.AST) -> None:
             if isinstance(node, ast.Global):
-                names.update(node.names)
+                global_names.update(node.names)
                 return
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)):
+            if isinstance(node, ast.Nonlocal):
+                nonlocal_names.update(node.names)
                 return
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                local_names.add(node.name)
+                for expression in node.decorator_list:
+                    collect(expression)
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    defaults = [*node.args.defaults, *[value for value in node.args.kw_defaults if value]]
+                    for expression in [
+                        *defaults,
+                        *[arg.annotation for arg in node.args.posonlyargs if arg.annotation],
+                        *[arg.annotation for arg in node.args.args if arg.annotation],
+                        *[arg.annotation for arg in node.args.kwonlyargs if arg.annotation],
+                        *(
+                            [node.args.vararg.annotation]
+                            if node.args.vararg and node.args.vararg.annotation
+                            else []
+                        ),
+                        *(
+                            [node.args.kwarg.annotation]
+                            if node.args.kwarg and node.args.kwarg.annotation
+                            else []
+                        ),
+                        *([node.returns] if node.returns is not None else []),
+                    ]:
+                        collect(expression)
+                else:
+                    for expression in [*node.bases, *(keyword.value for keyword in node.keywords)]:
+                        collect(expression)
+                return
+            if isinstance(node, ast.Lambda):
+                for expression in [*node.args.defaults, *[value for value in node.args.kw_defaults if value]]:
+                    collect(expression)
+                return
+            if isinstance(node, (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)):
+                for generator in node.generators:
+                    collect(generator.iter)
+                    for condition in generator.ifs:
+                        collect(condition)
+                if isinstance(node, ast.DictComp):
+                    collect(node.key)
+                    collect(node.value)
+                else:
+                    collect(node.elt)
+                return
+            if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
+                local_names.add(node.id)
+            elif isinstance(node, ast.Import):
+                local_names.update(alias.asname or alias.name.split(".", 1)[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                local_names.update(alias.asname or alias.name for alias in node.names if alias.name != "*")
+            elif isinstance(node, (ast.ExceptHandler, ast.MatchAs, ast.MatchStar)) and node.name is not None:
+                local_names.add(node.name)
+            elif isinstance(node, ast.MatchMapping) and node.rest is not None:
+                local_names.add(node.rest)
             for child in ast.iter_child_nodes(node):
-                visit(child)
+                collect(child)
 
-        for statement in statements:
-            visit(statement)
-        return names
+        for node in nodes:
+            collect(node)
+        local_names.difference_update(global_names | nonlocal_names)
+        return {
+            "kind": kind,
+            "locals": local_names,
+            "globals": global_names,
+            "nonlocals": nonlocal_names,
+            "parameters": set(parameters or ()),
+        }
+
+    def module_literal_binding(name: str, node: ast.AST) -> bool:
+        if name == "pytest_plugins":
+            return False
+        statement = binding_statement(node)
+        if isinstance(statement, ast.Assign) and all(
+            isinstance(target, ast.Name) for target in statement.targets
+        ):
+            names = {target.id for target in statement.targets if isinstance(target, ast.Name)}
+            if name not in names:
+                return False
+            value = statement.value
+        elif (
+            isinstance(statement, ast.AnnAssign)
+            and isinstance(statement.target, ast.Name)
+            and statement.value is not None
+            and statement.target.id == name
+        ):
+            value = statement.value
+        else:
+            return False
+        try:
+            ast.literal_eval(value)
+        except (TypeError, ValueError, SyntaxError, MemoryError, RecursionError):
+            return False
+        return True
+
+    def should_record_root(name: str, scopes: list[dict[str, set[str] | str]], module_scope: bool) -> bool:
+        if not name.startswith("pytest_"):
+            return False
+        if module_scope:
+            return True
+        if any(name in scope["nonlocals"] for scope in scopes):
+            return False
+        function_scope = next(
+            (scope for scope in reversed(scopes) if scope["kind"] == "function"),
+            None,
+        )
+        if function_scope is not None and name in function_scope["parameters"]:
+            return False
+        current_scope = scopes[-1]
+        return name not in current_scope["locals"]
 
     def collect_bindings(
-        statements: list[ast.stmt],
-        global_names: set[str],
+        nodes: list[ast.AST],
+        scopes: list[dict[str, set[str] | str]],
         *,
         module_scope: bool,
     ) -> None:
-        def visit(node: ast.AST) -> None:
+        def visit(
+            node: ast.AST,
+            active_scopes: list[dict[str, set[str] | str]],
+            node_module_scope: bool,
+        ) -> None:
+            current_globals = active_scopes[-1]["globals"] if active_scopes else set()
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                if module_scope or node.name in global_names:
+                if node_module_scope or node.name in current_globals:
                     record_pytest_binding(node.name, node)
-                for decorator in node.decorator_list:
-                    visit(decorator)
-                for default in [*node.args.defaults, *[value for value in node.args.kw_defaults if value]]:
-                    visit(default)
-                if node.returns is not None:
-                    visit(node.returns)
-                collect_bindings(
-                    node.body,
-                    declared_globals(node.body),
-                    module_scope=False,
-                )
+                expressions = [
+                    *node.decorator_list,
+                    *node.args.defaults,
+                    *[value for value in node.args.kw_defaults if value],
+                    *[arg.annotation for arg in node.args.posonlyargs if arg.annotation],
+                    *[arg.annotation for arg in node.args.args if arg.annotation],
+                    *[arg.annotation for arg in node.args.kwonlyargs if arg.annotation],
+                    *(
+                        [node.args.vararg.annotation]
+                        if node.args.vararg and node.args.vararg.annotation
+                        else []
+                    ),
+                    *([node.args.kwarg.annotation] if node.args.kwarg and node.args.kwarg.annotation else []),
+                    *([node.returns] if node.returns is not None else []),
+                ]
+                for expression in expressions:
+                    visit(expression, active_scopes, node_module_scope)
+                facts = scope_facts(node.body, parameters=arguments_bound(node.args), kind="function")
+                collect_bindings(node.body, [*active_scopes, facts], module_scope=False)
                 return
             if isinstance(node, ast.ClassDef):
-                if module_scope or node.name in global_names:
+                if node_module_scope or node.name in current_globals:
                     record_pytest_binding(node.name, node)
                 for expression in [*node.decorator_list, *node.bases]:
-                    visit(expression)
+                    visit(expression, active_scopes, node_module_scope)
                 for keyword in node.keywords:
-                    visit(keyword.value)
-                collect_bindings(
-                    node.body,
-                    declared_globals(node.body),
-                    module_scope=False,
-                )
+                    visit(keyword.value, active_scopes, node_module_scope)
+                facts = scope_facts(node.body, kind="class")
+                collect_bindings(node.body, [*active_scopes, facts], module_scope=False)
                 return
             if isinstance(node, ast.Lambda):
-                for default in [*node.args.defaults, *[value for value in node.args.kw_defaults if value]]:
-                    visit(default)
+                for expression in [*node.args.defaults, *[value for value in node.args.kw_defaults if value]]:
+                    visit(expression, active_scopes, node_module_scope)
+                facts = scope_facts([node.body], parameters=arguments_bound(node.args), kind="function")
+                visit(node.body, [*active_scopes, facts], False)
+                return
+            if isinstance(node, (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)):
+                for generator in node.generators:
+                    visit(generator.iter, active_scopes, node_module_scope)
+                    for condition in generator.ifs:
+                        visit(condition, active_scopes, node_module_scope)
+                if isinstance(node, ast.DictComp):
+                    visit(node.key, active_scopes, node_module_scope)
+                    visit(node.value, active_scopes, node_module_scope)
+                else:
+                    visit(node.elt, active_scopes, node_module_scope)
                 return
             if isinstance(node, ast.Name) and isinstance(node.ctx, (ast.Store, ast.Del)):
-                if module_scope or node.id in global_names:
+                if node_module_scope and module_literal_binding(node.id, node):
+                    return
+                if node_module_scope or node.id in current_globals:
                     record_pytest_binding(node.id, node)
             elif isinstance(node, ast.Import):
                 for alias in node.names:
                     name = alias.asname or alias.name.split(".", 1)[0]
-                    if module_scope or name in global_names:
+                    if node_module_scope or name in current_globals:
                         record_pytest_binding(name, node)
             elif isinstance(node, ast.ImportFrom):
                 for alias in node.names:
                     if alias.name == "*":
                         continue
                     name = alias.asname or alias.name
-                    if module_scope or name in global_names:
+                    if node_module_scope or name in current_globals:
                         record_pytest_binding(name, node)
             elif isinstance(node, ast.ExceptHandler):
-                if node.name is not None and (module_scope or node.name in global_names):
+                if node.name is not None and (node_module_scope or node.name in current_globals):
                     record_pytest_binding(node.name, node)
-            elif (
-                isinstance(node, (ast.MatchAs, ast.MatchStar))
-                and node.name is not None
-                and (module_scope or node.name in global_names)
+            elif isinstance(node, (ast.MatchAs, ast.MatchStar)) and node.name is not None:
+                if node_module_scope or node.name in current_globals:
+                    record_pytest_binding(node.name, node)
+            elif isinstance(node, ast.MatchMapping) and node.rest is not None:
+                if node_module_scope or node.rest in current_globals:
+                    record_pytest_binding(node.rest, node)
+
+            if isinstance(node, (ast.Attribute, ast.Subscript)) and isinstance(
+                node.ctx, (ast.Store, ast.Del)
             ):
-                record_pytest_binding(node.name, node)
-            elif (
-                isinstance(node, ast.MatchMapping)
-                and node.rest is not None
-                and (module_scope or node.rest in global_names)
-            ):
-                record_pytest_binding(node.rest, node)
+                name = root_name(node.value)
+                if name is not None and should_record_root(name, active_scopes, node_module_scope):
+                    record_pytest_binding(name, node)
+            if isinstance(node, ast.Call) and node.args:
+                function = node.func
+                is_setattr = isinstance(function, ast.Name) and function.id == "setattr"
+                is_object_setattr = (
+                    isinstance(function, ast.Attribute)
+                    and function.attr == "__setattr__"
+                    and isinstance(function.value, ast.Name)
+                    and function.value.id == "object"
+                )
+                if is_setattr or is_object_setattr:
+                    name = root_name(node.args[0])
+                    if name is not None and should_record_root(name, active_scopes, node_module_scope):
+                        record_pytest_binding(name, node)
             for child in ast.iter_child_nodes(node):
-                visit(child)
+                visit(child, active_scopes, node_module_scope)
 
-        for statement in statements:
-            visit(statement)
+        for node in nodes:
+            visit(node, scopes, module_scope)
 
-    collect_bindings(tree.body, set(), module_scope=True)
+    collect_bindings(tree.body, [], module_scope=True)
 
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -340,23 +498,6 @@ def _pytest_sensitive_constructs(source: str) -> Counter[tuple[str, str, str]]:
                 and is_runner_module(first_arg.value)
             ):
                 record("runner-import", first_arg.value, node)
-            is_setattr = isinstance(function, ast.Name) and function.id == "setattr"
-            is_object_setattr = (
-                isinstance(function, ast.Attribute)
-                and function.attr == "__setattr__"
-                and isinstance(function.value, ast.Name)
-                and function.value.id == "object"
-            )
-            if (is_setattr or is_object_setattr) and node.args:
-                name = root_name(node.args[0])
-                if name is not None:
-                    record_pytest_binding(name, node)
-
-        if isinstance(node, (ast.Attribute, ast.Subscript)) and isinstance(node.ctx, (ast.Store, ast.Del)):
-            name = root_name(node.value)
-            if name is not None:
-                record_pytest_binding(name, node)
-
         targets: list[ast.expr] = []
         if isinstance(node, ast.Assign):
             targets = node.targets
@@ -604,6 +745,16 @@ class TestRunner:
             if unpatched is not None:
                 shutil.rmtree(unpatched, ignore_errors=True)
         summary = parse_pytest(res.stdout)
+        audit = res.out_json("pytest_audit.json")
+        ctx.artifacts.setdefault("pytest_audits", {})[res.run_id] = audit
+        audit_sha256 = (
+            hashlib.sha256(
+                json.dumps(audit, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            ).hexdigest()
+            if audit is not None
+            else None
+        )
+        audit_is_dict = isinstance(audit, dict)
         ctx.audit.emit(
             "sandbox.tests_run",
             agent=ctx.agent.value,
@@ -619,6 +770,14 @@ class TestRunner:
             **summary,
             "stdout_tail": _tail(res.stdout),
             "stderr_tail": _tail(res.stderr, 15),
+            "pytest_audit": {
+                "present": audit is not None,
+                "complete": bool(audit_is_dict and audit.get("complete") is True),
+                "collected": len(audit.get("nodeids", []))
+                if audit_is_dict and isinstance(audit.get("nodeids"), list)
+                else 0,
+                "sha256": audit_sha256,
+            },
         }
         if self.suite_workspace_provider is not None:
             result["patch_id"] = ctx.artifacts.get("verify_patch_id")

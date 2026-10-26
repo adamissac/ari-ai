@@ -1,0 +1,19 @@
+{
+  "candidate_sha": "0aa68ffb046a90bae0ae11c909142e939de842d8",
+  "upstream_sha": "59cd0b623e1687a71de4b7653ad8171b0c569344",
+  "regression_sha": "abf6b316b1de2fea9a8ac8c89a79a7368900145a",
+  "pr_heads": {
+    "412": "4ecd7558c20d676985294073d5a818a538bdf78c",
+    "458": "8396e836866e33ebc34a402a7c8bd0eb6bc769d8"
+  },
+  "transfers": {
+    "reliability": "b8ccb7a8305aa3e23212858c2f858c842b3939f0",
+    "observability": "19b97702ab2a917a02a3e183bf7eda98eafbc8cd",
+    "hardening": "87fd714997b30145b08f34958e1bdc2d3b73eb18",
+    "onboarding": "e6b7a3267b01dfbd30792600520cf34b9eccac59",
+    "manifest": "c197a7a5c44e386a7bb3e4dea770dfa3ace71191"
+  },
+  "production_candidate_sha": "45c7cd6d1ce166b0d2e1fd0b34bb6dd8987b9008",
+  "review_only_doc_resolution": "SESSION_HANDOFF.md selected from current main; no product conflict resolved",
+  "landing_tree": "5b28d0c7fcfe0ce5fb760581dc90ff91a1e4c49a"
+}

@@ -3,6 +3,50 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-10-26 — Devin (agent, Adam) — runtime pytest Verify audit
+- Did: reproduced import-time `pytest.skip` and dynamic hook `__code__` swaps
+  through `apply_fresh`, a real local sandbox suite run, and `compute_verdict`;
+  added an always-on runtime hook/collection/outcome audit, comparator, Verify
+  evidence plumbing, static-scan false-positive relaxations, regression tests,
+  documentation, and persistence of baseline audit evidence across approval
+  checkpoint resumes.
+- State of the code: `fix/adam/verify-runtime-hook-audit` contains feature commit
+  `11b25d60` and integrates `origin/main` at `ba4ada0d` (front-end, docs, and
+  hook-installer changes only; no security-agent source changed on main). The
+  host-adapter functional-verify check (`tamper_ok = not protected_paths`)
+  remains unchanged and out of scope.
+- Commands run and results: origin-main Verify reproduction — 2 failed, 213
+  deselected (`/Users/devin/.devin-files/verify-runtime-audit-red-origin-main.log`),
+  confirming both scenarios were accepted before the implementation. Direct
+  origin-main static-scan checks also recorded the comprehension target,
+  function-local hook root, and module literal false positives. The first full
+  suite run found one approval-resume regression (818 passed, 24 skipped,
+  1 failed): the durable checkpoint restored `baseline_failing` but not its
+  audit. The checkpoint now preserves that audit without changing the setter's
+  `None` behavior; the focused recovery test passed. Final full suite:
+  819 passed, 24 skipped. Ruff check, Ruff format check, and `git diff --check`
+  passed.
+- Decisions made (ADR links): audit details remain internal evidence and only a
+  compact summary is returned to the model; the host-adapter functional path is
+  explicitly outside this audit. Approval checkpoint resume explicitly
+  restores an available baseline audit; older checkpoints without it remain
+  fail-closed.
+- Assumptions / open questions (RQ links): in-process plugin/data tampering and
+  hook swaps restored between snapshots remain residual risks.
+- Independent review of `89f218ac` confirmed four remaining in-process
+  bypasses: patched code can overwrite `pytest_audit.json` in writable `/out` or
+  flip plugin state. It can replace `pytest.Function.runtest` with a no-op. It
+  can rewrite test functions and restore its own code before the final snapshot.
+  It can rebind a module-global helper called by an unchanged hook. Review
+  verdict on 89f218ac: recommend merge with follow-ups. Follow-ups: out-of-process
+  audit channel, per-item function code hashes, hashing defaults/closures/globals,
+  per-call hook snapshots.
+- Next steps: owner to open the PR and re-brief the CI loop; no PR or CI action
+  was requested for this delivery.
+- Warnings for the next session: no post-push CI checks were monitored. The
+  full suite was run a second time after fixing the discovered approval-resume
+  regression; the later main integration touched no security-agent source.
+
 ## Template
 
 ```
@@ -2619,6 +2663,11 @@ Pinned product 6a72949efa7c0a2d3233eb6884bb7a23dfe71ced; upstream e41c9dc22e6536
 ### Repeat RC4/N8 independent review — 2026-10-25
 
 Pin 4fdcf10c vs main e41c9dc2; tip 0098f1d5 report-only. Original F1–F10/N1–N8 pass; upstream composition and VerifyEvidence blockers closed. New N9/P2: annotation regex crosses semicolon into another statement and corrupts non-secret source/stored diff. Final isolated run 40210138609: 187 pass, 3 fail, zero skip (two N9 checks and retained stale legacy GET/write-limit test); independent split-limit control passes. Collector cleanup error retained. Product CI succeeds; missing paid Codex audit is not a product finding. NO-GO pending N9 and final gates. No production edits/merge/deploy/approval. Report: docs/reviews/rc4-n8-independent/REPORT.md.
+
+### RC5 independent check — N9 closed, selected landing suite green
+
+Product 45c7cd6d; observed tip 9672cc60. Tested main 59cd0b62; final main edfa9b8b differs only coordination/status/ADAM.md. Original F1–F10/N1–N9 pass. Actual candidate: 192 pass/2 fail (new upstream #629 Verify checks). Review-only latest-main landing 0aa68ffb046a90bae0ae11c909142e939de842d8: 194 pass/0 fail/0 skip, receipt exit0, successful run 40243984093. Only documentary SESSION_HANDOFF conflict resolved for simulation; no production edit. Collector cleanup repaired within disposable results only. Security GO for checked union, actual PR merge HOLD until main incorporated/document conflict reconciled/full required CI on real final SHA. No merge/deploy/approval/paid calls. Report: docs/reviews/rc5-independent/REPORT.md.
+||||||| 59cd0b62
 ### 2026-10-26 — stop polling after a 401
 
 - `useResource` now stops scheduled polling after an API 401; other refresh failures keep polling, and `reload()` retries.
@@ -2636,6 +2685,17 @@ Pin 4fdcf10c vs main e41c9dc2; tip 0098f1d5 report-only. Original F1–F10/N1–
 - E2E coverage exercises the seeded `acme/payments-lite` repository at desktop and narrow mobile widths, including the selected commit's Code review and 7 agents tabs. Browser screenshots are in `/home/ubuntu/classic-audit/repo-workspace/`: `analytics-{1440,390}-{viewport,full}.png`, `commits-code-review-{1440,390}-{viewport,full}.png`, `commits-7-agents-{1440,390}-{viewport,full}.png`, and `more-menu-390-{viewport,full}.png`.
 - Verification passed: frontend lint (0 errors; one existing unused-variable warning), typecheck, unit tests (96 files / 414 tests), production build, journey E2E (3), pages E2E (7), interface E2E, and commit-workspace E2E (1). The setup-resume unit test passed 5/5.
 - The local stack is served at `http://localhost:3205` with API at `localhost:59039`. E2E assessments use the test-only scripted model transport; these captures do not establish live-model provenance.
+
+### 36bd05ee independent check — exact integrated candidate GO (2026-10-26)
+
+Pin36bd05eeebd101064175f33726934ead35515b4b vs mainba4ada0d: original F1–F10/N1–N9/#629 PASS; 194pass/0fail/0skip, exit0, successful run40291575442. Product same-SHA CI verified (backend1317/16skip, security839/23skip, frontend427unit +51browser). Direct canonical merge clean, main ancestor, tree62c66fcd unchanged. Frontend #638 resolution preserves main +onboarding menu/test addition; demo recovery spec identical to main. No new defect. Technical GO for exact integrated candidate, no GitHub approval/merge/deploy. Individual transfer reconstruction still needs documentary S6/test S8 reconciliation; not blanket standalone PR approval. Customer deployment not approved. Report docs/reviews/36bd05ee-independent/REPORT.md.
+||||||| ba4ada0d
+
+||||||| 4fa8d3c4
+### Independent b6d5108b check — 2026-10-26
+
+Exact b6d5108b6f0678a6af9546f60d28508716cc4982: 194 pass/0 fail/0 skip, exit0, successful isolated run40285189840. Original F1–F10/N1–N9 and #629 pass; no new security finding. Same-SHA product CI executed backend1317/16skip, security839/23skip, frontend405 unit +46 browser pass. Security GO for checked pin. Main ba4ada0d now includes #638; actual merge conflicts in project.tsx, demo-recovery.spec.ts, project-navigation.test.tsx and handoff docs; canonical merge HOLD pending reconciliation/full resulting-SHA CI. No production fixes/merge/deploy/approval/paid calls. Report: docs/reviews/b6d5108b-independent/REPORT.md.
+||||||| ba4ada0d
 
 ### Landing motion and pricing atmosphere — 2026-10-26
 

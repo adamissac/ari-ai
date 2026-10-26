@@ -1,0 +1,29 @@
+{
+  "candidate_sha": "45c7cd6d1ce166b0d2e1fd0b34bb6dd8987b9008",
+  "pr_head_sha": "9672cc608a67bc5263d645bdc8135032e74df268",
+  "tested_upstream_sha": "59cd0b623e1687a71de4b7653ad8171b0c569344",
+  "final_main_sha": "edfa9b8bfb54cae54c2281e42d2989f60cf7ef70",
+  "main_drift": "coordination/status/ADAM.md only",
+  "candidate_tests": {
+    "passed": 192,
+    "failed": 2,
+    "skipped": 0,
+    "run_id": 40243684707,
+    "failures": "Two #629 Verify probes; old candidate has not incorporated current main"
+  },
+  "landing_sha": "0aa68ffb046a90bae0ae11c909142e939de842d8",
+  "landing_tree": "5b28d0c7fcfe0ce5fb760581dc90ff91a1e4c49a",
+  "landing_tests": {
+    "passed": 194,
+    "failed": 0,
+    "skipped": 0,
+    "exit_code": 0,
+    "run_id": 40243984093
+  },
+  "original_F1_F10_N1_N9": "PASS",
+  "new_findings": [],
+  "review_only_resolution": "SESSION_HANDOFF.md from tested canonical main; no product conflict resolution",
+  "security_verdict": "GO for checked landing union and selected suite",
+  "actual_PR_merge_verdict": "HOLD until current main is incorporated, documentary conflict resolved and full required CI passes on actual landing SHA",
+  "customer_deployment": "NOT APPROVED"
+}

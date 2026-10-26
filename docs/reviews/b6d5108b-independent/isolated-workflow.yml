@@ -1,0 +1,41 @@
+name: b6d5108b exact-SHA independent check
+on:
+  push:
+    branches: [codex/check-b6d5108b]
+    paths: [.github/workflows/b6d5108b-independent.yml, docs/reviews/b6d5108b-independent/run.py, docs/reviews/b6d5108b-independent/test_additional.py, docs/reviews/b6d5108b-independent/pin.json]
+permissions:
+  contents: read
+jobs:
+  independent:
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [candidate]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: controller
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: m-alan08/ari-ai
+          ref: b6d5108b6f0678a6af9546f60d28508716cc4982
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Run strict isolated candidate or current-main landing checks
+        working-directory: controller
+        env:
+          AUDIT_MODE: ${{ matrix.mode }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/b6d-evidence"
+          cp docs/reviews/b6d5108b-independent/pin.json "$RUNNER_TEMP/b6d-evidence/pin.json"
+          PYTHONPATH=. python3 docs/reviews/b6d5108b-independent/run.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: b6d-${{ matrix.mode }}
+          path: ${{ runner.temp }}/b6d-evidence/
+          retention-days: 14

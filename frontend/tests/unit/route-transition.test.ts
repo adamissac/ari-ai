@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { playsTransition, sectionOf } from '@/components/route-transition';
+import { act, render } from '@testing-library/react';
+import { createElement } from 'react';
+import { describe, expect, it, vi } from 'vitest';
+import { RouteTransition, playsTransition, sectionOf } from '@/components/route-transition';
+
+vi.mock('next/navigation', () => ({ usePathname: () => '/pricing' }));
 
 describe('page transition', () => {
   it('groups paths into parts of the site', () => {
@@ -20,4 +24,17 @@ describe('page transition', () => {
     expect(playsTransition('/lab', '/')).toBe(false);
     expect(playsTransition('/projects', '/api/v1/auth/github/login')).toBe(false);
   });
+});
+
+it('covers a cross-section navigation with the ring loader around the mark', () => {
+  Object.defineProperty(window, 'matchMedia', { configurable: true, value: () => ({ matches: false }) });
+  window.history.replaceState(null, '', '/pricing');
+  const { container } = render(createElement('div', null, createElement(RouteTransition), createElement('a', { href: '/lab' }, 'Defense Lab')));
+  const link = container.querySelector('a') as HTMLAnchorElement;
+  link.addEventListener('click', e => e.preventDefault());
+  act(() => { link.click(); });
+  const veil = container.querySelector('.route-veil');
+  expect(veil?.querySelector('svg.intro-ring .intro-ring-fill')).not.toBeNull();
+  expect(veil?.querySelector('.intro-pct')?.textContent).toMatch(/^\d+%$/);
+  expect(veil?.querySelector('.route-veil-line')).toBeNull();
 });

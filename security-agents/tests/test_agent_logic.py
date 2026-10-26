@@ -481,6 +481,13 @@ def test_diagnose_falls_back_to_affected_path_when_spans_invalid(intel):
 
 
 def evidence(**kw):
+    audit = {
+        "version": 1,
+        "complete": True,
+        "phases": {"collection": [], "final": []},
+        "nodeids": [],
+        "outcomes": {},
+    }
     base = dict(
         apply_facts={
             "applied": True,
@@ -519,8 +526,14 @@ def evidence(**kw):
         original_check_ref="access_control.ownership@1",
         original_check_params={"route_id": "payment_detail"},
         candidate_id="pat_test",
+        baseline_pytest_audit=audit,
     )
     base.update(kw)
+    base["suite_pytest_audits"] = {
+        str(run.get("sandbox_run_id") or ""): audit
+        for run in base["test_runs"]
+        if run.get("selection") == "project_suite"
+    }
     return verify_agent.VerifyEvidence(**base)
 
 

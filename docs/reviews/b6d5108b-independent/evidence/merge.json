@@ -1,0 +1,14 @@
+{
+  "candidate_sha": "b6d5108b6f0678a6af9546f60d28508716cc4982",
+  "upstream_sha": "ba4ada0d2387a4f6fcb3b0adbfc65bfaf934ce25",
+  "upstream_merge_clean": false,
+  "merge_exit": 1,
+  "merge_output": "50f913bf00eaf8edbe50fa208bf1e22020abeed1\n100644 a7e1c95943c904d60ab9a0b6121a18108917bea5 1\tdocs/planning/SESSION_HANDOFF.md\n100644 6d0892ede62410d69c3659ee6e75646a70d6fb79 2\tdocs/planning/SESSION_HANDOFF.md\n100644 77a69f8f90b5b8996d0ce5efb945375de80643d5 3\tdocs/planning/SESSION_HANDOFF.md\n100644 494dab4c407951b2b90eec073dca134e5597ac72 1\tfrontend/components/project.tsx\n100644 d3b6792c3f9454ffca9002e3af87689cbafb0e7a 2\tfrontend/components/project.tsx\n100644 99811962ff3ac549872257a81da1224895048a46 3\tfrontend/components/project.tsx\n100644 0f419b5a2ef11b75857ee6357e22a4a2e9a46ea2 1\tfrontend/tests/e2e/demo-recovery.spec.ts\n100644 b2a0be5a35fe63e1836c53eaf0786777ee1502d6 2\tfrontend/tests/e2e/demo-recovery.spec.ts\n100644 24142d766e399a78307564f83289989a20612c50 3\tfrontend/tests/e2e/demo-recovery.spec.ts\n100644 b5dc73e029d4adab234aaefafce97860d3a5c75d 1\tfrontend/tests/unit/project-navigation.test.tsx\n100644 be33423998d128f98f61d756e7e6a461eac86415 2\tfrontend/tests/unit/project-navigation.test.tsx\n100644 4615604079e76620d02cf05bd36e66b124a5fea0 3\tfrontend/tests/unit/project-navigation.test.tsx\n\nAuto-merging CHANGELOG.md\nAuto-merging docs/planning/SESSION_HANDOFF.md\nCONFLICT (content): Merge conflict in docs/planning/SESSION_HANDOFF.md\nAuto-merging frontend/components/live-defense/apps.tsx\nAuto-merging frontend/components/live-defense/controls.tsx\nAuto-merging frontend/components/live-defense/first-responder.tsx\nAuto-merging frontend/components/live-defense/overview.tsx\nAuto-merging frontend/components/live-defense/shell.tsx\nAuto-merging frontend/components/project.tsx\nCONFLICT (content): Merge conflict in frontend/components/project.tsx\nAuto-merging frontend/tests/e2e/demo-recovery.spec.ts\nCONFLICT (content): Merge conflict in frontend/tests/e2e/demo-recovery.spec.ts\nAuto-merging frontend/tests/unit/project-navigation.test.tsx\nCONFLICT (content): Merge conflict in frontend/tests/unit/project-navigation.test.tsx\n",
+  "manifest_sha": "e04ce68defac4bb14f216a3ee3c620df237125e5",
+  "manifest_production_equal": false,
+  "production_differences": [
+    "deploy/reports/release-readiness-20261025T065919+0000.json",
+    "deploy/reports/release-readiness-20261025T082755+0000.json"
+  ],
+  "production_diff_complete": true
+}

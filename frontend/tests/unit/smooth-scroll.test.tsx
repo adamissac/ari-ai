@@ -132,3 +132,27 @@ it('allows consecutive wheel input to traverse beyond a viewport without a readi
   expect(positions.at(-1)).toBe(1800);
   chapter.remove();
 });
+
+it('follows an in-page anchor that moves while the glide is running', () => {
+  render(<SmoothScroll />);
+  const how = document.createElement('section');
+  how.id = 'how';
+  let docTop = 2000;
+  how.getBoundingClientRect = () => ({ top: docTop - window.scrollY, height: 400 }) as DOMRect;
+  const link = document.createElement('a');
+  link.href = '#how';
+  document.body.append(how, link);
+  link.click();
+  flush(5);
+  docTop = 2009; // content above the anchor grows mid-glide (late image, font swap)
+  flush();
+  expect(positions.at(-1)).toBe(2009);
+  how.remove(); link.remove();
+});
+
+it('still arrives promptly when the device paints only one frame a second', () => {
+  render(<SmoothScroll />);
+  wheel(document.body, { deltaY: 600 });
+  flush(3, 1000);
+  expect(positions.at(-1)).toBe(600);
+});

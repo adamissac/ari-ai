@@ -1,0 +1,12 @@
+{
+  "backend": [
+    "backend-tests\tUNKNOWN STEP\t2026-10-25T23:59:38.5137294Z 1317 passed, 16 skipped, 2 warnings in 537.94s (0:08:57)"
+  ],
+  "security": [
+    "secagents-tests\tUNKNOWN STEP\t2026-10-25T23:58:38.1609776Z 839 passed, 23 skipped in 500.08s (0:08:20)"
+  ],
+  "frontend": [
+    "static-and-unit\tUNKNOWN STEP\t2026-10-25T23:51:32.0637666Z ^[[2m      Tests ^[[22m ^[[1m^[[32m405 passed^[[39m^[[22m^[[90m (405)^[[39m",
+    "e2e\tUNKNOWN STEP\t2026-10-25T23:55:21.3944792Z   46 passed (3.8m)"
+  ]
+}

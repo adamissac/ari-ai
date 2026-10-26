@@ -13,8 +13,19 @@ from security_agents.agents import verify as verify_agent
 ADDED = "tests/test_new_case.py"
 
 
+def _audit() -> dict[str, Any]:
+    return {
+        "version": 1,
+        "complete": True,
+        "phases": {"collection": [], "final": []},
+        "nodeids": [],
+        "outcomes": {},
+    }
+
+
 def _ev(test_runs: list[dict[str, Any]]) -> verify_agent.VerifyEvidence:
     patch_id = "pat_test"
+    runs = [{**run, "patch_id": run.get("patch_id", patch_id)} for run in test_runs]
     return verify_agent.VerifyEvidence(
         apply_facts={
             "applied": True,
@@ -25,13 +36,19 @@ def _ev(test_runs: list[dict[str, Any]]) -> verify_agent.VerifyEvidence:
         recheck_runs=[
             {"template_ref": "t@1", "matches_expectation": True, "sandbox_run_id": "sbx_c", "parameters": {}}
         ],
-        test_runs=[{**run, "patch_id": run.get("patch_id", patch_id)} for run in test_runs],
+        test_runs=runs,
         baseline_failing=[],
         tests_added=[ADDED],
         protected_tests=[],
         original_check_ref="t@1",
         original_check_params={},
         candidate_id=patch_id,
+        baseline_pytest_audit=_audit(),
+        suite_pytest_audits={
+            str(run.get("sandbox_run_id") or ""): _audit()
+            for run in runs
+            if run.get("selection") == "project_suite"
+        },
     )
 
 
