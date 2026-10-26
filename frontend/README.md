@@ -61,7 +61,7 @@ every RL metric and provenance) is kept, one click away. All counts come from re
 
 ## Landing, header and motion
 
-- `components/explainer-video.tsx`: the landing's video chapter right after the hero (`public/videos/ari-explainer.mp4`). On `lg` with motion allowed it is a sticky 220vh track and scroll grows the player from an inset card to full size; it plays muted while on screen, pauses off screen, and offers sound, full screen and a download.
+- `components/product-tour.tsx`: the landing's four-step interactive tour, with authentic application screenshots and reduced-motion-aware auto-advance.
 - `components/hero.tsx`, `intro-loader.tsx`, `story.tsx`: the landing's hero, once-per-sign-in
   intro and scroll-told chapters. Chapters pin and scrub only at `lg` with motion allowed;
   otherwise they render their final, readable state.

@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import type { Project } from '@hackatl/frontend-transport';
 import { DefenseSwitch } from '@/components/defense-switch';
+import { ConsoleSide } from '@/components/lab-console';
+import { observedState } from '@/components/lab-command';
 import { ReplayStage } from '@/components/lab-replay';
 import { OptionalSession, useOptionalSession } from '@/components/session';
-import { Empty, ErrorState, Field, inputClass, Loading, Mono, Panel } from '@/components/ui';
+import { Empty, ErrorState, inputClass, Loading, Mono, Panel } from '@/components/ui';
 import { defenderCountPhrase } from '@/components/lab-copy';
 import { api } from '@/lib/api';
 import { DEMO_ONLY } from '@/lib/deployment';
@@ -26,7 +28,17 @@ export default function DefenseLabPage() {
   const [protocols, setProtocols] = useState<Load<string[]>>({ status: 'loading' });
   const [protocol, setProtocol] = useState('');
   const [loaded, setLoaded] = useState<{ protocol: string; result: Load<BundleResponse> } | null>(null);
+  const [scenarioId, setScenarioId] = useState('');
+  const [currentStep, setCurrentStep] = useState(0);
   const bundle: Load<BundleResponse> = loaded && loaded.protocol === protocol ? loaded.result : { status: 'loading' };
+  const readyBundle = bundle.status === 'ready' ? bundle.data.bundle : null;
+  const defenderEpisodes = readyBundle?.episodes.filter(e => e.policy === 'ddqn') ?? [];
+  const scenarios = [...new Set(defenderEpisodes.map(e => e.scenario))];
+  const selectedScenario = scenarios.includes(scenarioId) ? scenarioId : scenarios[0] ?? '';
+  const episode = defenderEpisodes.find(e => e.scenario === selectedScenario)
+  const scenario = readyBundle?.scenarios.find(s => s.name === episode?.scenario);
+  const step = episode?.steps.find(s => s.t === currentStep) ?? episode?.steps[0];
+  const openAlerts = step?.nodes.filter(node => observedState(node) === 'attention').length ?? 0;
 
   useEffect(() => {
     const c = new AbortController();
@@ -49,37 +61,73 @@ export default function DefenseLabPage() {
 
   return (
     <>
-      <header className="hero-ink mb-6 rounded-2xl px-6 py-8 md:px-10 md:py-10">
-        <div className="flex flex-wrap items-start justify-between gap-6">
-          <div className="max-w-2xl">
-            <p className="label-mono text-white/60">Defense Lab · research</p>
-            <h1 className="display mt-3 text-3xl font-semibold md:text-5xl">Can an AI learn to defend a network?</h1>
-            <p className="mt-4 max-w-xl text-sm text-white/75 md:text-base" data-testid="lab-intro">
-              A controlled network evaluation. We trained an AI defender in a practice network and scored it against simpler defenders on runs it never saw in training.
-            </p>
-            <p role="note" className="lab-caveat lab-caveat-dark mt-4" data-testid="lab-caveat">
-              <svg viewBox="0 0 16 16" className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"><path d="M8 1.8 14.6 13.5H1.4z" strokeLinejoin="round" /><path d="M8 6.3v3.4M8 11.7v.01" /></svg>
-              <span><strong>Controlled test environment.</strong> Results come from an isolated test network, not a connected production system. No action is ever applied automatically.</span>
-            </p>
-          </div>
-          {protocols.status === 'ready' && protocols.data.length > 0 && (
-            <div className="lab-run-picker">
-              <Field label="Evaluation run">
-                <select className={inputClass} value={protocol} onChange={e => setProtocol(e.target.value)} name="protocol">
-                  {protocols.data.map(p => <option key={p} value={p}>{p}</option>)}
+      <header className="mb-8 border-b border-line pb-6">
+        <p className="label-mono text-faint">Defense Lab</p>
+        <h1 className="mt-2 text-2xl font-semibold md:text-3xl">Network defense</h1>
+        <p className="mt-2 max-w-2xl text-sm text-muted" data-testid="lab-intro">
+          What your team sees while Ari&apos;s defender watches the network.
+        </p>
+        {readyBundle && scenario && (
+          <div className="mt-5 border-y border-line">
+            <dl className="grid grid-cols-2 gap-4 py-3 sm:grid-cols-4">
+              <div>
+                <dt className="label-mono text-faint">Network</dt>
+                <dd className="mt-1 text-sm font-medium text-ink">{scenarioName(scenario.name)}</dd>
+              </div>
+              <div>
+                <dt className="label-mono text-faint">Services watched</dt>
+                <dd className="mt-1 text-sm font-medium text-ink">{scenario.nodes.length}</dd>
+              </div>
+              <div>
+                <dt className="label-mono text-faint">Defender</dt>
+                <dd className="mt-1 flex items-center gap-2 text-sm font-medium text-ink">
+                  <span aria-hidden="true" className="h-2 w-2 rounded-full bg-ok" />
+                  Active · recommendation-only
+                </dd>
+              </div>
+              <div>
+                <dt className="label-mono text-faint">Open alerts</dt>
+                <dd className="mt-1 text-sm font-medium text-ink">{openAlerts}</dd>
+              </div>
+            </dl>
+            <div className="grid gap-4 border-t border-line py-3 sm:grid-cols-2">
+              <label className="flex min-w-0 flex-col gap-1">
+                <span className="label-mono text-faint">Attacker scenario</span>
+                <select
+                  aria-label="Attacker scenario"
+                  className={inputClass}
+                  value={selectedScenario}
+                  onChange={e => { setScenarioId(e.target.value); setCurrentStep(0); }}
+                >
+                  {scenarios.map(s => <option key={s} value={s}>{scenarioName(s)}</option>)}
                 </select>
-              </Field>
+              </label>
+              {protocols.status === 'ready' && protocols.data.length > 0 && (
+                <label className="flex min-w-0 flex-col gap-1">
+                  <span className="label-mono text-faint">Evaluation run</span>
+                  <select
+                    aria-label="Evaluation run"
+                    className={inputClass}
+                    value={protocol}
+                    onChange={e => { setProtocol(e.target.value); setCurrentStep(0); }}
+                  >
+                    {protocols.data.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </label>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+        <p role="note" className="label-mono mt-3 inline-flex rounded-full border border-line px-3 py-1 text-faint" data-testid="lab-caveat">
+          Recorded run · test network
+        </p>
       </header>
-      {!DEMO_ONLY && <OptionalSession><SignedInDefenseProjects /></OptionalSession>}
       {protocols.status === 'loading' && <Loading label="Finding evaluation runs" />}
       {protocols.status === 'error' && <ErrorState error={protocols.error} context="Could not list evaluation runs" />}
       {protocols.status === 'ready' && protocols.data.length === 0 && <Empty>No committed evaluation bundle (rl-defense/results/protocol-*/defense_lab.json) was found.</Empty>}
       {protocol && bundle.status === 'loading' && <Loading label={`Loading ${protocol}`} />}
       {bundle.status === 'error' && <ErrorState error={bundle.error} context="Evaluation bundle rejected" />}
-      {bundle.status === 'ready' && <Lab data={bundle.data} />}
+      {bundle.status === 'ready' && <Lab data={bundle.data} scenarioId={selectedScenario} onStep={setCurrentStep} />}
     </>
   );
 }
@@ -122,20 +170,16 @@ function SignedInDefenseProjects() {
   );
 }
 
-function Lab({ data }: { data: BundleResponse }) {
+function Lab({ data, scenarioId, onStep }: { data: BundleResponse; scenarioId: string; onStep: (t: number) => void }) {
   const { bundle, provenance } = data;
-  const n = sampleSize(bundle, null);
+  const defenderEpisodes = bundle.episodes.filter(e => e.policy === 'ddqn');
+  const episode = defenderEpisodes.find(e => e.scenario === scenarioId)
+  const scenario = bundle.scenarios.find(s => s.name === episode?.scenario);
   return (
     <div className="flex flex-col gap-16">
-      <ul className="lab-chips" aria-label="Evaluation at a glance">
-        <li className="lab-chip"><strong>{n.toLocaleString()}</strong> held-out runs</li>
-        <li className="lab-chip"><strong>{bundle.metrics.length}</strong> defenders compared</li>
-        <li className="lab-chip"><strong>{bundle.scenarios.length}</strong> attacker scenarios</li>
-        <li className="lab-chip"><strong>{bundle.training_seeds.length}</strong> training seeds</li>
-        {!bundle.simulation_only && <li className="lab-chip lab-chip-warn">simulation flag missing</li>}
-      </ul>
+      <LiveView episode={episode} scenario={scenario} onStep={onStep} />
       <Scoreboard bundle={bundle} />
-      <Replay bundle={bundle} />
+      {!DEMO_ONLY && <OptionalSession><SignedInDefenseProjects /></OptionalSession>}
       <details className="group rounded-2xl border border-line bg-panel" data-testid="lab-details">
         <summary className="flex cursor-pointer list-none items-center gap-2 px-5 py-4 text-sm font-semibold">
           <span aria-hidden="true" className="inline-block transition-transform group-open:rotate-90">▸</span>
@@ -179,7 +223,7 @@ function Headline({ bundle }: { bundle: DefenseLabBundle }) {
   });
   if (tiles.length === 0) return null;
   return (
-    <dl className="lab-headline mt-6" data-testid="lab-takeaway" aria-label={keyTakeaway(bundle) ?? undefined}>
+    <dl className="lab-headline mt-6" data-testid="lab-takeaway" aria-label="Performance summary" aria-description={keyTakeaway(bundle) ?? undefined}>
       {tiles.map(({ metric, label, ai, vs }) => (
         <div key={metric.key} className="lab-headline-tile">
           <dt className="sr-only">Trained AI defender: {metric.title}</dt>
@@ -215,10 +259,10 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
     .filter(m => !m.cells.every(c => c.value === null));
   return (
     <section aria-labelledby="score-title" data-testid="lab-scoreboard" className="py-14 md:py-20">
-      <p className="lab-eyebrow">01 — The numbers</p>
-      <h2 id="score-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Who defends best?</h2>
+      <p className="lab-eyebrow">Performance</p>
+      <h2 id="score-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">How it performs</h2>
       <p className="mt-2 max-w-3xl text-sm text-muted">
-        {defenderCountPhrase(bundle.metrics.length, true)}, each tested on {n.toLocaleString()} evaluation runs excluded from training.
+        {defenderCountPhrase(bundle.metrics.length, true)}, tested on {n.toLocaleString()} held-out runs across {bundle.scenarios.length} attacker scenarios and {bundle.training_seeds.length} training seeds.
       </p>
       <Headline bundle={bundle} />
       <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -266,35 +310,23 @@ function Scoreboard({ bundle }: { bundle: DefenseLabBundle }) {
   );
 }
 
-function Replay({ bundle }: { bundle: DefenseLabBundle }) {
-  const policies = [...new Set(bundle.episodes.map(e => e.policy))];
-  const scenarios = [...new Set(bundle.episodes.map(e => e.scenario))];
-  const [policy, setPolicy] = useState(policies.includes('ddqn') ? 'ddqn' : policies[0] ?? '');
-  const [scenarioId, setScenarioId] = useState(scenarios[0] ?? '');
-  const index = Math.max(0, bundle.episodes.findIndex(e => e.policy === policy && e.scenario === scenarioId));
-  const episode: LabEpisode | undefined = bundle.episodes[index];
-  const scenario = bundle.scenarios.find(s => s.name === episode?.scenario);
+function LiveView({ episode, scenario, onStep }: { episode: LabEpisode | undefined; scenario: DefenseLabBundle['scenarios'][number] | undefined; onStep: (t: number) => void }) {
   return (
     <section aria-labelledby="replay-title">
-      <p className="lab-eyebrow">02 — Watch it in action</p>
-      <h2 id="replay-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Replay a recorded evaluation</h2>
-      <p className="mt-2 max-w-3xl text-sm text-muted">Pick a defender and an attacker, press play, and follow what the defender saw and did at each step.</p>
+      <p className="lab-eyebrow">Defender activity</p>
+      <h2 id="replay-title" className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">Network view</h2>
       {!episode || !scenario ? <div className="mt-4"><Empty>This bundle has no recorded episodes.</Empty></div> : (
-        <div className="lab-replay-card mt-6">
-          <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line px-5 py-4">
-            <div role="group" aria-label="Defender" className="lab-segment">
-              {policies.map(p => (
-                <button key={p} type="button" aria-pressed={p === policy} onClick={() => setPolicy(p)} className="lab-segment-btn">{policyName(p)}</button>
-              ))}
-            </div>
-            <label className="flex flex-col gap-1 text-xs text-muted">
-              Attacker
-              <select aria-label="Attacker scenario" className={inputClass} value={scenarioId} onChange={e => setScenarioId(e.target.value)}>
-                {scenarios.map(s => <option key={s} value={s}>{scenarioName(s)}</option>)}
-              </select>
-            </label>
-          </div>
-          <div className="p-5"><ReplayStage key={index} episode={episode} scenario={scenario} /></div>
+        <div className="lab-replay-card mt-6 p-5">
+          <ReplayStage
+            key={`${episode.scenario}-${episode.episode_seed}`}
+            episode={episode}
+            scenario={scenario}
+            autoPlay
+            onStep={onStep}
+            side={({ episode: currentEpisode, scenario: currentScenario, t }) => (
+              <ConsoleSide key={`${currentScenario.name}-${currentEpisode.episode_seed}`} episode={currentEpisode} scenario={currentScenario} t={t} />
+            )}
+          />
         </div>
       )}
     </section>

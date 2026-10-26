@@ -4,12 +4,21 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 
 /**
- * The landing hero's light, carried to every other page: drifting ember orbs, a faint grid and
+ * The landing hero's lava lamp, carried to every other page: drifting, stretching ember blobs, a faint grid and
  * grain on a fixed layer behind the content (styles in globals.css, `.ambient`; hidden on the
  * landing itself). Once per frame it writes the page's scroll progress as --sy for a slow
  * parallax, and the pointer position (--gx/--gy) on the panel under the cursor for its glow.
  * Purely decorative: aria-hidden, no pointer events, static under reduced motion.
  */
+const BLOBS = ['a', 'b', 'c', 'd', 'e'] as const;
+
+/** Each part of the site gets its own arrangement of the hero's lava-lamp blobs. */
+export function ambientVariant(pathname: string): 'console' | 'lab' | 'site' {
+  if (pathname.startsWith('/projects') || pathname.startsWith('/connect')) return 'console';
+  if (pathname.startsWith('/lab') || pathname.startsWith('/live-defense')) return 'lab';
+  return 'site';
+}
+
 export function Ambient() {
   const ref = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -53,10 +62,10 @@ export function Ambient() {
   // The landing keeps its own hero exactly as designed: nothing of this layer is rendered there.
   if (pathname === '/') return null;
   return (
-    <div ref={ref} aria-hidden="true" className="ambient">
-      <span className="ambient-orb ambient-orb-a" />
-      <span className="ambient-orb ambient-orb-b" />
-      <span className="ambient-orb ambient-orb-c" />
+    <div ref={ref} aria-hidden="true" className="ambient" data-variant={ambientVariant(pathname)}>
+      <span className="ambient-blobs">
+        {BLOBS.map(blob => <span key={blob} className={`ambient-blob ambient-blob-${blob}`} />)}
+      </span>
       <span className="ambient-grid" />
       <span className="ambient-grain" />
     </div>

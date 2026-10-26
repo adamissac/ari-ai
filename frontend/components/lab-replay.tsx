@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { NodeGraph } from '@/components/node-graph';
 import { num } from '@/lib/format';
 import { episodeOutcome, SCENARIO_WORDS, STAGE_WORDS } from '@/lib/lab-plain';
@@ -12,8 +12,16 @@ import type { HiddenStage, LabEpisode, LabScenario } from '@/lib/lab-types';
 
 const SPEEDS = [{ label: '1×', ms: 1200 }, { label: '4×', ms: 300 }, { label: '8×', ms: 150 }] as const;
 
+type ReplayStageProps = {
+  episode: LabEpisode;
+  scenario: LabScenario;
+  autoPlay?: boolean;
+  onStep?: (t: number) => void;
+  side?: (ctx: { episode: LabEpisode; scenario: LabScenario; t: number }) => ReactNode;
+};
+
 /** Recorded-episode player: status, network map, story panel, and playback timeline. */
-export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenario: LabScenario }) {
+export function ReplayStage({ episode, scenario, autoPlay = false, onStep, side }: ReplayStageProps) {
   const steps = episode.steps.length;
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -29,7 +37,17 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
     return () => clearInterval(id);
   }, [playing, steps, speed]);
 
+  useEffect(() => {
+    if (!autoPlay) return;
+    const reducedMotion = typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reducedMotion) return;
+    const id = window.requestAnimationFrame(() => setPlaying(true));
+    return () => window.cancelAnimationFrame(id);
+  }, [autoPlay]);
+
   const step = episode.steps[Math.min(t, steps - 1)];
+  useEffect(() => { onStep?.(step?.t ?? 0); }, [onStep, step?.t]);
   const seek = (v: number) => { setPlaying(false); setT(Math.max(0, Math.min(steps - 1, v))); };
   const nextMoment = moments.find(m => m.t > t);
   const prevMoment = [...moments].reverse().find(m => m.t < t);
@@ -41,18 +59,19 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Status overview */}
-      <div className="lab-status" data-testid="lab-status">
-        <span className="lab-mode label-mono" data-testid="lab-mode">Isolated test network · recorded evaluation</span>
-        <span className="lab-status-item"><span className="text-faint">Attacker</span> {SCENARIO_WORDS[episode.scenario]?.name ?? episode.scenario}</span>
-        <span className="lab-status-item"><span className="text-faint">Watching</span> {scenario.nodes.length} services</span>
-        <span className={`lab-status-item lab-tone-${status.tone}`}><span aria-hidden="true" className="lab-dot" />{status.text}</span>
-        <span className="lab-status-item min-w-0"><span className="text-faint">Latest AI action</span> <span className="truncate">{last ? `${ACTION_SHORT[parseAction(last.action).verb] ?? last.action}${parseAction(last.action).node ? ` ${label(parseAction(last.action).node!)}` : ''} (step ${last.t})` : 'none yet'}</span></span>
-      </div>
+      {!side && (
+        <div className="lab-status" data-testid="lab-status">
+          <span className="lab-mode label-mono" data-testid="lab-mode">Isolated test network · recorded evaluation</span>
+          <span className="lab-status-item"><span className="text-faint">Attacker</span> {SCENARIO_WORDS[episode.scenario]?.name ?? episode.scenario}</span>
+          <span className="lab-status-item"><span className="text-faint">Watching</span> {scenario.nodes.length} services</span>
+          <span className={`lab-status-item lab-tone-${status.tone}`}><span aria-hidden="true" className="lab-dot" />{status.text}</span>
+          <span className="lab-status-item min-w-0"><span className="text-faint">Latest AI action</span> <span className="truncate">{last ? `${ACTION_SHORT[parseAction(last.action).verb] ?? last.action}${parseAction(last.action).node ? ` ${label(parseAction(last.action).node!)}` : ''} (step ${last.t})` : 'none yet'}</span></span>
+        </div>
+      )}
 
       <div className="replay-stage-grid">
         <div className="min-w-0">
-          <NodeGraph scenario={scenario} states={step?.nodes ?? []} action={step?.action} t={t} lastAction={last} selected={selected} onSelect={setSelected} showTruth={truth} />
+          <NodeGraph scenario={scenario} states={step?.nodes ?? []} action={step?.action} t={t} lastAction={last} selected={selected} onSelect={setSelected} showTruth={side ? false : truth} />
           <p className="lab-swipe">Swipe the map sideways to see every service →</p>
           {/* Playback: one slim control bar; the scrubber is the timeline (YouTube-style chapter dots). */}
           <div className="lab-player">
@@ -78,23 +97,25 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
           </p>
         </div>
 
-        <aside className="replay-explanation" aria-label="What's happening">
-          <div className="lab-now">
-            <p className="label-mono text-faint flex justify-between"><span>Step {step?.t ?? 0} of {scenario.horizon}</span><span>Recorded</span></p>
-            <dl className="mt-3 flex flex-col gap-3 text-sm">
-              <div><dt className="lab-q label-mono text-faint">What’s happening</dt><dd className="text-white/85" data-testid="lab-step-story">{s.now}</dd></div>
-              <div>
-                <dt className="lab-q label-mono text-faint">What the AI did</dt>
-                <dd data-testid="lab-step-action"><span className="sr-only">At step {step?.t ?? 0} the defender: </span><strong className="block text-white">{s.did}</strong>{s.tradeoff && <span className="mt-1 block text-white/60">{s.tradeoff}</span>}</dd>
-              </div>
-              <div><dt className="lab-q label-mono text-faint">Why</dt><dd className="text-white/70">{s.why}</dd></div>
-              {s.effect && <div><dt className="lab-q label-mono text-faint">Did it change anything?</dt><dd className="text-white/85" data-testid="lab-step-effect">{s.effect}</dd></div>}
-            </dl>
-          </div>
-          {selected ? <ServicePanel episode={episode} scenario={scenario} name={selected} t={t} truth={truth} onClose={() => setSelected(null)} /> : (
-            <p className="rounded-xl border border-dashed border-line px-4 py-3 text-sm text-muted">Select a service on the map to see what it does and what the AI saw there.</p>
-          )}
-        </aside>
+        {side ? side({ episode, scenario, t: step?.t ?? 0 }) : (
+          <aside className="replay-explanation" aria-label="What's happening">
+            <div className="lab-now">
+              <p className="label-mono text-faint flex justify-between"><span>Step {step?.t ?? 0} of {scenario.horizon}</span><span>Recorded</span></p>
+              <dl className="mt-3 flex flex-col gap-3 text-sm">
+                <div><dt className="lab-q label-mono text-faint">What’s happening</dt><dd className="text-white/85" data-testid="lab-step-story">{s.now}</dd></div>
+                <div>
+                  <dt className="lab-q label-mono text-faint">What the AI did</dt>
+                  <dd data-testid="lab-step-action"><span className="sr-only">At step {step?.t ?? 0} the defender: </span><strong className="block text-white">{s.did}</strong>{s.tradeoff && <span className="mt-1 block text-white/60">{s.tradeoff}</span>}</dd>
+                </div>
+                <div><dt className="lab-q label-mono text-faint">Why</dt><dd className="text-white/70">{s.why}</dd></div>
+                {s.effect && <div><dt className="lab-q label-mono text-faint">Did it change anything?</dt><dd className="text-white/85" data-testid="lab-step-effect">{s.effect}</dd></div>}
+              </dl>
+            </div>
+            {selected ? <ServicePanel episode={episode} scenario={scenario} name={selected} t={t} truth={truth} onClose={() => setSelected(null)} /> : (
+              <p className="rounded-xl border border-dashed border-line px-4 py-3 text-sm text-muted">Select a service on the map to see what it does and what the AI saw there.</p>
+            )}
+          </aside>
+        )}
       </div>
 
       <div className="lab-replay-foot">
@@ -102,7 +123,7 @@ export function ReplayStage({ episode, scenario }: { episode: LabEpisode; scenar
           <span className={`lab-outcome ${episode.compromised ? 'lab-outcome-bad' : 'lab-outcome-ok'}`}>{episode.compromised ? 'Attacker won' : 'Attack contained'}</span>
           <p className="min-w-0 text-sm text-ink" data-testid="lab-episode-outcome">{episodeOutcome(episode)} <span className="text-muted" data-testid="lab-episode-story">{SCENARIO_WORDS[episode.scenario]?.note ?? ''}</span></p>
         </div>
-        <GroundTruth episode={episode} t={t} truth={truth} onToggle={setTruth} label={label} />
+        {!side && <GroundTruth episode={episode} t={t} truth={truth} onToggle={setTruth} label={label} />}
       </div>
     </div>
   );
