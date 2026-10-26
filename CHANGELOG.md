@@ -6,8 +6,11 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Added a repository-scoped project workspace with Analytics, Commits, Findings, Approvals, Settings, and More navigation; commit history and assessment records remain scoped to the selected repository.
+- Restored the pre-redesign look and fixed background, overflow and spacing bugs.
 - Setup now shows the actual expiry of the sandbox scope being approved; landing copy states the default and maximum authorization durations.
 - Refined the console account menu, mobile project navigation, status marks, assessment headers, and commit-to-assessment links.
+- Findings and assessment history now use mobile cards; setup review links open the project assessment-history section.
 - Added opt-in bounded exact-SHA release review automation with isolated strict
   regressions, signed evidence, existing-owner routing and a protected cost ledger.
   No automatic merge, deployment or customer enforcement.
@@ -16,13 +19,10 @@ All notable changes are documented here. Format follows
 - Expired scopes no longer appear active or qualify for assessment selection.
 - Retention now protects findings, regression memory, expectation decisions, and assessment references; per-snapshot locking closes bind/delete races, and destructive ops maintenance requires a separate token plus a current plan digest.
 - Storage report probes use savepoints so a denied optional metric does not abort later checks.
-- Added the Industrial Graphite design-token foundation and reskinned existing UI primitives and console surfaces with graphite neutrals, vermilion signal, Inter, and IBM Plex Mono.
-- Rebuilt the public landing page around a commit-to-verify signal field, six visible stages, and explicit scope and control disclosures.
+- Verify permits genuinely new recipe-declared tests while rejecting protected-test and runner-configuration tampering; it binds evidence to the candidate patch, protects pinned plugin modules and runner-shadow paths, scans changed application modules for new pytest hooks, rejects unsupported or quoted diff headers, and runs its project suite with the pinned test roots.
 - Verify's Python hook scan accepts UTF-8 BOMs, `--rootdir` preserves semantic checks for `tox.ini`, `setup.cfg`, and `pyproject.toml`, and unreadable or invalid pinned pytest configuration fails closed.
 - Verify uses a context-aware pytest binding scan for unpacking, imports, global stores, and hook-rooted attribute/subscript writes, `setattr`, and `del`, without treating local names or subscript indexes as bindings. It keeps changed `conftest.py` files byte-protected when they are config symlink targets, checks linked config target content through fresh checkouts, and ignores syntax-invalid inert test-root Python fixtures during plugin discovery. Added `apply_fresh` regressions for linked config changes and config read and walk failures.
 - Added a guided repository setup walkthrough (`/projects/<id>/setup?repo=<repoId>`): connecting a repository now lands there, and it walks through authorizing testing, tuning the code reviewer, choosing fix delivery (pull request is preselected), and starting the first review. The setup page also has decorative floating background shapes that stop moving when reduced motion is on.
-- Setup now distinguishes repository automatic reviews from push/PR review preferences and searches up to 2,000 audit events before reporting no build-recipe result.
-- Verify permits genuinely new recipe-declared tests while rejecting protected-test and runner-configuration tampering; it binds evidence to the candidate patch, protects pinned plugin modules and runner-shadow paths, scans changed application modules for new pytest hooks, rejects unsupported or quoted diff headers, and runs its project suite with the pinned test roots.
 - Added an hourly GitHub Actions storage watchdog for Railway volume usage and backup freshness, with idempotent issue alerts.
 - Live commit analysis no longer needs a `GITHUB_TOKEN` PAT on Vercel: `POST /api/analyze`
   reads the commit diff through the new backend route `GET /api/v1/github/commit`, which
