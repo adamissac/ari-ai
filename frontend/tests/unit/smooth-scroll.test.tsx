@@ -149,3 +149,10 @@ it('follows an in-page anchor that moves while the glide is running', () => {
   expect(positions.at(-1)).toBe(2009);
   how.remove(); link.remove();
 });
+
+it('still arrives promptly when the device paints only one frame a second', () => {
+  render(<SmoothScroll />);
+  wheel(document.body, { deltaY: 600 });
+  flush(3, 1000);
+  expect(positions.at(-1)).toBe(600);
+});

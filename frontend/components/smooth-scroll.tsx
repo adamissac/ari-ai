@@ -50,8 +50,9 @@ export function SmoothScroll() {
     };
     let last = 0;
     const tick = (now: number) => {
-      // Frame-rate independent: the same glide on 60 Hz and 120 Hz screens.
-      const dt = last ? Math.max(1, Math.min(64, now - last)) : FRAME;
+      // Time-based, not frame-based: the same glide on 60 Hz and 120 Hz screens, and a busy
+      // device painting a few frames a second still arrives on time instead of creeping.
+      const dt = last ? Math.max(1, Math.min(1000, now - last)) : FRAME;
       last = now;
       if (anchor) target = anchorTop(anchor);
       current += (target - current) * (1 - Math.pow(1 - EASE, dt / FRAME));
