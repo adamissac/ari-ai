@@ -37,7 +37,7 @@ export function LiveDefenseShell({
   };
 
   return (
-    <div className="flex flex-col gap-4" data-testid="live-defense" data-mode={mode}>
+    <div className="flex min-w-0 flex-col gap-6" data-testid="live-defense" data-mode={mode}>
       <header className="monitor-head" data-testid="live-defense-head">
         <div>
           <p className="label-mono text-white/70">Ari Live Defense · shadow-pilot (recommendation-only)</p>
