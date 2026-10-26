@@ -1,0 +1,19 @@
+independent (landing)	Run strict isolated candidate or current-main landing checks	﻿2026-10-25T23:13:24.2253327Z ##[group]Run mkdir -p "$RUNNER_TEMP/rc5-evidence"
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.2253789Z ^[[36;1mmkdir -p "$RUNNER_TEMP/rc5-evidence"^[[0m
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.2254292Z ^[[36;1mcp docs/reviews/rc5-independent/pin.json "$RUNNER_TEMP/rc5-evidence/pin.json"^[[0m
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.2254840Z ^[[36;1mPYTHONPATH=. python3 docs/reviews/rc5-independent/run.py^[[0m
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.2498278Z shell: /usr/bin/bash -e {0}
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.2498851Z env:
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.2499096Z   AUDIT_MODE: landing
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.2499376Z ##[endgroup]
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.4078838Z Traceback (most recent call last):
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.4080247Z   File "/home/runner/work/ari-ai/ari-ai/controller/docs/reviews/rc5-independent/run.py", line 15, in <module>
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.4081903Z     tree = original_git('merge-tree', '--write-tree', pin['upstream_sha'], pin['candidate_sha'], cwd=candidate).stdout.strip()
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.4082853Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.4083799Z   File "/home/runner/work/ari-ai/ari-ai/controller/scripts/ari_review/cycle.py", line 38, in git
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.4084484Z     return subprocess.run(
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.4084810Z            ^^^^^^^^^^^^^^^
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.4085212Z   File "/usr/lib/python3.12/subprocess.py", line 571, in run
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.4087298Z     raise CalledProcessError(retcode, process.args,
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.4237540Z subprocess.CalledProcessError: Command '['git', '-c', 'core.hooksPath=/dev/null', 'merge-tree', '--write-tree', '59cd0b623e1687a71de4b7653ad8171b0c569344', '45c7cd6d1ce166b0d2e1fd0b34bb6dd8987b9008']' returned non-zero exit status 1.
+independent (landing)	Run strict isolated candidate or current-main landing checks	2026-10-25T23:13:24.4252863Z ##[error]Process completed with exit code 1.
