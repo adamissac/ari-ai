@@ -2619,6 +2619,10 @@ Pinned product 6a72949efa7c0a2d3233eb6884bb7a23dfe71ced; upstream e41c9dc22e6536
 ### Repeat RC4/N8 independent review — 2026-10-25
 
 Pin 4fdcf10c vs main e41c9dc2; tip 0098f1d5 report-only. Original F1–F10/N1–N8 pass; upstream composition and VerifyEvidence blockers closed. New N9/P2: annotation regex crosses semicolon into another statement and corrupts non-secret source/stored diff. Final isolated run 40210138609: 187 pass, 3 fail, zero skip (two N9 checks and retained stale legacy GET/write-limit test); independent split-limit control passes. Collector cleanup error retained. Product CI succeeds; missing paid Codex audit is not a product finding. NO-GO pending N9 and final gates. No production edits/merge/deploy/approval. Report: docs/reviews/rc4-n8-independent/REPORT.md.
+### 2026-10-26 — stop polling after a 401
+
+- `useResource` now stops scheduled polling after an API 401; other refresh failures keep polling, and `reload()` retries.
+- Added fake-timer coverage for 500 polling, 401 stopping, and reload after 401. No task ID exists.
 
 ### Mobile findings and assessment history — 2026-10-25
 
