@@ -61,7 +61,7 @@ function ScopeRow({ scope, targets, repoName, onChange }: { scope: AuthorizedSco
   return (
     <li className="py-4 first:pt-0 last:pb-0" data-testid={`scope-${scope.id}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-medium">{scope.name}</span>
+        <span className="min-w-0 break-words font-medium">{scope.name}</span>
         <Badge view={SCOPE_STATUS[status]} />
       </div>
       <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-muted">

@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { env, evidenceShot, newUser } from './helpers';
+import { completeSetup, env, evidenceShot, newUser } from './helpers';
 
 const project = () => env('E2E_PROJECT_ID');
 
@@ -19,12 +19,12 @@ async function expectStatusBadgesInsideRows(rows: Locator, statusTestId: string)
   }
 }
 
-async function expectNoDocumentOverflow(page: Page) {
+async function expectNoDocumentOverflow(page: Page, context = '') {
   const { clientWidth, scrollWidth } = await page.evaluate(() => ({
     clientWidth: document.documentElement.clientWidth,
     scrollWidth: document.documentElement.scrollWidth,
   }));
-  expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+  expect(scrollWidth, `${context}: document width ${scrollWidth}px > viewport ${clientWidth}px`).toBeLessThanOrEqual(clientWidth);
 }
 
 test('project page titles stay below the tab band at every route and viewport', async ({ browser }) => {
@@ -33,6 +33,7 @@ test('project page titles stay below the tab band at every route and viewport', 
   const repo = env('E2E_REPO_ID');
   const base = `/projects/${project()}`;
   const routes = ['', '/commits', '/findings', '/approvals', '/settings', '/live-defense', '/incidents', '/monitoring', '/scopes', '/expectations', '/simulate'];
+  await completeSetup(page, project(), repo);
 
   for (const [width, height] of [[1440, 900], [1024, 900], [390, 844], [320, 700]] as const) {
     await page.setViewportSize({ width, height });
@@ -93,7 +94,7 @@ test('project page titles stay below the tab band at every route and viewport', 
           }
         }
       }
-      await expectNoDocumentOverflow(page);
+      await expectNoDocumentOverflow(page, `${route || '/'} at ${width}px`);
     }
   }
 });
