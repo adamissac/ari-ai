@@ -33,6 +33,14 @@ adds an entry before ending.
   fail-closed.
 - Assumptions / open questions (RQ links): in-process plugin/data tampering and
   hook swaps restored between snapshots remain residual risks.
+- Independent review of `89f218ac` confirmed four remaining in-process
+  bypasses: patched code can overwrite `pytest_audit.json` in writable `/out` or
+  flip plugin state. It can replace `pytest.Function.runtest` with a no-op. It
+  can rewrite test functions and restore its own code before the final snapshot.
+  It can rebind a module-global helper called by an unchanged hook. Review
+  verdict on 89f218ac: recommend merge with follow-ups. Follow-ups: out-of-process
+  audit channel, per-item function code hashes, hashing defaults/closures/globals,
+  per-call hook snapshots.
 - Next steps: owner to open the PR and re-brief the CI loop; no PR or CI action
   was requested for this delivery.
 - Warnings for the next session: no post-push CI checks were monitored. The

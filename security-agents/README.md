@@ -171,6 +171,17 @@ sandbox environment is scrubbed and transcripts pass through the redactor.
   malformed evidence. A suite large enough to push its audit past an output cap
   therefore fails closed, not open. Vercel has no additional cap in this
   driver, but provider-level stdout truncation has the same fail-closed result.
+- **Runtime audit limits (independent review of `89f218ac`):** the audit runs
+  in the same process as the patched code. It detects accidental or naive
+  hook/collection interference, not deliberately hostile patch code. The
+  review confirmed four ways that patched application code imported by a pinned
+  conftest or test module can still hide protected tests and be `accepted`:
+  overwriting `pytest_audit.json` in the writable sandbox out-dir (or flipping
+  the plugin's state); replacing `pytest.Function.runtest` with a no-op; a hook
+  that rewrites test functions and restores its own code before the final
+  snapshot; and rebinding a module-global helper that an unchanged hook calls.
+  These fall under the residual risk below. Human review of the fix PR diff
+  remains required.
 - **Known limitation:** a pre-existing path under a recipe test root longer
   than 400 characters is rejected by `safe_rel_path`; Verify fails closed and
   rejects every patch for that repository. The longest tracked paths currently

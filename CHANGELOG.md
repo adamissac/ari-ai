@@ -6,7 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
-- Verify now compares always-on runtime pytest hook, collection, and outcome audits against baseline runs; missing or incomplete audit evidence fails closed. The application-code scanner also avoids comprehension-target, local-root mutation, and literal-constant false positives.
+- Verify now compares always-on runtime pytest hook, collection, and outcome audits against baseline runs; missing or incomplete audit evidence fails closed. The application-code scanner also avoids comprehension-target, local-root mutation, and literal-constant false positives. Defense in depth only: it does not resist deliberately hostile in-process patch code (see security-agents/README.md).
 - Added a repository-scoped project workspace with Analytics, Commits, Findings, Approvals, Settings, and More navigation; commit history and assessment records remain scoped to the selected repository.
 - Restored the pre-redesign look and fixed background, overflow and spacing bugs.
 - Setup now shows the actual expiry of the sandbox scope being approved; landing copy states the default and maximum authorization durations.
