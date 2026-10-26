@@ -6,7 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
-    "0.26.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    "0.27.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
     # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents (PR #49);
     # 0.8 FindingDetail / AssessmentReport response DTOs (additive);
     # 0.9 CheckCategory enum (Probe ids + V0 fixture aliases);
@@ -75,4 +75,7 @@ SCHEMA_VERSION = (
     #      kept as the access record. Alembic: 0016 tenant_rls + 0017
     #      worker_heartbeats (upstream), then 0018 execution_reliability +
     #      0019 repository_disconnect (release workstreams).
+    # 0.27 RepositorySetup / RepositorySetupUpdate / RepositorySetupAnswers
+    #      (additive): server-saved setup walkthrough progress per repository
+    #      (GET/PATCH /repositories/{id}/setup). Alembic 0020 repository_setup.
 )

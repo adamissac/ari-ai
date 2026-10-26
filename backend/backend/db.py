@@ -115,6 +115,8 @@ repositories = sa.Table(
     sa.Column("default_branch", sa.String(200), nullable=False),
     sa.Column("installation_id", sa.BigInteger),
     sa.Column("disconnected_at", sa.DateTime(timezone=True)),
+    # Setup walkthrough progress (shared.api.RepositorySetup minus repo_id); NULL = not started.
+    sa.Column("setup", JSONB),
     _created(),
     sa.UniqueConstraint("provider", "full_name", name="uq_repositories_provider_full_name"),
 )
