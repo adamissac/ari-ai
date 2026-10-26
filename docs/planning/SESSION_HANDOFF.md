@@ -2619,6 +2619,10 @@ Pinned product 6a72949efa7c0a2d3233eb6884bb7a23dfe71ced; upstream e41c9dc22e6536
 ### Repeat RC4/N8 independent review — 2026-10-25
 
 Pin 4fdcf10c vs main e41c9dc2; tip 0098f1d5 report-only. Original F1–F10/N1–N8 pass; upstream composition and VerifyEvidence blockers closed. New N9/P2: annotation regex crosses semicolon into another statement and corrupts non-secret source/stored diff. Final isolated run 40210138609: 187 pass, 3 fail, zero skip (two N9 checks and retained stale legacy GET/write-limit test); independent split-limit control passes. Collector cleanup error retained. Product CI succeeds; missing paid Codex audit is not a product finding. NO-GO pending N9 and final gates. No production edits/merge/deploy/approval. Report: docs/reviews/rc4-n8-independent/REPORT.md.
+### 2026-10-26 — stop polling after a 401
+
+- `useResource` now stops scheduled polling after an API 401; other refresh failures keep polling, and `reload()` retries.
+- Added fake-timer coverage for 500 polling, 401 stopping, and reload after 401. No task ID exists.
 
 ### Mobile findings and assessment history — 2026-10-25
 
@@ -2673,6 +2677,26 @@ Pin 4fdcf10c vs main e41c9dc2; tip 0098f1d5 report-only. Original F1–F10/N1–
 - The original full run also measured 349px document width at a 320px viewport on Live Defense. Live Defense component files are unchanged from `feat/adam/console-polish`; no baseline E2E reproduction was run, so identical reproduction on that branch is unverified. This failure is outside the setup walkthrough and `overview.tsx` remains untouched.
 - Frontend lint passed for the changed E2E files (0 errors), typecheck passed, and the latest full unit suite passed 101 files / 424 tests; production build passed. CoachMark's focused unit test passed 2/2 and the final production build passed after the sticky-header selector refinement.
 - Next on `:3205` and API on `:59039` should be running after handoff; E2E runs use the test-only scripted model transport. The test harness's `XDG_RUNTIME_DIR` warning was non-fatal; `/run/user/1000` exists and is owned by the current user.
+### Console header and tab-band follow-up — 2026-10-26
+
+- Baseline real-stack measurements showed a transparent 77px sticky site header at desktop and a 121px header at mobile. The project row scrolled underneath it, while the tab band was relative-positioned. The project body already had `pt-6`.
+- The console header now has an opaque surface and higher stacking order; the repository tab band sticks at the measured header height with an opaque surface. E2E now checks route spacing, layering, and the sticky offset.
+- At 320px, Live Defense document width measured 320px. Its tab navigation is intentionally horizontally scrollable (`475px` content inside a `152px` viewport); the reported 349px document overflow did not reproduce on `feat/adam/console-polish`. No Live Defense component or route wrapper was changed.
+- Analytics E2E passed at scrollY 50/300 on 1440 and 390. The header remained opaque at 77px desktop / 121px mobile; the tab band sat at y=87/187 at 50px scroll and y=77/121 at 300px scroll. It was visually reviewed with the before/after captures.
+- Lint passed (zero errors; one existing unused-variable warning at `first-responder.tsx:173`), typecheck passed, and unit tests passed (99 files / 418 tests). The E2E stack's production build passed. Targeted pages/tab-band E2E passed 2/2, covering every project route at 1440/1024/390/320 plus the scroll captures and Live Defense 320px width.
+- The broader `pages.spec.ts` attempt without a preceding journey run passed 4/9 tests. After fixing the in-scope sticky-position override, the two header/tab-band tests passed. The other failures were: a missing seeded commit row, an unavailable `hardened` finding option, and a missing `findings-mobile-list` test id. These were not validated against the base branch and are not claimed as pre-existing.
+- Baseline scroll screenshots and metrics: `/home/ubuntu/shots/console-polish/scroll-fix-before/`; after screenshots: `/home/ubuntu/shots/console-polish/scroll-fix-after/`. The baseline 1440px scroll-50 image was clamped to scrollY 0; the 1440px scroll-300 and both 390px scroll captures reached their requested offsets.
+
+
+### Console polish follow-up — 2026-10-26
+
+- Expectations, Incidents, Monitoring, Scopes, and Simulate now follow the selected-repository workspace and use flatter divider-based lists; Incidents are labeled project-wide, and monitoring events without a repository ID are excluded rather than attributed. Project-wide monitoring summaries are labeled as such.
+- The Commits 7 agents tab now fetches the selected run's persisted assessment detail, validates its repository and SHA, and renders a compact sector map above the flat agent-run list. Replay phase chips seek to their first recorded tick and focus the phase's first agent.
+- Live Defense remains unchanged: `frontend/components/live-defense/overview.tsx` is claimed by another agent, and coordination was unresolved at handoff. Do not edit that component until ownership coordination is resolved.
+- Verification: frontend lint passed with 0 errors and one existing warning in `components/live-defense/first-responder.tsx:173`; typecheck passed; unit suite passed (99 files / 418 tests). The real-stack E2E set passed across the initial run plus focused reruns: 12 tests total, including pages, journey, interface, and commit-workspace coverage. The interface spec now asserts the accessible GitHub App permissions region. The webhook journey test requires `E2E_WEBHOOK_SECRET=e2e-webhook-secret-not-real`, matching the test-only stack configuration.
+- Captures and viewport checks: `/home/ubuntu/shots/console-polish/after/` contains full-page and viewport screenshots for all 11 requested routes at 1440×900 and 390×844, plus 1024×900 and 320×700. Every captured `documentElement.scrollWidth` matched its viewport width. The production build passed.
+- Live Defense remains unchanged: `frontend/components/live-defense/overview.tsx` is claimed by another agent, and coordination was unresolved. Do not edit that component until ownership coordination is resolved.
+
 ### Console header and tab-band follow-up — 2026-10-26
 
 - Baseline real-stack measurements showed a transparent 77px sticky site header at desktop and a 121px header at mobile. The project row scrolled underneath it, while the tab band was relative-positioned. The project body already had `pt-6`.

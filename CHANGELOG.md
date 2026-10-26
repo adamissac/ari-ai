@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Signed-out pages stop polling the API every few seconds after a 401.
 - Restyled the landing problem-timeline labels and checked-count chip as ember glass.
 - Added a warm, slow-moving landing hero, continuous ember atmosphere, eased problem-story progression, glass walkthrough/pricing panels, and a reduced-motion static fallback.
 - Replaced the grouped project setup flow with eight resumable one-question steps, coach marks, persisted per-repository answers, first-run tab gating, and a one-time post-setup workspace tour.
