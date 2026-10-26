@@ -73,7 +73,7 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   await expect(page.getByTestId('lab-tradeoff')).toContainText('No single measure tells the whole story');
   await expect(page.getByTestId('lab-timeline')).toBeVisible();
   await expect(page.getByTestId('lab-episode-outcome')).toContainText('test attacker');
-  await expect(page.getByRole('heading', { name: 'Live view' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Network view' })).toBeVisible();
   await expect(page.getByTestId('lab-console-activity')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Waiting for your approval' })).toBeVisible();
   // The provenance stays one click away for reviewers.
