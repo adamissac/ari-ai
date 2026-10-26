@@ -96,18 +96,25 @@ export class ApiClient {
   scopes(projectId: string, options?: RequestOptions): Promise<Page<C.AuthorizedScope>> {
     return this.list(`/projects/${segment(projectId)}/scopes`, 'AuthorizedScope', options);
   }
-  /** Newest first, 50 per page. Pass the previous page's `next_cursor` as `cursor` for the next (older) page. */
-  assessments(projectId: string, options?: RequestOptions & { cursor?: string }): Promise<Page<C.Assessment>> {
-    const base = `/projects/${segment(projectId)}/assessments`;
-    const cursor = options?.cursor;
-    const path = cursor === undefined ? base : `${base}?cursor=${segment(cursor)}`;
+  /**
+   * Newest first, 50 per page. Pass the previous page's `next_cursor` as `cursor` for the next (older) page.
+   * `repoId` filters on the server, so one repository's history is never hidden behind another's first page.
+   */
+  assessments(projectId: string, options?: RequestOptions & { cursor?: string; repoId?: string }): Promise<Page<C.Assessment>> {
+    const query = [
+      ...(options?.repoId === undefined ? [] : [`repo_id=${segment(options.repoId)}`]),
+      ...(options?.cursor === undefined ? [] : [`cursor=${segment(options.cursor)}`]),
+    ];
+    const path = `/projects/${segment(projectId)}/assessments${query.length ? `?${query.join('&')}` : ''}`;
     return this.list(path, 'Assessment', options?.signal ? { signal: options.signal } : undefined);
   }
   agentRuns(assessmentId: string, options?: RequestOptions): Promise<Page<C.AgentRun>> {
     return this.list(`/assessments/${segment(assessmentId)}/runs`, 'AgentRun', options);
   }
-  findings(projectId: string, options?: RequestOptions): Promise<Page<C.Finding>> {
-    return this.list(`/projects/${segment(projectId)}/findings`, 'Finding', options);
+  /** All findings, or only one repository's when `repoId` is given (filtered on the server). */
+  findings(projectId: string, options?: RequestOptions & { repoId?: string }): Promise<Page<C.Finding>> {
+    const query = options?.repoId === undefined ? '' : `?repo_id=${segment(options.repoId)}`;
+    return this.list(`/projects/${segment(projectId)}/findings${query}`, 'Finding', options?.signal ? { signal: options.signal } : undefined);
   }
   approvals(projectId: string, options?: RequestOptions): Promise<Page<C.Approval>> {
     return this.list(`/projects/${segment(projectId)}/approvals`, 'Approval', options);
@@ -167,6 +174,10 @@ export class ApiClient {
   /** Owner kill-switch: parks the repository server-side; the GitHub App grant stays until uninstalled. */
   disconnectRepository(repoId: string, options?: RequestOptions): Promise<{ id: string; disconnected: boolean }> {
     return this.request(`/repositories/${segment(repoId)}/disconnect`, RAW, options, {}) as Promise<{ id: string; disconnected: boolean }>;
+  }
+  /** Re-enables a disconnected repository after GitHub re-confirms the owner's access. Automatic reviews stay off. */
+  reconnectRepository(repoId: string, options?: RequestOptions): Promise<{ id: string; disconnected: boolean }> {
+    return this.request(`/repositories/${segment(repoId)}/reconnect`, RAW, options, {}) as Promise<{ id: string; disconnected: boolean }>;
   }
   onboardingStatus(projectId: string, options?: RequestOptions): Promise<C.OnboardingStatus> {
     return this.request(`/projects/${segment(projectId)}/onboarding`, 'OnboardingStatus', options) as Promise<C.OnboardingStatus>;
@@ -463,10 +474,12 @@ export class ApiClient {
       const r = object(raw, 'repository');
       if (typeof r.full_name !== 'string' || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(r.full_name)
         || !Number.isSafeInteger(r.installation_id) || typeof r.default_branch !== 'string'
-        || typeof r.private !== 'boolean' || !(r.connected_repo_id === null || typeof r.connected_repo_id === 'string')) {
+        || typeof r.private !== 'boolean' || !(r.connected_repo_id === null || typeof r.connected_repo_id === 'string')
+        // Absent on backends that predate the field; never trusted when present but malformed.
+        || !(r.disconnected === undefined || typeof r.disconnected === 'boolean')) {
         throw new ProtocolError('Invalid repository list');
       }
-      return { full_name: r.full_name, installation_id: r.installation_id as number, default_branch: r.default_branch, private: r.private, connected_repo_id: r.connected_repo_id as string | null };
+      return { full_name: r.full_name, installation_id: r.installation_id as number, default_branch: r.default_branch, private: r.private, connected_repo_id: r.connected_repo_id as string | null, disconnected: r.disconnected === true };
     });
     return { items, install_url: install as string | null };
   }
@@ -558,7 +571,10 @@ export interface AccessibleRepository {
   installation_id: number;
   default_branch: string;
   private: boolean;
+  /** The Ari repository row, kept after a disconnect so its history stays reachable. */
   connected_repo_id: string | null;
+  /** True when that row is disconnected: Ari no longer reads the repository until it is reconnected. */
+  disconnected: boolean;
 }
 export interface JobState { id: string; kind: string; status: string; result: unknown; error: string | null }
 export interface AccessibleRepositories { items: AccessibleRepository[]; install_url: string | null }

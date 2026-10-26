@@ -155,6 +155,9 @@ test('assessments list sends a validated cursor and keeps the unpaged path', asy
   assert.equal(seen, 'http://localhost/api/v1/projects/prj_12345678/assessments');
   await api.assessments('prj_12345678', { cursor: 'asm_99999999' });
   assert.equal(seen, 'http://localhost/api/v1/projects/prj_12345678/assessments?cursor=asm_99999999');
+  await api.assessments('prj_12345678', { repoId: 'rep_12345678', cursor: 'asm_99999999' });
+  assert.equal(seen, 'http://localhost/api/v1/projects/prj_12345678/assessments?repo_id=rep_12345678&cursor=asm_99999999');
+  assert.throws(() => api.assessments('prj_12345678', { repoId: 'rep_1&x=1' }), ProtocolError);
   seen = '';
   assert.throws(() => api.assessments('prj_12345678', { cursor: 'a&b=../x' }), ProtocolError);
   assert.equal(seen, '');
@@ -182,12 +185,16 @@ test('GitHub repository picker validates every row and the install link', async 
   const repo = { full_name: 'acme/shop', installation_id: 42, default_branch: 'main', private: true, connected_repo_id: null };
   const ok = await client(() => json({ items: [repo], install_url: 'https://github.com/apps/ari-ai/installations/new', next_cursor: null })).githubRepositories();
   assert.equal(ok.items[0].installation_id, 42);
+  assert.equal(ok.items[0].disconnected, false);
+  const parked = await client(() => json({ items: [{ ...repo, connected_repo_id: 'rep_1', disconnected: true }], install_url: null, next_cursor: null })).githubRepositories();
+  assert.equal(parked.items[0].disconnected, true);
   assert.equal(ok.install_url, 'https://github.com/apps/ari-ai/installations/new');
   for (const body of [
     { items: [{ ...repo, full_name: 'acme/shop;rm' }], install_url: null, next_cursor: null },
     { items: [{ ...repo, installation_id: '42' }], install_url: null, next_cursor: null },
     { items: [repo], install_url: 'javascript:alert(1)', next_cursor: null },
     { items: [repo], install_url: null, next_cursor: 'more' },
+    { items: [{ ...repo, disconnected: 'yes' }], install_url: null, next_cursor: null },
   ]) {
     await assert.rejects(client(() => json(body)).githubRepositories(), ProtocolError);
   }
