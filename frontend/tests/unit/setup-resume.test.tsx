@@ -111,5 +111,5 @@ it('links setup review history to the project assessment section', () => {
   mocks.query = 'repo=rep_12345678&step=7';
   mocks.runItems = [{ id: 'asm_12345678', repo_id: repo.id }];
   render(<SetupPage />);
-  expect(screen.getByRole('link', { name: 'See your reviews' }).getAttribute('href')).toBe('/projects/prj_12345678#assessments');
+  expect(screen.getByRole('link', { name: 'See your reviews' }).getAttribute('href')).toBe('/projects/prj_12345678/commits?repo=rep_12345678#assessments');
 });
