@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Reframed Defense Lab as a recorded network-defense console with recommendation-only status and local demo approvals.
 - Audit follow-up (F06/F08/F10/F17/F21/F22/F24/F25/F27):
   - Uninstalling the GitHub App or removing a repository from it now also removes the repository from the picker. A confirmed missing personal installation clears the user's own repositories. The picker says when its access list is from the last sign-in.
   - A newly connected repository joins the project that already holds its owner's repositories, so a renamed project is no longer bypassed. `projectForRepository` reads `project_id` directly.
