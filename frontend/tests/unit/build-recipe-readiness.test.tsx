@@ -109,7 +109,9 @@ it('lets the owner retry a failed or invalid recipe, but not an unsupported one'
   fireEvent.click(screen.getByRole('button', { name: 'Retry build recipe' }));
   expect(await screen.findByText(/Retry queued/)).toBeTruthy();
   expect(mocks.retryBuildRecipe).toHaveBeenCalledWith('rep_12345678');
-  expect(reload).toHaveBeenCalled();
+  expect(reload).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+  expect(reload).toHaveBeenCalledTimes(2);
   cleanup();
   mocks.useResource.mockReturnValue({ status: 'ready', data: { items: [event('recipe.unsupported', { reason: 'Go' })] }, reload });
   render(<BuildRecipeReadiness projectId="prj_12345678" repo={repo()} />);
