@@ -124,7 +124,7 @@ function sectorRepo(liveView: LiveCommitView | null, fullName: string, detail: A
 }
 
 /** The real recorded run on the sector map: each recorded tool call pinned to the part it touched. */
-function RecordedSectorMap({ detail, sha, fullName, liveView }: { detail: AssessmentDetail; sha: string; fullName: string; liveView: LiveCommitView | null }) {
+export function RecordedSectorMap({ detail, sha, fullName, liveView = null, compact = false }: { detail: AssessmentDetail; sha: string; fullName: string; liveView?: LiveCommitView | null; compact?: boolean }) {
   const repo = useMemo(() => sectorRepo(liveView, fullName, detail), [liveView, fullName, detail]);
   const analysis = useMemo(() => recordedAnalysis(detail, repo, liveView?.analysis.review.diff ?? []), [detail, repo, liveView]);
   const all = useMemo(() => ticks(analysis, repo), [analysis, repo]);
@@ -139,7 +139,7 @@ function RecordedSectorMap({ detail, sha, fullName, liveView }: { detail: Assess
         Recorded run · {ASSESSMENT_STATE[detail.assessment.state].label}
         {detail.agent_runs.some(r => r.provider_mode !== 'live') ? ` · ${providerLabel(detail.agent_runs.find(r => r.provider_mode !== 'live')!.provider_mode).label}` : detail.agent_runs.length === 0 ? ' · no runs yet' : ' · live provider'}
       </p>
-      <AgentMap repo={repo} commitSha={sha} analysis={analysis} statuses={statuses} played={replay.position} started playback={replay} accepted={accepted} offset={0} />
+      <AgentMap repo={repo} commitSha={sha} analysis={analysis} statuses={statuses} played={replay.position} started playback={replay} accepted={accepted} offset={0} compact={compact} />
       {security.length > 0 && (
         <section className="glass mt-4 p-6" data-testid="commit-security-findings">
           <p className="label-mono text-white/55">Security findings · {security.length}</p>

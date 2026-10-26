@@ -3,24 +3,23 @@
   "human_owner": "Adam",
   "workstream": "frontend console refinement",
   "state": "READY_FOR_REVIEW",
-  "task": "UI-010: accessible account menu, responsive project navigation, status marks, assessment metadata and commit assessment links",
-  "branch": "feat/adam/console-graphite",
-  "latest_sha": "44c1a3270156e4e6bc02fbbc38a71016c87cfc96",
-  "prs": [],
+  "task": "Console sticky header/tab band + Live Defense 320px overflow containment",
+  "branch": "feat/adam/console-polish",
+  "latest_sha": "e61f29eb1f22ec832e90ffc492daf4127ca0e747",
+  "prs": [646, 649],
   "claims": [
-    "frontend/components/account-link.tsx",
     "frontend/components/project.tsx",
-    "frontend/components/ui/index.tsx",
-    "frontend/components/commit-assessment-chips.tsx",
-    "frontend/app/(console)/layout.tsx",
-    "frontend/app/(console)/connect/[org]/[repo]/page.tsx",
-    "frontend/app/(console)/projects/[projectId]/assessments/[assessmentId]/page.tsx",
-    "frontend/app/interface.css",
-    "frontend/tests/unit/"
+    "frontend/app/globals.css",
+    "frontend/app/(console)/projects/[projectId]/live-defense/page.tsx",
+    "frontend/tests/e2e/pages.spec.ts",
+    "CHANGELOG.md",
+    "docs/planning/SESSION_HANDOFF.md"
   ],
   "depends_on": [],
-  "blockers": [],
-  "last_update_utc": "2026-10-25T12:07:00Z",
-  "tests": "Console refinement: 91 unit files, 391 tests; typecheck/build passed; lint has 1 pre-existing warning. Follow-up: 2 focused unit files, 10 tests; typecheck/lint passed. Nested commit-row anchors caused 2 hydration issues on :3102; fixed. Commit history now has 0 console errors at both viewports. Commit-detail POST /api/analyze returns the same pre-existing 503 on :3101 and :3102.",
-  "next_action": "Commit and push console follow-up; no PR or CI follow-up"
+  "blockers": [
+    "Do not edit frontend/components/live-defense/*; Alan's lane retains that claim."
+  ],
+  "last_update_utc": "2026-10-26T07:24:15Z",
+  "tests": "Lint, typecheck, and 99-file/418-test unit suite passed. Targeted pages/tab-band E2E passed 2/2; Analytics scroll assertions passed at 1440/390 and Live Defense document width was 320px. E2E production build passed. Full pages.spec attempt was 4/9 without a preceding journey; three remaining data/selector failures are documented and not claimed as pre-existing.",
+  "next_action": "Merge the pushed console-polish branch into setup-walkthrough and push the merge commit."
 }

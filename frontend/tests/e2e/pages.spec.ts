@@ -27,6 +27,77 @@ async function expectNoDocumentOverflow(page: Page) {
   expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
 }
 
+test('project page titles stay below the tab band at every route and viewport', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const page = await newUser(browser, 'e2e-alice');
+  const repo = env('E2E_REPO_ID');
+  const base = `/projects/${project()}`;
+  const routes = ['', '/commits', '/findings', '/approvals', '/settings', '/live-defense', '/incidents', '/monitoring', '/scopes', '/expectations', '/simulate'];
+
+  for (const [width, height] of [[1440, 900], [1024, 900], [390, 844], [320, 700]] as const) {
+    await page.setViewportSize({ width, height });
+    for (const route of routes) {
+      await page.goto(`${base}${route}?repo=${repo}`);
+      const band = page.locator('.project-tabbar');
+      const content = page.locator('.project-body');
+      await expect(band).toBeVisible();
+      await expect(content).toBeVisible();
+      const tabLayout = await page.locator('.project-tab-scroll .project-tab').evaluateAll(links => links.map(link => {
+        const label = link.querySelector('.project-tab-label')!;
+        return {
+          text: label.textContent,
+          display: getComputedStyle(label).display,
+          labelWidth: label.getBoundingClientRect().width,
+          height: link.getBoundingClientRect().height,
+        };
+      }));
+      expect(tabLayout.map(tab => tab.text)).toEqual(['Analytics', 'Commits', 'Findings', 'Approvals', 'Settings']);
+      expect(tabLayout.every(tab => tab.display !== 'none' && tab.labelWidth > 0 && tab.height >= 44)).toBe(true);
+      if (width <= 639) {
+        const overflow = await page.locator('.project-tab-scroll').evaluate(element => element.scrollWidth > element.clientWidth);
+        const fadeWidth = await page.locator('.project-more').evaluate(element => parseFloat(getComputedStyle(element, '::before').width));
+        expect(overflow, `tabs should scroll at ${width}px`).toBe(true);
+        expect(fadeWidth, `tab fade should be visible at ${width}px`).toBeGreaterThan(0);
+      }
+
+      for (const scrollY of [0, 480]) {
+        await page.evaluate(y => window.scrollTo(0, y), scrollY);
+        const layout = await page.evaluate(() => {
+          const tabBand = document.querySelector('.project-tabbar')!;
+          const siteHeader = document.querySelector('.site-header')!;
+          const projectBody = document.querySelector('.project-body')!;
+          const pageTitle = projectBody.querySelector('.page-title');
+          const tabRect = tabBand.getBoundingClientRect();
+          const headerRect = siteHeader.getBoundingClientRect();
+          return {
+            tabTop: tabRect.top,
+            tabBottom: tabRect.bottom + window.scrollY,
+            headerBottom: headerRect.bottom,
+            bodyTop: projectBody.getBoundingClientRect().top + window.scrollY,
+            titleTop: pageTitle ? pageTitle.getBoundingClientRect().top + window.scrollY : null,
+            position: getComputedStyle(tabBand).position,
+            scrollY: window.scrollY,
+            siteZIndex: Number(getComputedStyle(siteHeader).zIndex),
+            tabZIndex: Number(getComputedStyle(tabBand).zIndex),
+          };
+        });
+        expect(layout.position, `${route} at ${width}px`).toBe('sticky');
+        expect(layout.siteZIndex, `${route} at ${width}px`).toBeGreaterThan(layout.tabZIndex);
+        if (scrollY === 0) {
+          expect(layout.bodyTop, `${route} at ${width}px`).toBeGreaterThanOrEqual(layout.tabBottom);
+          if (layout.titleTop !== null) expect(layout.titleTop, `${route} title at ${width}px`).toBeGreaterThanOrEqual(layout.tabBottom);
+        } else {
+          expect(layout.tabTop, `${route} at ${width}px`).toBeGreaterThanOrEqual(layout.headerBottom - 1);
+          if (layout.scrollY >= 300) {
+            expect(layout.tabTop, `${route} at ${width}px`).toBeLessThanOrEqual(layout.headerBottom + 1);
+          }
+        }
+      }
+      await expectNoDocumentOverflow(page);
+    }
+  }
+});
+
 test('repo analytics and commits stay scoped to seeded payments-lite data', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
   const repoId = env('E2E_REPO_ID');
@@ -48,6 +119,25 @@ test('repo analytics and commits stay scoped to seeded payments-lite data', asyn
     await expect(agents).toBeVisible();
     for (const agent of ['scout', 'probe', 'trace', 'diagnose', 'patch', 'verify', 'fortify']) {
       await expect(agents.getByTestId(`agent-${agent}`)).toBeVisible();
+    }
+    if (width === 1440) {
+      const bounds = await page.locator('.amap-grid-compact').evaluate(root => ({
+        mapBottom: root.querySelector('.amap-map')!.getBoundingClientRect().bottom,
+        inspector: root.querySelector('.amap-inspect')!.getBoundingClientRect(),
+      }));
+      expect(bounds.mapBottom).toBeLessThanOrEqual(900);
+      expect(bounds.inspector.top).toBeGreaterThanOrEqual(0);
+      expect(bounds.inspector.bottom).toBeLessThanOrEqual(900);
+    }
+    if (width === 390) {
+      const phasesFit = await page.locator('.amap-phases-compact').evaluate(element => {
+        const bounds = element.getBoundingClientRect();
+        return Array.from(element.querySelectorAll('button')).every(button => {
+          const buttonBounds = button.getBoundingClientRect();
+          return buttonBounds.left >= bounds.left && buttonBounds.right <= bounds.right;
+        });
+      });
+      expect(phasesFit).toBe(true);
     }
     await expectNoDocumentOverflow(page);
   }
@@ -195,7 +285,7 @@ test('incident closure: link verified finding, criteria with evidence, communica
 
 test('expectations page shows the version-pinned snapshot view', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
-  await page.goto(`/projects/${project()}/expectations`);
+  await page.goto(`/projects/${project()}/expectations?repo=${env('E2E_REPO_ID')}`);
   await expect(page.getByRole('button', { name: 'Expectations' })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByText(/No indexed snapshot|awaiting a human decision/)).toBeVisible();
   await evidenceShot(page, 'expectations');

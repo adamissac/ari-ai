@@ -22,7 +22,11 @@ test('workspace design stays navigable and fits desktop and phone', async ({ bro
     await page.setViewportSize({ width, height: 1000 });
     await page.goto('/connect');
     await expect(page.getByRole('heading', { name: 'Organizations' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'What Ari can access' })).toBeVisible();
+    const permissions = page.getByRole('region', { name: 'GitHub App permissions' });
+    await expect(permissions).toBeVisible();
+    for (const permission of ['Contents: read & write', 'Pull requests: read & write', 'Metadata: read-only', 'Events: push, pull request, repository']) {
+      await expect(permissions).toContainText(permission);
+    }
     await expect(page.getByRole('link', { name: 'Install the GitHub App' })).toHaveCount(0);
     await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Projects', exact: true })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByTestId(`connect-org-${org}`)).toBeVisible();

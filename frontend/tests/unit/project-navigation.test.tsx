@@ -15,6 +15,7 @@ it('shows the primary tabs and repo-scoped More destinations', () => {
   render(<ProjectNavigation base="/projects/p1" repoId="r1" />);
   const nav = screen.getByRole('navigation', { name: 'Project' });
   const links = [...nav.querySelectorAll('.project-tab-scroll a')].map(a => [a.textContent, a.getAttribute('href')]);
+  expect(nav.querySelectorAll('.project-tab-scroll svg').length).toBe(5);
   expect(links).toEqual([
     ['Analytics', '/projects/p1?repo=r1'],
     ['Commits', '/projects/p1/commits?repo=r1'],
@@ -22,7 +23,12 @@ it('shows the primary tabs and repo-scoped More destinations', () => {
     ['Approvals', '/projects/p1/approvals?repo=r1'],
     ['Settings', '/projects/p1/settings?repo=r1'],
   ]);
-  fireEvent.click(screen.getByRole('button', { name: 'More' }));
+  expect([...nav.querySelectorAll('.project-tab-scroll .project-tab-label')].map(label => label.textContent)).toEqual([
+    'Analytics', 'Commits', 'Findings', 'Approvals', 'Settings',
+  ]);
+  const more = screen.getByRole('button', { name: 'More' });
+  expect(more.querySelector('svg')).not.toBeNull();
+  fireEvent.click(more);
   expect([...nav.querySelectorAll('.project-more-link')].map(a => [a.textContent, a.getAttribute('href')])).toEqual([
     ['Live Defense', '/projects/p1/live-defense?repo=r1'],
     ['Incidents', '/projects/p1/incidents?repo=r1'],

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Avatar, GitHubMark } from '@/components/demo/ui';
 import { BRAND_NAME } from '@/components/brand';
-import { ErrorState, Loading, Panel } from '@/components/ui';
+import { ErrorState, Loading, PageTitle, Panel } from '@/components/ui';
 import { RefreshFromGitHub } from '@/components/refresh-from-github';
 import { SetupLayout } from '@/components/onboarding/stepper';
 import { api } from '@/lib/api';
@@ -16,21 +16,17 @@ export default function ConnectOrgsPage() {
 
   return (
     <SetupLayout current={1}>
-      <div className="mx-auto min-w-0 max-w-6xl" data-testid="connect-orgs">
-        <header className="mb-6 border-b border-line pb-6">
-          <p className="label-mono text-muted">Your workspace / 01</p>
-          <h1 className="text-3xl font-semibold tracking-tight">Organizations</h1>
-          <div className="mt-4 flex flex-wrap items-baseline justify-between gap-3 text-sm text-muted"><p>Choose an organization to see its repositories.</p><RefreshFromGitHub className="mt-1" /></div>
-        </header>
-        <Panel title="What Ari can access" className="mb-6">
-          <dl className="grid gap-4 text-sm sm:grid-cols-2">
-            <div><dt className="font-medium text-ink">Contents: read &amp; write</dt><dd className="mt-1 text-muted">Read code to review; write only to open the build-recipe PR and fix PRs you approve.</dd></div>
-            <div><dt className="font-medium text-ink">Pull requests: read &amp; write</dt><dd className="mt-1 text-muted">Open those PRs and leave review comments if you turn comments on.</dd></div>
-            <div><dt className="font-medium text-ink">Metadata: read-only</dt><dd className="mt-1 text-muted">Read repository names and default branches.</dd></div>
-            <div><dt className="font-medium text-ink">Events: push, pull request, repository</dt><dd className="mt-1 text-muted">Used only for reviews you enable; automatic reviews are off by default.</dd></div>
-            <div className="sm:col-span-2"><dt className="font-medium text-ink">Revoke or limit access</dt><dd className="mt-1 text-muted">GitHub → Settings → Applications → Installed GitHub Apps → Ari → Configure → Uninstall, or limit to selected repositories.</dd></div>
+      <div className="min-w-0" data-testid="connect-orgs">
+        <PageTitle eyebrow="Your workspace / 01" title="Organizations" subtitle="Choose an organization to see its repositories." actions={<RefreshFromGitHub />} />
+        <section aria-label="GitHub App permissions" className="mb-6 border-y border-line">
+          <dl className="grid grid-cols-1 divide-y divide-line text-sm sm:grid-cols-2 xl:grid-cols-4 xl:divide-x xl:divide-y-0">
+            <div className="py-4 sm:px-4 xl:pl-0"><dt className="font-medium text-ink">Contents: read &amp; write</dt><dd className="mt-1 text-muted">Read code to review; write only to open the build-recipe PR and fix PRs you approve.</dd></div>
+            <div className="py-4 sm:px-4"><dt className="font-medium text-ink">Pull requests: read &amp; write</dt><dd className="mt-1 text-muted">Open those PRs and leave review comments if you turn comments on.</dd></div>
+            <div className="py-4 sm:px-4"><dt className="font-medium text-ink">Metadata: read-only</dt><dd className="mt-1 text-muted">Read repository names and default branches.</dd></div>
+            <div className="py-4 sm:px-4 xl:pr-0"><dt className="font-medium text-ink">Events: push, pull request, repository</dt><dd className="mt-1 text-muted">Used only for reviews you enable; automatic reviews are off by default.</dd></div>
           </dl>
-        </Panel>
+          <p className="border-t border-line py-3 text-sm text-muted"><strong className="font-medium text-ink">Revoke or limit access</strong> · GitHub → Settings → Applications → Installed GitHub Apps → Ari → Configure → Uninstall, or limit to selected repositories.</p>
+        </section>
         {list.status === 'loading' && <Loading label="Loading your GitHub organizations" />}
         {list.status === 'error' && <ErrorState error={list.error} onRetry={list.reload} context="Could not list your GitHub repositories" />}
         {list.status === 'ready' && (() => {
@@ -44,7 +40,7 @@ export default function ConnectOrgsPage() {
                   {install !== null && <a href={install} className="mt-5 inline-flex h-9 items-center gap-2 rounded-lg bg-brand px-3.5 text-sm font-medium text-on-brand hover:bg-brand-deep"><GitHubMark />Install the GitHub App</a>}
                 </Panel>
               ) : (
-                <ul className="grid gap-3 md:grid-cols-3">
+                <ul className="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] gap-3">
                   {orgs.map((org, i) => (
                     <li key={org.login}>
                       <Link href={`/connect/${encodeURIComponent(org.login)}`} className="group flex h-full min-w-0 flex-col gap-4 rounded-2xl border border-line bg-panel p-5 transition-colors hover:bg-panel-2" data-testid={`connect-org-${org.login}`}>

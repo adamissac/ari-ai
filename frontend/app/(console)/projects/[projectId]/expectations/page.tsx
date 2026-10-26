@@ -28,21 +28,15 @@ function sourceLabel(src: EvidenceRef): string {
  * truth for the reviewer. Decisions are version-pinned to the snapshot.
  */
 export default function ExpectationsPage() {
-  const { repos } = useProject();
-  const [repoId, setRepoId] = useState(repos[0]?.id ?? '');
-  if (repos.length === 0) return <Panel title="Behavioral expectations"><Empty>Connect a repository and index a snapshot first.</Empty></Panel>;
-  const repo = repos.find(r => r.id === repoId) ?? repos[0]!;
+  const { selectedRepo } = useProject();
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <PageTitle eyebrow="Defend" title="Expectations" subtitle="Intended behavior learned from the code — the baseline findings are judged against." />
-      {repos.length > 1 && (
-        <Field label="Repository">
-          <select className={inputClass} value={repo.id} onChange={e => setRepoId(e.target.value)}>
-            {repos.map((r, index) => <option key={`${r.id}:${r.full_name}:${index}`} value={r.id}>{r.full_name}</option>)}
-          </select>
-        </Field>
-      )}
-      <RepoExpectations key={repo.id} repo={repo} />
+      <PageTitle eyebrow="Defend" title="Expectations" subtitle={selectedRepo
+        ? <>Intended behavior for <span className="font-mono text-ink">{selectedRepo.full_name}</span>, learned from its indexed snapshots.</>
+        : 'Connect a repository and index a snapshot to review expectations.'} />
+      {selectedRepo
+        ? <RepoExpectations key={selectedRepo.id} repo={selectedRepo} />
+        : <Panel title="Behavioral expectations"><Empty>Connect a repository and index a snapshot first.</Empty></Panel>}
     </div>
   );
 }
@@ -77,7 +71,7 @@ function SnapshotPicker({ snapshots, selected, onSelect }: { snapshots: Snapshot
         {snapshots.map((s, index) => (
           <li key={`${s.id}:${s.commit_sha}:${s.created_at}:${index}`}>
             <button type="button" disabled={s.status !== 'ready'} onClick={() => onSelect(s.id)} aria-pressed={s.id === selected}
-              className={`flex min-w-0 flex-wrap items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs disabled:opacity-50 ${s.id === selected ? 'border-brand bg-brand/15' : 'border-line bg-panel-2 hover:bg-panel'}`}>
+              className={`flex min-w-0 flex-wrap items-center gap-2 border-b-2 px-2.5 py-2 text-xs disabled:opacity-50 ${s.id === selected ? 'border-brand text-ink' : 'border-transparent text-muted hover:text-ink'}`}>
               <Mono>{s.commit_sha.slice(0, 10)}</Mono>
               <Badge view={SNAPSHOT_STATUS[s.status]} />
               <Time iso={s.created_at} />
@@ -98,7 +92,7 @@ function ExpectationList({ snapshot }: { snapshot: Snapshot }) {
       <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-1">
         {FILTERS.map(f => (
           <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}
-            className={`label-mono rounded px-2 py-1 ${filter === f ? 'bg-brand/15 text-ink shadow-sm' : 'text-muted hover:text-ink'}`}>
+            className={`label-mono border-b-2 px-1 py-2 ${filter === f ? 'border-brand text-ink' : 'border-transparent text-muted hover:text-ink'}`}>
             {f === 'all' ? 'All' : EXPECTATION_STATUS[f].label}
           </button>
         ))}
@@ -111,7 +105,7 @@ function ExpectationList({ snapshot }: { snapshot: Snapshot }) {
             <>
               <Summary items={page.items} />
               {items.length === 0 ? <Empty>No expectations{filter === 'all' ? '' : ` with status “${EXPECTATION_STATUS[filter].label}”`} on this page.</Empty> : (
-                <ul className="flex min-w-0 flex-col gap-3">{items.map((e, index) => <ExpectationRow key={`${snapshot.id}:${e.id}:${e.kind}:${e.subject_ref}:${index}`} exp={e} onDecided={exps.reload} />)}</ul>
+              <ul className="divide-y divide-line">{items.map((e, index) => <ExpectationRow key={`${snapshot.id}:${e.id}:${e.kind}:${e.subject_ref}:${index}`} exp={e} onDecided={exps.reload} />)}</ul>
               )}
               <div className="mt-3 flex gap-2">
                 {cursor !== undefined && <Button onClick={() => setCursor(undefined)}>First page</Button>}
@@ -143,7 +137,7 @@ function Summary({ items }: { items: BehavioralExpectation[] }) {
 function ExpectationRow({ exp, onDecided }: { exp: BehavioralExpectation; onDecided: () => void }) {
   const [open, setOpen] = useState(false);
   return (
-    <li className="min-w-0 rounded-md border border-line bg-panel-2 p-3" data-testid={`expectation-${exp.id}`}>
+    <li className="min-w-0 py-4 first:pt-0 last:pb-0" data-testid={`expectation-${exp.id}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="min-w-0 max-w-3xl break-words text-sm text-ink">{exp.statement}</p>
         <Badge view={EXPECTATION_STATUS[exp.status]} />
@@ -185,7 +179,7 @@ function DecisionPanel({ exp, onDecided }: { exp: BehavioralExpectation; onDecid
     } catch (err) { setError(err); } finally { setBusy(false); }
   };
   return (
-    <div className="mt-3 min-w-0 rounded-md border border-line bg-panel p-3">
+    <div className="mt-3 min-w-0 border-t border-line pt-3">
       <Async resource={history} label="decision history">
         {page => {
           const current = revision(page.items);
