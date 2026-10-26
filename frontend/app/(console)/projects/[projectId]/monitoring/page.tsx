@@ -7,7 +7,7 @@ import { AttackDrill } from '@/components/attack-drill';
 import { DefenseSwitch } from '@/components/defense-switch';
 import { DeliverySwitch } from '@/components/delivery-switch';
 import { useProject } from '@/components/project';
-import { Async, Badge, Button, Empty, ErrorState, Loading, Mono, Panel, Tag, Time } from '@/components/ui';
+import { Async, Badge, Button, Empty, ErrorState, Loading, Mono, PageTitle, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
 import { num, shortSha } from '@/lib/format';
 import { monitoringSummary } from '@/lib/monitoring';
@@ -17,54 +17,57 @@ import { useResource } from '@/lib/use-resource';
 const RL_CAVEAT = 'Recommendation from a policy trained in an isolated test environment. Not applied automatically.';
 
 export default function MonitoringPage() {
-  const { project, reloadProject } = useProject();
+  const { project, selectedRepo, reloadProject } = useProject();
   const events = useResource(`events:${project.id}`, s => api().monitoringEvents(project.id, { signal: s }), 10000);
   const reassess = useResource(`reassess:${project.id}`, s => api().reassessments(project.id, { signal: s }), 10000);
   const recs = useResource(`recs:${project.id}`, s => api().defenseRecommendations(project.id, { signal: s }));
   const evals = useResource(`rle:${project.id}`, s => api().rlEvaluations(project.id, { signal: s }));
+  const repoEvents = events.status === 'ready' && selectedRepo
+    ? events.data.items.filter(event => event.repo_id === selectedRepo.id)
+    : [];
+  const unassignedEventCount = events.status === 'ready'
+    ? events.data.items.filter(event => event.repo_id === null).length
+    : 0;
+  const repoReassessments = reassess.status === 'ready' && selectedRepo
+    ? reassess.data.items.filter(request => request.repo_id === selectedRepo.id)
+    : [];
   const summary = monitoringSummary({
     monitoringEnabled: project.settings.monitoring_policy.enabled,
     eventsKnown: events.status === 'ready',
-    eventCount: events.status === 'ready' ? events.data.items.length : 0,
-    simulatedCount: events.status === 'ready' ? events.data.items.filter(event => event.simulated).length : 0,
+    eventCount: repoEvents.length,
+    simulatedCount: repoEvents.filter(event => event.simulated).length,
     eventsTruncated: events.status === 'ready' && events.data.items.length >= 50,
     recommendationsKnown: recs.status === 'ready',
     recommendationCount: recs.status === 'ready' ? recs.data.items.length : 0,
   });
   return (
-    <div className="flex flex-col gap-4">
-      <header className="monitor-head" data-testid="monitor-head">
-        <div>
-          <p className="label-mono text-white/60">Continuous defense monitor</p>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">What we have recorded for this project</h2>
-          <p className="mt-1 max-w-2xl text-sm text-white/70">Real events from your connected repository and runtime, plus re-checks they triggered. This is a record of what arrived, not a promise of round-the-clock protection. The <Link className="text-white underline decoration-white/40 hover:decoration-white" href={`/projects/${project.id}/live-defense`}>Live Defense dashboard</Link> gathers the same records with investigation and explainability views.</p>
-        </div>
-        <div className="flex flex-col items-start gap-3 lg:items-end">
-          <div className="flex flex-wrap gap-3">
-            <DefenseSwitch project={project} onChange={() => reloadProject()} tone="dark" />
-            <DeliverySwitch project={project} onChange={() => reloadProject()} tone="dark" />
-          </div>
-          <ul className="monitor-chips" aria-label="Monitoring activity">
-            <li><span className="text-white/50">Events</span> {events.status === 'ready' ? `${events.data.items.length}${events.data.items.length >= 50 ? '+' : ''}` : '…'}</li>
-            <li><span className="text-white/50">Synthetic events</span> {events.status === 'ready' ? events.data.items.filter(e => e.simulated).length : '…'}</li>
-            <li><span className="text-white/50">Re-checks</span> {reassess.status === 'ready' ? reassess.data.items.length : '…'}</li>
-          </ul>
-        </div>
-      </header>
-      <p className="rounded-xl border border-line bg-panel p-5 text-sm text-ink" data-testid="monitoring-summary">{summary}</p>
+    <div className="flex min-w-0 flex-col gap-6">
+      <PageTitle eyebrow="Defend" title="Monitoring" subtitle={selectedRepo
+        ? <>Saved monitoring records for <span className="font-mono text-ink">{selectedRepo.full_name}</span>. Events without a repository ID are not attributed to this repository.</>
+        : 'Select a connected repository to review its monitoring records.'}
+        actions={<div className="flex flex-wrap gap-3"><DefenseSwitch project={project} onChange={() => reloadProject()} /><DeliverySwitch project={project} onChange={() => reloadProject()} /></div>} />
+      <div className="grid grid-cols-1 divide-y divide-line border-y border-line text-sm sm:grid-cols-3 sm:divide-x sm:divide-y-0" aria-label="Monitoring activity">
+        <p className="py-3 sm:px-4 sm:pl-0"><span className="text-muted">Events</span> <strong className="ml-2 font-mono">{events.status === 'ready' ? repoEvents.length : '…'}</strong></p>
+        <p className="py-3 sm:px-4"><span className="text-muted">Synthetic events</span> <strong className="ml-2 font-mono">{events.status === 'ready' ? repoEvents.filter(event => event.simulated).length : '…'}</strong></p>
+        <p className="py-3 sm:px-4 sm:pr-0"><span className="text-muted">Re-checks</span> <strong className="ml-2 font-mono">{reassess.status === 'ready' ? repoReassessments.length : '…'}</strong></p>
+      </div>
+      <p className="text-sm text-muted" data-testid="monitoring-summary">{summary}</p>
+      {unassignedEventCount > 0 && <p className="text-xs text-muted">{unassignedEventCount} event{unassignedEventCount === 1 ? '' : 's'} without a repository ID are excluded from this repository&apos;s feed.</p>}
       <AttackDrill projectId={project.id} onEvents={events.reload} />
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[3fr_2fr]">
+      <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[3fr_2fr]">
       <div className="flex flex-col gap-4">
         <Panel title="Event feed" actions={<span className="text-xs text-muted">persisted webhook and runtime events · polled every 10 s</span>}>
           <Async resource={events} label="monitoring events">
-            {page => <EventFeed items={page.items} />}
+            {page => <EventFeed items={selectedRepo ? page.items.filter(event => event.repo_id === selectedRepo.id) : []} />}
           </Async>
         </Panel>
         <Panel title="Re-assessment requests">
           <Async resource={reassess} label="re-assessments">
-            {page => page.items.length === 0 ? <Empty>No re-assessments requested by monitoring.</Empty> : (
+            {page => {
+              const items = selectedRepo ? page.items.filter(request => request.repo_id === selectedRepo.id) : [];
+              return items.length === 0 ? <Empty>No re-assessments requested for this repository.</Empty> : (
               <ul className="divide-y divide-line text-sm">
-                {page.items.map(r => (
+                {items.map(r => (
                   <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                     <span className="flex flex-wrap items-center gap-2">
                       <Tag tone={r.status === 'blocked_no_scope' ? 'warn' : r.status === 'started' ? 'ok' : 'neutral'}>{r.status.replaceAll('_', ' ')}</Tag>
@@ -76,25 +79,26 @@ export default function MonitoringPage() {
                   </li>
                 ))}
               </ul>
-            )}
+              );
+            }}
           </Async>
         </Panel>
       </div>
       <div className="flex flex-col gap-4">
-        <Panel title="Defense recommendations (test-environment-derived)">
-          <p className="mb-3 rounded border border-warn/40 bg-warn/10 px-2 py-1.5 text-xs text-warn" data-testid="rl-caveat">{RL_CAVEAT}</p>
+        <Panel title="Project-wide defense recommendations (test-environment-derived)">
+          <p className="mb-3 text-xs text-warn" data-testid="rl-caveat">{RL_CAVEAT}</p>
           <Async resource={recs} label="recommendations">
             {page => (
               <>
                 <p className="mb-2 text-xs text-faint">Backend label: {page.label}</p>
                 {page.items.length === 0 ? <Empty>No recommendation has been requested for this project.</Empty> : (
-                  <ul className="flex flex-col gap-2">{page.items.map(r => <Recommendation key={r.id} rec={r} />)}</ul>
+                  <ul className="divide-y divide-line">{page.items.map(r => <Recommendation key={r.id} rec={r} />)}</ul>
                 )}
               </>
             )}
           </Async>
         </Panel>
-        <Panel title="Imported RL evaluations">
+        <Panel title="Project-wide RL evaluations">
           <Async resource={evals} label="RL evaluations">
             {page => page.items.length === 0 ? <Empty>No evaluation imported into this project. The <Link className="text-accent hover:underline" href="/lab">Defense Lab</Link> reads the committed evaluation bundle directly.</Empty> : (
               <ul className="divide-y divide-line text-xs">
@@ -122,9 +126,9 @@ function EventFeed({ items }: { items: MonitoringEvent[] }) {
   return (
     <>
       <p className="mb-2 text-xs text-muted">Last received <Time iso={last?.received_at} /> · {items.length} most recent events</p>
-      <ol className="flex flex-col gap-2" data-testid="monitoring-feed">
+      <ol className="divide-y divide-line" data-testid="monitoring-feed">
         {items.map(e => (
-          <li key={e.id} className="rounded-md border border-line bg-panel-2 p-2.5 text-sm">
+          <li key={e.id} className="py-3 text-sm">
             <div className="flex flex-wrap items-center gap-2">
               <Tag tone="accent">{e.source}</Tag>
               <Tag>{e.type.replace('_', ' ')}</Tag>
@@ -154,7 +158,7 @@ function Recommendation({ rec }: { rec: DefenseRecommendation }) {
     try { setExp({ status: 'ready', data: await api().recommendationExplanation(rec.id) }); } catch (error) { setExp({ status: 'error', error }); }
   };
   return (
-    <li className="rounded-md border border-line bg-panel-2 p-2.5 text-xs">
+    <li className="py-3 text-xs">
       <p className="flex flex-wrap items-center gap-2 text-sm">
         <span className="font-semibold">{rec.action.replaceAll('_', ' ')}</span>{rec.node && <Tag>{rec.node}</Tag>}
         <span className="text-xs text-muted">Q-margin {num(rec.q_margin, 3)}</span>

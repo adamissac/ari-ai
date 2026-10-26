@@ -16,7 +16,7 @@ const STATUS_WORD: Record<Status, string> = { queued: 'Queued', running: 'Workin
  * part turns red only when Probe confirms an issue there, and only that part is traced, fixed and
  * verified. Replay can be paused, sped up or scrubbed. Illustrative (ADR 0013).
  */
-export function AgentMap({ repo, commitSha, analysis, statuses, played, started, playback, accepted, offset }: {
+export function AgentMap({ repo, commitSha, analysis, statuses, played, started, playback, accepted, offset, compact = false }: {
   repo: DemoRepo;
   commitSha: string;
   analysis: Analysis;
@@ -29,16 +29,21 @@ export function AgentMap({ repo, commitSha, analysis, statuses, played, started,
   accepted: boolean;
   /** Playhead ticks spent before the first agent step (understanding + review). */
   offset: number;
+  compact?: boolean;
 }) {
   const all = useMemo(() => ticks(analysis, repo), [analysis, repo]);
   const touched = useMemo(() => affected(all, repo), [all, repo]);
   const current: Tick | undefined = started && played < all.length ? all[played] : undefined;
   const states = componentStates(all, played, repo, analysis, accepted, current);
   const [focus, setFocus] = useState<{ kind: 'component'; id: string } | { kind: 'agent'; id: AgentId } | null>(null);
+  const [selectedPhase, setSelectedPhase] = useState<number | null>(null);
   const following = focus === null;
   const view = focus ?? (current ? { kind: 'component' as const, id: current.component } : { kind: 'component' as const, id: coreComponent(repo) });
   const byId = new Map(analysis.agents.map(a => [a.agent, a]));
   const finished = played >= all.length;
+  const activePhase = current
+    ? PHASES.findIndex(phase => phase.agents.includes(current.agent))
+    : selectedPhase;
   const label = current ? `${byId.get(current.agent)?.label} · ${plainStep(current.step)}` : finished ? 'All seven agents finished' : 'Reading the change before the agents start';
 
   return (
@@ -48,52 +53,34 @@ export function AgentMap({ repo, commitSha, analysis, statuses, played, started,
           <span className="amap-live" data-on={playback.playing || undefined} aria-hidden="true" />
           <span className="min-w-0 truncate" data-testid="demo-agent-now">{label}</span>
         </p>
-        <ol className="amap-phases" aria-label="Phases">
-          {PHASES.map(phase => {
+        <div className={`amap-phases ${compact ? 'amap-phases-compact' : ''}`} role="group" aria-label="Replay phases">
+          {PHASES.map((phase, phaseIndex) => {
             const st = phase.agents.map(a => statuses[a]);
             const state = st.every(s => s === 'skipped') ? 'skipped' : st.some(s => s === 'running') ? 'active' : st.every(s => s === 'done' || s === 'skipped') ? 'done' : 'todo';
-            return <li key={phase.label} data-state={state}><span>{phase.label}</span>{state === 'skipped' && <span className="sr-only"> (not needed)</span>}</li>;
+            const firstTick = all.findIndex(tick => phase.agents.includes(tick.agent));
+            return <button key={phase.label} type="button" className={`amap-phase ${compact ? 'amap-phase-compact' : ''}`} data-state={state} aria-pressed={activePhase === phaseIndex}
+              onClick={() => {
+                setSelectedPhase(phaseIndex);
+                setFocus({ kind: 'agent', id: phase.agents[0]! });
+                if (firstTick >= 0) playback.seek(offset + firstTick);
+              }}>
+              {compact && state === 'done' && <span className="amap-phase-check" aria-hidden="true">✓</span>}
+              {phase.label}{state === 'skipped' && <span className="sr-only"> (not needed)</span>}
+            </button>;
           })}
-        </ol>
+        </div>
       </header>
 
-      <div className="amap-grid">
-        <nav className="amap-rail" aria-label="Agents in orchestrator order">
-          {PHASES.map(phase => (
-            <div key={phase.label} className="amap-group">
-              <p className="amap-group-label">{phase.label}</p>
-              <ol>
-                {phase.agents.map(id => {
-                  const agent = byId.get(id);
-                  if (!agent) return null;
-                  const status = statuses[id];
-                  const live = current?.agent === id;
-                  return (
-                    <li key={id}>
-                      <button
-                        type="button"
-                        className="amap-agent"
-                        data-status={status}
-                        aria-pressed={view.kind === 'agent' && view.id === id}
-                        onClick={() => setFocus(view.kind === 'agent' && view.id === id ? null : { kind: 'agent', id })}
-                        data-testid={`demo-agent-${id}`}
-                        style={{ ['--team' as string]: TEAM_COLOR[agent.team] }}
-                      >
-                        <StatusMark status={status} />
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-baseline justify-between gap-2">
-                            <span className="amap-agent-name">{agent.label}</span>
-                            <span className="amap-agent-status">{STATUS_WORD[status]}</span>
-                          </span>
-                          <span className="amap-agent-job">{live && current ? plainStep(current.step) : agent.job}</span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-          ))}
+      <div className={`amap-grid ${compact ? 'amap-grid-compact' : ''}`}>
+        <nav className={`amap-rail ${compact ? 'amap-rail-compact' : ''}`} aria-label="Agents in orchestrator order">
+          {compact
+            ? <ol className="amap-compact-agent-list">{PHASES.flatMap(phase => phase.agents).map(renderAgent)}</ol>
+            : PHASES.map(phase => (
+              <div key={phase.label} className="amap-group">
+                <p className="amap-group-label">{phase.label}</p>
+                <ol>{phase.agents.map(renderAgent)}</ol>
+              </div>
+            ))}
         </nav>
 
         <div className="amap-stage">
@@ -118,6 +105,38 @@ export function AgentMap({ repo, commitSha, analysis, statuses, played, started,
       </div>
     </section>
   );
+
+  function renderAgent(id: AgentId) {
+    const agent = byId.get(id);
+    if (!agent) return null;
+    const status = statuses[id];
+    const live = current?.agent === id;
+    return (
+      <li key={id}>
+        <button
+          type="button"
+          className="amap-agent"
+          data-status={status}
+          aria-label={compact ? `${agent.label}, ${STATUS_WORD[status]}` : undefined}
+          aria-pressed={view.kind === 'agent' && view.id === id}
+          onClick={() => setFocus(view.kind === 'agent' && view.id === id ? null : { kind: 'agent', id })}
+          data-testid={`demo-agent-${id}`}
+          style={{ ['--team' as string]: TEAM_COLOR[agent.team] }}
+        >
+          {compact
+            ? <span className="amap-compact-dot" data-status={status} aria-hidden="true" />
+            : <StatusMark status={status} />}
+          <span className="min-w-0 flex-1">
+            <span className="flex items-baseline justify-between gap-2">
+              <span className="amap-agent-name">{agent.label}</span>
+              <span className="amap-agent-status">{STATUS_WORD[status]}</span>
+            </span>
+            <span className="amap-agent-job">{live && current ? plainStep(current.step) : agent.job}</span>
+          </span>
+        </button>
+      </li>
+    );
+  }
 }
 
 function StatusMark({ status }: { status: Status }) {

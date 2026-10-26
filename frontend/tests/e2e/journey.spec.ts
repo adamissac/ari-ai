@@ -1,8 +1,9 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
-import { env, evidenceShot, expectNoSideScroll, newUser } from './helpers';
+import { completeSetup, env, evidenceShot, expectNoSideScroll, newUser } from './helpers';
 
 const project = () => env('E2E_PROJECT_ID');
+const repo = () => env('E2E_REPO_ID');
 
 /**
  * One assessed change, end to end, through the rendered UI against the real API:
@@ -13,19 +14,21 @@ const project = () => env('E2E_PROJECT_ID');
 test('one real assessment from scope approval to verified patch', async ({ browser }) => {
   const alice = await newUser(browser, 'e2e-alice');
   const bob = await newUser(browser, 'e2e-bob');
+  await completeSetup(alice);
+  await completeSetup(bob);
 
   // Alice requests a sandbox scope. As an owner she may explicitly approve it,
   // but this journey exercises independent approval by Bob.
-  await alice.goto(`/projects/${project()}/scopes`);
+  await alice.goto(`/projects/${project()}/scopes?repo=${repo()}`);
   await alice.getByLabel('Name').fill('payments-lite sandbox');
-  await alice.getByLabel('Repository (sandbox build target)').selectOption({ label: env('E2E_REPO') });
+  await expect(alice.getByTestId('scope-selected-repo')).toContainText(env('E2E_REPO'));
   await alice.getByRole('button', { name: 'Request scope' }).click();
   const scopeRow = alice.locator('[data-testid^="scope-"]').filter({ hasText: 'payments-lite sandbox' });
   await expect(scopeRow.getByText('Pending approval')).toBeVisible();
   await expect(scopeRow.getByRole('button', { name: 'Approve scope' })).toBeEnabled();
 
   // Bob approves it.
-  await bob.goto(`/projects/${project()}/scopes`);
+  await bob.goto(`/projects/${project()}/scopes?repo=${repo()}`);
   const bobPendingScope = bob.locator('[data-testid^="scope-"]')
     .filter({ hasText: 'payments-lite sandbox' })
     .filter({ hasText: 'Pending approval' });
@@ -174,6 +177,7 @@ test('one real assessment from scope approval to verified patch', async ({ brows
 
 test('signed GitHub push appears in the monitoring feed', async ({ browser, request }) => {
   const page = await newUser(browser, 'e2e-alice');
+  await completeSetup(page);
   const me = await page.request.get(`${env('E2E_API')}/me`);
   const headers = { 'X-CSRF-Token': (await me.json()).csrf_token };
   const current = await (await page.request.get(`${env('E2E_API')}/projects/${project()}`)).json();
@@ -197,7 +201,7 @@ test('signed GitHub push appears in the monitoring feed', async ({ browser, requ
     headers: { 'Content-Type': 'application/json', 'X-GitHub-Event': 'push', 'X-GitHub-Delivery': randomUUID(), 'X-Hub-Signature-256': signature },
   });
   expect(res.status()).toBe(202);
-  await page.goto(`/projects/${project()}/monitoring`);
+  await page.goto(`/projects/${project()}/monitoring?repo=${repo()}`);
   const feed = page.getByTestId('monitoring-feed');
   await expect(feed).toContainText('github');
   await expect(feed).toContainText('push');
@@ -226,6 +230,11 @@ test('connect a repository to a project through the UI', async ({ browser }) => 
   await expect(page.getByTestId('repo-picker')).toBeVisible();
   await page.getByLabel('owner/name').fill(repoName);
   await page.getByRole('button', { name: 'Connect', exact: true }).click();
+  await expect(page).toHaveURL(/\/projects\/[^/]+\/setup\?repo=/);
+  const repoId = new URL(page.url()).searchParams.get('repo');
+  expect(repoId).not.toBeNull();
+  await completeSetup(page, seeded.id, repoId!);
+  await page.goto(`/projects/${seeded.id}/settings?repo=${encodeURIComponent(repoId!)}`);
   await expect(page.getByRole('region', { name: 'Repositories' }).getByText(repoName)).toBeVisible();
   // Connected by name (no App installation): commits are explicitly unavailable, never invented.
   await expect(page.getByTestId('repo-commits-unavailable')).toBeVisible();
@@ -248,5 +257,6 @@ test('connect a repository to a project through the UI', async ({ browser }) => 
 
   // GitHub onboarding remains available whether or not this account already has repositories.
   await page.goto('/connect');
-  await expect(page.getByRole('heading', { name: 'What Ari can access' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'GitHub App permissions' })).toContainText('Contents: read & write');
+  await expect(page.getByText('Revoke or limit access')).toBeVisible();
 });
