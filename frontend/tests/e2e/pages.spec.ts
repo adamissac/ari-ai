@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { env, evidenceShot, newUser } from './helpers';
+import { completeSetup, env, evidenceShot, newUser } from './helpers';
 
 const project = () => env('E2E_PROJECT_ID');
 
@@ -19,12 +19,12 @@ async function expectStatusBadgesInsideRows(rows: Locator, statusTestId: string)
   }
 }
 
-async function expectNoDocumentOverflow(page: Page) {
+async function expectNoDocumentOverflow(page: Page, context = '') {
   const { clientWidth, scrollWidth } = await page.evaluate(() => ({
     clientWidth: document.documentElement.clientWidth,
     scrollWidth: document.documentElement.scrollWidth,
   }));
-  expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+  expect(scrollWidth, `${context}: document width ${scrollWidth}px > viewport ${clientWidth}px`).toBeLessThanOrEqual(clientWidth);
 }
 
 test('project page titles stay below the tab band at every route and viewport', async ({ browser }) => {
@@ -33,6 +33,7 @@ test('project page titles stay below the tab band at every route and viewport', 
   const repo = env('E2E_REPO_ID');
   const base = `/projects/${project()}`;
   const routes = ['', '/commits', '/findings', '/approvals', '/settings', '/live-defense', '/incidents', '/monitoring', '/scopes', '/expectations', '/simulate'];
+  await completeSetup(page, project(), repo);
 
   for (const [width, height] of [[1440, 900], [1024, 900], [390, 844], [320, 700]] as const) {
     await page.setViewportSize({ width, height });
@@ -93,7 +94,7 @@ test('project page titles stay below the tab band at every route and viewport', 
           }
         }
       }
-      await expectNoDocumentOverflow(page);
+      await expectNoDocumentOverflow(page, `${route || '/'} at ${width}px`);
     }
   }
 });
@@ -141,6 +142,34 @@ test('repo analytics and commits stay scoped to seeded payments-lite data', asyn
     }
     await expectNoDocumentOverflow(page);
   }
+});
+
+test('fresh repository redirects Analytics to setup and locks project tabs', async ({ browser }) => {
+  const page = await newUser(browser, 'e2e-alice');
+  const me = await page.request.get(`${env('E2E_API')}/me`);
+  const csrf = (await me.json()).csrf_token as string;
+  const created = await page.request.post(`${env('E2E_API')}/projects`, {
+    data: { name: `Setup gate ${Date.now()}` },
+    headers: { 'X-CSRF-Token': csrf },
+  });
+  expect(created.status()).toBe(201);
+  const project = await created.json();
+  const connected = await page.request.post(`${env('E2E_API')}/projects/${project.id}/repositories`, {
+    data: { full_name: 'acme/setup-walkthrough', installation_id: null },
+    headers: { 'X-CSRF-Token': csrf },
+  });
+  expect(connected.status()).toBe(201);
+  const repo = await connected.json();
+
+  await page.goto(`/projects/${project.id}?repo=${repo.id}`);
+  await expect(page).toHaveURL(new RegExp(`/projects/${project.id}/setup\\?repo=${repo.id}`));
+  await expect(page.getByTestId('setup-step-1')).toBeVisible();
+  const tabs = page.locator('.project-tab-scroll');
+  await expect(tabs.locator('[aria-disabled="true"]')).toHaveCount(5);
+  await expect(tabs.getByRole('link')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Setup' }).click();
+  await expect(page.getByRole('link', { name: 'Setup' })).toBeVisible();
+  await expect(page.locator('.project-more-menu [aria-disabled="true"]')).toHaveCount(5);
 });
 
 test('owner edits project settings and they persist on reload', async ({ browser }) => {
@@ -191,6 +220,8 @@ test('owner opts into defense from OFF and the setting persists after reload', a
 test('simulated incident: triage, owner, two-person containment approval', async ({ browser }) => {
   const alice = await newUser(browser, 'e2e-alice');
   const bob = await newUser(browser, 'e2e-bob');
+  await completeSetup(alice);
+  await completeSetup(bob);
   const title = `drill-${Date.now()}`;
   await alice.goto(`/projects/${project()}/incidents`);
   await alice.getByLabel('Title').fill(title);
@@ -229,6 +260,8 @@ test('incident closure: link verified finding, criteria with evidence, communica
   const bob = await newUser(browser, 'e2e-bob');
   alice.setDefaultTimeout(20_000);
   bob.setDefaultTimeout(20_000);
+  await completeSetup(alice);
+  await completeSetup(bob);
   const title = `closure-${Date.now()}`;
   await alice.goto(`/projects/${project()}/incidents`);
   await alice.getByLabel('Title').fill(title);
