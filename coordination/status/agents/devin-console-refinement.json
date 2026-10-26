@@ -5,7 +5,7 @@
   "state": "READY_FOR_REVIEW",
   "task": "Merge origin/main into feat/adam/setup-walkthrough, preserving setup behavior and main updates",
   "branch": "feat/adam/setup-walkthrough",
-  "latest_sha": "982419edb39b9654675895974fb611b3a01bcf99",
+  "latest_sha": "4afaaf5197aa6fd582fd6193a3158eb9a670e67b",
   "prs": [649],
   "claims": [
     "frontend/components/project.tsx",
@@ -17,7 +17,7 @@
   ],
   "depends_on": [],
   "blockers": [],
-  "last_update_utc": "2026-10-26T10:19:01Z",
+  "last_update_utc": "2026-10-26T10:21:28Z",
   "tests": "Transport npm ci/build passed; frontend lint and typecheck passed; Vitest passed 102 files / 436 tests. Vitest emitted a non-fatal jsdom HTMLCanvasElement getContext warning. Frontend dependencies were installed with npm ci after the initial lint attempt found eslint missing.",
-  "next_action": "Commit the normal origin/main merge as Adam and push feat/adam/setup-walkthrough."
+  "next_action": "Await CI and review on #649; the main integration is pushed."
 }

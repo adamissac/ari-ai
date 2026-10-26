@@ -3,7 +3,7 @@
 
 # Agent board — live coordination dashboard
 
-Regenerated 2026-10-26 10:19 UTC. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
+Regenerated 2026-10-26 10:21 UTC. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
 
 ## Active agents
 
@@ -14,7 +14,7 @@ Regenerated 2026-10-26 10:19 UTC. Comms channel: [issue #559](https://github.com
 | codex-rc4-n8-review | Alan | repeat independent integration code review | READY_FOR_REVIEW | Review N8-remediated RC4 at 4fdcf10c | codex/rc4-n8-independent-review | 99bf3d6d |
 | codex-rc4-review | Alan | independent RC4 security audit | READY_FOR_REVIEW | Exact-SHA RC4 review | codex/rc4-independent-audit | 78dc57bc |
 | codex-review-automation | Alan | bounded independent release review automation | READY_FOR_REVIEW | Devin → CI → immutable-SHA independent Codex review | codex/ari-review-cycle | ed68a7bd |
-| devin-console-refinement | Adam | frontend console refinement | READY_FOR_REVIEW | Merge origin/main into feat/adam/setup-walkthrough, preserving setup behavior and main updates | feat/adam/setup-walkthrough | 982419edb39b9654675895974fb611b3a01bcf99 |
+| devin-console-refinement | Adam | frontend console refinement | READY_FOR_REVIEW | Merge origin/main into feat/adam/setup-walkthrough, preserving setup behavior and main updates | feat/adam/setup-walkthrough | 4afaaf5197aa6fd582fd6193a3158eb9a670e67b |
 | devin-defense-lab | Adam | Defense Lab pilot audit + two-org rehearsal + live-deployment rehearsal leg | BLOCKED | Live leg on adamissac/pilot-rehearsal-target: 2 pushes delivered 202 (recipe merge 256c8e8 @00:40, re-trigger 7cf48de @01:06) — no assessment/fix PR after ~25min; outcome only visible in prod UI/DB | feat/adam/defense-lab-pilot-audit | 6ffaccda |
 | devin-frontend-ui | Adam | frontend UI — landing rework + SaaS sidebar console revamp; pilot-readiness support (coordination lane) | READY_FOR_REVIEW | PR #536 landing + console revamp green/mergeable (owner review required); tracked #570 redaction fix — commander ruling adopted over-redaction, in CI; assessing remaining pilot work | feat/adam/home-deep-sea-landing | 9e89652e |
 | devin-frontend-ux | Adam | first-user usability — pilot UX workstream (PR #538 on #496) | READY_FOR_REVIEW | Named approval cards, two-step approve/confirm on assessment page + approvals inbox, plain-English replay (plainToolName), honest quick-read errors, flow map + blockers doc | feat/adam/first-user-usability | c890e2c9 |
@@ -56,13 +56,14 @@ Regenerated 2026-10-26 10:19 UTC. Comms channel: [issue #559](https://github.com
 | #573 | ? | ? | ? | integration-lead | 29 |
 | #580 | ? | ? | ? | devin-pipeline-fixer | 14 |
 | #614 | ? | ? | ? | codex-review-automation | 4 |
-| #649 | feat(frontend): one-question setup walkthrough with coach marks and first-run gate | feat/adam/setup-walkthrough | 090ae376 | devin-console-refinement | 5 |
+| #649 | feat(frontend): one-question setup walkthrough with coach marks and first-run gate | feat/adam/setup-walkthrough | 4afaaf51 | devin-console-refinement | 5 |
 | #639 | docs(review): N9 closed and RC5 latest-main landing security suite passes | codex/rc5-independent-check | 7394af90 | unassigned | — |
 | #644 | fix(verify): runtime pytest hook/collection audit; fix static-scan false rejections | fix/adam/verify-runtime-hook-audit | 27403855 | unassigned | — |
 | #650 | docs(review): b6d5108b security passes; latest frontend merge gates remain | codex/check-b6d5108b | 68504a0e | unassigned | — |
 | #651 | docs(adam): scheduled cloud health run 29 handoff | feat/adam/cloud-20261026-0818 | a35ea408 | unassigned | — |
 | #652 | docs(review): exact integrated 36bd05ee receives technical GO | codex/check-36bd05ee | afe159d2 | unassigned | — |
 | #654 | fix(frontend): lava-lamp hero, scroll-drawn walkthrough path, light sections on pricing and home | fix/adam/landing-walkthrough-blur | ba7c08e4 | unassigned | — |
+| #655 | docs(status): Adam cloud health run 29 (no-op) | feat/adam/cloud-20261026-1019 | 2f92f1b9 | unassigned | — |
 
 ## File / subsystem claims
 
@@ -118,7 +119,7 @@ Regenerated 2026-10-26 10:19 UTC. Comms channel: [issue #559](https://github.com
 - **codex-rc4-n8-review**: Redaction owner fixes statement-boundary handling; cascade and re-review; no merge/deploy
 - **codex-rc4-review**: Owners fix N8 and reconcile latest-main composition; fresh independent review; no merge/deploy
 - **codex-review-automation**: Human review/manual installation; configure protected credentials and validate first pinned candidate cycle
-- **devin-console-refinement**: Commit the normal origin/main merge as Adam and push feat/adam/setup-walkthrough.
+- **devin-console-refinement**: Await CI and review on #649; the main integration is pushed.
 - **devin-defense-lab**: owner checks prod project Assessments view; merge #571 then #532 goes green
 - **devin-frontend-ui**: monitor #570 CI + prod recovery; pick up unblocked pilot staging prep that does not need owner credentials
 - **devin-frontend-ux**: hold for integration-lead merge after #496; watch CI on current head
