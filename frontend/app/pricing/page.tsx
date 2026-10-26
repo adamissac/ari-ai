@@ -101,34 +101,42 @@ export default function PricingPage() {
         })}
       </section>
 
-      <section aria-label="What every plan includes" className="mt-6 grid gap-4 lg:grid-cols-2">
-        <div className="pricing-card pricing-card-light">
-          <p className="label-mono text-faint">Every plan includes</p>
-          <ul className="mt-4 flex flex-col gap-3 text-sm text-ink">
-            {INCLUDED.map(f => <li key={f} className="flex gap-3"><Check />{f}</li>)}
-          </ul>
-        </div>
-        <div className="pricing-card pricing-card-light">
-          <p className="label-mono text-faint">Enterprise adds</p>
-          <ul className="mt-4 flex flex-col gap-3 text-sm text-ink">
-            {ENTERPRISE_ADDS.map(f => <li key={f} className="flex gap-3"><Check />{f}</li>)}
-          </ul>
-        </div>
-      </section>
-
-      <p className="mt-4 text-center text-xs text-faint" data-testid="pricing-preview">Hackathon preview: these plans are proposals and nothing can be purchased yet. Prices in USD.</p>
-
-      <Reveal>
-        <section aria-labelledby="faq-title" className="pricing-faq mt-24 grid items-start gap-10 py-16 md:grid-cols-12 md:gap-6 md:py-24">
-          <div className="faq-aside md:col-span-4">
-            <p className="faq-pill label-mono">FAQ</p>
-            <h2 id="faq-title" className="display mt-5 text-4xl font-semibold md:text-5xl">Questions, answered</h2>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">How plans, assessments and assessed lines would work, and what {BRAND_NAME} will and won’t do to your code.</p>
-            <Link href="/#how" className="label-mono mt-6 inline-flex items-center gap-2 text-brand hover:text-brand-deep">See how it works <span aria-hidden="true">→</span></Link>
+      <div className="band-light pricing-light mt-20 py-20 md:mt-24 md:py-28">
+        <section aria-label="What every plan includes" className="grid gap-10 md:grid-cols-12 md:gap-6">
+          <div className="md:col-span-4">
+            <p className="kicker">Included</p>
+            <h2 className="display mt-4 text-3xl font-semibold md:text-4xl">What you get</h2>
           </div>
-          <div className="md:col-span-8"><Faq items={FAQ} /></div>
+          <div className="grid gap-10 sm:grid-cols-2 md:col-span-8">
+            <div>
+              <p className="label-mono text-muted">Every plan includes</p>
+              <ul className="pricing-list mt-4">
+                {INCLUDED.map(f => <li key={f}><Check />{f}</li>)}
+              </ul>
+            </div>
+            <div>
+              <p className="label-mono text-muted">Enterprise adds</p>
+              <ul className="pricing-list mt-4">
+                {ENTERPRISE_ADDS.map(f => <li key={f}><Check />{f}</li>)}
+              </ul>
+            </div>
+          </div>
         </section>
-      </Reveal>
+
+        <p className="mt-10 text-xs text-muted md:text-right" data-testid="pricing-preview">Hackathon preview: these plans are proposals and nothing can be purchased yet. Prices in USD.</p>
+
+        <Reveal>
+          <section aria-labelledby="faq-title" className="pricing-faq mt-20 grid items-start gap-10 border-t border-line pt-20 md:mt-24 md:grid-cols-12 md:gap-6 md:pt-24">
+            <div className="faq-aside md:col-span-4">
+              <p className="kicker">FAQ</p>
+              <h2 id="faq-title" className="display mt-4 text-4xl font-semibold md:text-5xl">Questions, answered</h2>
+              <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">How plans, assessments and assessed lines would work, and what {BRAND_NAME} will and won’t do to your code.</p>
+              <Link href="/#how" className="label-mono mt-6 inline-flex items-center gap-2 text-brand hover:text-brand-deep">See how it works <span aria-hidden="true">→</span></Link>
+            </div>
+            <div className="md:col-span-8"><Faq items={FAQ} /></div>
+          </section>
+        </Reveal>
+      </div>
 
       <Reveal>
       <section aria-labelledby="pricing-cta" className="pricing-cta mb-16 mt-16 px-6 py-14 text-center md:px-12 md:py-20">

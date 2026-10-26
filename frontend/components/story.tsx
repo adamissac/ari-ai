@@ -355,20 +355,20 @@ const STATS: Array<{ n: number; suffix?: string; tag: string; body: string }> = 
 
 export function ProofStats(): ReactNode {
   return (
-    <section aria-labelledby="proof-title" className="bleed bleed-ink story-rain py-16 text-white">
+    <section aria-labelledby="proof-title" className="band-light proof-light py-20 md:py-28">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-end">
         <div>
-          <p className="kicker kicker-ghost">Proof, not promises</p>
+          <p className="kicker">Proof, not promises</p>
           <h2 id="proof-title" className="display mt-3 text-3xl font-semibold md:text-5xl">The record is checkable.</h2>
         </div>
-        <p className="max-w-md text-sm text-white/70">No model output counts as proof, including ours. In the console, every status comes from saved records.</p>
+        <p className="max-w-md text-sm text-muted">No model output counts as proof, including ours. In the console, every status comes from saved records.</p>
       </div>
       <div className="mt-10 grid grid-cols-1 gap-3 md:grid-cols-3">
         {STATS.map((s, n) => (
           <Reveal key={s.body} className="story-stat" delay={n * 90}>
-            <p className="label-mono flex justify-between text-white/50"><span>{String(n + 1).padStart(2, '0')}</span><span>{s.tag}</span></p>
+            <p className="label-mono flex justify-between text-faint"><span>{String(n + 1).padStart(2, '0')}</span><span>{s.tag}</span></p>
             <p className="stat-num mt-8 font-mono font-semibold tracking-tight">{s.n === 0 ? 'Never' : <CountUp to={s.n} suffix={s.suffix} />}</p>
-            <p className="mt-3 text-sm text-white/70">{s.body}</p>
+            <p className="mt-3 text-sm text-muted">{s.body}</p>
           </Reveal>
         ))}
       </div>
