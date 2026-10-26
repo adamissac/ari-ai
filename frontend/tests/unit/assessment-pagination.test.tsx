@@ -6,14 +6,16 @@ const mocks = vi.hoisted(() => ({ assessments: vi.fn(), reload: vi.fn(), nextCur
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('@/components/project', () => ({ useProject: () => ({
   project: { id: 'prj_one', name: 'owned', settings: { monitoring_policy: { enabled: true } } },
-  repos: [], reloadRepos: mocks.reload,
+  repos: [{ id: 'repo-1', full_name: 'acme/payments', default_branch: 'main' }],
+  selectedRepo: { id: 'repo-1', full_name: 'acme/payments', default_branch: 'main' },
+  reloadRepos: mocks.reload,
 }) }));
 vi.mock('@/lib/api', async importOriginal => ({
   ...await importOriginal<typeof import('@/lib/api')>(),
   api: () => ({ assessments: mocks.assessments }),
 }));
 const asm = (id: string) => ({
-  id, state: 'CREATED', commit_sha: 'a'.repeat(40), trigger: 'manual', created_at: '2026-10-17T03:00:00Z',
+  id, repo_id: 'repo-1', state: 'CREATED', commit_sha: 'a'.repeat(40), trigger: 'manual', created_at: '2026-10-17T03:00:00Z',
   usage: { llm_calls: 1, usd: 0 },
 });
 // Stable references per key, like the real hook, so the page's change-detection does not loop.
@@ -38,7 +40,7 @@ it('says the list is truncated and appends older checks, deduped by id', async (
   fireEvent.click(screen.getByTestId('load-older-assessments'));
   await waitFor(() => expect(screen.queryByTestId('assessments-truncated')).toBeNull());
   expect(mocks.assessments).toHaveBeenCalledWith('prj_one', { cursor: 'asm_003' });
-  expect(within(screen.getByTestId('assessment-history-mobile-list')).getAllByRole('link', { name: /^Open run & replay asm_/ }).map(a => a.getAttribute('href')?.split('/').at(-1))).toEqual(['asm_005', 'asm_004', 'asm_003', 'asm_002', 'asm_001']);
+  expect(within(screen.getByTestId('assessment-history-mobile-list')).getAllByRole('link', { name: /^Open run & replay asm_/ }).map(a => a.getAttribute('href')?.split('?')[0]?.split('/').at(-1))).toEqual(['asm_005', 'asm_004', 'asm_003', 'asm_002', 'asm_001']);
 });
 
 it('shows no truncation note when there is no next cursor', () => {

@@ -1,17 +1,17 @@
 'use client';
 
-import { ApiError, type Assessment, type AssessmentState, type Page, type Repository, type Snapshot, type StreamEvent } from '@hackatl/frontend-transport';
+import { type Assessment, type AssessmentState, type Repository, type Snapshot, type StreamEvent } from '@hackatl/frontend-transport';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
+import { AssessmentList } from '@/components/assessment-history';
 import { PillarLoop } from '@/components/pillar-loop';
 import { RepoCommits } from '@/components/repo-commits';
 import { RepoPicker } from '@/components/repo-picker';
 import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, PageTitle, Panel, Stat, Time } from '@/components/ui';
+import { StartAssessment } from '@/components/start-assessment';
 import { api, idempotencyKey } from '@/lib/api';
 import { CONNECT_REPOSITORY_NOTE } from '@/lib/connect';
-import { assessmentSelection } from '@/lib/assessment-selection';
 import { INDEX_COMMIT_NOTE } from '@/lib/index-commit';
 import { shortSha } from '@/lib/format';
 import {
@@ -20,14 +20,13 @@ import {
 } from '@/lib/journey';
 import { projectOverview } from '@/lib/overview';
 import { pillarLoop } from '@/lib/pillars';
-import { START_ASSESSMENT_NOTE } from '@/lib/start-assessment';
-import { ASSESSMENT_STATE, effectiveScopeStatus, FINDING_STATUS, SNAPSHOT_STATUS, TERMINAL_STATES } from '@/lib/status';
+import { effectiveScopeStatus, FINDING_STATUS, SNAPSHOT_STATUS, TERMINAL_STATES } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
 const SHA = /^[0-9a-f]{7,40}$/;
 
 export default function ProjectOverview() {
-  const { project, repos } = useProject();
+  const { project, repos, selectedRepo } = useProject();
   const [repositoriesOpen, setRepositoriesOpen] = useState(repos.length === 0);
   const assessments = useResource(`asm:${project.id}`, s => api().assessments(project.id, { signal: s }), 5000);
   const findings = useResource(`fnd:${project.id}`, s => api().findings(project.id, { signal: s }), 10000);
@@ -74,7 +73,7 @@ export default function ProjectOverview() {
         <StartAssessment onStarted={assessments.reload} />
         <Panel title="Runs & replay" id="assessments" className="scroll-mt-24">
           <Async resource={assessments} label="assessments">
-            {page => <AssessmentList projectId={project.id} page={page} />}
+            {page => <AssessmentList projectId={project.id} repoId={selectedRepo?.id ?? ''} page={page} />}
           </Async>
         </Panel>
       </div>
@@ -234,143 +233,6 @@ function ProjectJourney({
       {events.status === 'error' && <div className="mt-3"><ErrorState error={events.error} onRetry={events.reload} context="Event log" /></div>}
       {monitoring.status === 'error' && <div className="mt-3"><ErrorState error={monitoring.error} onRetry={monitoring.reload} context="Monitoring events" /></div>}
     </section>
-  );
-}
-
-/** Older pages appended below the polled first page. `anchor` is the first page's next_cursor they were loaded from. */
-interface OlderChecks { anchor: string; items: Assessment[]; next: string | null }
-
-function AssessmentList({ projectId, page }: { projectId: string; page: Page<Assessment> }) {
-  const [older, setOlder] = useState<OlderChecks | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  // If the polled first page moved past the point the older pages were loaded from, a gap could
-  // hide checks in between, so those pages are dropped rather than shown as if contiguous.
-  const validOlder = older !== null && older.anchor === page.next_cursor ? older : null;
-  const seen = new Set(page.items.map(a => a.id));
-  const items = [...page.items, ...(validOlder?.items ?? []).filter(a => !seen.has(a.id))];
-  const nextCursor = validOlder ? validOlder.next : page.next_cursor;
-  const loadOlder = async () => {
-    if (nextCursor === null || page.next_cursor === null) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await api().assessments(projectId, { cursor: nextCursor });
-      setOlder(prev => {
-        const base = prev !== null && prev.anchor === page.next_cursor ? prev.items : [];
-        const have = new Set(base.map(a => a.id));
-        return { anchor: page.next_cursor as string, items: [...base, ...result.items.filter(a => !have.has(a.id))], next: result.next_cursor };
-      });
-    } catch (err) { setError(err); } finally { setBusy(false); }
-  };
-  if (items.length === 0) return <Empty>No assessments yet. Approve a scope, then start a check above.</Empty>;
-  return (
-    <div className="min-w-0">
-      <div className="hidden min-w-0 overflow-x-auto sm:block" data-testid="assessment-history-table-scroll">
-        <table className="w-full min-w-[520px] text-left text-sm">
-          <thead className="text-xs uppercase tracking-wider text-faint">
-            <tr><th className="py-1.5 pr-3">Run</th><th className="pr-4">Status</th><th className="pr-3">Commit</th><th>Started</th></tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {items.map(a => (
-              <tr key={a.id}>
-                <td className="py-2 pr-3"><Link className="text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`} aria-label={`Open run & replay ${a.id}`} title={a.id}>Open run & replay</Link></td>
-                <td className="whitespace-nowrap pr-4"><Badge view={ASSESSMENT_STATE[a.state]} /></td>
-                <td className="pr-3"><Mono>{shortSha(a.commit_sha)}</Mono></td>
-                <td className="text-muted"><Time iso={a.created_at} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="flex min-w-0 flex-col gap-2 sm:hidden" data-testid="assessment-history-mobile-list">
-        {items.map(a => (
-          <article key={a.id} className="min-w-0 rounded-md border border-line bg-panel-2/40 p-3" data-testid="assessment-history-mobile-row">
-            <Link className="block break-words text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${a.id}`} aria-label={`Open run & replay ${a.id}`} title={a.id}>Open run & replay</Link>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <span data-testid="assessment-mobile-status"><Badge view={ASSESSMENT_STATE[a.state]} /></span>
-              <Mono>{shortSha(a.commit_sha)}</Mono>
-              <span className="text-xs text-muted"><Time iso={a.created_at} /></span>
-            </div>
-          </article>
-        ))}
-      </div>
-      {nextCursor !== null && (
-        <div className="mt-3 flex flex-wrap items-center gap-3" data-testid="assessments-truncated">
-          <p className="text-xs text-muted">Showing the newest {items.length} checks. Older checks exist.</p>
-          <Button type="button" disabled={busy} onClick={() => void loadOlder()} data-testid="load-older-assessments">{busy ? 'Loading…' : 'Load older checks'}</Button>
-        </div>
-      )}
-      {error !== null && <div className="mt-2"><ErrorState error={error} onRetry={() => void loadOlder()} context="Older checks" /></div>}
-    </div>
-  );
-}
-
-function StartAssessment({ onStarted }: { onStarted: () => void }) {
-  const { project, repos } = useProject();
-  const router = useRouter();
-  const scopes = useResource(`scopes:${project.id}`, s => api().scopes(project.id, { signal: s }));
-  const [repoId, setRepoId] = useState('');
-  const [scopeId, setScopeId] = useState('');
-  const [sha, setSha] = useState('');
-  // An unchanged retry of the same action reuses its key; any edit is a new action.
-  const [key, setKey] = useState<{ sig: string; value: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const active = scopes.status === 'ready' ? scopes.data.items.filter(s => effectiveScopeStatus(s) === 'active') : [];
-  const selection = assessmentSelection(repoId, scopeId, repos, active);
-  const conflict = error instanceof ApiError && error.status === 409 && error.error.code === 'IDEMPOTENCY_CONFLICT';
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    const sig = `${project.id}|${selection.repoId}|${selection.scopeId}|${sha.trim()}`;
-    const actionKey = key?.sig === sig ? key.value : idempotencyKey('assessment');
-    setKey({ sig, value: actionKey });
-    setBusy(true);
-    setError(null);
-    try {
-      const asm = await api().startAssessment(project.id, { scope_id: selection.scopeId, repo_id: selection.repoId, commit_sha: sha.trim() || null, snapshot_id: null, budget: null }, actionKey);
-      onStarted();
-      router.push(`/projects/${project.id}/assessments/${asm.id}`);
-    } catch (err) { setError(err); } finally { setBusy(false); }
-  };
-
-  return (
-    <Panel title="Start an assessment" id="start-assessment">
-      <p className="mb-3 text-sm text-muted" data-testid="start-assessment-note">{START_ASSESSMENT_NOTE}</p>
-      {repos.length === 0 ? <Empty>Connect a repository first.</Empty> : (
-        <form onSubmit={submit} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Field label="Repository">
-            <select className={inputClass} value={selection.repoId} onChange={e => setRepoId(e.target.value)} required name="repo">
-              <option value="">Select…</option>
-              {repos.map(r => <option key={r.id} value={r.id}>{r.full_name}</option>)}
-            </select>
-          </Field>
-          <Field label="Authorized scope" hint={scopes.status === 'ready' && selection.scopes.length === 0 ? 'No active scope covers this repository — request and approve one under Defend → Authorized scopes in the project sidebar.' : undefined}>
-            <select className={inputClass} value={selection.scopeId} onChange={e => setScopeId(e.target.value)} required name="scope">
-              <option value="">Select…</option>
-              {selection.scopes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Commit SHA" hint="Blank = latest commit on the default branch.">
-            <input className={`${inputClass} font-mono`} value={sha} onChange={e => setSha(e.target.value.toLowerCase())} pattern="[0-9a-f]{7,40}" name="commit_sha" placeholder="optional" />
-          </Field>
-          <div className="sm:col-span-3">
-            <Button type="submit" variant="primary" disabled={busy || !selection.repoId || !selection.scopeId || (sha !== '' && !SHA.test(sha))}>Start assessment</Button>
-          </div>
-          {error !== null && <div className="sm:col-span-3">
-            <ErrorState error={error} context="Assessment not started" />
-            {conflict && <div className="mt-2 text-sm">
-              <p>Check the assessment list before starting a separate action. The previous key belongs to another request; retrying unchanged will keep returning this conflict.</p>
-              <Button type="button" className="mt-2" disabled={busy} onClick={() => { setKey(null); setError(null); }}>
-                Prepare a new assessment action
-              </Button>
-              <p className="mt-1 text-xs text-muted">This only resets the action key. Press Start assessment to submit a new action; it may create another assessment.</p>
-            </div>}
-          </div>}
-        </form>
-      )}
-    </Panel>
   );
 }
 
