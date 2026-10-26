@@ -22,6 +22,23 @@ adds an entry before ending.
 - Next steps: Product Tour work proceeds on its separate branch.
 - Warnings for the next session: No CI checks are monitored after push.
 
+### 2026-10-26 — Devin (agent, Adam) — plain Setup walkthrough
+- Did: removed the Setup coach-mark overlay and workspace tour, moved each
+  question's guidance inline, and added a flat completion screen linking to the
+  five project workspace sections.
+- State of the code: `fix/adam/setup-plain-walkthrough` removes all coach-mark
+  component/styles and updates the E2E setup helper to wait for completion.
+- Commands run and results: frontend ESLint passed; setup-related Vitest run
+  passed (6 files, 16 tests); `npx tsc --noEmit -p .` passed. The Setup route
+  returned HTTP 200 from the local dev server on port 3340.
+- Decisions made (ADR links): none.
+- Assumptions / open questions (RQ links): none.
+- Next steps: commit and push; CI will be handled in a follow-up.
+- Warnings for the next session: the first attempt to reuse the other worktree's
+  `node_modules` was rejected by Turbopack because it was outside this workspace;
+  dependencies were installed in this worktree instead. No API/backend stack was
+  started. The Next dev server should remain running on port 3340.
+
 ### 2026-10-26 — Devin (agent, Adam) — runtime pytest Verify audit
 - Did: reproduced import-time `pytest.skip` and dynamic hook `__code__` swaps
   through `apply_fresh`, a real local sandbox suite run, and `compute_verdict`;

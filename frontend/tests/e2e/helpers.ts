@@ -41,10 +41,7 @@ export async function completeSetup(
     await expect(page.getByTestId(`setup-step-${question + 1}`)).toBeVisible();
   }
   await page.getByRole('button', { name: 'Finish setup', exact: true }).click();
-  const tour = page.getByRole('dialog', { name: 'Tip 1 of 6' });
-  if (await tour.waitFor({ timeout: 5_000 }).then(() => true, () => false)) {
-    await tour.getByRole('button', { name: 'Skip tour' }).click();
-  }
+  await expect(page.getByTestId('setup-done')).toBeVisible();
 }
 
 /** Full-page screenshot of real executed test data (never fixtures), kept with the test results. */
