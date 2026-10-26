@@ -235,3 +235,25 @@ def test_installation_events_never_queue_a_disconnected_repository(client_factor
     assert post_webhook(alice, added, event="installation_repositories").status_code == 202
     worker.drain(kinds=["process_github_delivery"])
     assert _recipe_jobs() == []
+
+
+def test_reconnecting_a_detached_repository_needs_a_current_app_grant(client_factory, monkeypatch):
+    from backend.settings import get_settings
+
+    alice = client_factory("alice")
+    pid = _project(alice)
+    rid = _connect(alice, pid, "acme/shop").json()["id"]  # name-only: no installation
+    alice.post(f"/api/v1/repositories/{rid}/disconnect")
+    production = get_settings().model_copy(update={"app_env": "production"})
+    monkeypatch.setattr("backend.api.routes.get_settings", lambda: production)
+    url = f"/api/v1/repositories/{rid}/reconnect"
+
+    refused = alice.post(url)
+    assert refused.status_code == 403 and "install the App" in refused.text
+    assert alice.get(f"/api/v1/repositories/{rid}").json()["disconnected"] is True
+
+    with transaction() as conn:
+        store_repo_access(conn, alice.me["user"]["id"], [ACME])  # the App reaches it again
+    assert alice.post(url).status_code == 200
+    repo = alice.get(f"/api/v1/repositories/{rid}").json()
+    assert repo["disconnected"] is False and repo["installation_id"] == 42

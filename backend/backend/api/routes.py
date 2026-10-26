@@ -681,12 +681,30 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
     ``automatic_assessments`` or revoked deploy mappings: the owner opts back
     in explicitly.
     """
-    from backend.db import users
+    from backend.db import github_repo_access, users
 
     with transaction() as conn:
         user = _user(conn, request)
         repo = _repo_access(conn, user, repo_id, MemberRole.owner)
-        if repo["installation_id"] is not None:
+        installation_id = repo["installation_id"]
+        if installation_id is None and not get_settings().is_dev:
+            # The grant was detached (App uninstalled or the repo removed from it) or never
+            # existed: reactivating needs a current installation, found through this user's
+            # own access rows and verified below exactly like a recorded one.
+            installation_id = conn.execute(
+                sa.select(github_repo_access.c.installation_id).where(
+                    github_repo_access.c.user_id == user.id,
+                    github_repo_access.c.full_name == repo["full_name"],
+                )
+            ).scalar()
+            if installation_id is None:
+                raise ApiError(
+                    ErrorCode.FORBIDDEN,
+                    "Ari's GitHub App no longer reaches this repository; install the App on "
+                    "it, sign in with GitHub again, then reconnect",
+                    403,
+                )
+        if installation_id is not None:
             from backend.api.github_repos import (
                 _refresh_personal_installation_repositories,
                 can_connect,
@@ -700,18 +718,18 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
                 _refresh_personal_installation_repositories(
                     user.id, gh.github_login, gh.github_id, strict=True
                 )
-            verify_installation_access(repo["full_name"], repo["installation_id"])
-            if not can_connect(conn, user.id, repo["full_name"], repo["installation_id"]):
+            verify_installation_access(repo["full_name"], installation_id)
+            if not can_connect(conn, user.id, repo["full_name"], installation_id):
                 raise ApiError(
                     ErrorCode.FORBIDDEN,
                     "you no longer have access to this repository through its installation",
                     403,
                 )
-        if "disconnected_at" in repo and repo["disconnected_at"] is not None:
+        if repo["disconnected_at"] is not None:
             conn.execute(
                 sa.update(repositories)
                 .where(repositories.c.id == repo_id)
-                .values(disconnected_at=None)
+                .values(disconnected_at=None, installation_id=installation_id)
             )
             _audit(
                 conn,
@@ -733,7 +751,15 @@ def retry_build_recipe(repo_id: str, request: Request) -> dict[str, Any]:
     a recipe that already exists is still skipped, never overwritten."""
     with transaction() as conn:
         user = _user(conn, request)
-        repo = _owner_repo(conn, user, repo_id)
+        _owner_repo(conn, user, repo_id)
+        # Row lock: simultaneous retries queue here, so the second sees the first's job.
+        repo = (
+            conn.execute(
+                sa.select(repositories).where(repositories.c.id == repo_id).with_for_update()
+            )
+            .mappings()
+            .one()
+        )
         if repo["disconnected_at"] is not None:
             raise ApiError(ErrorCode.CONFLICT_STATE, "repository is disconnected", 409)
         if repo["installation_id"] is None:

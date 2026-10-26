@@ -111,24 +111,27 @@ export function BuildRecipeReadiness({ projectId, repo, compact = false }: { pro
     );
   }
   if (!compact && (latest.action === 'recipe.failed' || latest.action === 'recipe.invalid')) {
-    return <div className="space-y-3"><Result event={latest} compact={false} /><RetryRecipe repoId={repo.id} onQueued={events.reload} /></div>;
+    return <div className="space-y-3"><Result event={latest} compact={false} /><RetryRecipe key={latest.at} repoId={repo.id} onRefresh={events.reload} /></div>;
   }
   return <Result event={latest} compact={compact} />;
 }
 
-/** A failed proposal is not a dead end: the owner can ask Ari to try again after fixing the cause. */
-function RetryRecipe({ repoId, onQueued }: { repoId: string; onQueued: () => void }) {
+/**
+ * A failed proposal is not a dead end: the owner can ask Ari to try again after fixing the cause.
+ * Keyed by the result it retries, so a newer result resets it.
+ */
+function RetryRecipe({ repoId, onRefresh }: { repoId: string; onRefresh: () => void }) {
   const [state, setState] = useState<'idle' | 'busy' | 'queued'>('idle');
   const [error, setError] = useState<unknown>(null);
   const retry = async () => {
     setState('busy');
     setError(null);
-    try { await api().retryBuildRecipe(repoId); setState('queued'); onQueued(); } catch (err) { setError(err); setState('idle'); }
+    try { await api().retryBuildRecipe(repoId); setState('queued'); onRefresh(); } catch (err) { setError(err); setState('idle'); }
   };
   return (
     <div>
       {state === 'queued'
-        ? <p role="status" className="text-sm text-muted">Retry queued. Ari re-reads the repository and records a new result here; use Refresh to check.</p>
+        ? <p role="status" className="flex flex-wrap items-center gap-3 text-sm text-muted">Retry queued. Ari re-reads the repository and records a new result here. <Button onClick={onRefresh}>Refresh</Button></p>
         : <Button onClick={() => void retry()} disabled={state === 'busy'}>{state === 'busy' ? 'Queuing…' : 'Retry build recipe'}</Button>}
       {error !== null && <div className="mt-2"><ErrorState error={error} context="Could not queue a retry" /></div>}
     </div>

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { RefreshFromGitHub } from '@/components/refresh-from-github';
 import { Button, ErrorState, Loading, Mono, Tag } from '@/components/ui';
 import { api } from '@/lib/api';
+import { projectForRepository } from '@/lib/github-connect';
 import { useResource } from '@/lib/use-resource';
 
 /**
@@ -20,7 +21,13 @@ export function RepoPicker({ projectId, onConnected }: { projectId: string; onCo
     setBusy(repo.full_name);
     setError(null);
     try {
-      if (repo.connected_repo_id && repo.disconnected) await api().reconnectRepository(repo.connected_repo_id);
+      if (repo.connected_repo_id && repo.disconnected) {
+        // The row may belong to another of the user's projects; reconnecting would re-enable it there.
+        if (await projectForRepository(repo.connected_repo_id) !== projectId) {
+          throw new Error(`${repo.full_name} belongs to another project. Reconnect it from that project's Settings.`);
+        }
+        await api().reconnectRepository(repo.connected_repo_id);
+      }
       else await api().connectRepository(projectId, { full_name: repo.full_name, default_branch: repo.default_branch, installation_id: repo.installation_id });
       list.reload();
       onConnected();
