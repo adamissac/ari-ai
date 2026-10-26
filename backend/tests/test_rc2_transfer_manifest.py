@@ -16,12 +16,12 @@ def _literal(sha, path, variable):
 
 def test_proposed_transfer_migrations_do_not_reuse_revision_ids():
     reliability = _literal(
-        "07fcec56372badad357114feb6a3c42d1ca5734c",
+        "93b4e79f7564d61b43c1a0a89e3edc80e45ec6ac",
         "backend/backend/migrations/versions/0018_execution_reliability.py",
         "revision",
     )
     disconnect = _literal(
-        "e7a35cc1dd52a543e55d98ce3bbd913173c3d85d",
+        "93e4a81b43045e61bedcf652550a458185be3d97",
         "backend/backend/migrations/versions/0019_repository_disconnect.py",
         "revision",
     )
@@ -30,10 +30,10 @@ def test_proposed_transfer_migrations_do_not_reuse_revision_ids():
 
 def test_declared_transfer_order_does_not_downgrade_schema():
     heads = [
-        "27077358fe6b906269025f4d77f8285172e4772a",
-        "e726c2d5423387825cf8af15a64c2026b5099751",
-        "e7a35cc1dd52a543e55d98ce3bbd913173c3d85d",
-        "d4da9f43997cedcc3c4828f59919d63224d84c3c",
+        "ba7ba2d1217a842239520ed9e1791c94dfade3fc",
+        "931c1f200e2f2f54395684b5818bf5fc2b2d3572",
+        "93e4a81b43045e61bedcf652550a458185be3d97",
+        "5ff2254e5bb145a4553565620ce78ce5c65389b5",
     ]
     versions = [_literal(sha, "shared/shared/__init__.py", "SCHEMA_VERSION") for sha in heads]
     assert all(isinstance(v, str) for v in versions), versions
