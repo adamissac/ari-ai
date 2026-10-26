@@ -64,18 +64,34 @@ test('project page titles stay below the tab band at every route and viewport', 
         await page.evaluate(y => window.scrollTo(0, y), scrollY);
         const layout = await page.evaluate(() => {
           const tabBand = document.querySelector('.project-tabbar')!;
+          const siteHeader = document.querySelector('.site-header')!;
           const projectBody = document.querySelector('.project-body')!;
           const pageTitle = projectBody.querySelector('.page-title');
+          const tabRect = tabBand.getBoundingClientRect();
+          const headerRect = siteHeader.getBoundingClientRect();
           return {
-            tabBottom: tabBand.getBoundingClientRect().bottom + window.scrollY,
+            tabTop: tabRect.top,
+            tabBottom: tabRect.bottom + window.scrollY,
+            headerBottom: headerRect.bottom,
             bodyTop: projectBody.getBoundingClientRect().top + window.scrollY,
             titleTop: pageTitle ? pageTitle.getBoundingClientRect().top + window.scrollY : null,
             position: getComputedStyle(tabBand).position,
+            scrollY: window.scrollY,
+            siteZIndex: Number(getComputedStyle(siteHeader).zIndex),
+            tabZIndex: Number(getComputedStyle(tabBand).zIndex),
           };
         });
-        expect(layout.bodyTop, `${route} at ${width}px`).toBeGreaterThanOrEqual(layout.tabBottom);
-        if (layout.titleTop !== null) expect(layout.titleTop, `${route} title at ${width}px`).toBeGreaterThanOrEqual(layout.tabBottom);
-        expect(layout.position, `${route} at ${width}px`).not.toBe('sticky');
+        expect(layout.position, `${route} at ${width}px`).toBe('sticky');
+        expect(layout.siteZIndex, `${route} at ${width}px`).toBeGreaterThan(layout.tabZIndex);
+        if (scrollY === 0) {
+          expect(layout.bodyTop, `${route} at ${width}px`).toBeGreaterThanOrEqual(layout.tabBottom);
+          if (layout.titleTop !== null) expect(layout.titleTop, `${route} title at ${width}px`).toBeGreaterThanOrEqual(layout.tabBottom);
+        } else {
+          expect(layout.tabTop, `${route} at ${width}px`).toBeGreaterThanOrEqual(layout.headerBottom - 1);
+          if (layout.scrollY >= 300) {
+            expect(layout.tabTop, `${route} at ${width}px`).toBeLessThanOrEqual(layout.headerBottom + 1);
+          }
+        }
       }
       await expectNoDocumentOverflow(page);
     }

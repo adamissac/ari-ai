@@ -10,6 +10,7 @@ All notable changes are documented here. Format follows
 - Added a repository-scoped project workspace with Analytics, Commits, Findings, Approvals, Settings, and More navigation; commit history and assessment records remain scoped to the selected repository.
 - Flattened Expectations, Incidents, Monitoring, Scopes, and Simulate around the selected repository, labeling project-wide or unscoped records explicitly. The Commits 7 agents view now places a compact, phase-seekable map above persisted agent-run details.
 - Restored the pre-redesign look and fixed background, overflow and spacing bugs.
+- Console project pages keep the site header opaque above scrolling content, with the repository tab band sticky beneath it.
 - Setup now shows the actual expiry of the sandbox scope being approved; landing copy states the default and maximum authorization durations.
 - Refined the console account menu, mobile project navigation, status marks, assessment headers, and commit-to-assessment links.
 - Findings and assessment history now use mobile cards; setup review links open the project assessment-history section.
