@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useState, type CSSProperties } from 'react';
 import { BRAND_HEADLINE, BRAND_HEADLINE_REST, BRAND_TAGLINE } from '@/components/brand';
 import { HowItWorks, ProblemScene, ProofStats, Walkthrough } from '@/components/story';
-import { ASSESSMENT_LOOP, HeroStage, useLoopCursor } from '@/components/hero';
+import { ASSESSMENT_LOOP, HeroStage } from '@/components/hero';
 import { IntroLoader } from '@/components/intro-loader';
 import { OptionalUserBar } from '@/components/user-bar';
 import { ExplainerVideo } from '@/components/explainer-video';
@@ -22,7 +22,6 @@ const START = DEMO_ONLY ? { href: '/access', hero: 'Sign in' } : { href: '/proje
 const i = (n: number) => ({ '--i': n }) as CSSProperties;
 
 export default function HomePage() {
-  const active = useLoopCursor(LOOP.length);
   const [revealed, setRevealed] = useState(false);
 
   return (
@@ -44,7 +43,7 @@ export default function HomePage() {
               <RollText>How It Works</RollText>
             </a>
           </div>
-          <div className="hero-in mt-16 text-left" style={i(4)}><HeroExploit play={revealed} stages={LOOP} active={active} /></div>
+          <div className="hero-in mt-16 text-left" style={i(4)}><HeroExploit play={revealed} stages={LOOP} /></div>
         </div>
       </HeroStage>
 
