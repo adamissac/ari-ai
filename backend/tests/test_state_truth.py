@@ -405,3 +405,38 @@ def test_reconnect_outside_dev_refuses_when_github_cannot_verify(client_factory,
     r = alice.post(f"/api/v1/repositories/{rid}/reconnect")
     assert r.status_code == 503, r.text  # App not configured in tests: never trust the snapshot
     assert alice.get(f"/api/v1/repositories/{rid}").json()["disconnected"] is True
+
+
+def test_personal_installation_is_never_trusted_by_login_alone_outside_dev(
+    client_factory, monkeypatch
+):
+    from backend.api.github_repos import _refresh_personal_installation_repositories
+    from backend.settings import Settings
+
+    alice = client_factory("alice")
+    uid = alice.me["user"]["id"]
+    with transaction() as conn:
+        store_repo_access(conn, uid, [{**ACME, "full_name": "alice/app"}])
+    production = Settings(app_env="production")
+    monkeypatch.setattr("backend.api.github_repos.get_settings", lambda: production)
+
+    class Anyone:
+        def user_installation(self, login):
+            raise AssertionError("must not ask GitHub without an account id")
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", Anyone)
+    assert _refresh_personal_installation_repositories(uid, "alice", None) is False
+    assert _access(uid) == ["alice/app"]  # nothing refreshed or deleted on a name match
+
+
+def test_automation_status_reads_the_quota_without_locking_the_project(client_factory):
+    from backend.db import projects
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    with transaction() as conn:  # hold the start lock, as a start in flight would
+        conn.execute(
+            sa.select(projects.c.id).where(projects.c.id == ids["project"]).with_for_update()
+        )
+        status = alice.get(f"/api/v1/repositories/{ids['repo']}/automation-status")
+        assert status.status_code == 200

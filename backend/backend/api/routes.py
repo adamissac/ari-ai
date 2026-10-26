@@ -538,7 +538,7 @@ def automation_status(repo_id: str, request: Request) -> dict[str, Any]:
                 ("no_active_scope", "No approved, unexpired testing scope covers this repository.")
             )
         resets_at = None
-        quota = check_project_quota(conn, project_id, utcnow())
+        quota = check_project_quota(conn, project_id, utcnow(), reserve=False)
         if quota is not None:
             resets_at = quota.resets_at.isoformat()
             blocked.append(("quota_reached", rate_limit_message(quota)))

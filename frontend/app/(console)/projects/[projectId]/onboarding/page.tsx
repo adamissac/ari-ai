@@ -143,7 +143,8 @@ export default function OnboardingPage() {
           );
         }}
       </Async>
-      <DisconnectPanel projectId={project.id} repoId={repoId} onChanged={status.reload} />
+      {/* Keyed so a confirmation or result for one repository never carries over to another. */}
+      <DisconnectPanel key={repoId ?? 'none'} projectId={project.id} repoId={repoId} onChanged={status.reload} />
     </div>
   );
 }

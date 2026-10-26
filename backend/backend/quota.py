@@ -48,7 +48,9 @@ def _quota_resets_at(
     return next_expiring + window
 
 
-def check_project_quota(conn: Connection, project_id: str, now: datetime) -> QuotaDecision | None:
+def check_project_quota(
+    conn: Connection, project_id: str, now: datetime, *, reserve: bool = True
+) -> QuotaDecision | None:
     """Apply the project's hourly and daily review pool and the global spend cap.
 
     Every start counts every recent assessment, manual or automatic: the owner-approved
@@ -60,7 +62,9 @@ def check_project_quota(conn: Connection, project_id: str, now: datetime) -> Quo
     # project before the repository row (create_assessment) and none can deadlock.
     # shortcut: the global spend cap is only as fresh as recorded usage, so in-flight
     # runs in other projects can still overshoot it; it is a cost bound, not a quota.
-    conn.execute(sa.select(projects.c.id).where(projects.c.id == project_id).with_for_update())
+    # reserve=False is for read-only status: report the pool without blocking starts.
+    if reserve:
+        conn.execute(sa.select(projects.c.id).where(projects.c.id == project_id).with_for_update())
     # The caller's `now` predates any wait for the lock; a start that committed meanwhile
     # carries a later created_at and must still count.
     now = max(now, utcnow())

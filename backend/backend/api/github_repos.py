@@ -131,6 +131,9 @@ def _refresh_personal_installation_repositories(
         not isinstance(login, str)
         or not login.strip()
         or (github_id is None and settings.is_dev and settings.auth_dev_login_enabled)
+        # A login can be renamed and re-registered by someone else; outside dev only the
+        # immutable GitHub account id may vouch for a personal installation.
+        or (github_id is None and not settings.is_dev)
     ):
         return False
 
