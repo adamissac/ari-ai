@@ -164,13 +164,31 @@ def main(argv: list[str]) -> int:
         )
 
         from backend import llm, worker
+        from code_review.agent import _prompt  # type: ignore[import-not-found]
 
-        # Reviewer turns, then its repair turns once the functional repair is approved.
-        reviewer = [
-            *pl_review_script(SimpleNamespace(repo=repo)),
-            *pl_repair_script("target/tests/generated/test_cr_refund_bound.py"),
-        ]
-        bridge = AlanScriptTransport(repo / "target", fallback=fake(reviewer))
+        repair_marker = _prompt("repair_v1.md").splitlines()[0]
+
+        class ReviewerScripts:
+            """The reviewer's review and repair turns as separate scripts, routed by system
+            prompt, restarting on each fresh conversation. One shared script let a repair
+            consume leftover review turns (IndexError) when runs interleaved or retried."""
+
+            mode = "fake"
+
+            def __init__(self) -> None:
+                self.live: dict[str, Any] = {}
+
+            def create(self, request: dict[str, Any]) -> Any:
+                kind = "repair" if repair_marker in request["system"] else "review"
+                if kind not in self.live or len(request["messages"]) == 1:
+                    self.live[kind] = fake(
+                        pl_repair_script("target/tests/generated/test_cr_refund_bound.py")
+                        if kind == "repair"
+                        else pl_review_script(SimpleNamespace(repo=repo))
+                    )
+                return self.live[kind].create(request)
+
+        bridge = AlanScriptTransport(repo / "target", fallback=ReviewerScripts())
         llm.TRANSPORT_OVERRIDE = lambda: bridge
         # Several UI journeys execute independent assessments in this stack. Give
         # each one a fresh scripted conversation, retaining its real gateway hooks.
@@ -184,7 +202,7 @@ def main(argv: list[str]) -> int:
             if assessment_id and kwargs.get("transport") is None:
                 if assessment_id not in assessment_transports:
                     assessment_transports[assessment_id] = AlanScriptTransport(
-                        repo / "target", fallback=fake(reviewer)
+                        repo / "target", fallback=ReviewerScripts()
                     )
                 kwargs["transport"] = assessment_transports[assessment_id]
             return original_build_gateway(**kwargs)
