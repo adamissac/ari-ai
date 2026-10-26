@@ -250,3 +250,46 @@ non-product:
 (branch tip `6ece2484` = report commits only). GO FOR INDEPENDENT REVIEW on
 the selected tested landing security suite; release merge remains HOLD per
 Codex — nothing merged, deployed, or enforcement-enabled.
+
+---
+
+## RC5 second addendum — canonical `ba4ada0d` incorporated (frontend #638)
+
+Codex's exact-SHA check on `b6d5108b` returned **Security GO** (194 pass /
+zero fail-skip-error, run 40285189840; F1–F10/N1–N9 + #629 all pass; backend
+1317, security 839, frontend 405 unit/46 browser). Canonical main then moved
+to `ba4ada0d` (frontend #638 "restore the classic design"), which produced
+real merge conflicts — Codex held canonical merge pending reconciliation +
+full resulting-SHA CI. Both now satisfied.
+
+**Conflicts resolved** (4 files, first real code conflicts in the cascade):
+- `frontend/components/project.tsx` — upstream replaced the grouped rail
+  with flat `TABS` + `MORE` dropdown; adopted upstream's structure and added
+  `Onboarding` to `MORE` (between Simulate and Setup) — the only integration
+  content preserved on top of upstream's layout.
+- `frontend/tests/e2e/demo-recovery.spec.ts` — upstream assertions adopted
+  (5 tab links, Analytics aria-current).
+- `frontend/tests/unit/project-navigation.test.tsx` — upstream assertions
+  adopted + `['Onboarding', '/projects/p1/onboarding?repo=r1']` added to the
+  More-menu expectation.
+- `docs/planning/SESSION_HANDOFF.md` — union-resolved per convention.
+
+**Merge commits:** integration `d8c5ff38`; stack S1 `709c75d7`, S2
+`ba7ba2d1`, S3 `93b4e79f`, S4 `931c1f20`, S5 `93e4a81b`, S6 `5ff2254e`,
+S7 `d42cb056`, S8 `56a5d1eb` (includes manifest repin). S8 vs candidate:
+zero diffs outside docs/coordination/results.
+
+**Verification on merged tree:**
+- Zero backend/security-agents/shared production changes — the earlier
+  matrix (843/9 backend, 828/24 sec-agents, 213/213 replay, migrations 2/2,
+  transport 36) carries over unchanged.
+- Frontend: **427 pass / 99 files** (#638's tests included) + lint +
+  typecheck + build clean; `project-navigation` 3/3; manifest 2/2.
+- **Same-SHA GitHub CI on `36bd05ee`: 24/24 green** — wait-ci +
+  strict-regressions + every suite incl. `e2e`; `codex-audit` skipped (no
+  key), `live` opt-in skipped, `report` posts the honest CI-only NO-GO.
+
+**Verdict (RC5 final, refreshed):** candidate SHA
+**`36bd05ee`** (branch tip `b6829c3f` = report commit, docs only) — GO for
+the tested landing security suite; release merge remains HOLD per Codex.
+Nothing merged, deployed, or enforcement-enabled.
