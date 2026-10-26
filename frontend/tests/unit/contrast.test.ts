@@ -41,11 +41,11 @@ describe('WCAG contrast of design tokens', () => {
   it('hero text over the brand colour keeps 4.5:1', () => {
     const brand = token('brand');
     const body = css.match(/\.hero-ink p[^{]*\{[^}]*rgba\(255,\s*255,\s*255,\s*([\d.]+)\)/);
-    const dim = css.match(/\.hero-line-dim \{ --dim: rgba\(255, 255, 255, ([\d.]+)\)/);
+    const dim = css.match(/\.hero-headline \.hero-line-dim \{[^}]*color:\s*(#[0-9a-fA-F]{6})/);
     expect(body).not.toBeNull();
     expect(dim).not.toBeNull();
     expect(ratio(over(Number(body![1]), '#ffffff', brand), brand)).toBeGreaterThanOrEqual(4.5);
-    expect(ratio(over(Number(dim![1]), '#ffffff', brand), brand)).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(dim![1]!, brand)).toBeGreaterThanOrEqual(4.5);
   });
 
   it('night tokens (every page but the landing) keep text and controls readable', () => {
@@ -74,17 +74,26 @@ describe('WCAG contrast of design tokens', () => {
 
   it('keeps the warm headline core above 4.5:1 over the brand background, with no glow', () => {
     expect(ratio('#fff7f2', token('brand'))).toBeGreaterThanOrEqual(4.7);
-    const rule = css.match(/\.hero-headline \.hero-line\s*\{([^}]*)\}/);
-    expect(rule?.[1]).toContain('color: #fff7f2;');
-    // The owner removed the glow; a blurred shadow on type this size also made scrolling chop.
-    expect(rule?.[1]).not.toContain('text-shadow');
+    const rule = [...css.matchAll(/\.hero-headline \.hero-line\s*\{([^}]*)\}/g)]
+      .map(match => match[1]!)
+      .find(declarations => declarations.includes('color: #fff7f2;'));
+    expect(rule).toContain('color: #fff7f2;');
+    // The glow is isolated to an opacity-animated pseudo layer; the text core remains crisp.
+    expect(rule).not.toContain('text-shadow');
   });
 });
 
 
 it('keeps the effective second-line headline colors above 4.5:1 on brand', () => {
-  const rule = css.match(/\.hero-stage\[data-fx="on"\] \.hero-headline \.hero-line-dim \{([^}]+)\}/)![1]!;
-  for (const color of rule.match(/#[0-9a-f]{6}/g)!) {
-    expect(ratio(color, token('brand'))).toBeGreaterThanOrEqual(4.5);
-  }
+  const color = css.match(/\.hero-headline \.hero-line-dim \{[^}]*color:\s*(#[0-9a-f]{6})/i)![1]!;
+  expect(ratio(color, token('brand'))).toBeGreaterThanOrEqual(4.5);
+});
+
+it('uses slow transform-only hero blobs and a static reduced-motion glow', () => {
+  const durations = [...css.matchAll(/\.hero-orb-[a-e][^{]*\{[^}]*animation: hero-drift-[a-e] ([\d.]+)s/g)]
+    .map(match => Number(match[1]))
+    .sort((a, b) => a - b);
+  expect(durations).toEqual([28, 32, 38, 42, 45]);
+  expect(css).toContain('animation: ember-breathe 6s ease-in-out infinite alternate');
+  expect(css).toMatch(/prefers-reduced-motion: reduce\)[\s\S]*?\.hero-headline \.hero-line::before \{ animation: none/);
 });

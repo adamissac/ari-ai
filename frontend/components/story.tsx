@@ -20,24 +20,40 @@ export function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, n
     const el = ref.current;
     if (!el) return;
     const mq = window.matchMedia('(min-width: 1024px) and (prefers-reduced-motion: no-preference)');
-    let frame = 0;
+    let measureFrame = 0;
+    let smoothFrame = 0;
+    let target = 1;
+    let progress = 1;
     // Only a chapter on screen measures itself and re-renders; the others sit still.
     let visible = true;
+    const smooth = () => {
+      smoothFrame = 0;
+      const delta = target - progress;
+      progress = Math.abs(delta) < 0.001 ? target : progress + delta * 0.14;
+      el.style.setProperty('--p', progress.toFixed(4));
+      setP(progress);
+      if (progress !== target) smoothFrame = requestAnimationFrame(smooth);
+    };
     const update = () => {
-      frame = 0;
+      measureFrame = 0;
       setSticky(mq.matches);
-      if (!mq.matches) { setP(1); return; }
+      if (!mq.matches) {
+        target = 1;
+        progress = 1;
+        el.style.setProperty('--p', '1');
+        setP(1);
+        return;
+      }
       const r = el.getBoundingClientRect();
       const total = r.height - window.innerHeight;
-      const v = total <= 0 ? 1 : Math.min(1, Math.max(0, -r.top / total));
-      el.style.setProperty('--p', v.toFixed(4));
-      setP(Math.round(v * 200) / 200);
+      target = total <= 0 ? 1 : Math.min(1, Math.max(0, -r.top / total));
+      if (!smoothFrame) smoothFrame = requestAnimationFrame(smooth);
     };
-    const schedule = () => { if (visible && !frame) frame = requestAnimationFrame(update); };
+    const schedule = () => { if (visible && !measureFrame) measureFrame = requestAnimationFrame(update); };
     const io = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(([entry]) => {
       visible = entry?.isIntersecting ?? true;
       // One last measurement on the way out, so the scene settles at its start or end state.
-      if (!frame) frame = requestAnimationFrame(update);
+      if (!measureFrame) measureFrame = requestAnimationFrame(update);
     });
     io?.observe(el);
     window.addEventListener('scroll', schedule, { passive: true });
@@ -45,7 +61,8 @@ export function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, n
     mq.addEventListener('change', schedule);
     schedule();
     return () => {
-      cancelAnimationFrame(frame);
+      cancelAnimationFrame(measureFrame);
+      cancelAnimationFrame(smoothFrame);
       io?.disconnect();
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
@@ -57,6 +74,40 @@ export function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, n
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
+function LandingVignette({ kind }: { kind: 'agents' | 'shield' | 'clock' | 'patrol' }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 100 100" className={`landing-vignette landing-vignette-${kind}`}>
+      {kind === 'agents' && (
+        <>
+          <g className="vignette-ant" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 54h18m-13-4-5-7m13 7 5-7m-14 12-5 8m14-8 5 8M45 36h16m-12-4-5-7m13 7 5-7m-13 12-5 8m13-8 5 8" />
+            <circle cx="21" cy="54" r="4" /><circle cx="34" cy="54" r="5" />
+            <circle cx="48" cy="36" r="4" /><circle cx="60" cy="36" r="5" />
+          </g>
+          <circle className="vignette-threat" cx="82" cy="28" r="5" fill="#dc4939" />
+        </>
+      )}
+      {kind === 'shield' && (
+        <path className="vignette-shield" d="M50 12 78 23v20c0 20-12 35-28 45C34 78 22 63 22 43V23l28-11Zm-12 34 9 9 17-20" fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />
+      )}
+      {kind === 'clock' && (
+        <>
+          <circle cx="50" cy="50" r="34" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="3 5" />
+          <path className="vignette-clock-hand" d="M50 50V25M50 50l17 10" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        </>
+      )}
+      {kind === 'patrol' && (
+        <>
+          <path d="M14 72c18-32 34-40 52-20s16 15 22 2" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="2 6" />
+          <circle className="vignette-patrol-dot" cx="16" cy="69" r="5" fill="currentColor" />
+          <circle cx="68" cy="52" r="3" fill="currentColor" />
+          <circle cx="88" cy="54" r="3" fill="currentColor" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 /* ---------- 1. The problem ---------- */
 
 const TICKS = 12;
@@ -65,7 +116,7 @@ const SNAPSHOT_CAUGHT = new Set([1, 6, 7]); // a PR review and a periodic scan e
 const PROBLEM_LINES = [
   { title: 'Code changes every day.', body: 'Developers and AI agents ship new behaviour with every merge, and each one can change what the software does.' },
   { title: 'Reviews see a diff. Scans see a snapshot.', body: 'A reviewer reads the lines that changed. A scanner checks a moment in time. Intent and real exploitability go unchecked.' },
-  { title: `${BRAND_NAME} checks every change.`, body: 'Every change is tested against what the software is supposed to do and probed like an attacker would, then re-checked as code moves.' },
+  { title: 'EVERY CHANGE. CHECKED.', body: 'Every change is tested against what the software is supposed to do and probed like an attacker would, then re-checked as code moves.' },
 ];
 
 export function ProblemScene() {
@@ -78,7 +129,7 @@ export function ProblemScene() {
 
   return (
     <div ref={ref} className="story-track story-track-3 bleed bleed-night">
-      <section aria-labelledby="problem-title" className="story-stage flex flex-col justify-center py-16">
+      <section aria-labelledby="problem-title" className="story-stage relative flex flex-col justify-center py-16">
         <p className="kicker">The problem</p>
         <h2 id="problem-title" className="sr-only">Why every change needs checking</h2>
         <div className="story-swap mt-4 min-h-[9.5rem] max-w-3xl md:min-h-[8.5rem]">
@@ -110,6 +161,7 @@ export function ProblemScene() {
             <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span>
           </div>
         </div>
+        <LandingVignette kind="agents" />
       </section>
     </div>
   );
@@ -152,7 +204,7 @@ export function HowItWorks() {
 
   return (
     <div ref={ref} className="story-track story-track-4 bleed bleed-ink text-white" id="how">
-      <section aria-labelledby="how-title" className="story-stage story-rain flex flex-col justify-center py-16">
+      <section aria-labelledby="how-title" className="story-stage story-rain relative flex flex-col justify-center py-16">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-end">
           <div>
             <p className="kicker kicker-ghost">How it works</p>
@@ -184,6 +236,8 @@ export function HowItWorks() {
             </li>
           ))}
         </ol>
+        <LandingVignette kind="shield" />
+        <LandingVignette kind="patrol" />
       </section>
     </div>
   );
@@ -213,7 +267,7 @@ export function Walkthrough() {
 
   return (
     <div ref={ref} className="story-track story-track-4">
-      <section aria-labelledby="walk-title" className="story-stage grid content-center gap-10 py-16 lg:grid-cols-[1fr_1.3fr] lg:items-center">
+      <section aria-labelledby="walk-title" className="story-stage relative grid content-center gap-10 py-16 lg:grid-cols-[1fr_1.3fr] lg:items-center">
         <div>
           <p className="kicker">One finding, start to proof</p>
           <h2 id="walk-title" className="display mt-3 text-3xl font-semibold md:text-4xl">Four harmless steps.<br /><span className="text-muted">One verified fix.</span></h2>
@@ -254,6 +308,7 @@ export function Walkthrough() {
           {step === 3 && <span className="block">verified · replay 2 / 2</span>}
         </p>
         </div>
+        <LandingVignette kind="clock" />
       </section>
     </div>
   );

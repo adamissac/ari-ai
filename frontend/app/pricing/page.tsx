@@ -61,7 +61,7 @@ function Cta({ href, children, tone }: { href: string; children: string; tone: '
 
 export default function PricingPage() {
   return (
-    <div className="pricing">
+    <div className="pricing marketing-atmosphere">
       <header className="hero-ink bleed-hero -mt-6 px-6 pb-20 pt-16 md:px-12 md:pb-28 md:pt-24" aria-labelledby="pricing-title">
         <div className="mx-auto max-w-7xl">
           <p className="pricing-pill label-mono">Pricing</p>
@@ -131,7 +131,7 @@ export default function PricingPage() {
       </Reveal>
 
       <Reveal>
-      <section aria-labelledby="pricing-cta" className="hero-ink mb-16 mt-16 rounded-2xl px-6 py-14 text-center md:px-12 md:py-20">
+      <section aria-labelledby="pricing-cta" className="pricing-cta mb-16 mt-16 px-6 py-14 text-center md:px-12 md:py-20">
         <h2 id="pricing-cta" className="display mx-auto max-w-3xl text-3xl font-semibold md:text-5xl">See what your code really does before an attacker does.</h2>
         <div className="mt-8 flex flex-wrap justify-center gap-2">
           <Cta href={START} tone="light">Open the console</Cta>

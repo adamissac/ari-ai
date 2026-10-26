@@ -15,6 +15,9 @@ it('shows the four plans, the FAQ and the preview-pricing note', () => {
   expect(screen.getByText('Does ARI ever change our code on its own?')).toBeTruthy();
   expect(screen.getByTestId('pricing-preview').textContent).toContain('nothing can be purchased');
   expect(screen.getByTestId('pricing-proposal').textContent).toContain('proposals');
+  const cta = screen.getByRole('heading', { name: 'See what your code really does before an attacker does.' }).parentElement;
+  expect(cta?.classList.contains('pricing-cta')).toBe(true);
+  expect(cta?.classList.contains('hero-ink')).toBe(false);
   expect(screen.queryByText(/free trial/i)).toBeNull();
   expect(screen.queryByText(/SSO/)).toBeNull();
 });
