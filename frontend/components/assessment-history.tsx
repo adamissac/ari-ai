@@ -37,38 +37,42 @@ export function AssessmentList({ projectId, repoId, page }: { projectId: string;
       });
     } catch (err) { setError(err); } finally { setBusy(false); }
   };
-  if (items.length === 0) return <Empty>No assessments for this repository yet. Approve a scope, then start a check above.</Empty>;
+  if (items.length === 0 && nextCursor === null) return <Empty>No assessments for this repository yet. Approve a scope, then start a check above.</Empty>;
   return (
     <div className="min-w-0">
-      <div className="hidden min-w-0 overflow-x-auto sm:block" data-testid="assessment-history-table-scroll">
-        <table className="w-full min-w-[520px] text-left text-sm">
-          <thead className="text-xs uppercase tracking-wider text-faint">
-            <tr><th className="py-1.5 pr-3">Run</th><th className="pr-4">Status</th><th className="pr-3">Commit</th><th>Started</th></tr>
-          </thead>
-          <tbody className="divide-y divide-line">
+      {items.length === 0 ? <Empty>No assessments for this repository on the latest page.</Empty> : (
+        <>
+          <div className="hidden min-w-0 overflow-x-auto sm:block" data-testid="assessment-history-table-scroll">
+            <table className="w-full min-w-[520px] text-left text-sm">
+              <thead className="text-xs uppercase tracking-wider text-faint">
+                <tr><th className="py-1.5 pr-3">Run</th><th className="pr-4">Status</th><th className="pr-3">Commit</th><th>Started</th></tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {items.map(assessment => (
+                  <tr key={assessment.id}>
+                    <td className="py-2 pr-3"><Link className="text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${assessment.id}?repo=${encodeURIComponent(repoId)}`} aria-label={`Open run & replay ${assessment.id}`} title={assessment.id}>Open run & replay</Link></td>
+                    <td className="whitespace-nowrap pr-4"><Badge view={ASSESSMENT_STATE[assessment.state]} /></td>
+                    <td className="pr-3"><Mono>{shortSha(assessment.commit_sha)}</Mono></td>
+                    <td className="text-muted"><Time iso={assessment.created_at} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex min-w-0 flex-col gap-2 sm:hidden" data-testid="assessment-history-mobile-list">
             {items.map(assessment => (
-              <tr key={assessment.id}>
-                <td className="py-2 pr-3"><Link className="text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${assessment.id}?repo=${encodeURIComponent(repoId)}`} aria-label={`Open run & replay ${assessment.id}`} title={assessment.id}>Open run & replay</Link></td>
-                <td className="whitespace-nowrap pr-4"><Badge view={ASSESSMENT_STATE[assessment.state]} /></td>
-                <td className="pr-3"><Mono>{shortSha(assessment.commit_sha)}</Mono></td>
-                <td className="text-muted"><Time iso={assessment.created_at} /></td>
-              </tr>
+              <article key={assessment.id} className="min-w-0 rounded-md border border-line bg-panel-2/40 p-3" data-testid="assessment-history-mobile-row">
+                <Link className="block break-words text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${assessment.id}?repo=${encodeURIComponent(repoId)}`} aria-label={`Open run & replay ${assessment.id}`} title={assessment.id}>Open run & replay</Link>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <span data-testid="assessment-mobile-status"><Badge view={ASSESSMENT_STATE[assessment.state]} /></span>
+                  <Mono>{shortSha(assessment.commit_sha)}</Mono>
+                  <span className="text-xs text-muted"><Time iso={assessment.created_at} /></span>
+                </div>
+              </article>
             ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="flex min-w-0 flex-col gap-2 sm:hidden" data-testid="assessment-history-mobile-list">
-        {items.map(assessment => (
-          <article key={assessment.id} className="min-w-0 rounded-md border border-line bg-panel-2/40 p-3" data-testid="assessment-history-mobile-row">
-            <Link className="block break-words text-sm text-accent hover:underline" href={`/projects/${projectId}/assessments/${assessment.id}?repo=${encodeURIComponent(repoId)}`} aria-label={`Open run & replay ${assessment.id}`} title={assessment.id}>Open run & replay</Link>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <span data-testid="assessment-mobile-status"><Badge view={ASSESSMENT_STATE[assessment.state]} /></span>
-              <Mono>{shortSha(assessment.commit_sha)}</Mono>
-              <span className="text-xs text-muted"><Time iso={assessment.created_at} /></span>
-            </div>
-          </article>
-        ))}
-      </div>
+          </div>
+        </>
+      )}
       {nextCursor !== null && (
         <div className="mt-3 flex flex-wrap items-center gap-3" data-testid="assessments-truncated">
           <p className="text-xs text-muted">Showing the newest {items.length} checks. Older checks exist.</p>
