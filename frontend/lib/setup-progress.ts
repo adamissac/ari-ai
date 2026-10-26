@@ -1,3 +1,5 @@
+import type { RepositorySetup, RepositorySetupUpdate } from '@hackatl/frontend-transport';
+
 export const SETUP_QUESTIONS = [
   'readiness',
   'strictness',
@@ -61,4 +63,49 @@ export function canVisitSetupQuestion(progress: SetupProgress, questionNumber: n
 
 export function isSetupComplete(progress: SetupProgress, hasAssessment: boolean): boolean {
   return progress.complete || hasAssessment;
+}
+
+/** Fired after setup progress is saved so the project shell re-reads the server copy. */
+export const SETUP_SAVED_EVENT = 'ari-setup-progress';
+
+export function progressFromServer(setup: RepositorySetup): SetupProgress {
+  const answers: SetupProgress['answers'] = {};
+  for (const question of SETUP_QUESTIONS) {
+    const answer = setup.answers[question];
+    if (typeof answer === 'string' || typeof answer === 'boolean') answers[question] = answer;
+  }
+  return { answers, complete: setup.complete };
+}
+
+export function progressToServer(progress: SetupProgress): RepositorySetupUpdate {
+  const answers = {} as RepositorySetupUpdate['answers'];
+  for (const question of SETUP_QUESTIONS) answers[question] = progress.answers[question] ?? null;
+  return { answers, complete: progress.complete };
+}
+
+export function hasSetupProgress(progress: SetupProgress): boolean {
+  return progress.complete || Object.keys(progress.answers).length > 0;
+}
+
+/** Progress an earlier build kept only in this browser, if any. */
+export function readLegacySetupProgress(projectId: string, repoId: string): SetupProgress | null {
+  try {
+    const raw = window.localStorage.getItem(setupProgressKey(projectId, repoId));
+    return raw === null ? null : parseSetupProgress(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function clearLegacySetupProgress(projectId: string, repoId: string): void {
+  try { window.localStorage.removeItem(setupProgressKey(projectId, repoId)); } catch { /* nothing stored */ }
+}
+
+/**
+ * The server copy wins once it has anything. Browser-only progress from an
+ * earlier build is used (and should be uploaded) only while the server is empty.
+ */
+export function initialSetupProgress(server: SetupProgress, legacy: SetupProgress | null): { progress: SetupProgress; migrate: boolean } {
+  if (hasSetupProgress(server) || !legacy || !hasSetupProgress(legacy)) return { progress: server, migrate: false };
+  return { progress: legacy, migrate: true };
 }

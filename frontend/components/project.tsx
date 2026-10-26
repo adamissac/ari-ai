@@ -3,12 +3,12 @@
 import type { Project, Repository } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useSelectedRepo } from '@/lib/selected-repo';
 import { api } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
 import { ErrorState, Loading, Mono, inputClass } from '@/components/ui';
-import { isSetupComplete, parseSetupProgress, setupProgressKey } from '@/lib/setup-progress';
+import { isSetupComplete, progressToServer, readLegacySetupProgress, SETUP_SAVED_EVENT } from '@/lib/setup-progress';
 
 interface ProjectValue {
   project: Project;
@@ -163,36 +163,49 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   const repoItems = repos.status === 'ready' ? repos.data.items : [];
   const { selectedRepo, selectRepo } = useSelectedRepo(id, repoItems);
   const selectedRepoId = selectedRepo?.id ?? null;
-  const setupKey = selectedRepoId ? setupProgressKey(id, selectedRepoId) : null;
+  const savedSetup = useResource(
+    selectedRepoId ? `setup-state:${id}:${selectedRepoId}` : null,
+    signal => api().repositorySetup(selectedRepoId!, { signal }),
+  );
   const setupCheck = useResource(
     selectedRepoId ? `setup-check:${id}:${selectedRepoId}` : null,
     signal => hasRepoAssessment(id, selectedRepoId!, signal),
   );
-  const [storedProgress, setStoredProgress] = useState<{ key: string | null; complete: boolean }>({ key: null, complete: false });
+  const reloadSavedSetup = savedSetup.reload;
   useEffect(() => {
-    const readProgress = () => {
-      if (!setupKey) {
-        setStoredProgress({ key: null, complete: false });
-        return;
-      }
-      let progress = parseSetupProgress(null);
-      try { progress = parseSetupProgress(window.localStorage.getItem(setupKey)); } catch { /* setup can still complete from saved records */ }
-      setStoredProgress({ key: setupKey, complete: progress.complete });
-    };
-    readProgress();
-    window.addEventListener('ari-setup-progress', readProgress);
-    return () => window.removeEventListener('ari-setup-progress', readProgress);
-  }, [setupKey]);
-  const storageReady = storedProgress.key === setupKey;
-  const setupReady = setupCheck.status !== 'loading' || storedProgress.complete;
-  const complete = isSetupComplete({ answers: {}, complete: storageReady && storedProgress.complete }, setupCheck.status === 'ready' && setupCheck.data);
+    window.addEventListener(SETUP_SAVED_EVENT, reloadSavedSetup);
+    return () => window.removeEventListener(SETUP_SAVED_EVENT, reloadSavedSetup);
+  }, [reloadSavedSetup]);
+  // Browser-only completion from an earlier build still counts, and moves to the server.
+  const legacyComplete = useSyncExternalStore(
+    callback => {
+      window.addEventListener(SETUP_SAVED_EVENT, callback);
+      window.addEventListener('storage', callback);
+      return () => {
+        window.removeEventListener(SETUP_SAVED_EVENT, callback);
+        window.removeEventListener('storage', callback);
+      };
+    },
+    () => Boolean(selectedRepoId && readLegacySetupProgress(id, selectedRepoId)?.complete),
+    () => false,
+  );
+  const serverComplete = savedSetup.status === 'ready' && savedSetup.data.complete;
+  useEffect(() => {
+    if (!selectedRepoId || !legacyComplete || savedSetup.status !== 'ready' || savedSetup.data.complete) return;
+    api().saveRepositorySetup(selectedRepoId, progressToServer(readLegacySetupProgress(id, selectedRepoId) ?? { answers: {}, complete: true }))
+      .then(reloadSavedSetup, () => { /* still complete in this browser */ });
+  }, [id, legacyComplete, reloadSavedSetup, savedSetup, selectedRepoId]);
+  const knownComplete = serverComplete || legacyComplete;
+  const setupReady = (savedSetup.status !== 'loading' && setupCheck.status !== 'loading') || knownComplete;
+  const complete = isSetupComplete({ answers: {}, complete: knownComplete }, setupCheck.status === 'ready' && setupCheck.data);
   const setupRoute = pathname === `${base}/setup` || pathname.startsWith(`${base}/setup/`);
   // First-run surfaces (onboarding checklist, live-defense connect) must stay
   // reachable before any assessment exists: they are how setup completes.
   const freeRoute = setupRoute
     || pathname === `${base}/onboarding` || pathname.startsWith(`${base}/onboarding/`)
     || pathname === `${base}/live-defense` || pathname.startsWith(`${base}/live-defense/`);
-  const locked = Boolean(selectedRepo && storageReady && setupReady && !complete);
+  // Only lock on a confirmed "not finished" from the server; a disconnected repo has no setup to finish.
+  const locked = Boolean(selectedRepo && !selectedRepo.disconnected && setupReady && savedSetup.status === 'ready' && !complete);
   useEffect(() => {
     if (locked && !freeRoute && selectedRepo) {
       router.replace(`${base}/setup?repo=${encodeURIComponent(selectedRepo.id)}`);
@@ -204,7 +217,7 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   if (repos.status === 'error') return <ErrorState error={repos.error} onRetry={repos.reload} context="Could not load repositories" />;
   const monitoring = project.data.settings.monitoring_policy.enabled;
   const selected = selectedRepo ?? repoItems[0] ?? null;
-  if (selectedRepo && !freeRoute && (!storageReady || !setupReady)) return <Loading label="Checking setup" />;
+  if (selectedRepo && !freeRoute && !setupReady) return <Loading label="Checking setup" />;
   if (locked && !freeRoute) return <Loading label="Opening setup" />;
   return (
     <ProjectContext.Provider value={{ project: project.data, repos: repoItems, selectedRepo, selectRepo, reloadRepos: repos.reload, reloadProject: project.reload }}>
@@ -226,7 +239,7 @@ export function ProjectShell({ children }: { children: ReactNode }) {
                     value={selectedRepo?.id ?? ''}
                     onChange={event => selectRepo(event.target.value)}
                   >
-                    {repoItems.map(repo => <option key={repo.id} value={repo.id}>{repo.full_name} · {repo.default_branch}</option>)}
+                    {repoItems.map(repo => <option key={repo.id} value={repo.id}>{repo.full_name} · {repo.disconnected ? 'disconnected' : repo.default_branch}</option>)}
                   </select>
                   <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m7 10 5 5 5-5" /></svg>
                 </span>
@@ -235,6 +248,7 @@ export function ProjectShell({ children }: { children: ReactNode }) {
                 ? <span data-testid="repo-switcher" data-coach="repo-switcher" className="flex min-w-0 flex-wrap items-baseline gap-x-1 text-sm">
                   <Mono className="text-ink">{selected!.full_name}</Mono>
                   <span className="text-muted">· {selected!.default_branch}</span>
+                  {selected!.disconnected && <span className="text-warn" data-testid="repo-disconnected">· Disconnected</span>}
                 </span>
                 : <span data-testid="repo-switcher" className="flex flex-wrap items-center gap-x-2 text-sm text-muted">
                   <span>No repository connected</span>
