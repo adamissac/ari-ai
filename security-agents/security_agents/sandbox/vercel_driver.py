@@ -20,11 +20,12 @@ import base64
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
@@ -227,6 +228,30 @@ def _rmtree(path: Path) -> None:
     shutil.rmtree(path, ignore_errors=True)
 
 
+def _req_name(req: str) -> str:
+    """Distribution name of a pip requirement, normalized like pip itself."""
+    name = re.split(r"[<>=!~;\[\s]", req, maxsplit=1)[0]
+    return name.strip().lower().replace("_", "-")
+
+
+# The sandbox entry's test-tamper audit hooks into pytest/pluggy internals; a customer
+# recipe must never choose those versions, or it could weaken Verify's own checks.
+PROTECTED_RUNNER_DISTRIBUTIONS = frozenset({"pytest", "pluggy"})
+
+
+def _merged_pip(runner: tuple[str, ...], extra: Iterable[str]) -> list[str]:
+    """Runner wheels plus the recipe's packages, one requirement per distribution.
+
+    When the recipe pins an application distribution the runner also pins (fastapi,
+    pydantic, ...), the recipe's pin wins: pip cannot satisfy two pins of one name in a
+    single install, and the recipe states the versions the target's code actually needs.
+    Pins of the audit toolchain (PROTECTED_RUNNER_DISTRIBUTIONS) are dropped instead.
+    """
+    kept = [r for r in extra if _req_name(r) not in PROTECTED_RUNNER_DISTRIBUTIONS]
+    overridden = {_req_name(r) for r in kept}
+    return [r for r in runner if _req_name(r) not in overridden] + kept
+
+
 def _base_key(spec: SandboxSpec) -> str:
     material = json.dumps([RUNNER_WHEELS, sorted(spec.pip), sorted(spec.apt), APT_HTTPS])
     return hashlib.sha256(material.encode()).hexdigest()[:24]
@@ -321,8 +346,7 @@ def _build_base(spec: SandboxSpec, key: str) -> str:  # pragma: no cover - live
                 "-q",
                 "--root-user-action=ignore",
                 "--only-binary=:all:",
-                *RUNNER_WHEELS,
-                *spec.pip,
+                *_merged_pip(RUNNER_WHEELS, spec.pip),
             ],
             sudo=True,  # system site-packages: the entry runs `python -I`, which skips user site
             check=True,
