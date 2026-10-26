@@ -234,15 +234,22 @@ def _req_name(req: str) -> str:
     return name.strip().lower().replace("_", "-")
 
 
+# The sandbox entry's test-tamper audit hooks into pytest/pluggy internals; a customer
+# recipe must never choose those versions, or it could weaken Verify's own checks.
+PROTECTED_RUNNER_DISTRIBUTIONS = frozenset({"pytest", "pluggy"})
+
+
 def _merged_pip(runner: tuple[str, ...], extra: Iterable[str]) -> list[str]:
     """Runner wheels plus the recipe's packages, one requirement per distribution.
 
-    When the recipe pins a distribution the runner also pins, the recipe's pin wins:
-    pip cannot satisfy two pins of one name in a single install, and the recipe
-    states the versions the target's code actually needs.
+    When the recipe pins an application distribution the runner also pins (fastapi,
+    pydantic, ...), the recipe's pin wins: pip cannot satisfy two pins of one name in a
+    single install, and the recipe states the versions the target's code actually needs.
+    Pins of the audit toolchain (PROTECTED_RUNNER_DISTRIBUTIONS) are dropped instead.
     """
-    overridden = {_req_name(r) for r in extra}
-    return [r for r in runner if _req_name(r) not in overridden] + list(extra)
+    kept = [r for r in extra if _req_name(r) not in PROTECTED_RUNNER_DISTRIBUTIONS]
+    overridden = {_req_name(r) for r in kept}
+    return [r for r in runner if _req_name(r) not in overridden] + kept
 
 
 def _base_key(spec: SandboxSpec) -> str:

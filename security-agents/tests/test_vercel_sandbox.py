@@ -260,3 +260,12 @@ def test_recipe_extras_and_ranges_also_override(monkeypatch, tmp_path) -> None:
     pip_argv = next(c[2] for c in calls if c[0] == "run" and c[1] == "python")
     fastapis = [a for a in pip_argv if vd._req_name(a) == "fastapi"]
     assert fastapis == ["FastAPI[all]>=0.110"]
+
+
+def test_recipe_cannot_repin_the_audit_toolchain() -> None:
+    from security_agents.sandbox import vercel_driver as vd
+
+    merged = vd._merged_pip(vd.RUNNER_WHEELS, ["pytest==6.2.5", "Pluggy<1", "fastapi==0.110.0"])
+    assert [r for r in merged if vd._req_name(r) == "pytest"] == ["pytest==8.4.2"]
+    assert not any(vd._req_name(r) == "pluggy" for r in merged)
+    assert "fastapi==0.110.0" in merged
