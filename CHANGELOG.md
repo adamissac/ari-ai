@@ -6,10 +6,11 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Removed the misaligned Setup coach marks and post-setup tour; question guidance now sits inline and completion links to the project workspace.
 - Signed-out pages stop polling the API every few seconds after a 401.
 - Restyled the landing problem-timeline labels and checked-count chip as ember glass.
 - Added a warm, slow-moving landing hero, continuous ember atmosphere, eased problem-story progression, glass walkthrough/pricing panels, and a reduced-motion static fallback.
-- Replaced the grouped project setup flow with eight resumable one-question steps, coach marks, persisted per-repository answers, first-run tab gating, and a one-time post-setup workspace tour.
+- Replaced the grouped project setup flow with eight resumable one-question steps, inline guidance, persisted per-repository answers, first-run tab gating, and a final workspace summary.
 - Verify now compares always-on runtime pytest hook, collection, and outcome audits against baseline runs; missing or incomplete audit evidence fails closed. The application-code scanner also avoids comprehension-target, local-root mutation, and literal-constant false positives. Defense in depth only: it does not resist deliberately hostile in-process patch code (see security-agents/README.md).
 - Added a repository-scoped project workspace with Analytics, Commits, Findings, Approvals, Settings, and More navigation; commit history and assessment records remain scoped to the selected repository.
 - Flattened Expectations, Incidents, Monitoring, Scopes, and Simulate around the selected repository, labeling project-wide or unscoped records explicitly. The Commits 7 agents view now places a compact, phase-seekable map above persisted agent-run details.
@@ -30,7 +31,7 @@ All notable changes are documented here. Format follows
 - Verify's Python hook scan accepts UTF-8 BOMs, `--rootdir` preserves semantic checks for `tox.ini`, `setup.cfg`, and `pyproject.toml`, and unreadable or invalid pinned pytest configuration fails closed.
 - Verify uses a context-aware pytest binding scan for unpacking, imports, global stores, and hook-rooted attribute/subscript writes, `setattr`, and `del`, without treating local names or subscript indexes as bindings. It keeps changed `conftest.py` files byte-protected when they are config symlink targets, checks linked config target content through fresh checkouts, and ignores syntax-invalid inert test-root Python fixtures during plugin discovery. Added `apply_fresh` regressions for linked config changes and config read and walk failures.
 - Added a guided repository setup walkthrough (`/projects/<id>/setup?repo=<repoId>`): connecting a repository now lands there, and it walks through authorizing testing, tuning the code reviewer, choosing fix delivery (pull request is preselected), and starting the first review. The setup page also has decorative floating background shapes that stop moving when reduced motion is on.
-- Setup tips now spotlight the answer controls and Continue button without gating progress, use dismissible per-question tips, and keep long repository titles wrapped; the post-setup tour points to the real workspace tabs and repository switcher.
+- Setup guidance now appears directly below each question title, and the completion screen links to the project workspace.
 - Added an hourly GitHub Actions storage watchdog for Railway volume usage and backup freshness, with idempotent issue alerts.
 - Live commit analysis no longer needs a `GITHUB_TOKEN` PAT on Vercel: `POST /api/analyze`
   reads the commit diff through the new backend route `GET /api/v1/github/commit`, which
