@@ -23,7 +23,8 @@ it('keeps the offline Defense Lab visible without a signed-in session and hides 
 
   render(<DefenseLabPage />);
 
-  expect(screen.getByTestId('lab-intro')).toBeTruthy();
+  expect(screen.getByTestId('lab-intro').textContent).toBe("What your team sees while Ari's defender watches the network.");
+  expect(screen.getByTestId('lab-caveat').textContent).toBe('Recorded run · test network');
   await waitFor(() => expect(bundleFetch).toHaveBeenCalled());
   expect(screen.queryByText('Your 24/7 defense')).toBeNull();
 });
