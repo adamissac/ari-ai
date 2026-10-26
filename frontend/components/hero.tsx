@@ -16,7 +16,7 @@ import { AntColony } from '@/components/ant-colony';
 /** The seven steps of an assessment, shown as chips on the hero and sign-in screens. */
 export const ASSESSMENT_LOOP = ['Understand', 'Review', 'Attack Safely', 'Diagnose', 'Repair', 'Verify', 'Monitor'];
 
-export function HeroStage({ children, className = '', labelledBy, play = true, colony = false }: { children: ReactNode; className?: string; labelledBy: string; play?: boolean; colony?: boolean }) {
+export function HeroStage({ children, className = '', labelledBy, play = true, colony = false, base }: { children: ReactNode; className?: string; labelledBy: string; play?: boolean; colony?: boolean; base?: ReactNode }) {
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -82,6 +82,7 @@ export function HeroStage({ children, className = '', labelledBy, play = true, c
       </div>
       {colony && <AntColony play={play} />}
       <div className="hero-content">{children}</div>
+      {base}
     </section>
   );
 }

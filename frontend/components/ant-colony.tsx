@@ -214,17 +214,6 @@ export function AntColony({ play = true }: { play?: boolean }) {
       });
       ctx.stroke();
       ctx.restore();
-      // The nests: soft ember glows where the ants come out.
-      NESTS.forEach((_, i) => {
-        const trail = trails[NESTS[i]!.trail];
-        if (!trail) return;
-        const { p } = along(trail, nestAt(i));
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 24);
-        g.addColorStop(0, 'rgba(214, 92, 64, 0.35)');
-        g.addColorStop(1, 'rgba(214, 92, 64, 0)');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 24, 0, Math.PI * 2); ctx.fill();
-      });
     };
 
     const pos = (a: Ant) => a.start + a.d * a.dir;

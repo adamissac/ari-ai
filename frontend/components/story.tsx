@@ -259,11 +259,17 @@ const ROWS = [
 const NODES = [
   { x: 70, y: 40 }, { x: 150, y: 100 }, { x: 235, y: 40 }, { x: 300, y: 160 },
 ];
+const SEGMENTS = NODES.slice(1).map((n, k) => Math.hypot(n.x - NODES[k]!.x, n.y - NODES[k]!.y));
+const PATH_LENGTH = SEGMENTS.reduce((a, b) => a + b, 0);
+/** Fraction of the attack path drawn when the line reaches each node. */
+const NODE_AT = NODES.map((_, k) => SEGMENTS.slice(0, k).reduce((a, b) => a + b, 0) / PATH_LENGTH);
 
 export function Walkthrough() {
   const [ref, p] = useTrack<HTMLDivElement>();
   const step = Math.min(WALK.length - 1, Math.floor(p * WALK.length * 0.999));
   const path = NODES.map(n => `${n.x},${n.y}`).join(' ');
+  const drawn = clamp01(p / 0.8);
+  const reach = NODE_AT.map(at => drawn >= at - 0.001);
 
   return (
     <div ref={ref} className="story-track story-track-4">
@@ -295,9 +301,9 @@ export function Walkthrough() {
                 ))}
               </g>
             ))}
-            <polyline points={path} className="story-svg-path" pathLength={1} />
+            <polyline points={path} className="story-svg-path" pathLength={1} strokeDasharray="1" style={{ strokeDashoffset: 1 - drawn }} />
             {NODES.map((n, k) => (
-              <circle key={k} cx={n.x} cy={n.y} r="5" className="story-svg-node" data-root={k === 3 || undefined} />
+              <circle key={k} cx={n.x} cy={n.y} r="5" className="story-svg-node" data-root={k === 3 || undefined} data-pending={!reach[k] || undefined} />
             ))}
             <text x="300" y="186" textAnchor="middle" className="story-svg-root">root cause · create_refund</text>
             <text x="300" y="186" textAnchor="middle" className="story-svg-ok">verified · replay 2 / 2</text>
