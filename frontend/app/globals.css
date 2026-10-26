@@ -1743,22 +1743,10 @@ body:has(.commit-stage) main { color: #fff; }
 :root:not(:has(.hero-full)) .lab-replay-card .net-node[data-isolated] .net-icon { color: rgb(28 18 16 / 45%); }
 
 /* Landing footer: shared baselines, two navigation columns, simple legal row. */
-.landing-footer { position: relative; isolation: isolate; overflow: hidden; margin-inline: calc(50% - 50vw); border-top: 1px solid rgb(255 247 242 / 12%); padding: 48px max(24px, calc((100vw - 1216px) / 2)) 20px; background: transparent; color: #fff7f2; }
+.landing-footer { position: relative; isolation: isolate; overflow: hidden; margin-inline: calc(50% - 50vw); border-top: 1px solid rgb(255 247 242 / 8%); padding: 56px max(24px, calc((100vw - 1216px) / 2)) 20px; background: transparent; color: #fff7f2; }
 .footer-ruler { display: none; }
-.footer-glow { position: absolute; inset: auto -10% -40% -10%; height: 90%; z-index: 0; pointer-events: none; background: radial-gradient(50% 60% at 30% 70%, rgb(194 69 45 / 28%), transparent 70%), radial-gradient(40% 55% at 75% 80%, rgb(255 140 90 / 16%), transparent 70%); filter: blur(30px); }
-.footer-crew { position: relative; z-index: 1; margin-bottom: 44px; }
-.footer-crew-tag { margin-bottom: 14px; font: 10px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: rgb(255 255 255 / 50%); }
-.footer-crew-track { position: relative; overflow: hidden; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-block: 1px solid rgb(255 247 242 / 12%); background: rgb(255 247 242 / 4%); }
-.footer-crew-track::before { content: ""; position: absolute; left: 0; right: 0; top: 19.5px; height: 1px; background: linear-gradient(90deg, transparent, rgb(255 181 159 / 30%) 10%, rgb(255 181 159 / 30%) 90%, transparent); }
-.footer-crew-track::after { content: ""; position: absolute; left: 0; top: 19px; width: 90px; height: 2px; margin-left: -90px; background: linear-gradient(90deg, transparent, #ffb59f); box-shadow: 0 0 12px #ffb59f; opacity: 0; }
-.footer-crew-track > li { --c: #ffb59f; position: relative; display: flex; flex-direction: column; gap: 4px; padding: 16px 14px; font-family: var(--font-mono); text-transform: uppercase; }
-.footer-crew-track > li[data-team="Blue"] { --c: #f3b46b; }
-.footer-crew-track > li[data-team="Independent"] { --c: #6fd39f; }
-.footer-crew-track > li + li { border-left: 1px solid rgb(255 247 242 / 8%); }
-.footer-crew-track > li::before { content: ""; width: 7px; height: 7px; margin-bottom: 6px; border-radius: 9999px; background: var(--c); box-shadow: 0 0 10px var(--c); opacity: .55; }
-.footer-crew-name { font-size: 12px; letter-spacing: .08em; color: #fff7f2; }
-.footer-crew-team { font-size: 9px; letter-spacing: .1em; color: rgb(255 255 255 / 45%); }
-.footer-word { position: relative; z-index: 0; margin: 8px 0 -0.36em; text-align: center; font: 700 clamp(130px, 27vw, 400px)/0.8 var(--font-display); letter-spacing: -0.05em; color: transparent; -webkit-text-stroke: 1px rgb(255 181 159 / 22%); background: linear-gradient(180deg, rgb(255 181 159 / 30%), rgb(194 69 45 / 12%) 50%, transparent 80%); -webkit-background-clip: text; background-clip: text; pointer-events: none; user-select: none; }
+.footer-glow { position: absolute; inset: auto -10% -60% -10%; height: 100%; z-index: 0; pointer-events: none; background: radial-gradient(45% 55% at 50% 80%, rgb(194 69 45 / 20%), transparent 70%); filter: blur(30px); }
+.footer-line { position: absolute; top: 0; left: 50%; width: min(720px, 70%); height: 1px; translate: -50% 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg, transparent, #ffb59f, transparent); box-shadow: 0 0 14px rgb(255 140 90 / 60%); opacity: .7; }
 .footer-top { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr auto; gap: 64px; align-items: start; }
 .footer-brand { display: inline-flex; align-items: center; gap: 12px; height: 42px; }
 .footer-brand > span { font-size: 42px; line-height: 1; letter-spacing: -.04em; }
@@ -1776,12 +1764,6 @@ body:has(.commit-stage) main { color: #fff; }
   .footer-links h2 { margin-bottom: 10px; font-size: 9px; }
   .footer-links a { font-size: 12px; }
   .footer-bottom { margin-top: 24px; padding-top: 12px; }
-  .footer-crew { margin-bottom: 28px; }
-  .footer-crew-track { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .footer-crew-track > li { padding: 12px 10px; }
-  .footer-crew-track > li:nth-child(5) { border-left: 0; }
-  .footer-crew-track > li:nth-child(n+5) { border-top: 1px solid rgb(255 247 242 / 8%); }
-  .footer-crew-team { display: none; }
 }
 
 /* Small motion cues complement the existing scroll-driven chapters. */
@@ -1800,16 +1782,10 @@ body:has(.commit-stage) main { color: #fff; }
   .footer-links a:hover, .footer-links a:focus-visible { translate: 4px 0; color: #ffd5bf; }
   .footer-top-link > span { transition: translate 220ms var(--ease-quad); }
   .footer-top-link:hover > span { translate: 0 -3px; }
-  .footer-crew-track > li::before { animation: footer-crew 5600ms ease-in-out infinite; animation-delay: calc(var(--n) * 700ms); }
-  .footer-crew-track::after { animation: footer-pulse 5600ms ease-in-out infinite; }
-  .footer-word { animation: footer-word 14s ease-in-out infinite alternate; background-size: 100% 140%; }
   .btn:not(:disabled) { transition: translate 200ms var(--ease-quad), background-color 250ms, box-shadow 250ms; }
   .btn:not(:disabled):hover { translate: 0 -2px; }
   .btn:not(:disabled):active { translate: 0 0; }
 }
-@keyframes footer-crew { 0%, 30%, 100% { opacity: .55; scale: 1; } 12% { opacity: 1; scale: 1.6; } }
-@keyframes footer-pulse { 0% { left: 0; opacity: 0; } 8% { opacity: 1; } 80% { opacity: 1; } 88%, 100% { left: calc(100% + 90px); opacity: 0; } }
-@keyframes footer-word { from { background-position: 0 0; } to { background-position: 0 100%; } }
 @keyframes evidence-enter { from { opacity: .3; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
 /* Projects lead with two workflows; secondary records stay a click away. */

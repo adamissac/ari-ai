@@ -206,7 +206,7 @@ test('Ari footer fits desktop and mobile', async ({ page }) => {
     const footer = page.getByTestId('landing-footer');
     await footer.scrollIntoViewIfNeeded();
     await expect(footer.getByRole('navigation', { name: 'Footer' })).toBeVisible();
-    expect((await footer.boundingBox())!.height).toBeLessThan(760);
+    expect((await footer.boundingBox())!.height).toBeLessThan(500);
     if (process.env.ARI_LANDING_SCREENSHOTS) {
       await mkdir(process.env.ARI_LANDING_SCREENSHOTS, { recursive: true });
       await footer.screenshot({ path: `${process.env.ARI_LANDING_SCREENSHOTS}/${width}-footer.png` });
