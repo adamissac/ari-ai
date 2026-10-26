@@ -28,6 +28,7 @@ pulled into MVP only if MVP tasks they would compete with are `DONE`.
 
 - DONE (2026-10-17): Pricing navigation uses the same color, hover, and contrast handling as sibling links.
 
+Completed 2026-10-26 on `feat/adam/console-polish`: keep the console site header opaque above project content and the project tab band sticky directly beneath it. The reported 349px Live Defense document width did not reproduce in the 320px E2E run.
 
 Completed: homepage invitation and evaluation selector alignment (feat/adam/home-next-step).
 
