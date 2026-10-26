@@ -63,7 +63,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     await expect(page.getByRole('link', { name: 'Go to projects', exact: true }).first()).toHaveAttribute('href', '/projects');
     await expect(page.getByRole('link', { name: /demo/i })).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'How It Works', exact: true })).toHaveAttribute('href', '#how');
-    await expect(page.locator('[aria-label="Assessment loop"] li')).toHaveText(steps.map((step, i) => `${String(i + 1).padStart(2, '0')}${step}`));
+    await expect(page.locator('[aria-label="Assessment loop"] li .hero-step-name')).toHaveText(steps);
     const nav = page.getByRole('navigation', { name: 'Primary', exact: true });
     const secondary = nav.locator('.nav-secondary');
     await expect(secondary).toHaveAttribute('inert', '');
