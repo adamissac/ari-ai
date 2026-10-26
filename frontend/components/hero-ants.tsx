@@ -5,13 +5,10 @@ type Load = 'hammer' | 'code' | 'brace' | 'bolt';
 
 const WALKERS: { load: Load; delay: number }[] = [
   { load: 'code', delay: 0 },
-  { load: 'hammer', delay: -5 },
-  { load: 'brace', delay: -10 },
-  { load: 'code', delay: -15 },
-  { load: 'bolt', delay: -20 },
+  { load: 'hammer', delay: -11 },
 ];
 
-const LINES = [62, 44, 78, 36, 56];
+const LINES = [62, 44, 78, 50];
 
 function Ant({ className = '' }: { className?: string }) {
   return <span className={`${s.ant} ${className}`} />;
@@ -42,8 +39,6 @@ export function HeroAnts() {
         </span>
       ))}
       <div className={s.site}>
-        <span className={s.handoff}><span className={s.chip}>&lt;/&gt;</span></span>
-        <Ant className={s.lifter} />
         <span className={s.builder}>
           <span className={s.swing}><span className={s.hammer}><span className={s.hammerHead} /></span></span>
           <Ant className={s.builderAnt} />

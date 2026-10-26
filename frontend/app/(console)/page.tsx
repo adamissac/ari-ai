@@ -28,7 +28,7 @@ export default function HomePage() {
   return (
     <div className="home-deep marketing-atmosphere">
       <IntroLoader onReveal={() => setRevealed(true)} />
-      <HeroStage className="hero-full px-6 pb-14 pt-36 md:px-12 md:pt-28" labelledBy="hero-title" play={revealed}>
+      <HeroStage className="hero-full px-6 pb-14 pt-36 md:px-12 md:pt-28" labelledBy="hero-title" play={revealed} base={<HeroAnts />}>
         <div className="hero-center mx-auto w-full max-w-6xl text-center">
           <p className="kicker kicker-dark hero-in mx-auto" style={i(0)}>Seven agents · one shared brain</p>
           <h1 id="hero-title" className="hero-headline display mt-6 font-bold hero-in" style={i(1)}>
@@ -45,7 +45,6 @@ export default function HomePage() {
             </a>
           </div>
           <div className="hero-in mt-12 text-left" style={i(4)}><HeroExploit play={revealed} stages={LOOP} /></div>
-            <HeroAnts />
         </div>
       </HeroStage>
 
