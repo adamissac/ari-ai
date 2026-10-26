@@ -535,6 +535,7 @@ def test_resume_after_losing_in_memory_state(host_and_orchestrator, tmp_path):
     first.run(host)
     assert host.states[-1] == "AWAITING_APPROVAL"
     assert "security_agents.approval.v1" in host.checkpoints
+    assert host.checkpoints["security_agents.approval.v1"]["baseline_pytest_audit"]["complete"] is True
     host.approve_all()
     replacement = build_orchestrator(
         target_dir=first.target_dir,

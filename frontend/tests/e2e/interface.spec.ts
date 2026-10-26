@@ -22,7 +22,11 @@ test('workspace design stays navigable and fits desktop and phone', async ({ bro
     await page.setViewportSize({ width, height: 1000 });
     await page.goto('/connect');
     await expect(page.getByRole('heading', { name: 'Organizations' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'What Ari can access' })).toBeVisible();
+    const permissions = page.getByRole('region', { name: 'GitHub App permissions' });
+    await expect(permissions).toBeVisible();
+    for (const permission of ['Contents: read & write', 'Pull requests: read & write', 'Metadata: read-only', 'Events: push, pull request, repository']) {
+      await expect(permissions).toContainText(permission);
+    }
     await expect(page.getByRole('link', { name: 'Install the GitHub App' })).toHaveCount(0);
     await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Projects', exact: true })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByTestId(`connect-org-${org}`)).toBeVisible();
@@ -35,7 +39,7 @@ test('workspace design stays navigable and fits desktop and phone', async ({ bro
     if (screenshots) await page.screenshot({ animations: 'disabled', path: `${screenshots}/repositories-${width}.png`, fullPage: true });
     await page.getByTestId(`connect-repo-${full}`).getByRole('button', { name: 'Continue setup' }).click();
     await expect(page).toHaveURL(/\/projects\/[^/]+\/setup\?repo=/);
-    await expect(page.getByTestId('repo-setup')).toBeVisible();
+    await expect(page.getByTestId('setup-step-1')).toBeVisible();
     await expect(page.locator('[data-testid^="setup-step-"]')).toHaveCount(1);
     await page.goto(`/connect/${org}/${repo}`);
     await expect(page).toHaveURL(`/connect/${org}/${repo}`);
@@ -46,8 +50,8 @@ test('workspace design stays navigable and fits desktop and phone', async ({ bro
     await expectNoSideScroll(page);
     if (screenshots) await page.screenshot({ animations: 'disabled', path: `${screenshots}/agents-${width}.png`, fullPage: true });
     await page.goto('/');
-    await expect(page.locator('.hero-full')).toBeVisible();
-    await expect(page.locator('#hero-title')).toHaveText(/Ship fast\.\s*Know what you shipped\./);
+    await expect(page.locator('.hero-headline')).toBeVisible();
+    await expect.poll(() => page.locator('.hero-line').first().evaluate(el => Number(getComputedStyle(el).opacity))).toBe(1);
     await expectNoSideScroll(page);
     if (screenshots) await page.screenshot({ animations: 'disabled', path: `${screenshots}/landing-${width}.png` });
     await page.getByTestId('landing-footer').scrollIntoViewIfNeeded();

@@ -14,22 +14,24 @@ import { useResource } from '@/lib/use-resource';
 
 /** NIST SP 800-61r3 / CSF 2.0 incident lifecycle. Every gated step needs a second person. */
 export default function IncidentsPage() {
-  const { project } = useProject();
+  const { project, selectedRepo } = useProject();
   const list = useResource(`incidents:${project.id}`, s => api().incidents(project.id, { signal: s }), 15000);
   const [selected, setSelected] = useState<string | null>(null);
   return (
     <>
-      <PageTitle eyebrow="Defend" title="Incidents" subtitle="Opened from monitoring events, findings or drills — one thread per incident." />
+      <PageTitle eyebrow="Defend" title="Incidents" subtitle={selectedRepo
+        ? <>Project-wide incidents · selected repository <span className="font-mono text-ink">{selectedRepo.full_name}</span> · incident records have no repository ID.</>
+        : 'Project-wide incidents; incident records have no repository ID.'} />
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_3fr]">
       <div className="flex flex-col gap-4">
         <Panel title="Incidents">
           <Async resource={list} label="incidents">
             {page => page.items.length === 0 ? <Empty>No incidents. Open one from a monitoring event, finding or synthetic drill.</Empty> : (
-              <ul className="flex flex-col gap-2">
+              <ul className="divide-y divide-line">
                 {page.items.map(i => (
                   <li key={i.id}>
                     <button type="button" onClick={() => setSelected(i.id)} aria-pressed={selected === i.id} data-testid={`incident-${i.id}`}
-                      className={`w-full rounded-md border p-3 text-left ${selected === i.id ? 'border-brand bg-white' : 'border-line bg-panel-2 hover:bg-white'}`}>
+                      className={`w-full border-l-2 py-3 pl-3 pr-1 text-left transition-colors hover:bg-panel-2/40 ${selected === i.id ? 'border-brand bg-brand/10' : 'border-transparent'}`}>
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-medium">{i.title}</span>
                         <span className="flex gap-1">{i.simulated && <Tag tone="warn">Synthetic</Tag>}<Tag tone={i.state === 'closed' || i.state === 'rejected' ? 'neutral' : 'info'}>{STATE_LABEL[i.state]}</Tag></span>
@@ -210,11 +212,11 @@ function Actions({ incident, busy, act: submitAction }: { incident: Incident; bu
         })}
       </div>
       {pendingMine.length > 0 && (
-        <ul className="mt-3 flex flex-col gap-2">
+        <ul className="mt-3 divide-y divide-line">
           {pendingMine.map(a => {
             const own = a.requested_by === me.user.id;
             return (
-              <li key={a.gate} className="rounded-md border border-line bg-panel-2 p-2 text-sm">
+              <li key={a.gate} className="py-3 text-sm">
                 <div><strong>{a.gate}</strong> approval pending — {a.action_summary}</div>
                 <div className="text-xs text-muted">requested by <Mono>{a.requested_by}</Mono>{own && ' (you — another member must decide)'} · <Time iso={a.requested_at} /></div>
                 <div className="mt-2 flex gap-2">

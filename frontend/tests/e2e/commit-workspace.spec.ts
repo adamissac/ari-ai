@@ -22,8 +22,8 @@ test('organization → repository → commit keeps real agent work and replay in
   await page.goto(`/connect/${org}`);
   await page.getByTestId(`connect-repo-${full}`).getByRole('button', { name: 'Continue setup' }).click();
   await expect(page).toHaveURL(/\/projects\/[^/]+\/setup\?repo=/);
-  await expect(page.getByTestId('repo-setup')).toBeVisible();
-  await expect(page.locator('[data-testid^="setup-step-"]')).toHaveCount(1);
+  await expect(page.getByTestId('setup-step-1')).toBeVisible();
+  await expect(page.getByRole('progressbar', { name: 'Question 1 of 8' })).toBeVisible();
   await page.goto(base);
   await expect(page).toHaveURL(base);
   await expect(page.locator('main')).not.toContainText('sibling-repository');
@@ -38,13 +38,19 @@ test('organization → repository → commit keeps real agent work and replay in
   await expect(automation).toBeEnabled();
   if (await automation.getAttribute('aria-checked') === 'true') await automation.click();
   await expect(automation).toHaveAttribute('aria-checked', 'false');
-  const request = panel.getByRole('button', { name: 'Request authorization', exact: true });
-  if (await request.isVisible()) await request.click();
-  const approve = panel.getByRole('button', { name: 'Approve sandbox authorization' });
-  await expect.poll(async () => (await approve.isVisible()) || (await panel.getByRole('button', { name: 'Run the 7 agents', exact: true }).isVisible())).toBe(true);
-  if (await approve.isVisible()) await approve.click();
+  const runAgain = panel.getByRole('button', { name: 'Run again', exact: true });
+  const runAgents = panel.getByRole('button', { name: 'Run the 7 agents', exact: true });
   const accepted = page.waitForResponse(response => response.url().includes('/assessments') && response.request().method() === 'POST' && response.status() === 202);
-  await panel.getByRole('button', { name: 'Run the 7 agents', exact: true }).click();
+  if (await runAgain.isVisible()) {
+    await runAgain.click();
+  } else {
+    const request = panel.getByRole('button', { name: 'Request authorization', exact: true });
+    if (await request.isVisible()) await request.click();
+    const approve = panel.getByRole('button', { name: 'Approve sandbox authorization' });
+    await expect.poll(async () => (await approve.isVisible()) || (await runAgents.isVisible())).toBe(true);
+    if (await approve.isVisible()) await approve.click();
+    await runAgents.click();
+  }
   const acceptedBody = await (await accepted).json();
   const assessmentId = acceptedBody.assessment.id as string;
   await expect(panel).toContainText('Last run:');

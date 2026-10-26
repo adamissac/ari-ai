@@ -104,6 +104,7 @@ def test_runs_entry_in_the_microvm_and_collects_out_files(tmp_path: Path) -> Non
     entry = next(r for r in box.ran if ".sandbox/entry.py" in r[0])
     assert entry[0] == ["python", "-I", "-B", ".sandbox/entry.py", "pytest", "-q", "tests"]
     assert entry[2]["SANDBOX_NETWORK"] == "none"
+    assert entry[2]["PYTHONHASHSEED"] == "0"
     assert "SANDBOX_TARGET_URL" not in entry[2]
 
 

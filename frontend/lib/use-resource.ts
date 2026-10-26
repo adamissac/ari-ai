@@ -1,5 +1,6 @@
 'use client';
 
+import { ApiError } from '@hackatl/frontend-transport';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type Resource<T> =
@@ -14,9 +15,10 @@ interface State<T> { key: string | null; status: 'loading' | 'ready' | 'error'; 
  * Fetch on mount and whenever `key` changes. Earlier requests are aborted so a
  * slow stale response can never overwrite a newer one. `pollMs` refreshes in
  * place: the last good data stays visible while it reloads, and if a refresh
- * fails the data is kept, `refreshError` is exposed and polling continues.
+ * fails the data is kept and `refreshError` is exposed; a 401 stops polling
+ * until `reload()` is called, while other failures keep polling.
  * `shouldPoll` may return false to stop polling once the data settles (e.g. a
- * terminal state); a failing refresh keeps polling regardless.
+ * terminal state); a failing refresh otherwise keeps polling regardless.
  * Data produced for a previous key is never returned for a new key.
  */
 export function useResource<T>(key: string | null, load: (signal: AbortSignal) => Promise<T>, pollMs?: number, shouldPoll?: (data: T) => boolean): Resource<T> {
@@ -47,7 +49,7 @@ export function useResource<T>(key: string | null, load: (signal: AbortSignal) =
           if (controller.signal.aborted) return;
           // Keep the last good data for this key; only a load with nothing to show becomes an error.
           setState(s => (s.key === key && s.status === 'ready' ? { ...s, refreshError: error } : { key, status: 'error', error }));
-          if (hadData || !first) schedule();
+          if ((hadData || !first) && !(error instanceof ApiError && error.status === 401)) schedule();
         },
       );
     };

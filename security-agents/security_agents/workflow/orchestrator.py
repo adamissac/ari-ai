@@ -331,6 +331,7 @@ class Orchestrator:
         self._audit_lock = threading.Lock()
         self._baseline_job: Any = None
         self._baseline_value: list[str] = []
+        self._baseline_audit: dict[str, Any] | None = None
         self.roe: Any = None
         self.workdir.mkdir(parents=True, exist_ok=True)
 
@@ -820,9 +821,10 @@ class Orchestrator:
     def _baseline_failing(self) -> list[str]:
         """Tests already failing on the unpatched snapshot; waits for the background run."""
         if self._baseline_job is not None:
-            failing, seconds = self._baseline_job.result()
+            failing, seconds, audit = self._baseline_job.result()
             self._baseline_job = None
             self._baseline_value = failing
+            self._baseline_audit = audit
             self.result.usage.sandbox_seconds += seconds
         return self._baseline_value
 
@@ -830,8 +832,9 @@ class Orchestrator:
     def _baseline_failing(self, value: list[str]) -> None:
         self._baseline_job = None
         self._baseline_value = value
+        self._baseline_audit = None
 
-    def _baseline_test_failures(self) -> tuple[list[str], float]:
+    def _baseline_test_failures(self) -> tuple[list[str], float, dict[str, Any] | None]:
         """Record which tests already fail on the unpatched snapshot (Verify needs this)."""
         ctx = self._context(AgentName.VERIFY, "baseline", services={})
         runner = self._test_runner(lambda _ctx: self.intel.snapshot.root)
@@ -844,7 +847,12 @@ class Orchestrator:
             passed=result.get("passed"),
             sandbox_run_id=result.get("sandbox_run_id"),
         )
-        return list(result.get("failing_tests") or []), float(result.get("duration_s") or 0)
+        audit = (ctx.artifacts.get("pytest_audits") or {}).get(str(result.get("sandbox_run_id") or ""))
+        return (
+            list(result.get("failing_tests") or []),
+            float(result.get("duration_s") or 0),
+            audit if isinstance(audit, dict) else None,
+        )
 
     def _run_scout(self) -> list[Hypothesis]:
         data = scout_agent.ScoutInput(
@@ -1355,6 +1363,12 @@ class Orchestrator:
             original_check_ref=data.original_check_template_ref,
             original_check_params=dict(data.original_check_parameters),
             candidate_id=candidate.id,
+            baseline_pytest_audit=self._baseline_audit,
+            suite_pytest_audits={
+                str(run_id): audit
+                for run_id, audit in (ctx.artifacts.get("pytest_audits") or {}).items()
+                if isinstance(run_id, str) and isinstance(audit, dict)
+            },
             required_transport=self.config.verify_check_transport,
             original_tree_sha256=tree_digest(self.intel.snapshot.root),
             patched_tree_sha256=tree_digest(ctx.artifacts["verify_workspace"])
