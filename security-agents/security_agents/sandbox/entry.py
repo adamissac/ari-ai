@@ -29,10 +29,18 @@ OUT = os.environ.get("SANDBOX_OUT", "/out")
 NETWORK = os.environ.get("SANDBOX_NETWORK", "none")
 
 
+def _canonical_const(value: object) -> object:
+    if isinstance(value, types.CodeType):
+        return _code_tuple(value)
+    if isinstance(value, (frozenset, set)):
+        return ("frozenset", tuple(sorted(repr(_canonical_const(item)) for item in value)))
+    if isinstance(value, tuple):
+        return ("tuple", tuple(_canonical_const(item) for item in value))
+    return repr(value)
+
+
 def _code_tuple(code: types.CodeType) -> tuple[object, ...]:
-    constants = tuple(
-        _code_tuple(value) if isinstance(value, types.CodeType) else repr(value) for value in code.co_consts
-    )
+    constants = tuple(_canonical_const(value) for value in code.co_consts)
     return (
         code.co_code,
         code.co_names,

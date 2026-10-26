@@ -418,6 +418,8 @@ class DockerSandboxDriver:
             "SANDBOX_EMIT_OUT=1",
             "-e",
             "PYTHONDONTWRITEBYTECODE=1",
+            "-e",
+            "PYTHONHASHSEED=0",
         ]
         if spec.network == "target-only":
             env += ["-e", f"SANDBOX_TARGET_URL=http://tgt-{run_id}:8000"]

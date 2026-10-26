@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 
@@ -293,6 +296,57 @@ def test_pytest_audit_records_phases_outcomes_and_directory_independent_hashes(d
     assert results[0]["phases"] == results[1]["phases"]
 
 
+@pytest.mark.boundary
+def test_pytest_audit_hashes_are_seed_independent_in_subprocess(tmp_path):
+    entry = Path(__file__).parents[1] / "security_agents" / "sandbox" / "entry.py"
+    audits = []
+    for name, seed in (("workspace-one", "1"), ("workspace-two", "2")):
+        workspace = tmp_path / name
+        (workspace / "tests").mkdir(parents=True)
+        (workspace / "tests" / "conftest.py").write_text(
+            "def pytest_collection_modifyitems(config, items):\n"
+            "    for item in items:\n"
+            "        if item.name in {'test_a', 'test_b', 'test_c'}:\n"
+            "            return\n",
+            encoding="utf-8",
+        )
+        (workspace / "tests" / "test_audit.py").write_text(
+            "def test_a():\n"
+            "    assert True\n\n"
+            "def test_b():\n"
+            "    assert True\n\n"
+            "def test_c():\n"
+            "    assert True\n",
+            encoding="utf-8",
+        )
+        out = workspace / "out"
+        env = {
+            "PATH": "/usr/bin:/bin",
+            "HOME": str(workspace / "home"),
+            "TMPDIR": str(workspace / "tmp"),
+            "SANDBOX_OUT": str(out),
+            "SANDBOX_NETWORK": "none",
+            "SANDBOX_EMIT_OUT": "0",
+            "PYTHONHASHSEED": seed,
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "LANG": "C.UTF-8",
+        }
+        (workspace / "home").mkdir()
+        (workspace / "tmp").mkdir()
+        result = subprocess.run(
+            [sys.executable, "-I", "-B", str(entry), "pytest", "-q", "tests"],
+            cwd=workspace,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        audits.append(json.loads((out / "pytest_audit.json").read_text(encoding="utf-8")))
+
+    assert audits[0]["phases"] == audits[1]["phases"]
+
+
 def test_sandbox_env_is_scrubbed(snapshot, driver, monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-should-never-be-visible")
     leaker = (
@@ -350,6 +404,7 @@ def test_docker_hardening_flags_present(snapshot):
     assert "--pids-limit 256" in flat
     assert "--cpus 1.0" in flat
     assert "--memory" in flat
+    assert "PYTHONHASHSEED=0" in flat
     assert "/var/run/docker.sock" not in flat
     assert " -v " not in flat and "--mount" not in flat, "no host mounts allowed"
     assert f"--label {LABEL_ROOT}.run_id=run1" in flat

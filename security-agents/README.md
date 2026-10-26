@@ -162,7 +162,15 @@ sandbox environment is scrubbed and transcripts pass through the redactor.
   IDs, and baseline-passed tests that no longer execute fail
   `no_test_tampering`. Missing, malformed, or incomplete audit artifacts fail
   closed. The complete audit is retained as evidence, not included in
-  model-facing test results.
+  model-facing test results. Audit files travel through sandbox out-files:
+  Docker and Vercel emit them through a stdout marker, while the local driver
+  reads `/out` directly. The local output limit defaults to 50 MiB, and the
+  Docker entry emitter caps aggregate output at 50 MiB. If a cap omits the audit
+  file or truncates its payload, the Docker parser or Vercel's `_split_out`
+  yields no usable audit out-file; Verify rejects the run on missing or
+  malformed evidence. A suite large enough to push its audit past an output cap
+  therefore fails closed, not open. Vercel has no additional cap in this
+  driver, but provider-level stdout truncation has the same fail-closed result.
 - **Known limitation:** a pre-existing path under a recipe test root longer
   than 400 characters is rejected by `safe_rel_path`; Verify fails closed and
   rejects every patch for that repository. The longest tracked paths currently
