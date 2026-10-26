@@ -1,0 +1,11 @@
+{
+  "candidate_sha": "0aa68ffb046a90bae0ae11c909142e939de842d8",
+  "upstream_sha": "59cd0b623e1687a71de4b7653ad8171b0c569344",
+  "regression_sha": "abf6b316b1de2fea9a8ac8c89a79a7368900145a",
+  "exit_code": 0,
+  "tests": 194,
+  "skipped": 0,
+  "failed": 0,
+  "errors": 0,
+  "failures": []
+}

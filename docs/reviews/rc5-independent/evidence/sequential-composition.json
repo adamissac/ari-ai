@@ -1,0 +1,125 @@
+{
+  "e41c9dc22e6536463cdab9be6a2a4cd76302c866": {
+    "steps": [
+      {
+        "step": "01-pr412",
+        "sha": "8a945e04b9cecb3d9f10912f78d160f2673594e0",
+        "exit": 0,
+        "output": "c6408bb054b8bfc82c8cd2812395924a327c4c35\n",
+        "stderr": "",
+        "result_commit": "1bf1af5cb6b7b58026a66399de69eb5587af7457",
+        "result_tree": "c6408bb054b8bfc82c8cd2812395924a327c4c35",
+        "schema": "0.22.0"
+      },
+      {
+        "step": "02-pr458",
+        "sha": "93b4fe82b8f12df50486b2f452d9d0d339e93bee",
+        "exit": 0,
+        "output": "7303b3bebae3ca4543dcbd95361756dcecf7a710\n",
+        "stderr": "",
+        "result_commit": "12e9130291b50dab1855e607704d2681e2c46286",
+        "result_tree": "7303b3bebae3ca4543dcbd95361756dcecf7a710",
+        "schema": "0.23.0"
+      },
+      {
+        "step": "execution-reliability",
+        "sha": "b8ccb7a8305aa3e23212858c2f858c842b3939f0",
+        "exit": 0,
+        "output": "d7a81fb38f53725a88a48126059fd918f9870fc4\n",
+        "stderr": "",
+        "result_commit": "debc8de897cfacec528c93f0410f53b12416bc38",
+        "result_tree": "d7a81fb38f53725a88a48126059fd918f9870fc4",
+        "schema": "0.23.0"
+      },
+      {
+        "step": "investigation-observability",
+        "sha": "19b97702ab2a917a02a3e183bf7eda98eafbc8cd",
+        "exit": 0,
+        "output": "9f40ce12e97b68b75db4991a8a1475df36641f36\n",
+        "stderr": "",
+        "result_commit": "2ebb9352b4d97b8691beb910513e53b216e6d76b",
+        "result_tree": "9f40ce12e97b68b75db4991a8a1475df36641f36",
+        "schema": "0.24.0"
+      },
+      {
+        "step": "pilot-security-hardening",
+        "sha": "87fd714997b30145b08f34958e1bdc2d3b73eb18",
+        "exit": 0,
+        "output": "607bbe10285239b2827288dfa4f90e8a42dcf377\n",
+        "stderr": "",
+        "result_commit": "76f2abe3bd15b829016a5640803f6f92c4931e08",
+        "result_tree": "607bbe10285239b2827288dfa4f90e8a42dcf377",
+        "schema": "0.25.0"
+      },
+      {
+        "step": "customer-onboarding",
+        "sha": "e6b7a3267b01dfbd30792600520cf34b9eccac59",
+        "exit": 0,
+        "output": "8c76686f2d56606af78a18e92319781a27805675\n",
+        "stderr": "",
+        "result_commit": "5391873274954f4b0367ff43ea17ed5de1cfc363",
+        "result_tree": "8c76686f2d56606af78a18e92319781a27805675",
+        "schema": "0.26.0"
+      },
+      {
+        "step": "pilot-deployment-ops",
+        "sha": "25904496422de18d8da2e0d76574326972605faa",
+        "exit": 0,
+        "output": "24b9352b0db006e5260110eee6e77e40bb93c807\n",
+        "stderr": "",
+        "result_commit": "79f63577d719647ce0d57dd9a3b070ac43d0cbfe",
+        "result_tree": "24b9352b0db006e5260110eee6e77e40bb93c807",
+        "schema": "0.26.0"
+      },
+      {
+        "step": "release-validation",
+        "sha": "c197a7a5c44e386a7bb3e4dea770dfa3ace71191",
+        "exit": 0,
+        "output": "eab289cc5e156f4260da486f0e6e1911b5e690ad\n",
+        "stderr": "",
+        "result_commit": "058dc87adb428e9740ea7fdc0d52f573fcba6e0c",
+        "result_tree": "eab289cc5e156f4260da486f0e6e1911b5e690ad",
+        "schema": "0.26.0"
+      }
+    ],
+    "final": "058dc87adb428e9740ea7fdc0d52f573fcba6e0c",
+    "production_differences": [
+      "deploy/reports/release-readiness-20261025T065919+0000.json",
+      "deploy/reports/release-readiness-20261025T065919+0000.md",
+      "deploy/reports/release-readiness-20261025T082755+0000.json",
+      "deploy/reports/release-readiness-20261025T082755+0000.md"
+    ]
+  },
+  "59cd0b623e1687a71de4b7653ad8171b0c569344": {
+    "steps": [
+      {
+        "step": "01-pr412",
+        "sha": "8a945e04b9cecb3d9f10912f78d160f2673594e0",
+        "exit": 0,
+        "output": "43ed60b9d7cb819d1ee459dfcbbdbe53d19847da\n",
+        "stderr": "",
+        "result_commit": "7ec79692ca261fd6bfe1ee3cb08243aec57cab01",
+        "result_tree": "43ed60b9d7cb819d1ee459dfcbbdbe53d19847da",
+        "schema": "0.22.0"
+      },
+      {
+        "step": "02-pr458",
+        "sha": "93b4fe82b8f12df50486b2f452d9d0d339e93bee",
+        "exit": 0,
+        "output": "da4b8af0da5f5ddb11d1ae796538687440418bfe\n",
+        "stderr": "",
+        "result_commit": "56255736ba57c1c4b31812b45e9f21d21e6f701e",
+        "result_tree": "da4b8af0da5f5ddb11d1ae796538687440418bfe",
+        "schema": "0.23.0"
+      },
+      {
+        "step": "execution-reliability",
+        "sha": "b8ccb7a8305aa3e23212858c2f858c842b3939f0",
+        "exit": 1,
+        "output": "76546ce306562d8dd513c1fa363b36d9ad7380b6\n100644 7d883a21a9c455cf05f913ab44c563c2a5fc1a79 1\tdocs/planning/SESSION_HANDOFF.md\n100644 7e7cbf0b36ee1e86b0b2de6659dcf7cd33fc8972 2\tdocs/planning/SESSION_HANDOFF.md\n100644 32bff7c78f0719ad0b9654f7fe0d6e2ef51e2a27 3\tdocs/planning/SESSION_HANDOFF.md\n\nAuto-merging CHANGELOG.md\nAuto-merging docs/planning/SESSION_HANDOFF.md\nCONFLICT (content): Merge conflict in docs/planning/SESSION_HANDOFF.md\n",
+        "stderr": ""
+      }
+    ],
+    "blocked": true
+  }
+}

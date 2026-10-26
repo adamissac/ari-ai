@@ -1,0 +1,18 @@
+{
+  "candidate_sha": "0aa68ffb046a90bae0ae11c909142e939de842d8",
+  "upstream_sha": "59cd0b623e1687a71de4b7653ad8171b0c569344",
+  "upstream_merge_clean": true,
+  "merge_exit": 0,
+  "merge_output": "5b28d0c7fcfe0ce5fb760581dc90ff91a1e4c49a\n\n",
+  "manifest_sha": "c197a7a5c44e386a7bb3e4dea770dfa3ace71191",
+  "manifest_production_equal": false,
+  "production_differences": [
+    "deploy/reports/release-readiness-20261025T065919+0000.json",
+    "deploy/reports/release-readiness-20261025T082755+0000.json",
+    "frontend/app/(console)/page.tsx",
+    "frontend/app/(console)/projects/[projectId]/setup/page.tsx",
+    "frontend/lib/real-assessment.ts",
+    "security-agents/security_agents/tools/services.py"
+  ],
+  "production_diff_complete": true
+}
