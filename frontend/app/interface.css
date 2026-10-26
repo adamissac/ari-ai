@@ -3,7 +3,6 @@
 :root { --ui-radius: 10px; --ui-edge: rgb(255 247 242 / 12%); }
 
 /* A quieter frame makes records and controls carry the visual hierarchy. */
-:root:not(:has(.hero-full)) .ambient-orb { opacity: .35; }
 :root:not(:has(.hero-full)) .ambient-grid { opacity: .3; }
 :root:not(:has(.hero-full)) .ambient-grain { opacity: .06; }
 :root:not(:has(.hero-full)) .site-header { border-bottom: 1px solid var(--ui-edge); }

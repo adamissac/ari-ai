@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Console, Defense Lab and site pages now use darker, route-specific versions of the landing lava-lamp background, and the project header, repo bar and tabs share one translucent band instead of alternating dark/light stripes.
 - Repository setup answers and completion are now saved on the server (`GET`/`PATCH /api/v1/repositories/{id}/setup`), so setup is never repeated after a reload, sign-out, or on another browser; browser-only progress from earlier builds migrates once. Disconnected repositories are labelled, never auto-selected, and cannot be set up.
 - Signed-out pages stop polling the API every few seconds after a 401.
 - Restyled the landing problem-timeline labels and checked-count chip as ember glass.
