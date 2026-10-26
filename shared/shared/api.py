@@ -173,6 +173,32 @@ class RepositorySetup(StrictModel):
     updated_at: UtcDatetime | None = None
 
 
+class AutomationReason(StrictModel):
+    code: ShortText
+    message: ShortText
+
+
+class AutomationStatus(StrictModel):
+    """Whether a new push or pull request on a repository would actually be reviewed.
+
+    ``ready``: it would. ``off``: an owner switch is off. ``blocked``: enabled but it cannot
+    run (no GitHub access, no approved scope, quota reached). ``reasons`` lists every gate
+    that stops it, plus informational notes.
+    """
+
+    repo_id: RepositoryId
+    state: Literal["ready", "off", "blocked"]
+    reasons: list[AutomationReason] = Field(default_factory=list)
+    resets_at: UtcDatetime | None = None
+
+
+class RecipeRetryAccepted(StrictModel):
+    """POST /repositories/{id}/recipe/retry: the proposal job queued, or the pending one joined."""
+
+    job_id: ShortText
+    queued: bool
+
+
 class SnapshotCreate(StrictModel):
     commit_sha: CommitSha
 

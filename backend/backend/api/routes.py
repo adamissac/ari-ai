@@ -79,11 +79,14 @@ from shared.api import (
     AssessmentCreate,
     AssessmentDetail,
     AssessmentReport,
+    AutomationReason,
+    AutomationStatus,
     FindingDetail,
     PatchDelivery,
     PatchView,
     ProjectCreate,
     ProjectUpdate,
+    RecipeRetryAccepted,
     RepositoryConnect,
     RepositorySetup,
     RepositorySetupUpdate,
@@ -507,8 +510,8 @@ def update_repository(repo_id: str, body: RepositoryUpdate, request: Request) ->
         )
 
 
-@router.get("/repositories/{repo_id}/automation-status")
-def automation_status(repo_id: str, request: Request) -> dict[str, Any]:
+@router.get("/repositories/{repo_id}/automation-status", response_model=AutomationStatus)
+def automation_status(repo_id: str, request: Request) -> AutomationStatus:
     """Whether a new push or pull request on this repository would actually be reviewed, and
     every reason it would not. Mirrors the gates in backend.auto_commits (schedule and
     assess_commit), so the UI shows one derived answer instead of separate toggles."""
@@ -556,12 +559,12 @@ def automation_status(repo_id: str, request: Request) -> dict[str, Any]:
     unreachable = [r for r in blocked if r[0] in ("disconnected", "no_github_app")]
     state = "blocked" if unreachable else "off" if off else "blocked" if blocked else "ready"
     ordered = unreachable + off + [r for r in blocked if r not in unreachable] + notes
-    return {
-        "repo_id": repo_id,
-        "state": state,
-        "reasons": [{"code": c, "message": m} for c, m in ordered],
-        "resets_at": resets_at,
-    }
+    return AutomationStatus(
+        repo_id=repo_id,
+        state=state,
+        reasons=[AutomationReason(code=c, message=m) for c, m in ordered],
+        resets_at=resets_at,
+    )
 
 
 def _setup(repo: dict[str, Any]) -> RepositorySetup:
@@ -805,8 +808,10 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
         return {"id": repo_id, "disconnected": False}
 
 
-@router.post("/repositories/{repo_id}/recipe/retry", status_code=202)
-def retry_build_recipe(repo_id: str, request: Request) -> dict[str, Any]:
+@router.post(
+    "/repositories/{repo_id}/recipe/retry", status_code=202, response_model=RecipeRetryAccepted
+)
+def retry_build_recipe(repo_id: str, request: Request) -> RecipeRetryAccepted:
     """Owner re-run of the build-recipe proposal after a failed or invalid result. The job
     re-reads the repository through the GitHub App, so revoked access fails again honestly;
     a recipe that already exists is still skipped, never overwritten."""
@@ -837,7 +842,7 @@ def retry_build_recipe(repo_id: str, request: Request) -> dict[str, Any]:
             )
         ).scalar()
         if active is not None:  # a double click or second tab joins the pending run
-            return {"job_id": active, "queued": False}
+            return RecipeRetryAccepted(job_id=active, queued=False)
         limiter.check(f"recipe_retry:{repo_id}", 5, 3600)
         job_id, _ = jobs.enqueue(
             conn,
@@ -855,7 +860,7 @@ def retry_build_recipe(repo_id: str, request: Request) -> dict[str, Any]:
             repo_id,
             job_id=job_id,
         )
-        return {"job_id": job_id, "queued": True}
+        return RecipeRetryAccepted(job_id=job_id, queued=True)
 
 
 @router.post("/repositories/{repo_id}/snapshots", status_code=202, response_model=Snapshot)

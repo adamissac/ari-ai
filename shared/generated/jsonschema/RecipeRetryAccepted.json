@@ -1,0 +1,21 @@
+{
+  "additionalProperties": false,
+  "description": "POST /repositories/{id}/recipe/retry: the proposal job queued, or the pending one joined.",
+  "properties": {
+    "job_id": {
+      "maxLength": 500,
+      "title": "Job Id",
+      "type": "string"
+    },
+    "queued": {
+      "title": "Queued",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "job_id",
+    "queued"
+  ],
+  "title": "RecipeRetryAccepted",
+  "type": "object"
+}

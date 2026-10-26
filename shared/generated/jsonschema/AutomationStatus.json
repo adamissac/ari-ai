@@ -1,0 +1,69 @@
+{
+  "$defs": {
+    "AutomationReason": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 500,
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 500,
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "AutomationReason",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Whether a new push or pull request on a repository would actually be reviewed.\n\n``ready``: it would. ``off``: an owner switch is off. ``blocked``: enabled but it cannot\nrun (no GitHub access, no approved scope, quota reached). ``reasons`` lists every gate\nthat stops it, plus informational notes.",
+  "properties": {
+    "reasons": {
+      "items": {
+        "$ref": "#/$defs/AutomationReason"
+      },
+      "title": "Reasons",
+      "type": "array"
+    },
+    "repo_id": {
+      "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
+      "title": "Repo Id",
+      "type": "string"
+    },
+    "resets_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resets At"
+    },
+    "state": {
+      "enum": [
+        "ready",
+        "off",
+        "blocked"
+      ],
+      "title": "State",
+      "type": "string"
+    }
+  },
+  "required": [
+    "repo_id",
+    "state"
+  ],
+  "title": "AutomationStatus",
+  "type": "object"
+}

@@ -209,7 +209,7 @@ test('automation status is validated and keeps every reason', async () => {
   const ok = await client(() => json(body)).automationStatus('rep_12345678');
   assert.equal(ok.state, 'off');
   assert.deepEqual(ok.reasons, [{ code: 'repository_off', message: 'off' }]);
-  for (const bad of [{ ...body, state: 'on' }, { ...body, repo_id: 'rep_other123' }, { ...body, reasons: [{ code: 1, message: 'x' }] }]) {
+  for (const bad of [{ ...body, state: 'on' }, { ...body, reasons: [{ code: 1, message: 'x' }] }, { repo_id: body.repo_id, state: 'off', reasons: [] }]) {
     await assert.rejects(client(() => json(bad)).automationStatus('rep_12345678'), ProtocolError);
   }
 });

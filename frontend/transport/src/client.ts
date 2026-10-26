@@ -182,8 +182,8 @@ export class ApiClient {
     return this.request(`/repositories/${segment(repoId)}/reconnect`, RAW, options, {}) as Promise<{ id: string; disconnected: boolean }>;
   }
   /** Owner re-run of a failed or invalid build-recipe proposal; joins a run that is already pending. */
-  retryBuildRecipe(repoId: string, options?: RequestOptions): Promise<{ job_id: string; queued: boolean }> {
-    return this.request(`/repositories/${segment(repoId)}/recipe/retry`, RAW, options, {}) as Promise<{ job_id: string; queued: boolean }>;
+  retryBuildRecipe(repoId: string, options?: RequestOptions): Promise<C.RecipeRetryAccepted> {
+    return this.request(`/repositories/${segment(repoId)}/recipe/retry`, 'RecipeRetryAccepted', options, {}) as Promise<C.RecipeRetryAccepted>;
   }
   onboardingStatus(projectId: string, options?: RequestOptions): Promise<C.OnboardingStatus> {
     return this.request(`/projects/${segment(projectId)}/onboarding`, 'OnboardingStatus', options) as Promise<C.OnboardingStatus>;
@@ -492,18 +492,8 @@ export class ApiClient {
     return { items, install_url: install as string | null, live_checked: typeof live === 'boolean' ? live : null };
   }
   /** Whether a new push/PR on this repository would really be reviewed, with every reason it would not. */
-  async automationStatus(repoId: string, options?: RequestOptions): Promise<AutomationStatus> {
-    const r = object(await this.request(`/repositories/${segment(repoId)}/automation-status`, RAW, options), 'automation status');
-    if (r.repo_id !== repoId || !(r.state === 'ready' || r.state === 'off' || r.state === 'blocked') || !Array.isArray(r.reasons)
-      || !(r.resets_at === null || typeof r.resets_at === 'string')) {
-      throw new ProtocolError('Invalid automation status');
-    }
-    const reasons = r.reasons.map(raw => {
-      const reason = object(raw, 'automation reason');
-      if (typeof reason.code !== 'string' || typeof reason.message !== 'string') throw new ProtocolError('Invalid automation status');
-      return { code: reason.code, message: reason.message };
-    });
-    return { repo_id: repoId, state: r.state, reasons, resets_at: r.resets_at };
+  automationStatus(repoId: string, options?: RequestOptions): Promise<C.AutomationStatus> {
+    return this.request(`/repositories/${segment(repoId)}/automation-status`, 'AutomationStatus', options) as Promise<C.AutomationStatus>;
   }
   /** Recent commits on a connected repository's default branch, read live from GitHub. */
   async repositoryCommits(repoId: string, options?: RequestOptions): Promise<RepositoryCommits> {
@@ -597,13 +587,6 @@ export interface AccessibleRepository {
   connected_repo_id: string | null;
   /** True when that row is disconnected: Ari no longer reads the repository until it is reconnected. */
   disconnected: boolean;
-}
-export interface AutomationStatus {
-  repo_id: string;
-  /** ready: a new push/PR is reviewed. off: an owner switch is off. blocked: enabled but cannot run. */
-  state: 'ready' | 'off' | 'blocked';
-  reasons: Array<{ code: string; message: string }>;
-  resets_at: string | null;
 }
 export interface JobState { id: string; kind: string; status: string; result: unknown; error: string | null }
 export interface AccessibleRepositories {

@@ -2284,6 +2284,75 @@
       "title": "AuthorizedScope",
       "type": "object"
     },
+    "AutomationReason": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "maxLength": 500,
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 500,
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "AutomationReason",
+      "type": "object"
+    },
+    "AutomationStatus": {
+      "additionalProperties": false,
+      "description": "Whether a new push or pull request on a repository would actually be reviewed.\n\n``ready``: it would. ``off``: an owner switch is off. ``blocked``: enabled but it cannot\nrun (no GitHub access, no approved scope, quota reached). ``reasons`` lists every gate\nthat stops it, plus informational notes.",
+      "properties": {
+        "reasons": {
+          "items": {
+            "$ref": "#/$defs/AutomationReason"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "repo_id": {
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
+          "title": "Repo Id",
+          "type": "string"
+        },
+        "resets_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resets At"
+        },
+        "state": {
+          "enum": [
+            "ready",
+            "off",
+            "blocked"
+          ],
+          "title": "State",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repo_id",
+        "state",
+        "reasons",
+        "resets_at"
+      ],
+      "title": "AutomationStatus",
+      "type": "object"
+    },
     "BehavioralExpectation": {
       "additionalProperties": false,
       "properties": {
@@ -12003,6 +12072,27 @@
       "title": "ReassessmentStatus",
       "type": "string"
     },
+    "RecipeRetryAccepted": {
+      "additionalProperties": false,
+      "description": "POST /repositories/{id}/recipe/retry: the proposal job queued, or the pending one joined.",
+      "properties": {
+        "job_id": {
+          "maxLength": 500,
+          "title": "Job Id",
+          "type": "string"
+        },
+        "queued": {
+          "title": "Queued",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "job_id",
+        "queued"
+      ],
+      "title": "RecipeRetryAccepted",
+      "type": "object"
+    },
     "RemediationPlan": {
       "additionalProperties": false,
       "properties": {
@@ -15101,5 +15191,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.27.0"
+  "x-schema-version": "0.28.0"
 }
