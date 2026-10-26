@@ -400,7 +400,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 
 /* How-it-works cards: the active card expands; others collapse to their number. */
 .story-rain { isolation: isolate; }
-.story-rain::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0.35;
+.story-rain::before { content: ""; position: absolute; inset-block: 0; inset-inline: calc(50% - 50vw); z-index: -1; pointer-events: none; opacity: 0.35;
   background-image: repeating-linear-gradient(90deg, transparent 0 22px, rgba(255, 255, 255, 0.05) 22px 23px), linear-gradient(180deg, transparent, rgba(194, 69, 45, 0.12) 50%, transparent);
   background-size: auto, 100% 300%; animation: story-rain 9s linear infinite; }
 @keyframes story-rain { to { background-position: 0 0, 0 300%; } }
@@ -1865,7 +1865,9 @@ body:has(.commit-stage) main { color: #fff; }
 .marketing-atmosphere .hero-cover::after,
 .marketing-atmosphere .bleed::after { display: none; }
 /* The hero covers the page grid and lets only its drifting blobs carry colour: no fixed hot spot. */
-:root .marketing-atmosphere > .hero-full.hero-ink { background: linear-gradient(180deg, #1c1210 0%, #221410 55%, #2e1610 100%); }
+:root .marketing-atmosphere > .hero-full.hero-ink { background: linear-gradient(180deg, #1c1210 0%, #221410 50%, rgb(36 20 16 / 60%) 78%, transparent 100%); }
+/* The hero fades into the page below instead of ending on a hard edge. */
+.marketing-atmosphere > .hero-full.hero-ink { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 200px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 200px), transparent); }
 /* Pricing's header is part of the page, not a separate tinted band. */
 :root main .marketing-atmosphere > header.hero-ink { background: transparent; box-shadow: none; -webkit-mask-image: none; mask-image: none; }
 :root main .marketing-atmosphere > header.hero-ink::before { display: none; }
