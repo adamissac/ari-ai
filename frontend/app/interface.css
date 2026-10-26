@@ -82,6 +82,22 @@
 .commit-recording-node { border-radius: 6px; background: #2a1d18; box-shadow: 0 16px 40px -26px #000; }
 .amap-transport { background: rgb(16 11 9 / 40%); }
 
+@media (min-width: 1280px) {
+  .project-body:has(.amap-grid-compact) > .flex.flex-col.gap-6 { gap: 8px; }
+  .project-body:has(.amap-grid-compact) .page-title { margin-bottom: 0; padding-bottom: 10px; }
+  .project-body:has(.amap-grid-compact) .page-title h1 { font-size: 1.75rem; line-height: 1.1; }
+  .project-body:has(.amap-grid-compact) .page-title .min-w-0 > div { margin-top: 4px; }
+  .project-body:has(.amap-grid-compact) .panel:has(.amap-grid-compact) > header { min-height: 38px; padding-block: 8px; }
+  .project-body:has(.amap-grid-compact) .panel:has(.amap-grid-compact) > div { padding: 8px; }
+  .project-body:has(.amap-grid-compact) .panel:has(.amap-grid-compact) > div > div.border-b { padding-bottom: 8px; }
+  .project-body:has(.amap-grid-compact) .panel:has(.amap-grid-compact) label:has(select) { margin-block: 4px; }
+  .project-body:has(.amap-grid-compact) .panel:has(.amap-grid-compact) [role="tablist"] button { padding-block: 4px; }
+  .project-body:has(.amap-grid-compact) .panel:has(.amap-grid-compact) [role="tabpanel"] { padding-top: 4px; }
+  .project-body:has(.amap-grid-compact) [data-testid="commit-agent-map"] > p.label-mono { margin-bottom: 4px; }
+  .project-body:has(.amap-grid-compact) .amap-head { padding-block: 6px; padding-inline: 12px; }
+  .project-body:has(.amap-grid-compact) .amap-grid-compact .amap-rail-compact { padding-block: 4px; }
+}
+
 /* Marketing chapters retain their scroll choreography, with a sharper editorial finish. */
 .story-stage > .label-mono, .story-stage .label-mono:first-child { letter-spacing: .1em; }
 .story-stage h2, #proof-title { letter-spacing: -.045em; text-wrap: balance; }
@@ -99,6 +115,7 @@
 @media (max-width: 639px) {
   .site-header-inner { min-height: 68px; }
   .amap-head { padding: 16px; }
+  .amap-phases-compact .amap-phase-compact { gap: 3px; padding-inline: 5px; font-size: 0.68rem; }
   .footer-brand > span { font-size: 42px; }
 }
 @media (prefers-reduced-motion: reduce) {

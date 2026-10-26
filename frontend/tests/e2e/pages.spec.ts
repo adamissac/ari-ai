@@ -104,6 +104,25 @@ test('repo analytics and commits stay scoped to seeded payments-lite data', asyn
     for (const agent of ['scout', 'probe', 'trace', 'diagnose', 'patch', 'verify', 'fortify']) {
       await expect(agents.getByTestId(`agent-${agent}`)).toBeVisible();
     }
+    if (width === 1440) {
+      const bounds = await page.locator('.amap-grid-compact').evaluate(root => ({
+        mapBottom: root.querySelector('.amap-map')!.getBoundingClientRect().bottom,
+        inspector: root.querySelector('.amap-inspect')!.getBoundingClientRect(),
+      }));
+      expect(bounds.mapBottom).toBeLessThanOrEqual(900);
+      expect(bounds.inspector.top).toBeGreaterThanOrEqual(0);
+      expect(bounds.inspector.bottom).toBeLessThanOrEqual(900);
+    }
+    if (width === 390) {
+      const phasesFit = await page.locator('.amap-phases-compact').evaluate(element => {
+        const bounds = element.getBoundingClientRect();
+        return Array.from(element.querySelectorAll('button')).every(button => {
+          const buttonBounds = button.getBoundingClientRect();
+          return buttonBounds.left >= bounds.left && buttonBounds.right <= bounds.right;
+        });
+      });
+      expect(phasesFit).toBe(true);
+    }
     await expectNoDocumentOverflow(page);
   }
 });
