@@ -34,7 +34,7 @@ test('project page titles stay below the tab band at every route and viewport', 
   const base = `/projects/${project()}`;
   const routes = ['', '/commits', '/findings', '/approvals', '/settings', '/live-defense', '/incidents', '/monitoring', '/scopes', '/expectations', '/simulate'];
 
-  for (const [width, height] of [[1440, 900], [1024, 900], [390, 844], [320, 700]]) {
+  for (const [width, height] of [[1440, 900], [1024, 900], [390, 844], [320, 700]] as const) {
     await page.setViewportSize({ width, height });
     for (const route of routes) {
       await page.goto(`${base}${route}?repo=${repo}`);

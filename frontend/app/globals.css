@@ -908,7 +908,8 @@ body:has(.commit-stage) main { color: #fff; }
 .amap-live { width: 7px; height: 7px; flex: none; border-radius: 9999px; background: rgb(255 255 255 / 30%); }
 .amap-live[data-on] { background: #fff; box-shadow: 0 0 0 4px rgb(255 255 255 / 12%); animation: demo-blink 1.2s ease-in-out infinite; }
 .amap-phases { display: flex; flex-wrap: wrap; gap: 4px; }
-.amap-phases-compact { flex-wrap: nowrap; gap: 0; overflow: hidden; border: 1px solid rgb(255 255 255 / 14%); border-radius: 9999px; }
+.amap-phases-compact { max-width: 100%; flex-wrap: nowrap; gap: 0; overflow-x: auto; border: 1px solid rgb(255 255 255 / 14%); border-radius: 9999px; scrollbar-width: none; }
+.amap-phases-compact::-webkit-scrollbar { display: none; }
 .amap-phase { position: relative; padding: 4px 10px 8px; font-size: 0.78rem; color: rgb(255 255 255 / 38%); transition: color 300ms; }
 .amap-phases-compact .amap-phase-compact { display: inline-flex; min-height: 30px; flex: none; align-items: center; gap: 5px; border-left: 1px solid rgb(255 255 255 / 10%); padding: 4px 9px; }
 .amap-phases-compact .amap-phase-compact:first-child { border-left: 0; }
