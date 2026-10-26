@@ -8,7 +8,7 @@ import { useSelectedRepo } from '@/lib/selected-repo';
 import { api } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
 import { AutomationStatus } from '@/components/automation-status';
-import { ErrorState, Loading, Mono, inputClass } from '@/components/ui';
+import { ErrorState, Loading, Mono, StaleNotice, inputClass } from '@/components/ui';
 import { isLegacySetupEvidence, isSetupComplete, progressToServer, readLegacySetupProgress, SETUP_SAVED_EVENT } from '@/lib/setup-progress';
 
 interface ProjectValue {
@@ -160,7 +160,8 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const project = useResource(`project:${id}`, signal => api().project(id, { signal }));
-  const repos = useResource(`repos:${id}`, signal => api().repositories(id, { signal }));
+  // Polled so a disconnect or reconnect in another tab or by another owner shows up here.
+  const repos = useResource(`repos:${id}`, signal => api().repositories(id, { signal }), 30000);
   const repoItems = repos.status === 'ready' ? repos.data.items : [];
   const { selectedRepo, selectRepo } = useSelectedRepo(id, repoItems);
   const selectedRepoId = selectedRepo?.id ?? null;
@@ -268,6 +269,8 @@ export function ProjectShell({ children }: { children: ReactNode }) {
               Monitoring {monitoring ? 'on' : 'off'}
             </span>}
         </header>
+        {project.refreshError !== undefined && <StaleNotice what="project settings" onRetry={project.reload} />}
+        {repos.refreshError !== undefined && <StaleNotice what="repository connections" onRetry={repos.reload} />}
         <ProjectNavigation base={base} repoId={selectedRepo?.id ?? null} locked={locked} />
         <div className="project-body min-w-0 pt-6">{children}</div>
       </div>

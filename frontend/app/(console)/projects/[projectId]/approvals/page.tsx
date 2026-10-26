@@ -19,11 +19,19 @@ const WHAT: Record<ApprovalSubject, { will: string; wont: string }> = {
 };
 
 export default function ApprovalsPage() {
-  const { project } = useProject();
-  const approvals = useResource(`approvals:${project.id}`, s => api().approvals(project.id, { signal: s }), 5000);
+  const { project, selectedRepo } = useProject();
+  const [wholeProject, setWholeProject] = useState(false);
+  const repoId = wholeProject ? undefined : selectedRepo?.id;
+  const approvals = useResource(`approvals:${project.id}:${repoId ?? 'all'}`, s => api().approvals(project.id, { signal: s, ...(repoId ? { repoId } : {}) }), 5000);
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <PageTitle eyebrow="Review" title="Approvals" subtitle="Decisions that let agents proceed — scoped to this project." />
+      <PageTitle eyebrow="Review" title="Approvals" subtitle={repoId ? `Decisions for ${selectedRepo!.full_name}` : 'Every decision in this project, across all repositories.'} />
+      {selectedRepo && (
+        <div role="tablist" aria-label="Approval scope" className="flex gap-1 text-sm">
+          <button role="tab" type="button" aria-selected={!wholeProject} onClick={() => setWholeProject(false)} className={`rounded-md px-3 py-1.5 ${!wholeProject ? 'bg-panel-2 text-ink' : 'text-muted hover:text-ink'}`}>This repository</button>
+          <button role="tab" type="button" aria-selected={wholeProject} onClick={() => setWholeProject(true)} className={`rounded-md px-3 py-1.5 ${wholeProject ? 'bg-panel-2 text-ink' : 'text-muted hover:text-ink'}`}>Whole project</button>
+        </div>
+      )}
       <Panel title="Approval inbox" actions={<span className="text-xs text-muted">Owners may approve their own sandbox scopes. Other approvals require a different requester and approver.</span>}>
       <Async resource={approvals} label="approvals">
         {page => {

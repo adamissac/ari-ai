@@ -116,8 +116,10 @@ export class ApiClient {
     const query = options?.repoId === undefined ? '' : `?repo_id=${segment(options.repoId)}`;
     return this.list(`/projects/${segment(projectId)}/findings${query}`, 'Finding', options?.signal ? { signal: options.signal } : undefined);
   }
-  approvals(projectId: string, options?: RequestOptions): Promise<Page<C.Approval>> {
-    return this.list(`/projects/${segment(projectId)}/approvals`, 'Approval', options);
+  /** All of the project's approvals, or one repository's (linked on the server by assessment or scope target). */
+  approvals(projectId: string, options?: RequestOptions & { repoId?: string }): Promise<Page<C.Approval>> {
+    const query = options?.repoId === undefined ? '' : `?repo_id=${segment(options.repoId)}`;
+    return this.list(`/projects/${segment(projectId)}/approvals${query}`, 'Approval', options?.signal ? { signal: options.signal } : undefined);
   }
   async auditEvents(projectId: string, options?: RequestOptions & { cursor?: string; limit?: number }): Promise<{
     items: Array<Pick<C.AuditEvent, 'action' | 'subject_id' | 'at' | 'details'>>;

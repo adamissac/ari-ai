@@ -321,3 +321,15 @@ def test_automation_status_names_every_reason_a_push_would_not_be_reviewed(
     status = alice.get(url).json()
     assert status["state"] == "blocked" and status["reasons"][0]["code"] == "disconnected"
     assert client_factory("mallory").get(url).status_code == 404
+
+
+def test_approvals_can_be_listed_for_one_repository(client_factory):
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)  # one scope approval targeting ids["repo"]
+    other = _connect(alice, ids["project"], "acme/other").json()["id"]
+    url = f"/api/v1/projects/{ids['project']}/approvals"
+    everything = alice.get(url).json()["items"]
+    assert everything and all(a["subject_type"] == "scope" for a in everything)
+    mine = alice.get(url, params={"repo_id": ids["repo"]}).json()["items"]
+    assert [a["id"] for a in mine] == [a["id"] for a in everything]
+    assert alice.get(url, params={"repo_id": other}).json()["items"] == []

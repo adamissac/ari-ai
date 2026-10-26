@@ -1183,11 +1183,31 @@ def _decide_subject_approval(
 
 @router.get("/projects/{project_id}/approvals")
 def list_approvals(
-    project_id: str, request: Request, status: ApprovalStatus | None = None
+    project_id: str,
+    request: Request,
+    status: ApprovalStatus | None = None,
+    repo_id: str | None = None,
 ) -> dict[str, Any]:
     with transaction() as conn:
         require_project(conn, _user(conn, request), project_id)
         q = sa.select(approvals.c.doc).where(approvals.c.project_id == project_id)
+        if repo_id:
+            # Linked server-side: an assessment on this repository, or a scope targeting it.
+            q = q.where(
+                sa.or_(
+                    approvals.c.assessment_id.in_(
+                        sa.select(assessments.c.id).where(assessments.c.repo_id == repo_id)
+                    ),
+                    sa.and_(
+                        approvals.c.subject_type == ApprovalSubject.scope.value,
+                        approvals.c.subject_id.in_(
+                            sa.select(authorized_scopes.c.id).where(
+                                authorized_scopes.c.doc["targets"].contains([{"repo_id": repo_id}])
+                            )
+                        ),
+                    ),
+                )
+            )
         if status:
             q = q.where(approvals.c.status == status.value)
         return {
