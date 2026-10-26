@@ -142,6 +142,37 @@ class RepositoryUpdate(StrictModel):
     automatic_assessments: bool
 
 
+SetupAnswer = bool | Annotated[str, Field(max_length=80)]
+
+
+class RepositorySetupAnswers(StrictModel):
+    """Answers to the eight repository setup questions; ``None`` means unanswered."""
+
+    readiness: SetupAnswer | None = None
+    strictness: SetupAnswer | None = None
+    reviewChanges: SetupAnswer | None = None  # noqa: N815 - wire name shared with the UI
+    comments: SetupAnswer | None = None
+    watch: SetupAnswer | None = None
+    scope: SetupAnswer | None = None
+    delivery: SetupAnswer | None = None
+    reviewStart: SetupAnswer | None = None  # noqa: N815 - wire name shared with the UI
+
+
+class RepositorySetupUpdate(StrictModel):
+    answers: RepositorySetupAnswers
+    complete: bool = False
+
+
+class RepositorySetup(StrictModel):
+    """Server-saved setup walkthrough progress for one connected repository."""
+
+    repo_id: RepositoryId
+    answers: RepositorySetupAnswers = Field(default_factory=RepositorySetupAnswers)
+    complete: bool = False
+    completed_at: UtcDatetime | None = None
+    updated_at: UtcDatetime | None = None
+
+
 class SnapshotCreate(StrictModel):
     commit_sha: CommitSha
 

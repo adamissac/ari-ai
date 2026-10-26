@@ -84,6 +84,8 @@ from shared.api import (
     ProjectCreate,
     ProjectUpdate,
     RepositoryConnect,
+    RepositorySetup,
+    RepositorySetupUpdate,
     RepositoryUpdate,
     ScopeCreate,
     SnapshotCreate,
@@ -473,6 +475,54 @@ def update_repository(repo_id: str, body: RepositoryUpdate, request: Request) ->
             .mappings()
             .one()
         )
+
+
+def _setup(repo: dict[str, Any]) -> RepositorySetup:
+    return RepositorySetup.model_validate({**(repo["setup"] or {}), "repo_id": repo["id"]})
+
+
+@router.get("/repositories/{repo_id}/setup", response_model=RepositorySetup)
+def get_repository_setup(repo_id: str, request: Request) -> RepositorySetup:
+    with transaction() as conn:
+        return _setup(_repo_access(conn, _user(conn, request), repo_id))
+
+
+@router.patch("/repositories/{repo_id}/setup", response_model=RepositorySetup)
+def save_repository_setup(
+    repo_id: str, body: RepositorySetupUpdate, request: Request
+) -> RepositorySetup:
+    """Save walkthrough answers. Completion is sticky: a later save never re-locks setup."""
+    with transaction() as conn:
+        user = _user(conn, request)
+        repo = _repo_access(conn, user, repo_id, MemberRole.owner)
+        if repo["disconnected_at"] is not None:
+            raise ApiError(ErrorCode.CONFLICT_STATE, "repository is disconnected", 409)
+        before = _setup(repo)
+        now = utcnow()
+        complete = before.complete or body.complete
+        saved = RepositorySetup(
+            repo_id=repo_id,
+            answers=body.answers,
+            complete=complete,
+            completed_at=before.completed_at or (now if complete else None),
+            updated_at=now,
+        )
+        conn.execute(
+            sa.update(repositories)
+            .where(repositories.c.id == repo_id)
+            .values(setup=saved.model_dump(mode="json", exclude={"repo_id"}))
+        )
+        if complete and not before.complete:
+            _audit(
+                conn,
+                project_org(conn, repo["project_id"]),
+                repo["project_id"],
+                user,
+                "repository.setup_completed",
+                "repository",
+                repo_id,
+            )
+        return saved
 
 
 def _owner_repo(conn: Any, user: CurrentUser, repo_id: str) -> dict[str, Any]:
