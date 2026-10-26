@@ -2,57 +2,89 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const app = path.resolve(import.meta.dirname, '../../app');
-const tokens = readFileSync(path.resolve(app, 'tokens.css'), 'utf8');
-const globals = readFileSync(path.resolve(app, 'globals.css'), 'utf8');
-const interfaceCss = readFileSync(path.resolve(app, 'interface.css'), 'utf8');
+const css = readFileSync(path.resolve(import.meta.dirname, '../../app/globals.css'), 'utf8');
 
 const token = (name: string) => {
-  const match = tokens.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`));
-  if (!match) throw new Error(`token ${name} missing`);
-  return match[1]!;
+  const m = css.match(new RegExp(`--color-${name}:\\s*(#[0-9a-fA-F]{6})`));
+  if (!m) throw new Error(`token ${name} missing`);
+  return m[1]!;
 };
-const luminance = (hex: string) => {
-  const channels = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
-  const [r, g, b] = channels.map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
-  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+const lum = (hex: string) => {
+  const c = [1, 3, 5]
+    .map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map(v => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
 };
-const contrast = (a: string, b: string) => {
-  const [x, y] = [luminance(a), luminance(b)];
+const ratio = (a: string, b: string) => {
+  const [x, y] = [lum(a), lum(b)];
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 };
+const over = (opacity: number, fg: string, bg: string) =>
+  '#' +
+  [1, 3, 5]
+    .map(i => Math.round(opacity * parseInt(fg.slice(i, i + 2), 16) + (1 - opacity) * parseInt(bg.slice(i, i + 2), 16)))
+    .map(v => v.toString(16).padStart(2, '0'))
+    .join('');
 
-describe('Industrial Graphite design tokens', () => {
-  it('uses the specified graphite and signal palette', () => {
-    expect(token('surface-0')).toBe('#0B0B0D');
-    expect(token('surface-1')).toBe('#141416');
-    expect(token('surface-2')).toBe('#1B1B1E');
-    expect(token('signal')).toBe('#E5582F');
-    expect(token('signal-deep')).toBe('#B8411F');
+describe('WCAG contrast of design tokens', () => {
+  it('faint text meets 4.5:1 on white and panel-2 and stays lighter than muted', () => {
+    expect(ratio(token('faint'), '#ffffff')).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(token('faint'), token('panel-2'))).toBeGreaterThanOrEqual(4.5);
+    expect(lum(token('faint'))).toBeGreaterThan(lum(token('muted')));
   });
 
-  it('keeps all ink levels readable on the primary surfaces', () => {
-    const surfaces = [token('surface-0'), token('surface-1')];
-    for (const ink of ['ink-1', 'ink-2', 'ink-3']) {
-      for (const surface of surfaces) expect(contrast(token(ink), surface)).toBeGreaterThanOrEqual(4.5);
+  it('control border meets 3:1 on white while line stays decorative', () => {
+    expect(ratio(token('control'), '#ffffff')).toBeGreaterThanOrEqual(3);
+    expect(ratio(token('line'), '#ffffff')).toBeLessThan(3);
+  });
+
+  it('hero text over the brand colour keeps 4.5:1', () => {
+    const brand = token('brand');
+    const body = css.match(/\.hero-ink p[^{]*\{[^}]*rgba\(255,\s*255,\s*255,\s*([\d.]+)\)/);
+    const dim = css.match(/\.hero-line-dim \{ --dim: rgba\(255, 255, 255, ([\d.]+)\)/);
+    expect(body).not.toBeNull();
+    expect(dim).not.toBeNull();
+    expect(ratio(over(Number(body![1]), '#ffffff', brand), brand)).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(over(Number(dim![1]), '#ffffff', brand), brand)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('night tokens (every page but the landing) keep text and controls readable', () => {
+    const block = css.slice(css.indexOf(':root:not(:has(.hero-full)) {'));
+    const night = (name: string) => {
+      const m = block.match(new RegExp(`--color-${name}:\\s*(#[0-9a-fA-F]{6})`));
+      if (!m) throw new Error(`night token ${name} missing`);
+      return m[1]!;
+    };
+    for (const surface of [night('bg'), night('panel'), night('panel-2')]) {
+      expect(ratio(night('ink'), surface)).toBeGreaterThanOrEqual(7);
+      expect(ratio(night('muted'), surface)).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(night('faint'), surface)).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(night('ember'), surface)).toBeGreaterThanOrEqual(4.5);
+      for (const status of ['ok', 'warn', 'bad', 'info']) expect(ratio(night(status), surface)).toBeGreaterThanOrEqual(4.5);
     }
-    expect(contrast(token('ink-4'), token('surface-0'))).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(night('control'), night('panel'))).toBeGreaterThanOrEqual(3);
+    expect(lum(night('faint'))).toBeLessThan(lum(night('muted')));
+    // The landing keeps its own palette: night applies only where there is no full hero.
+    expect(css).toContain(':root:not(:has(.hero-full)) {');
   });
 
-  it('keeps the signal distinguishable from the graphite surfaces', () => {
-    for (const surface of [token('surface-0'), token('surface-1')]) {
-      expect(contrast(token('signal'), surface)).toBeGreaterThanOrEqual(3);
-    }
+  it('disables animate-pulse under prefers-reduced-motion', () => {
+    expect(css).toMatch(/prefers-reduced-motion: reduce\)\s*\{[^}]*\.animate-pulse\s*\{\s*animation:\s*none/);
   });
 
-  it('uses the signal focus ring and disables motion when requested', () => {
-    expect(globals).toMatch(/:focus-visible\s*\{\s*outline:\s*2px solid var\(--signal\);\s*outline-offset:\s*2px/);
-    expect(tokens).toMatch(/prefers-reduced-motion:\s*reduce[\s\S]*?transition-duration:\s*0\.01ms/);
+  it('keeps the warm headline core above 4.5:1 over the brand background, with no glow', () => {
+    expect(ratio('#fff7f2', token('brand'))).toBeGreaterThanOrEqual(4.7);
+    const rule = css.match(/\.hero-headline \.hero-line\s*\{([^}]*)\}/);
+    expect(rule?.[1]).toContain('color: #fff7f2;');
+    // The owner removed the glow; a blurred shadow on type this size also made scrolling chop.
+    expect(rule?.[1]).not.toContain('text-shadow');
   });
+});
 
-  it('does not scope the old night skin with :has() or render ambient layers', () => {
-    expect(globals).not.toContain(':root:not(:has(.hero-full))');
-    expect(interfaceCss).not.toContain(':root:not(:has(.hero-full))');
-    expect(globals).not.toContain('.ambient-orb {');
-  });
+
+it('keeps the effective second-line headline colors above 4.5:1 on brand', () => {
+  const rule = css.match(/\.hero-stage\[data-fx="on"\] \.hero-headline \.hero-line-dim \{([^}]+)\}/)![1]!;
+  for (const color of rule.match(/#[0-9a-f]{6}/g)!) {
+    expect(ratio(color, token('brand'))).toBeGreaterThanOrEqual(4.5);
+  }
 });
