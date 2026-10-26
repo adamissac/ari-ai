@@ -232,3 +232,40 @@ def test_sweep_destroys_stale_run_boxes_with_their_orphan_snapshots(monkeypatch)
     monkeypatch.setattr(vd, "_SWEPT_AT", 0.0)
     vd._sweep_stale()
     assert destroyed == [("ari-sbx-old", True), ("ari-sbx-done", True)]
+
+
+def test_recipe_pin_overrides_runner_wheel_on_the_same_distribution() -> None:
+    from security_agents.sandbox import vercel_driver as vd
+
+    merged = vd._merged_pip(vd.RUNNER_WHEELS, ["fastapi==0.110.0", "sqlalchemy==2.1.5"])
+    assert merged.count("fastapi==0.143.3") == 0
+    fastapis = [r for r in merged if vd._req_name(r) == "fastapi"]
+    assert fastapis == ["fastapi==0.110.0"]
+    assert merged[: len(vd.RUNNER_WHEELS) - 1] == [
+        r for r in vd.RUNNER_WHEELS if vd._req_name(r) != "fastapi"
+    ]
+    assert merged[-1] == "sqlalchemy==2.1.5"
+
+
+def test_recipe_extras_and_ranges_also_override(monkeypatch, tmp_path) -> None:
+    from types import SimpleNamespace
+
+    from security_agents.sandbox import vercel_driver as vd
+
+    calls, _, _ = _fake_vercel(monkeypatch, tmp_path)
+    spec = SimpleNamespace(
+        limits=SimpleNamespace(timeout_s=60), labels={}, apt=(), pip=("FastAPI[all]>=0.110",)
+    )
+    vd._VercelSdkBox(spec, "r9").stop()
+    pip_argv = next(c[2] for c in calls if c[0] == "run" and c[1] == "python")
+    fastapis = [a for a in pip_argv if vd._req_name(a) == "fastapi"]
+    assert fastapis == ["FastAPI[all]>=0.110"]
+
+
+def test_recipe_cannot_repin_the_audit_toolchain() -> None:
+    from security_agents.sandbox import vercel_driver as vd
+
+    merged = vd._merged_pip(vd.RUNNER_WHEELS, ["pytest==6.2.5", "Pluggy<1", "fastapi==0.110.0"])
+    assert [r for r in merged if vd._req_name(r) == "pytest"] == ["pytest==8.4.2"]
+    assert not any(vd._req_name(r) == "pluggy" for r in merged)
+    assert "fastapi==0.110.0" in merged
