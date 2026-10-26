@@ -233,11 +233,13 @@ function ChecksChart({ days }: { days: { date: string; completed: number; active
         <ChartLegend label="Active" color="var(--color-warn)" />
         <ChartLegend label="Failed" color="var(--color-bad)" />
       </div>
-      <table className="sr-only">
-        <caption>Check outcomes for the last 30 UTC days</caption>
-        <thead><tr><th scope="col">Date</th><th scope="col">Completed</th><th scope="col">Active</th><th scope="col">Failed</th></tr></thead>
-        <tbody>{days.map(day => <tr key={day.date}><th scope="row">{day.date}</th><td>{day.completed}</td><td>{day.active}</td><td>{day.failed}</td></tr>)}</tbody>
-      </table>
+      <div className="sr-only">
+        <table>
+          <caption>Check outcomes for the last 30 UTC days</caption>
+          <thead><tr><th scope="col">Date</th><th scope="col">Completed</th><th scope="col">Active</th><th scope="col">Failed</th></tr></thead>
+          <tbody>{days.map(day => <tr key={day.date}><th scope="row">{day.date}</th><td>{day.completed}</td><td>{day.active}</td><td>{day.failed}</td></tr>)}</tbody>
+        </table>
+      </div>
     </>
   );
 }

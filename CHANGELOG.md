@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Added a repository-scoped project workspace with Analytics, Commits, Findings, Approvals, Settings, and More navigation; commit history and assessment records remain scoped to the selected repository.
 - Restored the pre-redesign look and fixed background, overflow and spacing bugs.
 - Setup now shows the actual expiry of the sandbox scope being approved; landing copy states the default and maximum authorization durations.
 - Refined the console account menu, mobile project navigation, status marks, assessment headers, and commit-to-assessment links.
