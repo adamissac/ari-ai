@@ -1,0 +1,52 @@
+# GitHub push-to-review reliability scorecard — 2026-10-27
+
+Base: `adamissac/ari-ai` main @ `c03a5501`. Scope: the existing per-commit automatic review
+path (`api/webhooks.py` → `process_github_delivery` → `auto_commits.schedule` →
+`assess_github_commit` → assessment → `post_pr_review`). No new agents or review features.
+
+"Verified" means an automated test ran against the real Postgres queue/DB with GitHub stubbed
+at the `GitHubApp` boundary. Real GitHub was not called.
+
+## Defects found and fixed
+
+| # | Defect (reproduced on main by a failing test) | Fix | Test |
+|---|---|---|---|
+| D1 | A PR opened/synchronized after its head commit's push was deduped onto the push's commit job, so the PR never got a review comment. Push normally arrives first, so most per-commit PR comments were lost. | `schedule` enqueues a PR-scoped linking job when the commit job already exists; `assess_commit` attaches `pr_number` to the commit's event and enqueues the review if the assessment is already done. Locks the assessment row against the host's completion transition. Still one assessment per commit. | `test_pull_request_after_push_of_same_commit_still_gets_review`, `test_pull_request_for_already_completed_commit_posts_review` |
+| D2 | `post_pr_review` posted to repositories disconnected after the assessment finished. Disconnect cancels jobs by `repo_id`, and the review job carries only `assessment_id`. | Checks `disconnected_at` and no-ops; audited as `monitoring.pr_review_skipped`. | `test_pr_review_is_not_posted_after_repository_disconnect` |
+| D3 | PR review posts treated GitHub 429 / secondary rate-limit 403 as permanent 4xx failures, so the review was dropped. | Rate limits defer (`JobDeferred`, Retry-After / reset, ≤1h, ≤24 defers) and then use the normal retry budget. | `test_pr_review_rate_limit_is_retried_not_dropped[429,403]` |
+| D4 | GitHub rate limits on the commit lookup used up the 5-attempt retry budget (about 31 s total) against resets of up to 1 h, then dead-lettered the commit. | Same bounded deferral, which does not spend retry attempts. | `test_github_rate_limit_defers_commit_without_burning_attempts[403,429]` |
+| D5 | When the commit lookup kept failing (5xx/network), the commit ended `dead` in the queue with no event or reason visible to the user. | The last attempt records a skipped event/request with the cause ("start a manual review to retry") and an error log. | `test_exhausted_transient_github_failure_is_recorded_for_the_user` |
+| D6 | Redelivering a webhook whose processing job was dead, failed, timed out or cancelled returned "duplicate", so the push could never be recovered. | `_persist` locks the delivery row and re-enqueues `gh:{delivery}:after:{old_job}`. Live or succeeded jobs still return a duplicate. | `test_redelivery_after_dead_processing_job_is_processed_again`, `test_redelivery_of_successful_delivery_stays_duplicate` |
+| D7 | The default `exclude_authors=["*[bot]"]` was read by fnmatch as a character class, so every login ending in b, o or t was skipped (found by the release-journey session). | Author patterns treat `[` literally. Branch patterns are unchanged. | `test_default_bot_exclusion_does_not_skip_human_logins[bob,octo,matt,scott]`, `..._still_skips_bots` |
+
+## Path scorecard
+
+| Path | Status | Evidence |
+|---|---|---|
+| HMAC over raw body, wrong secret, tampered body → 401, nothing persisted | Verified | new `test_tampered_body_...`; existing `test_webhook_monitoring.py` |
+| Pushes to default and non-default branches reviewed; tag pushes ignored | Verified | `test_non_default_branch_push_is_reviewed_and_tag_push_is_not`; existing branch-filter tests |
+| Duplicate delivery (sequential) → 200 duplicate, one assessment | Verified | existing `test_auto_commits.py`, new redelivery tests |
+| Duplicate delivery concurrent HTTP race (`ON CONFLICT DO NOTHING` branch) | Unverified | code reviewed only |
+| Redelivery after a dead or failed processing job | Verified (D6) | above |
+| Worker transient retry, then a user-visible record after exhaustion | Verified (D5) | above; existing `test_transient_commit_lookup_still_retries` |
+| Lease loss / worker crash mid-job | Verified by existing suite | `test_jobs_queue.py`, `test_execution_reliability.py` (not re-scoped here) |
+| GitHub rate limits (commit lookup, PR review) | Verified with stubbed headers (D3/D4) | header shapes follow GitHub docs and were not observed live |
+| LLM provider timeouts/rate limits during the assessment | Verified by existing suite only | `llm.py` retry tests; not re-tested here |
+| Assessment ↔ commit SHA ↔ event ↔ PR association, both event orders | Verified (D1) | above; existing PR-first `test_pull_request_commit_still_uses_authenticated_automatic_path` |
+| Hourly quota under 6 concurrent workers (cap 2 → exactly 2 assessments, 4 skipped) | Verified | `test_concurrent_workers_respect_hourly_quota` |
+| Global spend cap with in-flight usage | Unverified / known-stale | documented in `quota.py`; spend lands after runs |
+| Disconnect before scheduling, during the GitHub lookup, and before the PR review | Verified (D2) | `test_disconnect_while_commit_lookup_is_in_flight_creates_no_assessment`; existing disconnect tests |
+| Review only to the assessment's own connected repo/installation | Verified | PR number from the assessment's own event; repo from `assessment.repo_id`; installation-mismatch tests in `test_auto_commits.py` |
+| Duplicate PR comment if a worker dies after GitHub accepted the POST | Unverified / known gap | `post_pr_review` has no effect guard; GitHub reviews are not idempotent |
+| Pushes while automatic reviews are OFF leave no event | Unchanged (by design) | `process_github_delivery` returns early |
+| `redeliver.recover` startup sweep re-requesting dead GUIDs | Not covered | it skips persisted GUIDs. D6 makes manual "Redeliver" work |
+| Frontend status rendering of the new skip reasons | Unverified | API `status_reason` asserted; UI not driven |
+| Real GitHub / Railway production behavior | Unverified | no live calls made |
+
+## Observability added
+
+- `log.warning` on every rate-limit deferral (repo, sha/assessment, delay).
+- `log.error` when the commit lookup runs out of retries (job, repo, sha, attempts, cause).
+- `log.info` when a PR is linked to an existing commit event.
+- `log.warning` when a webhook redelivery reprocesses a dead/failed job.
+- Audit `monitoring.pr_review_skipped` when the repository was disconnected.

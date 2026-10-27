@@ -2789,3 +2789,10 @@ Exact b6d5108b6f0678a6af9546f60d28508716cc4982: 194 pass/0 fail/0 skip, exit0, s
 - Lint passed (zero errors; one existing unused-variable warning at `first-responder.tsx:173`), typecheck passed, and unit tests passed (99 files / 418 tests). The E2E stack's production build passed. Targeted pages/tab-band E2E passed 2/2, covering every project route at 1440/1024/390/320 plus the scroll captures and Live Defense 320px width.
 - The broader `pages.spec.ts` attempt without a preceding journey run passed 4/9 tests. After fixing the in-scope sticky-position override, the two header/tab-band tests passed. The other failures were: a missing seeded commit row, an unavailable `hardened` finding option, and a missing `findings-mobile-list` test id. These were not validated against the base branch and are not claimed as pre-existing.
 - Baseline scroll screenshots and metrics: `/home/ubuntu/shots/console-polish/scroll-fix-before/`; after screenshots: `/home/ubuntu/shots/console-polish/scroll-fix-after/`. The baseline 1440px scroll-50 image was clamped to scrollY 0; the 1440px scroll-300 and both 390px scroll captures reached their requested offsets.
+
+### GitHub review pipeline reliability — 2026-10-27
+
+- Branch `devin/1793142966-review-pipeline-reliability` off upstream main `c03a5501`. Fixed seven confirmed defects (D1–D7) in `backend/backend/auto_commits.py` and `backend/backend/api/webhooks.py`. Each was reproduced first by a failing test in `backend/tests/test_review_pipeline_reliability.py`. No migration or SCHEMA_VERSION change.
+- Scorecard with verified and unverified paths: `docs/reviews/2026-10-27-review-pipeline-reliability/SCORECARD.md`.
+- D7 (`*[bot]` fnmatch) came from the release-journey session (devin-42c24a90). Its strict xfail `test_default_bot_exclusion_does_not_skip_human_logins` in `test_release_journey.py` should flip when this lands.
+- Open gaps: duplicate PR comment after a worker crash post-POST; the stale global spend cap; the `redeliver.recover` sweep ignores dead GUIDs; GitHub was not exercised live.

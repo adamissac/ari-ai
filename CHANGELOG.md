@@ -6,6 +6,14 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Automatic GitHub review reliability:
+  - A pull request whose head commit was already queued or reviewed from its push now gets the review comment, still from a single assessment of that commit.
+  - PR review comments are no longer posted to a repository disconnected after the assessment finished; the skip is audited as `monitoring.pr_review_skipped`.
+  - GitHub rate limits (429, or 403 with `x-ratelimit-remaining: 0` / "rate limit") defer commit lookups and PR review posts until the reset instead of spending the retry budget; PR reviews are no longer dropped as permanent 4xx.
+  - A commit whose GitHub lookup keeps failing (5xx/network) is recorded as a skipped event with the cause after the last attempt instead of dying silently in the queue.
+  - Redelivering a GitHub webhook whose processing job is dead, failed, timed out or cancelled now reprocesses it; redelivery of a processed delivery stays a duplicate.
+  - The default `*[bot]` author exclusion matched any login ending in b, o or t (`bob`, `octo`, `matt`); author patterns now treat `[` literally.
+
 - Settings → Repositories manages every repository in the project from one place. Each row has an Automatic reviews ON/OFF switch, the derived automatic-review status, and Disconnect (with confirmation); disconnected rows show Reconnect. The header's automatic-review status links to it.
 - JavaScript/TypeScript repositories: code intelligence indexes `.js/.mjs/.cjs/.jsx/.ts/.tsx/.html` as text (Python is still the only language parsed into symbols), skips minified bundles, and keeps code ahead of bulk data when a repository exceeds the index size budget. Files over the budget are skipped with a recorded reason instead of failing the whole index. The reviewer reports defects in non-Python code as unvalidated hypotheses rather than writing pytest for them.
 - Wildcard auto-commit author configuration now keeps signed pushes on the per-commit assessment path.
