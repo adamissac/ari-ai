@@ -353,6 +353,13 @@ def _staging_env(tmp: Path, db_url: str, api_port: int, sink_port: int, ops_toke
     return env
 
 
+def _save_log(out_dir: Path, name: str, text: str) -> None:
+    """Full stdout of a gate next to the report, so the evidence is not just its last line."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    (out_dir / f"{name}-{stamp}.log").write_text(text or "")
+
+
 def run_local(report: Report, out_dir: Path, keep_db: bool, db_url_override: str | None) -> int:
     tmp = Path(tempfile.mkdtemp(prefix="ari-readiness-"))
     procs: list[Proc] = []
@@ -514,6 +521,7 @@ def run_local(report: Report, out_dir: Path, keep_db: bool, db_url_override: str
             timeout=120,
         )
         tail = smoke.stdout.strip().splitlines()[-1] if smoke.stdout else smoke.stderr[-200:]
+        _save_log(out_dir, "smoke", smoke.stdout)
         report.add(
             "http.smoke",
             "Staging smoke suite (real HTTP)",
@@ -888,6 +896,7 @@ def run_local(report: Report, out_dir: Path, keep_db: bool, db_url_override: str
             timeout=120,
         )
         rc_tail = rc_proc.stdout.strip().splitlines()[-1] if rc_proc.stdout else ""
+        _save_log(out_dir, "release-check", rc_proc.stdout)
         report.add(
             "release.check",
             "release_check.py release checklist",
