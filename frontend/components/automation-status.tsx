@@ -12,7 +12,7 @@ const DOT: Record<Status['state'], string> = { ready: 'bg-ok', off: 'bg-faint', 
  * One derived answer to "will Ari review the next push?", from the server's view of every gate
  * (repository switch, project monitoring, change types, scope, quota, GitHub access).
  */
-export function AutomationStatus({ repoId }: { repoId: string }) {
+export function AutomationStatus({ repoId, manageHref }: { repoId: string; manageHref?: string }) {
   const status = useResource(`automation-status:${repoId}`, signal => api().automationStatus(repoId, { signal }), 30000);
   const reload = status.reload;
   useEffect(() => {
@@ -33,6 +33,7 @@ export function AutomationStatus({ repoId }: { repoId: string }) {
         {reasons.length === 0
           ? <p>A new push or pull request on this repository will be reviewed.</p>
           : <ul className="list-disc space-y-1 pl-4">{reasons.map(reason => <li key={reason.code}>{reason.message}</li>)}</ul>}
+        {manageHref && <a className="mt-2 inline-block font-semibold text-brand hover:underline" href={manageHref}>Manage repositories →</a>}
       </div>
     </details>
   );

@@ -9,7 +9,7 @@ import { api } from '@/lib/api';
 import { AUTO_WARNING, draftOf, parseSettings, type Draft } from '@/lib/settings';
 
 export default function SettingsPage() {
-  const { project, selectedRepo, reloadProject } = useProject();
+  const { project, repos, selectedRepo, reloadProject } = useProject();
   const [saved, setSaved] = useState<Project>(project);
   const [draft, setDraft] = useState<Draft>(() => draftOf(project));
   const [busy, setBusy] = useState(false);
@@ -43,7 +43,7 @@ export default function SettingsPage() {
           ? <>Settings for <span className="font-mono text-ink">{selectedRepo.full_name}</span>. Changes below apply to all repositories in this project.</>
           : 'Project settings apply to all repositories in this project; no repository is connected.'}
       />
-      <Repositories repos={selectedRepo ? [selectedRepo] : []} />
+      <Repositories repos={repos} />
       <p className="label-mono text-muted">Project settings (all repositories in this project)</p>
       <form onSubmit={submit} className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2" aria-label="Project settings">
       <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
