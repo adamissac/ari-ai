@@ -730,6 +730,8 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
             .mappings()
             .first()
         )
+        if repo is not None and repo["disconnected_at"] is not None:
+            return {"noop": "repository is disconnected"}
         if repo is None or not repo["installation_id"]:
             raise PermanentJobError(
                 ErrorCode.VALIDATION_FAILED, "connected GitHub installation is unavailable"

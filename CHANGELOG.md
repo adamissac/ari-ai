@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Disconnecting a repository now also stops verified-fix deliveries and pull-request review comments that were already queued or running; delivery re-checks the connection before each GitHub write and records `delivery.skipped`.
 - Settings → Repositories manages every repository in the project from one place. Each row has an Automatic reviews ON/OFF switch, the derived automatic-review status, and Disconnect (with confirmation); disconnected rows show Reconnect. The header's automatic-review status links to it.
 - JavaScript/TypeScript repositories: code intelligence indexes `.js/.mjs/.cjs/.jsx/.ts/.tsx/.html` as text (Python is still the only language parsed into symbols), skips minified bundles, and keeps code ahead of bulk data when a repository exceeds the index size budget. Files over the budget are skipped with a recorded reason instead of failing the whole index. The reviewer reports defects in non-Python code as unvalidated hypotheses rather than writing pytest for them.
 - Wildcard auto-commit author configuration now keeps signed pushes on the per-commit assessment path.

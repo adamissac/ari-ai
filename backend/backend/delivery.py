@@ -384,6 +384,10 @@ def _reason(exc: Exception) -> str:
     return str(exc)[:300]
 
 
+class _Disconnected(Exception):
+    """The repository was disconnected after delivery started."""
+
+
 @handler("deliver_verified_patch")
 def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
     ctx.check_cancelled()
@@ -441,6 +445,9 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
     if granted is None:  # switched to manual (or authorizer lost ownership) since queueing
         finish("delivery.skipped")
         return {"status": "skipped", "reason": "delivery is manual"}
+    if repo is not None and repo["disconnected_at"] is not None:
+        finish("delivery.skipped", reason="repository is disconnected")
+        return {"status": "skipped", "reason": "repository is disconnected"}
     if not connected or repo is None or s.security_workdir is None:
         finish("delivery.failed", reason="repository is not connected through the GitHub App")
         raise PermanentJobError(
@@ -469,7 +476,18 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
     fallback: str | None = None
     tip: str | None = None
     tip_state = "unknown"
+
+    def still_connected() -> None:
+        # The owner can disconnect while this job runs; re-check before each GitHub write.
+        with transaction() as conn:
+            gone = conn.execute(
+                sa.select(repositories.c.disconnected_at).where(repositories.c.id == repo["id"])
+            ).scalar_one_or_none()
+        if gone is not None:
+            raise _Disconnected
+
     try:
+        still_connected()
         app = GitHubApp(settings=s)
         token = app.installation_token(iid, write=True, repository=full_name.split("/", 1)[1])
         with _locked(repo_dir):
@@ -492,6 +510,7 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
                 finish("delivery.skipped", reason=reason, tip_sha=tip)
                 return {"status": "skipped", "reason": reason}
             if mode is DeliveryMode.auto:
+                still_connected()
                 try:
                     sha = push_patch(
                         repo_dir, full_name, base, diff, token, message, default_branch,
@@ -502,6 +521,7 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
                 except CheckoutError as exc:  # branch moved, or push refused (protection)
                     fallback = _reason(exc)
             branch = f"ari/fix-{patch.id}"
+            still_connected()
             sha = push_patch(
                 repo_dir, full_name, base, diff, token, message, branch, github_web_url=web
             )
@@ -520,6 +540,7 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
                 f"moved to `{tip[:12]}` and this change no longer applies cleanly. Rebase it or "
                 "re-run the review on the latest commit."
             )
+        still_connected()
         url = app.open_pull_request(
             iid,
             full_name,
@@ -528,6 +549,9 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
             title=f"fix: {patch.rationale}"[:120],
             body=pr_body,
         )
+    except _Disconnected:
+        finish("delivery.skipped", reason="repository is disconnected", fallback_from=fallback)
+        return {"status": "skipped", "reason": "repository is disconnected"}
     except (CheckoutError, httpx.HTTPError) as exc:
         if isinstance(exc, httpx.HTTPError) and _transient(exc):
             raise  # the queue retries with backoff; the branch and PR steps are idempotent
