@@ -65,7 +65,7 @@ def github_client() -> GitHubApp:
     return _CLIENT[2]
 
 
-def authors() -> set[str]:
+def _configured_authors() -> set[str]:
     def clean(value: str) -> str:
         return value.strip().strip("\"'").strip()
 
@@ -75,7 +75,16 @@ def authors() -> set[str]:
         entry = clean(value)
         if entry:
             allowed.add(entry.lower())
-    return set() if allowed == {"*"} else allowed
+    return allowed
+
+
+def authors() -> set[str]:
+    configured = _configured_authors()
+    return set() if configured == {"*"} else configured
+
+
+def per_commit_enabled() -> bool:
+    return bool(_configured_authors())
 
 
 def _matches(patterns: list[str], value: str) -> bool:
