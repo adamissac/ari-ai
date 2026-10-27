@@ -9,7 +9,6 @@ import { HowItWorks, ProblemScene, ProofStats, Walkthrough } from '@/components/
 import { ASSESSMENT_LOOP, HeroStage } from '@/components/hero';
 import { IntroLoader } from '@/components/intro-loader';
 import { OptionalUserBar } from '@/components/user-bar';
-import { ExplainerVideo } from '@/components/explainer-video';
 import { DEMO_ONLY } from '@/lib/deployment';
 import { RollText } from '@/components/ui';
 import { HeroExploit } from '@/components/hero-exploit';
@@ -51,7 +50,6 @@ export default function HomePage() {
       <div className="hero-cover -mb-6 pt-6">
         {!DEMO_ONLY && <OptionalUserBar />}
 
-        <ExplainerVideo />
         <ProblemScene />
         <HowItWorks />
         <Walkthrough />
