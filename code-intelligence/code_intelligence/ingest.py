@@ -38,6 +38,19 @@ _EXCLUDED = {
 _SENSITIVE = {".npmrc", ".pypirc", ".netrc", "credentials.json", "id_rsa", "id_ed25519"}
 
 
+# Indexed formats and their budget priority (lower is kept first). Only Python is parsed
+# into symbols; the rest is stored as text so retrieval and review can read it.
+_INDEXED = {
+    ".py": 0, ".js": 0, ".mjs": 0, ".cjs": 0, ".jsx": 0, ".ts": 0, ".tsx": 0,
+    ".html": 1, ".md": 2, ".rst": 2, ".txt": 2, ".toml": 2, ".yaml": 2, ".yml": 2,
+    ".json": 3,
+}  # fmt: skip
+_LANGUAGE = {
+    ".py": "python", ".js": "javascript", ".mjs": "javascript", ".cjs": "javascript",
+    ".jsx": "javascript", ".ts": "typescript", ".tsx": "typescript", ".html": "html",
+}  # fmt: skip
+
+
 @dataclass(frozen=True)
 class Limits:
     max_files: int = 10_000
@@ -217,6 +230,7 @@ class GitReader:
         total = 0
         # Decisions in tree order (an issue, or a blob to read), so issues keep their order.
         plan: list[IndexIssue | tuple[str, str, PurePosixPath]] = []
+        candidates: list[tuple[str, str, PurePosixPath, int]] = []
         for path, oid, _, size in entries:
             pure = PurePosixPath(path)
             reason = None
@@ -255,12 +269,18 @@ class GitReader:
             if reason or ignored:
                 plan.append(IndexIssue(path=path, reason=reason or "ignored at pinned SHA"))
                 continue
-            if pure.suffix not in {".py", ".md", ".rst", ".txt", ".toml", ".json", ".yaml", ".yml"}:
+            if pure.suffix not in _INDEXED or pure.name.endswith(".min.js"):
                 plan.append(IndexIssue(path=path, reason="unsupported format"))
                 continue
+            candidates.append((path, oid, pure, size))
+        # Code first, then docs/config, then data: when a repository is bigger than the
+        # budget, the files a reviewer reads are kept and bulk data is skipped (recorded),
+        # instead of failing the whole index.
+        for path, oid, pure, size in sorted(candidates, key=lambda c: _INDEXED[c[2].suffix]):
+            if total + size > self.limits.max_total_bytes:
+                plan.append(IndexIssue(path=path, reason="over the index size budget"))
+                continue
             total += size
-            if total > self.limits.max_total_bytes:
-                raise IntelligenceError("Repository exceeds max_total_bytes")
             plan.append((path, oid, pure))
         # One `git cat-file --batch` for every selected blob instead of a process per file.
         blobs = self._blobs([item[1] for item in plan if not isinstance(item, IndexIssue)], total)
@@ -292,7 +312,7 @@ class GitReader:
                     path=path,
                     blob_sha=oid,
                     content_sha256=hashlib.sha256(content.encode()).hexdigest(),
-                    language="python" if pure.suffix == ".py" else "text",
+                    language=_LANGUAGE.get(pure.suffix, "text"),
                     is_test=pure.name.startswith("test_")
                     or pure.name.endswith("_test.py")
                     or "tests" in pure.parts,
