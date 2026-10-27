@@ -121,7 +121,8 @@ function Walkthrough({
   const [pushes, setPushes] = useState(review.review_pushes);
   const [pullRequests, setPullRequests] = useState(review.review_pull_requests);
   const [comments, setComments] = useState(review.comment_on_pull_requests);
-  const [watch, setWatch] = useState(project.settings.monitoring_policy.enabled);
+  // Per repository: starts from this repository's own automatic switch.
+  const [watch, setWatch] = useState(repo.automatic_assessments);
   const [delivery, setDelivery] = useState<DeliveryMode>(project.settings.delivery_mode);
   // Direct default-branch commits are off for pilot deployments; only show the choice already in effect.
   const deliveryChoices = DELIVERY.filter(([mode]) => mode !== 'auto' || project.settings.delivery_mode === 'auto');
@@ -189,7 +190,9 @@ function Walkthrough({
       case 5:
         await persistSettings({
           ...project.settings,
-          monitoring_policy: { ...project.settings.monitoring_policy, enabled: watch },
+          // Opting in needs project monitoring on; opting this repository out must not
+          // switch it off for the project's other repositories.
+          monitoring_policy: { ...project.settings.monitoring_policy, enabled: watch || project.settings.monitoring_policy.enabled },
           review: { ...review, strictness, review_pushes: pushes, review_pull_requests: pullRequests, comment_on_pull_requests: comments },
         });
         // Watching means this repository's commits are actually reviewed: the per-repository
@@ -379,7 +382,7 @@ function Walkthrough({
                     <Summary label="Review pushes" value={pushes ? 'Yes' : 'No'} />
                     <Summary label="Review pull requests" value={pullRequests ? 'Yes' : 'No'} />
                     <Summary label="Leave PR comments" value={comments ? 'Yes' : 'No'} />
-                    <Summary label="Watch project" value={watch ? 'Yes' : 'No'} />
+                    <Summary label="Review new commits automatically" value={watch ? 'Yes' : 'No'} />
                     <Summary label="Testing scope" value={scopeLabel} />
                     <Summary label="Fix delivery" value={deliveryLabel} />
                   </dl>

@@ -212,3 +212,16 @@ it('persists the watch answer even when the loaded repository already matches it
   expect(await screen.findByTestId('setup-step-6')).toBeTruthy();
   expect(mocks.updateRepository).toHaveBeenLastCalledWith(repo.id, { automatic_assessments: false });
 });
+
+it('opting one repository out leaves project monitoring on for the others', async () => {
+  mocks.project = { project: { ...project, settings: { ...project.settings, monitoring_policy: { enabled: true } } }, reloadProject: vi.fn() };
+  mocks.updateProject.mockResolvedValue(project);
+  mocks.updateRepository.mockResolvedValue({ ...repo, automatic_assessments: false });
+  mocks.server = serverSetup({ answers: { readiness: true, strictness: '2', reviewChanges: true, comments: false }, complete: false });
+  render(<SetupPage />);
+  expect(await screen.findByTestId('setup-step-5')).toBeTruthy();
+  fireEvent.click(screen.getByLabelText('No, do not watch yet'));
+  fireEvent.click(screen.getByRole('button', { name: /^Continue$/ }));
+  expect(await screen.findByTestId('setup-step-6')).toBeTruthy();
+  expect(mocks.updateProject.mock.calls.at(-1)![1].settings.monitoring_policy.enabled).toBe(true);
+});
