@@ -46,6 +46,7 @@ Honesty rules enforced in code: backend offline → "Backend unreachable"; a res
 that fails the shared JSON Schema → "Backend response rejected" (never rendered);
 non-`live` `provider_mode` runs are labelled "Not a live-provider run"; fixture mode
 exists only behind `NEXT_PUBLIC_DEMO_FIXTURES=1` and shows a permanent DEMO DATA banner.
+Every `ErrorState` adds a "What to do" line derived from the HTTP status and error code (`describeError().recovery` in `lib/api.ts`), and 403/404 errors link back to `/connect`; the request ID stays visible for support.
 
 ## Plain-language layer (UX clarity)
 

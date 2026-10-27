@@ -3,6 +3,15 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-10-27 — Devin (agent, Alan) — first-customer UX audit
+- Did: Audited the first-customer journey on the real manual stack and fixed five frontend UX problems: actionable `ErrorState` recovery (`describeError().recovery`, Back to projects on 403/404), inline first-assessment failure recovery in Setup, plain-language approvals with a visible two-person note, a "no review has run" Findings state (duplicate Analytics CTA removed), and a four-step connect stepper. Audit and walkthrough: `docs/reviews/2026-10-27-first-customer-ux/README.md`.
+- State of the code: Branch `devin/1793142972-first-customer-ux` off upstream main `c03a5501`; frontend only (no backend, authz, migration or shared-contract changes).
+- Commands run and results: `npm run lint`, `npm run typecheck`, `npx vitest run` (480 passed); `stack.py tests/e2e/first-customer.spec.ts tests/e2e/journey.spec.ts tests/e2e/pages.spec.ts` — 15 passed.
+- Decisions made (ADR links): Recovery copy lives in `describeError` so every `ErrorState` gets it; screenshots stay out of the repo.
+- Assumptions / open questions (RQ links): The manual stack cannot start a real assessment (fake GitHub returns 503), so finding/repair screens were not re-audited visually.
+- Next steps: Review the PR.
+- Warnings for the next session: `pages.spec.ts` :102/:265/:335 need `journey.spec.ts` data in the same run.
+
 ### 2026-10-27 — Devin (agent, Adam) — wildcard per-commit assessment routing
 - Did: Routed non-empty author configuration, including `*`, through per-commit scheduling; added wildcard push and unlisted-author regressions.
 - State of the code: Branch `fix/adam/per-commit-wildcard`; ready to commit and push.

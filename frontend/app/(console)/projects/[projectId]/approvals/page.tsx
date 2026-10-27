@@ -12,6 +12,12 @@ import { SCOPE_SANDBOX_EXPLANATION } from '@/lib/scope';
 import { APPROVAL_STATUS } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
+const SUBJECT_LABEL: Record<ApprovalSubject, string> = {
+  scope: 'Sandbox testing scope',
+  remediation: 'Candidate fix',
+  pr: 'Pull request for a verified fix',
+};
+
 const WHAT: Record<ApprovalSubject, { will: string; wont: string }> = {
   scope: { will: `Lets agents build and run reviewed checks against the listed sandbox targets until the scope expires. ${SCOPE_SANDBOX_EXPLANATION}`, wont: 'Touch any system outside the scope, or run unreviewed checks.' },
   remediation: { will: 'Lets Patch create a candidate fix in an isolated worktree and Verify re-run security and functional tests on it.', wont: 'Merge, push, deploy, or change the repository.' },
@@ -36,7 +42,7 @@ export default function ApprovalsPage() {
       <Async resource={approvals} label="approvals">
         {page => {
           const items = [...page.items].sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending') || b.requested_at.localeCompare(a.requested_at));
-          return items.length === 0 ? <Empty>No approvals requested.</Empty> : (
+          return items.length === 0 ? <Empty>No approvals requested yet. Ari asks here before it builds a candidate fix or opens a pull request, and it never merges or deploys on its own.</Empty> : (
             <ul className="flex flex-col gap-3">{items.map(a => <ApprovalRow key={a.id} approval={a} onDone={approvals.reload} />)}</ul>
           );
         }}
@@ -70,12 +76,12 @@ function ApprovalRow({ approval, onDone }: { approval: Approval; onDone: () => v
   return (
     <li className="rounded-md border border-line bg-panel-2 p-3" data-testid={`approval-${approval.id}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-medium capitalize">{approval.subject_type} approval</span>
+        <span className="font-medium">{SUBJECT_LABEL[approval.subject_type]}</span>
         <Badge view={APPROVAL_STATUS[approval.status]} />
       </div>
       <p className="mt-1 text-xs text-muted">
         Subject {subjectHref ? <Link className="font-mono text-accent hover:underline" href={subjectHref}>{approval.subject_id}</Link> : <Mono>{approval.subject_id}</Mono>}
-        {' '}· requested by {approval.requested_by ? <Mono>{approval.requested_by}</Mono> : 'the orchestrator'}{mine && ' (you)'} <Time iso={approval.requested_at} />
+        {' '}· requested by {mine ? 'you' : approval.requested_by ? <Mono>{approval.requested_by}</Mono> : 'Ari (automatic)'} <Time iso={approval.requested_at} />
       </p>
       <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
         <p className="rounded border border-ok/30 bg-ok/5 p-2"><span className="font-semibold text-ok">Will: </span>{what.will}</p>
@@ -88,6 +94,7 @@ function ApprovalRow({ approval, onDone }: { approval: Approval; onDone: () => v
             <Button variant="primary" disabled={busy || mine} onClick={() => setConfirming(true)}>Approve {approval.subject_type}</Button>
             <Button variant="danger" disabled={busy} onClick={() => void decide('declined')}>Decline</Button>
           </div>
+          {mine && <p className="mt-2 text-xs text-warn" data-testid="approval-self-note">You requested this, so another project member must approve it. You can still decline it.</p>}
           {confirming && (
             <div className="mt-3 rounded border border-warn/50 bg-warn/5 p-2" role="alert">
               <p className="text-xs">Confirm {approval.subject_type} approval — {what.will} It never merges or deploys.</p>
@@ -99,7 +106,7 @@ function ApprovalRow({ approval, onDone }: { approval: Approval; onDone: () => v
           )}
         </>)
       ) : (
-        <p className="mt-2 text-xs text-muted">Decided by <Mono>{approval.decided_by ?? '—'}</Mono> <Time iso={approval.decided_at} />{approval.reason && <> — {approval.reason}</>}</p>
+        <p className="mt-2 text-xs text-muted">Decided by {approval.decided_by === me.user.id ? 'you' : <Mono>{approval.decided_by ?? '—'}</Mono>} <Time iso={approval.decided_at} />{approval.reason && <> — {approval.reason}</>}</p>
       )}
       {error !== null && <div className="mt-2"><ErrorState error={error} context="Decision not recorded" /></div>}
     </li>
