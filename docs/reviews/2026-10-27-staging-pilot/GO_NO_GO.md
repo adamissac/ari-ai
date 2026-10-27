@@ -31,7 +31,7 @@ Evidence files are in [`evidence/`](evidence/) (copied from the gitignored
 | 10 | Release checklist | PASS (local, non-strict) | [`evidence/release_check.log`](evidence/release_check.log): 21 checks, 0 failed; 4 WARN + 1 SKIP are local-only (http origins, unset SESSION_SECRET, intentional failed probe job, no PR CI yet) |
 | 11 | Recommendation-only enforced | PASS | `test_recommendation_only_*` (no owner-delegated approval, run stops at `AWAITING_APPROVAL`, no `deliver_verified_patch` job, no GitHub call, `push_patch` → `FORBIDDEN`); smoke + release check posture rows |
 | 12 | First-responder OFF / no AUTO-EXECUTE | PASS (local) | rehearsal `control.off_mode`; release check DB + ops rows; there is no AUTO-EXECUTE mode in the server |
-| 13 | Full regression suite | see below | `uv run pytest -q`, `make check`, `uv run mypy` |
+| 13 | Full regression suite | PASS | `uv run pytest -q`: 1370 passed, 17 skipped (incl. opt-in live LLM smoke and specialist data-cache digests); `make check` clean; `uv run mypy`: no issues in 41 files |
 | S1 | Staging deployed from this commit, preflight green at boot | **MISSING** | needs staging Railway access |
 | S2 | Remote gates: `smoke_staging.sh` + `release_check.py --strict` against staging | **MISSING** | `--strict` must exit 0 (no WARN/SKIP) |
 | S3 | Staging backup + restore drill on the staging database | **MISSING** | runbook §8 |
