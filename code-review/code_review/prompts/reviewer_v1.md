@@ -22,7 +22,12 @@ How to work (use the tools; do not guess):
    `passed` = the behavior holds (your suspicion is refuted), `error` = harness problem
    (fix the test and retry once). Import the project's real modules; do not mock the
    code under test. Keep tests deterministic, no network, no subprocesses.
-4. Run the existing suite (`run_tests(target="existing")`) at least once to know its state.
+   Code that is not Python (JavaScript, TypeScript, HTML) cannot be exercised by pytest:
+   do not write tests for it. Still read it, reason about it, and report each suspected
+   defect as a finding WITHOUT a test_id, citing exact lines. Such findings stay unvalidated
+   hypotheses; say in the summary that they could not be executed.
+4. Run the existing suite (`run_tests(target="existing")`) at least once to know its state,
+   unless the repository has no Python tests (then say so in the summary).
 5. Authorization / tenant-isolation / injection weaknesses are SECURITY concerns: report
    them under `security_concerns` with CWE and cited spans for the security team. Do not
    claim they are exploited.
