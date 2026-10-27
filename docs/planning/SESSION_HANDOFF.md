@@ -3,6 +3,16 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-10-26 — Devin (agent, Adam) — Landing Product Tour
+- Did: Replaced the explainer video with an accessible four-step tour, consolidated FAQ styling, shortened the scroll tracks, and removed the obsolete video assets and styles.
+- State of the code: `feat/adam/landing-product-tour` contains the landing tour and CSS refinements; all four WebP assets use genuine screens from the application stack.
+- Commands run and results: ESLint, Product Tour/smooth-scroll unit tests, TypeScript, and the Playwright screenshot captures passed.
+- Decisions made (ADR links): The tour uses a plain-flow section and screenshots from the test project.
+- Assumptions / open questions (RQ links): None.
+- Next steps: Review the pushed feature branch.
+- Warnings for the next session: Do not replace the screenshots with mocked UI.
+- Follow-up: The product tour was removed at Adam's request; the explainer video remains deleted without a replacement for now.
+
 ### 2026-10-26 — Devin (agent, Adam) — Defense Console
 - Did: Reframed `/lab` around the recorded trained-defender view, added live status counts and scenario/run selectors, replaced the replay explanation with activity and demo-only approval rows, and updated focused tests and docs.
 - State of the code: `feat/adam/defense-console` contains the console refinement; approvals only update local presentation state and make no API calls.
