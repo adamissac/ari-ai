@@ -6,8 +6,8 @@ execute — keep this list and the tooling in sync.
 
 ```sh
 uv run python deploy/release_check.py --base-url <staging-url> \
-    --ops-token "$OPS_TOKEN" --backup-dir backups/
-deploy/scripts/smoke_staging.sh <staging-url>
+    --ops-token "$OPS_TOKEN" --backup-dir backups/ --strict
+OPS_TOKEN=... deploy/scripts/smoke_staging.sh <staging-url>
 ```
 
 | # | Item | Verified by |
@@ -23,13 +23,20 @@ deploy/scripts/smoke_staging.sh <staging-url>
 | 9 | Read-only pilot scope | `APP_ENV` staging/production, dev login off, no extra feature flags |
 | 10 | Backup exists and is readable | newest `*.dump` within `--max-backup-age-h`, `pg_restore --list` |
 | 11 | Rollback readiness | restore script + runbook present; deployed-from SHA recorded |
+| 13 | No stuck assessments or jobs | `ops/status` `stuck` (expired leases, deadlines, starved queue, recovery_required, idle non-terminal assessments) — `release_check.py` + smoke |
+| 14 | Failed jobs reviewed | `ops/status` `failed_jobs_24h` (WARN until each is explained) |
+| 15 | Recommendation-only staging posture | preflight (`PILOT_RECOMMENDATION_ONLY`, `ALLOW_AUTO_DELIVERY`, production-host isolation, `OPS_TOKEN`) + `ops/status` `pilot` |
 | 12 | Full-stack readiness rehearsal | `deploy/release_readiness.py` GO report (executed proof of boot, queue, crash recovery, backup/restore, authz, emergency stop, alerting, redaction, artifacts) |
 
 ## Sign-off
 
-- [ ] All checklist rows PASS or WARN (WARNs itemized in the release note)
+- [ ] Staging pilot: `release_check.py --strict` exits 0 (every gate PASS — no WARN/SKIP)
+- [ ] Other releases: all rows PASS or WARN (WARNs itemized in the release note)
 - [ ] `smoke_staging.sh` exits 0 against the freshly deployed build
 - [ ] A rollback + restore drill has been executed in the last 30 days
 - [ ] `coordination/status/ALAN.md` and `docs/planning/SESSION_HANDOFF.md` updated
 - [ ] Release note records: deployed SHA, migration head, backup file + sha256,
       ops/status snapshot, remaining WARNs
+
+The staging pilot procedure (deploy, monitor, emergency disable, rollback) is
+[STAGING_PILOT_RUNBOOK.md](STAGING_PILOT_RUNBOOK.md).

@@ -163,10 +163,39 @@ def check_http(base: str, ops_token: str | None) -> None:
                 "first-responder OFF by default",
                 f"default=off; projects with non-default mode: {n}",
             )
+            check_monitoring(body)
         else:
             report("FAIL", "worker/job-queue visibility", f"ops status -> {code}")
     else:
         report("WARN", "worker/job-queue visibility", "no --ops-token; ops surface unchecked")
+
+
+def check_monitoring(body: dict) -> None:
+    """Stuck work and the recommendation-only posture, from GET /api/v1/ops/status."""
+    stuck = body.get("stuck")
+    if stuck is None:
+        report("FAIL", "stuck assessments/jobs", "ops status has no 'stuck' section (old build)")
+    else:
+        n_jobs, n_asm = stuck.get("jobs", "?"), stuck.get("assessments", "?")
+        report(
+            "PASS" if n_jobs == 0 and n_asm == 0 else "FAIL",
+            "stuck assessments/jobs",
+            f"stuck jobs={n_jobs} {stuck.get('jobs_by_reason', {})}; stuck assessments={n_asm}",
+        )
+    failed = body.get("failed_jobs_24h") or {}
+    report(
+        "PASS" if not failed else "WARN",
+        "failed jobs (24h)",
+        f"{failed or 'none'}; inspect with `python -m backend.execution stuck`",
+    )
+    pilot = body.get("pilot") or {}
+    if body.get("app_env") == "staging":
+        safe = (
+            pilot.get("recommendation_only") is True and pilot.get("auto_delivery_allowed") is False
+        )
+        report("PASS" if safe else "FAIL", "recommendation-only posture", str(pilot or "missing"))
+    else:
+        report("SKIP", "recommendation-only posture", f"APP_ENV={body.get('app_env')}")
 
 
 def check_controls(base: str) -> None:
@@ -298,6 +327,11 @@ def main() -> int:
     p.add_argument("--backup-dir", default="backups")
     p.add_argument("--max-backup-age-h", type=float, default=30.0)
     p.add_argument("--no-http", action="store_true", help="config+DB checks only")
+    p.add_argument(
+        "--strict",
+        action="store_true",
+        help="WARN/SKIP also fail: every gate must carry PASS evidence (pilot sign-off)",
+    )
     args = p.parse_args()
     base = args.base_url.rstrip("/")
 
@@ -312,7 +346,8 @@ def main() -> int:
     check_rollback()
     check_pilot_scope()
 
-    fails = sum(1 for s, *_ in results if s == "FAIL")
+    blocking = ("FAIL", "WARN", "SKIP") if args.strict else ("FAIL",)
+    fails = sum(1 for s, *_ in results if s in blocking)
     print("---")
     print(f"release check: {len(results)} checks, {fails} failed")
     return 1 if fails else 0
