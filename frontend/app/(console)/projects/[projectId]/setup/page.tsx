@@ -192,6 +192,12 @@ function Walkthrough({
           monitoring_policy: { ...project.settings.monitoring_policy, enabled: watch },
           review: { ...review, strictness, review_pushes: pushes, review_pull_requests: pullRequests, comment_on_pull_requests: comments },
         });
+        // Watching means this repository's commits are actually reviewed: the per-repository
+        // automatic switch is the gate pushes check, so the answer sets it too.
+        if (repo.automatic_assessments !== watch) {
+          await api().updateRepository(repo.id, { automatic_assessments: watch });
+          window.dispatchEvent(new Event('ari:automation-changed'));
+        }
         await recordAnswer('watch', watch);
         return;
       case 6:
@@ -330,7 +336,7 @@ function Walkthrough({
               )}
               {currentQuestion === 5 && (
                 <fieldset>
-                  <legend className="mb-3 text-sm font-medium">Should Ari watch this project for new commits?</legend>
+                  <legend className="mb-3 text-sm font-medium">Should Ari review new commits on this repository automatically?</legend>
                   <p className="mb-3 text-sm text-muted">Monitoring can notice changes, but automatic testing still requires an approved scope for this repository.</p>
                   <div className="divide-y divide-line">
                     {[[true, 'Yes, watch for commits'], [false, 'No, do not watch yet']] .map(([value, label]) => (
