@@ -571,3 +571,38 @@ def test_github_events_go_to_the_live_row_when_a_parked_row_shares_the_name(clie
     with transaction() as conn:
         routed = set(conn.execute(sa.select(monitoring_events.c.repo_id)).scalars())
     assert routed == {live}  # recorded against the live row, never the parked one
+
+
+def test_commit_contents_need_live_read_access_not_the_sign_in_snapshot(
+    client_factory, monkeypatch
+):
+    from backend.db import users
+    from backend.settings import get_settings
+
+    alice = client_factory("alice")
+    with transaction() as conn:
+        store_repo_access(conn, alice.me["user"]["id"], [ACME])  # snapshot from sign-in
+        conn.execute(
+            sa.update(users).where(users.c.id == alice.me["user"]["id"]).values(github_id=4242)
+        )
+    production = get_settings().model_copy(update={"app_env": "production"})
+    monkeypatch.setattr("backend.api.github_repos.get_settings", lambda: production)
+    permission = {"value": "none"}
+    served = []
+
+    class GitHub:
+        def collaborator_permission(self, installation_id, full_name, login, github_id):
+            return permission["value"]
+
+        def commit(self, installation_id, full_name, sha):
+            served.append(sha)
+            return {"sha": sha, "commit": {"message": "x", "author": {}}, "files": []}
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", GitHub)
+    url = "/api/v1/github/commit"
+    params = {"repo": "acme/shop", "sha": "a" * 40}
+    assert alice.get(url, params=params).status_code == 403  # removed from the org since
+    assert served == []
+    permission["value"] = "read"
+    assert alice.get(url, params=params).status_code != 403
+    assert served == ["a" * 40]

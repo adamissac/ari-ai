@@ -67,8 +67,15 @@ def can_connect(conn: Connection, user_id: str, full_name: str, installation_id:
 _CAN_GRANT = frozenset({"admin", "write"})  # base permissions (maintain reports as write)
 
 
+_CAN_READ = frozenset({"admin", "write", "read"})
+
+
 def verify_user_access(
-    full_name: str, installation_id: int, login: str | None, github_id: int | None
+    full_name: str,
+    installation_id: int,
+    login: str | None,
+    github_id: int | None,
+    minimum: frozenset[str] = _CAN_GRANT,
 ) -> None:
     """Confirm with GitHub — right now — that `login` may still write to `full_name`.
 
@@ -98,10 +105,11 @@ def verify_user_access(
             "GitHub could not confirm your access to the repository right now — try again",
             503,
         ) from exc
-    if permission not in _CAN_GRANT:
+    if permission not in minimum:
         raise ApiError(
             ErrorCode.FORBIDDEN,
-            "GitHub no longer gives you write access to this repository",
+            "GitHub no longer gives you "
+            f"{'write access' if minimum == _CAN_GRANT else 'access'} to this repository",
             403,
         )
 
@@ -435,12 +443,24 @@ def repository_commit(repo: str, sha: str, request: Request) -> dict[str, Any]:
             .mappings()
             .first()
         )
+        identity = conn.execute(
+            sa.select(users.c.github_login, users.c.github_id).where(users.c.id == user.id)
+        ).first()
     if access is None:
         raise ApiError(
             ErrorCode.FORBIDDEN,
             "This repository is not reachable through your GitHub App installation.",
             403,
         )
+    # The access row is a sign-in snapshot; private code is served only to someone GitHub
+    # says can read the repository right now.
+    verify_user_access(
+        repo,
+        access["installation_id"],
+        identity.github_login if identity else None,
+        identity.github_id if identity else None,
+        minimum=_CAN_READ,
+    )
     try:
         data = GitHubApp().commit(access["installation_id"], repo, sha)
     except GitHubNotConfigured as exc:
