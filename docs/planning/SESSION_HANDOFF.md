@@ -3,6 +3,15 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-10-27 — Devin (agent, Adam) — wildcard per-commit assessment routing
+- Did: Routed non-empty author configuration, including `*`, through per-commit scheduling; added wildcard push and unlisted-author regressions.
+- State of the code: Branch `fix/adam/per-commit-wildcard`; ready to commit and push.
+- Commands run and results: `uv run pytest -q backend/tests/test_auto_commits.py backend/tests/test_webhook_monitoring.py backend/tests/test_automation_opt_in.py` — 112 passed (one `XDG_RUNTIME_DIR` warning); `make check` passed (ruff, format, 184 contract files checked).
+- Decisions made (ADR links): None.
+- Assumptions / open questions (RQ links): None.
+- Next steps: Commit and push; CI follow-up is handled separately.
+- Warnings for the next session: Do not monitor CI after push.
+
 ### 2026-10-26 — Devin (agent, Adam) — Landing Product Tour
 - Did: Replaced the explainer video with an accessible four-step tour, consolidated FAQ styling, shortened the scroll tracks, and removed the obsolete video assets and styles.
 - State of the code: `feat/adam/landing-product-tour` contains the landing tour and CSS refinements; all four WebP assets use genuine screens from the application stack.

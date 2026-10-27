@@ -126,7 +126,7 @@ def process_github_delivery(ctx: JobContext) -> dict[str, Any]:
             actor = (change.pr_author if change.event == "pull_request" else change.sender) or ""
             auto_commits._record_schedule_ignore(conn, repo, d, change, reason, actor)
             return {"ignored": reason}
-    if auto_commits.authors():
+    if auto_commits.per_commit_enabled():
         with transaction() as conn:
             return auto_commits.schedule(conn, repo, d, payload, change)
 
