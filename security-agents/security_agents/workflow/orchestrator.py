@@ -563,7 +563,13 @@ class Orchestrator:
         # ---- INDEXING (code intelligence is an upstream subsystem)
         self._goto(AssessmentState.INDEXING, self.intel.provenance().get("status", ""))
         if not self.intel.entry_points():
-            return self._fail(ErrorCode.SNAPSHOT_NOT_READY, "no entry points in snapshot index")
+            # No HTTP entry points are recognised (only Python web routes are; a JavaScript
+            # app has none). The functional review still runs on the commit; the security
+            # agents have no attack surface to test, so they are skipped and labelled as such.
+            note = "no HTTP entry points in snapshot index; security agents skipped"
+            self._goto(AssessmentState.FUNCTIONAL_REVIEW, "functional review only: " + note)
+            self._goto(AssessmentState.RECON, "skipped: " + note)
+            return self._report_or_wait(note)
 
         # ---- FUNCTIONAL_REVIEW is Sai's pillar; we record the baseline it needs.
         self._goto(AssessmentState.FUNCTIONAL_REVIEW, "baseline test run (code_review pillar pending)")
