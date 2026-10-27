@@ -425,7 +425,10 @@ def connect_repository(project_id: str, body: RepositoryConnect, request: Reques
             # ...and the user's own access, which the snapshot can't vouch for after a
             # removal from the organization or the repository.
             verify_user_access(
-                body.full_name, body.installation_id, gh.github_login if gh else None
+                body.full_name,
+                body.installation_id,
+                gh.github_login if gh else None,
+                gh.github_id if gh else None,
             )
         existing = (
             conn.execute(sa.select(repositories).where(repositories.c.full_name == body.full_name))
@@ -790,7 +793,12 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
                     user.id, gh.github_login, gh.github_id, strict=True
                 )
             verify_installation_access(repo["full_name"], installation_id)
-            verify_user_access(repo["full_name"], installation_id, gh.github_login if gh else None)
+            verify_user_access(
+                repo["full_name"],
+                installation_id,
+                gh.github_login if gh else None,
+                gh.github_id if gh else None,
+            )
             if not can_connect(conn, user.id, repo["full_name"], installation_id):
                 raise ApiError(
                     ErrorCode.FORBIDDEN,

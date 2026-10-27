@@ -67,7 +67,9 @@ def can_connect(conn: Connection, user_id: str, full_name: str, installation_id:
 _CAN_GRANT = frozenset({"admin", "write"})  # base permissions (maintain reports as write)
 
 
-def verify_user_access(full_name: str, installation_id: int, login: str | None) -> None:
+def verify_user_access(
+    full_name: str, installation_id: int, login: str | None, github_id: int | None
+) -> None:
     """Confirm with GitHub — right now — that `login` may still write to `full_name`.
 
     The sign-in snapshot says what the user could reach then; it outlives a removal from the
@@ -76,12 +78,14 @@ def verify_user_access(full_name: str, installation_id: int, login: str | None) 
     """
     if get_settings().is_dev:
         return
-    if not login:
+    if not login or github_id is None:
         raise ApiError(
             ErrorCode.FORBIDDEN, "sign in with GitHub again to connect repositories", 403
         )
     try:
-        permission = GitHubApp().collaborator_permission(installation_id, full_name, login)
+        permission = GitHubApp().collaborator_permission(
+            installation_id, full_name, login, github_id
+        )
     except GitHubNotConfigured as exc:
         raise ApiError(
             ErrorCode.SUBSYSTEM_UNAVAILABLE,

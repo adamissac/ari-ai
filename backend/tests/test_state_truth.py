@@ -468,21 +468,28 @@ def test_reconnect_reattaches_a_live_repository_whose_grant_was_detached(
 
 
 def test_connect_rechecks_the_users_own_github_access_live(client_factory, monkeypatch):
+    from backend.db import users
     from backend.settings import get_settings
 
     alice = client_factory("alice")
     with transaction() as conn:
         store_repo_access(conn, alice.me["user"]["id"], [ACME])  # sign-in snapshot says yes
+        conn.execute(
+            sa.update(users).where(users.c.id == alice.me["user"]["id"]).values(github_id=4242)
+        )
     production = get_settings().model_copy(update={"app_env": "production"})
     monkeypatch.setattr("backend.api.github_repos.get_settings", lambda: production)
-    seen: dict[str, str] = {"permission": "read"}
+    seen: dict[str, object] = {"permission": "read"}
 
     class GitHub:
+        def user_installation(self, login):
+            return None
+
         def installation_repositories(self, installation_id):
             return [ACME]  # the App still reaches the repository
 
-        def collaborator_permission(self, installation_id, full_name, login):
-            seen["login"] = login
+        def collaborator_permission(self, installation_id, full_name, login, github_id):
+            seen["login"], seen["github_id"] = login, github_id
             return seen["permission"]
 
     monkeypatch.setattr("backend.api.github_repos.GitHubApp", GitHub)
@@ -490,7 +497,7 @@ def test_connect_rechecks_the_users_own_github_access_live(client_factory, monke
     body = {"full_name": "acme/shop", "installation_id": 42, "default_branch": "main"}
     refused = alice.post(f"/api/v1/projects/{pid}/repositories", json=body)
     assert refused.status_code == 403 and "write access" in refused.text
-    assert seen["login"] == "alice"
+    assert seen["login"] == "alice" and seen["github_id"] == 4242
     seen["permission"] = "write"
     assert alice.post(f"/api/v1/projects/{pid}/repositories", json=body).status_code == 201
 
@@ -502,7 +509,8 @@ def test_collaborator_permission_uses_the_base_permission_not_a_custom_role_name
 
     app = GitHubApp.__new__(GitHubApp)
     answers = {
-        "custom": {"permission": "write", "role_name": "security-engineer"},
+        "custom": {"permission": "write", "role_name": "security-engineer", "user": {"id": 7}},
+        "renamed": {"permission": "admin", "user": {"id": 8}},  # the login now names account 8
         "nobody": None,
     }
 
@@ -513,8 +521,9 @@ def test_collaborator_permission_uses_the_base_permission_not_a_custom_role_name
         return body
 
     monkeypatch.setattr(app, "_get", get, raising=False)
-    assert app.collaborator_permission(1, "acme/shop", "custom") == "write"
-    assert app.collaborator_permission(1, "acme/shop", "nobody") == "none"
+    assert app.collaborator_permission(1, "acme/shop", "custom", 7) == "write"
+    assert app.collaborator_permission(1, "acme/shop", "renamed", 7) == "none"
+    assert app.collaborator_permission(1, "acme/shop", "nobody", 7) == "none"
 
 
 def test_rows_for_a_login_now_owned_by_another_account_are_dropped(client_factory, monkeypatch):
