@@ -181,6 +181,42 @@ def _reinstall(client, github: FakeGitHub, installation_id: int) -> None:
     worker.drain(kinds=["process_github_delivery"])
 
 
+def _monitored_project(client_factory) -> tuple[Any, str, str, str]:
+    c = client_factory()
+    me = _sign_in(c)
+    bob = client_factory("bob")
+    add_member(me["memberships"][0]["organization"]["id"], bob.me["user"]["id"])
+    pid = _project(c, monitoring=True)
+    app, api = _connect(c, pid, APP).json()["id"], _connect(c, pid, API).json()["id"]
+    expires = (datetime.now(UTC) + timedelta(days=7)).isoformat()
+    scope = c.post(
+        f"/api/v1/projects/{pid}/scopes",
+        json={
+            "name": "sandbox",
+            "expires_at": expires,
+            "targets": [
+                {
+                    "kind": "sandbox_build",
+                    "repo_id": rid,
+                    "build_recipe_ref": "examples/payments-lite/sandbox.yaml",
+                    "exposed_ports": [8080],
+                }
+                for rid in (app, api)
+            ],
+            "allowed_check_categories": ["authorization.ownership"],
+        },
+    )
+    assert scope.status_code == 201, scope.text
+    assert bob.post(f"/api/v1/scopes/{scope.json()['id']}/approve").status_code == 200
+    for rid in (app, api):
+        assert (
+            c.patch(f"/api/v1/repositories/{rid}", json={"automatic_assessments": True}).status_code
+            == 200
+        )
+
+    return c, pid, app, api
+
+
 def test_sign_in_lists_installed_repositories_and_connects_them_into_one_project(
     client_factory, github
 ) -> None:
@@ -278,54 +314,15 @@ def test_uninstall_blocks_reconnect_until_the_app_is_reinstalled_and_user_reauth
 def test_reauthorized_repository_reviews_new_branch_commits_and_disconnected_sibling_does_not(
     client_factory, github
 ) -> None:
-    c = client_factory()
-    me = _sign_in(c)
-    bob = client_factory("bob")
-    add_member(me["memberships"][0]["organization"]["id"], bob.me["user"]["id"])
-    pid = _project(c, monitoring=True)
-    app, api = _connect(c, pid, APP).json()["id"], _connect(c, pid, API).json()["id"]
-    expires = (datetime.now(UTC) + timedelta(days=7)).isoformat()
-    scope = c.post(
-        f"/api/v1/projects/{pid}/scopes",
-        json={
-            "name": "sandbox",
-            "expires_at": expires,
-            "targets": [
-                {
-                    "kind": "sandbox_build",
-                    "repo_id": rid,
-                    "build_recipe_ref": "examples/payments-lite/sandbox.yaml",
-                    "exposed_ports": [8080],
-                }
-                for rid in (app, api)
-            ],
-            "allowed_check_categories": ["authorization.ownership"],
-        },
-    )
-    assert scope.status_code == 201, scope.text
-    assert bob.post(f"/api/v1/scopes/{scope.json()['id']}/approve").status_code == 200
-    for rid in (app, api):
-        assert (
-            c.patch(f"/api/v1/repositories/{rid}", json={"automatic_assessments": True}).status_code
-            == 200
-        )
-
+    c, pid, app, api = _monitored_project(client_factory)
     _uninstall(c, github, 555)
     _reinstall(c, github, 777)
     _sign_in(c)
     assert c.post(f"/api/v1/repositories/{api}/reconnect").status_code == 200
     assert c.post(f"/api/v1/repositories/{app}/disconnect").status_code == 200
 
-    def push(full_name: str, sha: str, ref: str) -> None:
-        p = push_payload(["app.py"], head=sha, repo=full_name)
-        p["ref"] = ref
-        p["sender"] = {"login": LOGIN}
-        p["installation"] = {"id": 777}
-        p["commits"] = [{"id": sha, "modified": ["app.py"]}]
-        assert post_webhook(c, p).status_code == 202
-
-    push(API, "c" * 40, "refs/heads/feature/new-branch")
-    push(APP, "d" * 40, "refs/heads/main")
+    _push(c, API, "c" * 40, "refs/heads/feature/new-branch", LOGIN, 777)
+    _push(c, APP, "d" * 40, "refs/heads/main", LOGIN, 777)
     worker.drain(kinds=["process_github_delivery"])
     scheduled = _commit_jobs()
     assert len(scheduled) == 1, scheduled
@@ -334,14 +331,31 @@ def test_reauthorized_repository_reviews_new_branch_commits_and_disconnected_sib
     assert scheduled[0]["payload"]["installation_id"] == 777
 
 
+def _push(client, full_name: str, sha: str, ref: str, sender: str, installation_id: int) -> None:
+    p = push_payload(["app.py"], head=sha, repo=full_name)
+    p["ref"] = ref
+    p["sender"] = {"login": sender}
+    p["installation"] = {"id": installation_id}
+    p["commits"] = [{"id": sha, "modified": ["app.py"]}]
+    assert post_webhook(client, p).status_code == 202
+
+
 @pytest.mark.xfail(
     strict=True,
     reason="P1: fnmatch reads the default '*[bot]' exclusion as a character class, so it "
     "skips every login ending in b/o/t; owned by the review-pipeline session",
 )
 @pytest.mark.parametrize("login", ["bob", "octo", "scott"])
-def test_default_bot_exclusion_does_not_skip_human_logins(login: str) -> None:
-    from backend.auto_commits import _matches
-
-    assert _matches(["*[bot]"], "dependabot[bot]")
-    assert not _matches(["*[bot]"], login)
+def test_default_bot_exclusion_does_not_skip_human_logins(
+    client_factory, github, settings_override, login
+) -> None:
+    # Allowlist both senders so only the project's default reviewer exclusion decides.
+    settings_override(github_auto_commit_authors=f"{LOGIN},{login},dependabot[bot]")
+    c, _, app, _ = _monitored_project(client_factory)
+    _push(c, APP, "e" * 40, "refs/heads/main", "dependabot[bot]", 555)
+    worker.drain(kinds=["process_github_delivery"])
+    assert _commit_jobs() == []
+    _push(c, APP, "f" * 40, "refs/heads/main", login, 555)
+    worker.drain(kinds=["process_github_delivery"])
+    scheduled = _commit_jobs()
+    assert [j["payload"]["repo_id"] for j in scheduled] == [app], scheduled
