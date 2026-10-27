@@ -47,6 +47,12 @@ Next action: adopt `shared/` models when Srihith publishes V0; then RL-101 ablat
 
 ## Session entries
 
+### 2026-10-27 — wildcard per-commit assessment routing
+- Branch: `fix/adam/per-commit-wildcard`.
+- Fixed wildcard author configuration routing through per-commit scheduling and added push scheduling, unlisted-author, and configuration tests.
+- Verification: focused webhook/auto-commit/automation opt-in tests — 112 passed; `make check` passed (ruff, format, contract freshness).
+- Next: branch pushed; CI follow-up is handled separately.
+
 ### 2026-10-24 — GitHub onboarding + continuous-assessment hardening
 - Branch `fix/adam/github-onboarding-hardening` → PR against `main`.
 - Fixes: permanent GitHub failures record skipped events (no silent dead-letter); compare failure falls back to payload commits; `installation`/`repository` lifecycle events detach/rename monitored repos; connect verifies the installation still grants access; deploy doc corrected.

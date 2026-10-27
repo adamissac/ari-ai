@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from helpers import BASE, HEAD, post_webhook, push_payload, setup_project
 
 from backend import worker
-from backend.auto_commits import authors
+from backend.auto_commits import authors, per_commit_enabled
 from backend.db import (
     assessments,
     jobs,
@@ -1022,7 +1022,7 @@ def test_reviewer_filters_allow_matching_events(
 ):
     alice, _, ids, _ = automatic
     settings_override(github_auto_commit_authors=global_authors)
-    if not authors():
+    if not per_commit_enabled():
         monkeypatch.setattr(
             "backend.github.GitHubApp.compare_paths",
             lambda *args: (["app.py"], True),
@@ -1055,7 +1055,7 @@ def test_reviewer_filters_allow_matching_events(
             .scalars()
             .all()
         )
-    if authors():
+    if per_commit_enabled():
         assert len(commit_jobs) == 1
     else:
         with transaction() as conn:
@@ -1072,7 +1072,7 @@ def test_reviewer_filters_allow_matching_events(
         ('""', False),
         ("''", False),
         ("  ", False),
-        ("*", False),
+        ("*", True),
         ("adamissac,teammate", True),
         ('"adamissac","teammate"', True),
     ],
@@ -1096,7 +1096,7 @@ def test_empty_star_and_comma_global_author_allowlist_semantics(
             .scalars()
             .all()
         )
-    assert bool(authors()) is uses_scheduler
+    assert per_commit_enabled() is uses_scheduler
     if uses_scheduler:
         assert len(commit_jobs) == 1
     else:
@@ -1424,33 +1424,63 @@ def test_impact_path_pull_request_posts_review_from_monitoring_event(
     assert "No findings at this strictness." in calls[0][3]
 
 
-def test_wildcard_uses_impact_path_for_any_pusher_and_unlinked_author(
-    automatic, settings_override, monkeypatch
-):
+def test_wildcard_assesses_unlisted_commit_author(automatic, settings_override, monkeypatch):
     alice, bob, ids, identity = automatic
-    identity["login"] = ""  # commit email maps to no GitHub account
+    identity["login"] = "outside-list"
     settings_override(github_auto_commit_authors="*")
     assert authors() == set()
-    monkeypatch.setattr(
-        "backend.github.GitHubApp.compare_paths",
-        lambda *args: (["app.py"], True),
-    )
-    monkeypatch.setattr("backend.pipeline._impact_provider", lambda: (None, "test provider"))
     bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
     p = push_payload(["app.py"])
     p["commits"][0]["id"] = HEAD
     p["sender"] = {"login": "teammate"}
+    p["commits"][0]["author"] = {"username": "outside-list"}
     assert post_webhook(alice, p).status_code == 202
     worker.drain(kinds=["process_github_delivery", "assess_github_commit"])
+    assert records() == [HEAD]
+
+
+@pytest.mark.parametrize(
+    ("configured", "enabled"),
+    [
+        ("", False),
+        ("  ", False),
+        ("*", True),
+        ('"*" ', True),
+        ("alice", True),
+    ],
+)
+def test_per_commit_enabled(configured, enabled, settings_override):
+    settings_override(github_auto_commit_authors=configured)
+    assert per_commit_enabled() is enabled
+
+
+def test_wildcard_push_schedules_each_commit_without_impact_decision(
+    automatic, settings_override, monkeypatch
+):
+    alice, _, _, _ = automatic
+    settings_override(github_auto_commit_authors="*")
+    shas = ["1" * 40, "2" * 40, "3" * 40]
+    payload = push_payload(["app.py"], head=shas[-1])
+    payload["sender"] = {"login": "teammate"}
+    payload["commits"] = [
+        {"id": sha, "modified": ["app.py"], "author": {"username": "teammate"}} for sha in shas
+    ]
+
+    def reject_legacy_decision(*args, **kwargs):
+        pytest.fail("wildcard push entered the legacy impact decision path")
+
+    monkeypatch.setattr("backend.pipeline.decide", reject_legacy_decision)
+    assert post_webhook(alice, payload).status_code == 202
+    worker.drain(kinds=["process_github_delivery"])
+
     with transaction() as conn:
-        event_doc = conn.execute(sa.select(monitoring_events.c.doc)).scalar_one()
-        commit_jobs = (
-            conn.execute(sa.select(jobs.c.id).where(jobs.c.kind == "assess_github_commit"))
+        jobs_for_push = (
+            conn.execute(sa.select(jobs.c.payload).where(jobs.c.kind == "assess_github_commit"))
             .scalars()
             .all()
         )
-    assert event_doc.get("impact") is not None
-    assert not commit_jobs
+    assert len(jobs_for_push) == 3
+    assert {job["sha"] for job in jobs_for_push} == set(shas)
 
 
 def test_missing_commit_records_skipped_instead_of_dead_lettering(automatic, monkeypatch):
