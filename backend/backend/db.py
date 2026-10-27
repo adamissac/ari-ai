@@ -118,7 +118,14 @@ repositories = sa.Table(
     # Setup walkthrough progress (shared.api.RepositorySetup minus repo_id); NULL = not started.
     sa.Column("setup", JSONB),
     _created(),
-    sa.UniqueConstraint("provider", "full_name", name="uq_repositories_provider_full_name"),
+    # Unique among live rows only: a disconnected row is history and frees the name.
+    sa.Index(
+        "uq_repositories_live_full_name",
+        "provider",
+        "full_name",
+        unique=True,
+        postgresql_where=sa.text("disconnected_at IS NULL"),
+    ),
 )
 
 snapshots = sa.Table(

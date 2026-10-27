@@ -130,6 +130,19 @@ def test_each_commit_runs_even_docs_only_active_and_duplicate_delivery(automatic
     assert sorted(records()) == [HEAD, "c" * 40, "d" * 40]
 
 
+def test_pushes_to_any_branch_are_reviewed_by_default(automatic):
+    alice, bob, ids, _ = automatic
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    p = push_payload(["app.py"], head="e" * 40)
+    p["ref"] = "refs/heads/feature/login"
+    p["sender"] = {"login": "adamissac"}
+    p["commits"] = [{"id": "e" * 40, "modified": ["app.py"], "author": {"username": "adamissac"}}]
+    assert post_webhook(alice, p).status_code == 202
+    worker.drain(kinds=["process_github_delivery"])
+    worker.drain(kinds=["assess_github_commit"])
+    assert records() == ["e" * 40]
+
+
 def test_scope_approval_resumes_without_run_button(automatic):
     alice, bob, ids, _ = automatic
     push(alice, HEAD)
@@ -927,7 +940,6 @@ def test_legacy_monitoring_pipeline_obeys_shared_quota(automatic, settings_overr
             "branch excluded",
         ),
         ({"exclude_branches": ["m*"]}, "adamissac", "main", "push", False, "branch excluded"),
-        ({}, "adamissac", "feature", "push", False, "not on the default branch"),
         (
             {"include_authors": ["teammate*"]},
             "adamissac",

@@ -311,7 +311,7 @@ function Walkthrough({
                 <fieldset>
                   <legend className="mb-3 text-sm font-medium">Which changes may trigger automatic reviews?</legend>
                   <div className="divide-y divide-line">
-                    <label className="flex items-center gap-3 py-3 text-sm"><input type="checkbox" checked={pushes} onChange={event => setPushes(event.target.checked)} />Pushes to the default branch</label>
+                    <label className="flex items-center gap-3 py-3 text-sm"><input type="checkbox" checked={pushes} onChange={event => setPushes(event.target.checked)} />Pushes to any branch</label>
                     <label className="flex items-center gap-3 py-3 text-sm"><input type="checkbox" checked={pullRequests} onChange={event => setPullRequests(event.target.checked)} />Pull requests</label>
                   </div>
                   <p className="mt-3 text-xs text-muted">Automatic reviews are opt-in per repository; these choices only select eligible change types.</p>

@@ -84,8 +84,8 @@ pipeline; a nonempty comma-separated value selects the per-commit reviewer sched
 Both paths apply `review_pushes`,
 `review_pull_requests`, `review_draft_prs`, branch globs, author globs, finding
 strictness, PR comments and an optional hourly cap in Project Settings. Branch
-and author globs are case-insensitive. Empty push include-branches means the
-default branch; empty PR include-branches means every base branch. Empty author
+and author globs are case-insensitive. Empty include-branches means every branch,
+for pushes and for PR base branches alike. Empty author
 includes means everyone; `*[bot]` is excluded by default. Strictness filters only
 the PR comment; all findings remain stored.
 

@@ -109,7 +109,9 @@ def _renamed(conn: Connection, installation_id: int | None, payload: dict[str, A
     if not new_name or not old_full or new_name == old_full:
         return []
     if conn.execute(
-        sa.select(repositories.c.id).where(repositories.c.full_name == new_name)
+        sa.select(repositories.c.id).where(
+            repositories.c.full_name == new_name, repositories.c.disconnected_at.is_(None)
+        )
     ).scalar():
         # Another project already connected the target name; a retry hits this check first.
         return [f"{old_full} renamed to {new_name} but that name is already connected"]

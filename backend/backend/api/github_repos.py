@@ -352,6 +352,13 @@ def list_accessible_repositories(request: Request) -> AccessibleRepositoryList:
             )
             for r in rows
         ]
+    # A name can join a parked history row and a live one; list it once, live first.
+    by_name: dict[str, AccessibleRepository] = {}
+    for item in items:
+        kept = by_name.get(item.full_name)
+        if kept is None or (kept.disconnected and not item.disconnected):
+            by_name[item.full_name] = item
+    items = list(by_name.values())
     s = get_settings()
     slug = s.github_app_slug
     return AccessibleRepositoryList(

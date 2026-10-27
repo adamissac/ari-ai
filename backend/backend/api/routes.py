@@ -430,23 +430,25 @@ def connect_repository(project_id: str, body: RepositoryConnect, request: Reques
                 gh.github_login if gh else None,
                 gh.github_id if gh else None,
             )
-        existing = (
+        rows = (
             conn.execute(sa.select(repositories).where(repositories.c.full_name == body.full_name))
             .mappings()
-            .first()
+            .all()
         )
-        if existing is not None:
+        live = next((r for r in rows if r["disconnected_at"] is None), None)
+        if live is not None:
             # A repeated connect (double click, second tab) of a live repository in this
-            # same project is a no-op; anything else stays a conflict without leaking ids.
-            if existing["project_id"] == project_id and existing["disconnected_at"] is None:
-                return _repo(existing)
+            # same project is a no-op; a live one elsewhere stays a conflict, without ids.
+            if live["project_id"] == project_id:
+                return _repo(live)
             raise ApiError(
-                ErrorCode.CONFLICT_STATE,
-                "repository is disconnected; reconnect it instead"
-                if existing["project_id"] == project_id
-                else "repository already connected to a project",
-                409,
+                ErrorCode.CONFLICT_STATE, "repository already connected to a project", 409
             )
+        if any(r["project_id"] == project_id for r in rows):
+            raise ApiError(
+                ErrorCode.CONFLICT_STATE, "repository is disconnected; reconnect it instead", 409
+            )
+        # Parked rows in other projects are history only; they no longer lock the name.
         rid = new_id(IdPrefix.rep)
         conn.execute(
             sa.insert(repositories).values(
@@ -806,6 +808,18 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
                     403,
                 )
         # Also for a live row whose grant an uninstall detached: record the verified one.
+        if (
+            repo["disconnected_at"] is not None
+            and conn.execute(
+                sa.select(repositories.c.id).where(
+                    repositories.c.full_name == repo["full_name"],
+                    repositories.c.disconnected_at.is_(None),
+                )
+            ).first()
+        ):
+            raise ApiError(
+                ErrorCode.CONFLICT_STATE, "this repository is now connected to another project", 409
+            )
         if repo["disconnected_at"] is not None or installation_id != repo["installation_id"]:
             conn.execute(
                 sa.update(repositories)

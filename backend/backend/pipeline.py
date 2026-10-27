@@ -110,7 +110,12 @@ def process_github_delivery(ctx: JobContext) -> dict[str, Any]:
     with transaction() as conn:
         repo = (
             conn.execute(
-                sa.select(repositories).where(repositories.c.full_name == change.repo_full_name)
+                sa.select(repositories)
+                .where(repositories.c.full_name == change.repo_full_name)
+                # A name can have parked history rows; the live one receives the event.
+                .order_by(
+                    repositories.c.disconnected_at.is_not(None), repositories.c.created_at.desc()
+                )
             )
             .mappings()
             .first()

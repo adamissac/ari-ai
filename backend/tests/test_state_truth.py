@@ -44,15 +44,20 @@ def test_repeated_connect_in_the_same_project_returns_the_same_repository(client
     assert count == 1
 
 
-def test_connect_of_a_disconnected_or_foreign_repository_conflicts(client_factory):
+def test_parked_rows_free_the_name_but_live_ones_still_conflict(client_factory):
     alice, bob = client_factory("alice"), client_factory("bob")
     pid = _project(alice)
     rid = _connect(alice, pid).json()["id"]
     alice.post(f"/api/v1/repositories/{rid}/disconnect")
     again = _connect(alice, pid)
     assert again.status_code == 409 and "reconnect" in again.text
-    foreign = _connect(bob, _project(bob))
-    assert foreign.status_code == 409 and rid not in foreign.text
+    # Alice's parked row is history; it no longer locks the name for anyone else.
+    bobs = _connect(bob, _project(bob))
+    assert bobs.status_code == 201 and bobs.json()["id"] != rid
+    # ...and now that Bob has it live, Alice can't reconnect hers or connect it again.
+    assert alice.post(f"/api/v1/repositories/{rid}/reconnect").status_code == 409
+    taken = _connect(alice, _project(alice, "p2"))
+    assert taken.status_code == 409 and bobs.json()["id"] not in taken.text
 
 
 def test_picker_marks_a_disconnected_repository(client_factory, monkeypatch):
@@ -548,3 +553,21 @@ def test_rows_for_a_login_now_owned_by_another_account_are_dropped(client_factor
     monkeypatch.setattr("backend.api.github_repos.GitHubApp", Renamed)
     assert _refresh_personal_installation_repositories(uid, "alice", 123) is False
     assert _access(uid) == ["acme/shop"]  # organization access stays; old personal rows gone
+
+
+def test_github_events_go_to_the_live_row_when_a_parked_row_shares_the_name(client_factory):
+    from helpers import REPO, post_webhook, push_payload
+
+    from backend import worker
+    from backend.db import monitoring_events
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    parked = _connect(alice, _project(alice), REPO).json()["id"]
+    alice.post(f"/api/v1/repositories/{parked}/disconnect")
+    live = _connect(bob, _project(bob), REPO).json()["id"]
+    bob.patch(f"/api/v1/repositories/{live}", json={"automatic_assessments": True})
+    assert post_webhook(bob, push_payload(["app/main.py"])).status_code == 202
+    worker.drain(kinds=["process_github_delivery"])
+    with transaction() as conn:
+        routed = set(conn.execute(sa.select(monitoring_events.c.repo_id)).scalars())
+    assert routed == {live}  # recorded against the live row, never the parked one

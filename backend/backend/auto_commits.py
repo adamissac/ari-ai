@@ -105,14 +105,10 @@ def reviewer_ignore_reason(
         if change.event == "pull_request"
         else (change.ref or "").removeprefix("refs/heads/")
     ) or ""
+    # No include list means every branch: each pushed commit is reviewed, not only the
+    # default branch's (an owner narrows this with include/exclude patterns).
     if reviewer.include_branches and not _matches(reviewer.include_branches, branch):
         return "skipped: branch excluded by reviewer settings"
-    if (
-        change.event == "push"
-        and not reviewer.include_branches
-        and branch.casefold() != repo["default_branch"].casefold()
-    ):
-        return "skipped: push is not on the default branch"
     if reviewer.exclude_branches and _matches(reviewer.exclude_branches, branch):
         return "skipped: branch excluded by reviewer settings"
 

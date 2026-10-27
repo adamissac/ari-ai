@@ -99,7 +99,7 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={draft.reviewPushes} onChange={e => set('reviewPushes')(e.target.checked)} />
-            Review pushes to the default branch
+            Review pushes (every branch unless narrowed below)
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={draft.reviewPullRequests} onChange={e => set('reviewPullRequests')(e.target.checked)} />
