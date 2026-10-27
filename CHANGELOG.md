@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Settings → Repositories manages every repository in the project from one place. Each row has an Automatic reviews ON/OFF switch, the derived automatic-review status, and Disconnect (with confirmation); disconnected rows show Reconnect. The header's automatic-review status links to it.
 - Wildcard auto-commit author configuration now keeps signed pushes on the per-commit assessment path.
 - Console, Defense Lab and site pages now use darker, route-specific versions of the landing lava-lamp background, and the project header, repo bar and tabs share one translucent band instead of alternating dark/light stripes.
 - Removed the landing explainer video without a replacement for now, aligned the pricing FAQ answers to a consistent divider and question-text baseline, and shortened the scroll-driven story tracks.

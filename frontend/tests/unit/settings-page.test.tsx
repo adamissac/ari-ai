@@ -42,11 +42,10 @@ const repos = [
 
 afterEach(cleanup);
 
-it('shows only the shell-selected repository in Settings', () => {
+it('manages every repository in the project from Settings', () => {
   mocks.useProject.mockReturnValue({ project, repos, selectedRepo: repos[1], reloadProject: vi.fn() });
   render(<SettingsPage />);
 
-  expect(screen.getByTestId('selected-repositories').textContent).toBe('acme/payments-lite');
-  expect(screen.queryByText('acme/other')).toBeNull();
+  expect(screen.getByTestId('selected-repositories').textContent).toBe('acme/otheracme/payments-lite');
   expect(screen.getByText(/Changes below apply to all repositories in this project/)).toBeTruthy();
 });

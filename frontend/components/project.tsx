@@ -264,7 +264,7 @@ export function ProjectShell({ children }: { children: ReactNode }) {
                 </span>}
           </div>
           {selectedRepo
-            ? <AutomationStatus repoId={selectedRepo.id} />
+            ? <AutomationStatus repoId={selectedRepo.id} manageHref={`${base}/settings?repo=${encodeURIComponent(selectedRepo.id)}#connect-repo`} />
             : <span className="flex shrink-0 items-center gap-2 text-xs text-muted" aria-label={`Monitoring ${monitoring ? 'on' : 'off'}`}>
               <span aria-hidden="true" className={`h-2 w-2 rounded-full ${monitoring ? 'bg-ok' : 'bg-faint'}`} />
               Monitoring {monitoring ? 'on' : 'off'}

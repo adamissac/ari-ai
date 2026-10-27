@@ -12,13 +12,14 @@ import { shortSha } from '@/lib/format';
 import { SNAPSHOT_STATUS } from '@/lib/status';
 import { RepoCommits } from '@/components/repo-commits';
 import { RepoPicker } from '@/components/repo-picker';
+import { AutomationStatus } from '@/components/automation-status';
 
 const SHA = /^[0-9a-f]{7,40}$/;
 // The API refuses name-only connections outside development/test, so only dev builds offer the form.
 const NAME_ONLY_CONNECT = process.env.NEXT_PUBLIC_DEV_LOGIN === '1';
 
 export function Repositories({ repos }: { repos: Repository[] }) {
-  const { project, reloadRepos } = useProject();
+  const { project, reloadRepos, selectedRepo } = useProject();
   const [fullName, setFullName] = useState('');
   const [branch, setBranch] = useState('main');
   const [error, setError] = useState<unknown>(null);
@@ -39,7 +40,7 @@ export function Repositories({ repos }: { repos: Repository[] }) {
         <>
           <p className="mb-3 text-sm text-muted" data-testid="index-commit-note">{INDEX_COMMIT_NOTE}</p>
           <ul className="divide-y divide-line">
-            {repos.map(repo => <RepoRow key={repo.id} repo={repo} />)}
+            {repos.map(repo => <RepoRow key={repo.id} repo={repo} detailed={repo.id === selectedRepo?.id} />)}
           </ul>
         </>
       )}
@@ -58,9 +59,56 @@ export function Repositories({ repos }: { repos: Repository[] }) {
   );
 }
 
-function RepoRow({ repo }: { repo: Repository }) {
+function RepoRow({ repo, detailed }: { repo: Repository; detailed: boolean }) {
   if (repo.disconnected) return <DisconnectedRow repo={repo} />;
-  return <ConnectedRow repo={repo} />;
+  return <ConnectedRow repo={repo} detailed={detailed} />;
+}
+
+/** Owner controls for one repository, in one place: automatic reviews on/off and disconnect. */
+function RepoControls({ repo }: { repo: Repository }) {
+  const { reloadRepos } = useProject();
+  const [busy, setBusy] = useState<'auto' | 'disconnect' | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const run = async (what: 'auto' | 'disconnect', action: () => Promise<unknown>) => {
+    setBusy(what);
+    setError(null);
+    try {
+      await action();
+      reloadRepos();
+      window.dispatchEvent(new Event('ari:automation-changed'));
+    } catch (err) { setError(err); } finally { setBusy(null); setConfirming(false); }
+  };
+  const on = repo.automatic_assessments;
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-panel-2/40 px-3 py-2" data-testid={`repo-controls-${repo.full_name}`}>
+      <span className="text-sm">Automatic reviews</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={`Automatic reviews for ${repo.full_name}`}
+        disabled={busy !== null}
+        onClick={() => void run('auto', () => api().updateRepository(repo.id, { automatic_assessments: !on }))}
+        className={`rounded-md border border-line-2 px-3 py-1 text-xs font-semibold ${on ? 'bg-brand text-on-brand' : 'bg-panel text-muted'}`}
+      >
+        {busy === 'auto' ? 'Saving…' : on ? 'ON' : 'OFF'}
+      </button>
+      <AutomationStatus repoId={repo.id} />
+      <span className="ml-auto flex items-center gap-2">
+        {confirming ? (
+          <>
+            <span className="text-xs text-muted">Stop all Ari access and running work for this repository?</span>
+            <Button variant="danger" disabled={busy !== null} onClick={() => void run('disconnect', () => api().disconnectRepository(repo.id))}>{busy === 'disconnect' ? 'Disconnecting…' : 'Disconnect'}</Button>
+            <Button disabled={busy !== null} onClick={() => setConfirming(false)}>Cancel</Button>
+          </>
+        ) : (
+          <Button disabled={busy !== null} onClick={() => setConfirming(true)}>Disconnect…</Button>
+        )}
+      </span>
+      {error !== null && <div className="w-full"><ErrorState error={error} context="Could not update the repository" /></div>}
+    </div>
+  );
 }
 
 /** A disconnected repository keeps its history but Ari reads nothing until it is reconnected. */
@@ -85,7 +133,7 @@ function DisconnectedRow({ repo }: { repo: Repository }) {
   );
 }
 
-function ConnectedRow({ repo }: { repo: Repository }) {
+function ConnectedRow({ repo, detailed }: { repo: Repository; detailed: boolean }) {
   const { reloadRepos } = useProject();
   const [reattach, setReattach] = useState<{ busy: boolean; error: unknown }>({ busy: false, error: null });
   // An uninstall detaches the grant but keeps the row live; reconnect re-verifies and records a new one.
@@ -128,11 +176,15 @@ function ConnectedRow({ repo }: { repo: Repository }) {
           <Link className="text-brand hover:underline" href={`/projects/${repo.project_id}/simulate?repo=${encodeURIComponent(repo.id)}`} data-testid={`simulate-${repo.full_name}`}>Attack walkthrough →</Link>
         </span>
       </div>
-      <div className="mt-3"><RepoCommits repo={repo} onPick={setSha} /></div>
-      <form onSubmit={index} className="mt-2 flex flex-wrap items-center gap-2">
-        <input aria-label={`Commit to index for ${repo.full_name}`} className={`${inputClass} flex-1 font-mono`} value={sha} onChange={event => setSha(event.target.value.toLowerCase())} pattern="[0-9a-f]{7,40}" placeholder="commit sha to index" required />
-        <Button type="submit" disabled={busy || !SHA.test(sha)}>Index commit</Button>
-      </form>
+      <RepoControls repo={repo} />
+      {/* Commit history and manual indexing for the selected repository only, to keep the list light. */}
+      {detailed && <>
+        <div className="mt-3"><RepoCommits repo={repo} onPick={setSha} /></div>
+        <form onSubmit={index} className="mt-2 flex flex-wrap items-center gap-2">
+          <input aria-label={`Commit to index for ${repo.full_name}`} className={`${inputClass} flex-1 font-mono`} value={sha} onChange={event => setSha(event.target.value.toLowerCase())} pattern="[0-9a-f]{7,40}" placeholder="commit sha to index" required />
+          <Button type="submit" disabled={busy || !SHA.test(sha)}>Index commit</Button>
+        </form>
+      </>}
       {snapshot && (
         <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
           <Badge view={SNAPSHOT_STATUS[snapshot.status]} /> <Mono>{snapshot.id}</Mono> at <Mono>{shortSha(snapshot.commit_sha)}</Mono>
