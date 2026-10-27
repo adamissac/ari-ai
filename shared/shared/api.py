@@ -173,6 +173,58 @@ class RepositorySetup(StrictModel):
     updated_at: UtcDatetime | None = None
 
 
+class AccessibleRepository(StrictModel):
+    """A repository the signed-in user can reach through the GitHub App, and its Ari row."""
+
+    full_name: str = Field(pattern=r"^[A-Za-z0-9_.\-]+/[A-Za-z0-9_.\-]+$")
+    installation_id: int = Field(ge=1)
+    default_branch: ShortText
+    private: bool
+    connected_repo_id: RepositoryId | None = Field(
+        default=None, description="The Ari repository row; kept after a disconnect as history"
+    )
+    disconnected: bool = Field(
+        default=False, description="That row is disconnected: Ari reads nothing until reconnect"
+    )
+
+
+class AccessibleRepositoryList(StrictModel):
+    """GET /github/repositories: the picker list and the App's install link."""
+
+    items: list[AccessibleRepository]
+    install_url: str | None = Field(default=None, pattern=r"^https://")
+    live_checked: bool = Field(
+        description="False: access is as of the last GitHub sign-in, not re-checked just now"
+    )
+    next_cursor: None = None
+
+
+class AutomationReason(StrictModel):
+    code: ShortText
+    message: ShortText
+
+
+class AutomationStatus(StrictModel):
+    """Whether a new push or pull request on a repository would actually be reviewed.
+
+    ``ready``: it would. ``off``: an owner switch is off. ``blocked``: enabled but it cannot
+    run (no GitHub access, no approved scope, quota reached). ``reasons`` lists every gate
+    that stops it, plus informational notes.
+    """
+
+    repo_id: RepositoryId
+    state: Literal["ready", "off", "blocked"]
+    reasons: list[AutomationReason] = Field(default_factory=list)
+    resets_at: UtcDatetime | None = None
+
+
+class RecipeRetryAccepted(StrictModel):
+    """POST /repositories/{id}/recipe/retry: the proposal job queued, or the pending one joined."""
+
+    job_id: ShortText
+    queued: bool
+
+
 class SnapshotCreate(StrictModel):
     commit_sha: CommitSha
 

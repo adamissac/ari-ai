@@ -1,0 +1,53 @@
+{
+  "additionalProperties": false,
+  "description": "A repository the signed-in user can reach through the GitHub App, and its Ari row.",
+  "properties": {
+    "connected_repo_id": {
+      "anyOf": [
+        {
+          "pattern": "^rep_[0-9A-Za-z_\\-]{8,64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The Ari repository row; kept after a disconnect as history",
+      "title": "Connected Repo Id"
+    },
+    "default_branch": {
+      "maxLength": 500,
+      "title": "Default Branch",
+      "type": "string"
+    },
+    "disconnected": {
+      "default": false,
+      "description": "That row is disconnected: Ari reads nothing until reconnect",
+      "title": "Disconnected",
+      "type": "boolean"
+    },
+    "full_name": {
+      "pattern": "^[A-Za-z0-9_.\\-]+/[A-Za-z0-9_.\\-]+$",
+      "title": "Full Name",
+      "type": "string"
+    },
+    "installation_id": {
+      "minimum": 1,
+      "title": "Installation Id",
+      "type": "integer"
+    },
+    "private": {
+      "title": "Private",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "full_name",
+    "installation_id",
+    "default_branch",
+    "private"
+  ],
+  "title": "AccessibleRepository",
+  "type": "object"
+}

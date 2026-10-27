@@ -9,10 +9,10 @@ test('workspace design stays navigable and fits desktop and phone', async ({ bro
   const [org, repo] = full.split('/');
   const sha = env('E2E_COMMIT');
   await page.route('**/api/v1/github/repositories', route => route.fulfill({ json: { items: [
-    { full_name: full, installation_id: 1, default_branch: 'main', private: true, connected_repo_id: env('E2E_WORKSPACE_REPO_ID') },
-    { full_name: 'northstar/design-system', installation_id: 2, default_branch: 'main', private: false, connected_repo_id: null },
-    { full_name: 'orbit/checkout', installation_id: 3, default_branch: 'main', private: true, connected_repo_id: null },
-  ], next_cursor: null, install_url: null } }));
+    { full_name: full, installation_id: 1, default_branch: 'main', private: true, connected_repo_id: env('E2E_WORKSPACE_REPO_ID'), disconnected: false },
+    { full_name: 'northstar/design-system', installation_id: 2, default_branch: 'main', private: false, connected_repo_id: null, disconnected: false },
+    { full_name: 'orbit/checkout', installation_id: 3, default_branch: 'main', private: true, connected_repo_id: null, disconnected: false },
+  ], next_cursor: null, install_url: null, live_checked: true } }));
   await page.route(`**/api/v1/repositories/${env('E2E_WORKSPACE_REPO_ID')}/commits`, route => route.fulfill({ json: { items: [
     { sha, message: 'Validate payment boundaries', author: 'e2e-alice', committed_at: null, html_url: null },
   ], next_cursor: null, available: true, reason: null } }));

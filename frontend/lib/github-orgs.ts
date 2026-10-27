@@ -18,7 +18,7 @@ export function groupByOrg(items: readonly AccessibleRepository[]): GitHubOrg[] 
     .map(([login, repos]) => ({
       login,
       repos: [...repos].sort((a, b) => a.full_name.localeCompare(b.full_name)),
-      connected: repos.filter(r => r.connected_repo_id).length,
+      connected: repos.filter(r => r.connected_repo_id && !r.disconnected).length,
       private: repos.filter(r => r.private).length,
     }))
     .sort((a, b) => a.login.localeCompare(b.login, undefined, { sensitivity: 'base' }));

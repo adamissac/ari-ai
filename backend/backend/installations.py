@@ -49,7 +49,14 @@ def _detach(
     full_names: list[str] | None,
     why: str,
 ) -> list[str]:
-    """Clear installation_id so reads/clones stop using a dead credential."""
+    """Clear installation_id so reads/clones stop using a dead credential, and drop the
+    matching picker access rows so nobody is offered a repository the App can't reach."""
+    access = sa.delete(github_repo_access)
+    if installation_id is not None:
+        access = access.where(github_repo_access.c.installation_id == installation_id)
+    if full_names is not None:
+        access = access.where(github_repo_access.c.full_name.in_(full_names))
+    conn.execute(access)
     stmt = sa.update(repositories).values(installation_id=None)
     if installation_id is not None:
         stmt = stmt.where(repositories.c.installation_id == installation_id)
@@ -102,7 +109,9 @@ def _renamed(conn: Connection, installation_id: int | None, payload: dict[str, A
     if not new_name or not old_full or new_name == old_full:
         return []
     if conn.execute(
-        sa.select(repositories.c.id).where(repositories.c.full_name == new_name)
+        sa.select(repositories.c.id).where(
+            repositories.c.full_name == new_name, repositories.c.disconnected_at.is_(None)
+        )
     ).scalar():
         # Another project already connected the target name; a retry hits this check first.
         return [f"{old_full} renamed to {new_name} but that name is already connected"]

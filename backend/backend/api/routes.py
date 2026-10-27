@@ -64,6 +64,7 @@ from backend.quota import check_project_quota, rate_limit_message
 from backend.redaction import redact, redact_text
 from backend.services import (
     DomainError,
+    active_scope_for_repo,
     budget_over_cap,
     cancel_queued_assessment,
     create_assessment,
@@ -78,11 +79,14 @@ from shared.api import (
     AssessmentCreate,
     AssessmentDetail,
     AssessmentReport,
+    AutomationReason,
+    AutomationStatus,
     FindingDetail,
     PatchDelivery,
     PatchView,
     ProjectCreate,
     ProjectUpdate,
+    RecipeRetryAccepted,
     RepositoryConnect,
     RepositorySetup,
     RepositorySetupUpdate,
@@ -241,6 +245,10 @@ def create_project(
         settings = body.settings or ProjectSettings()
         if role is not MemberRole.owner:  # only owners may authorize Ari to deliver code
             settings = settings.model_copy(update={"delivery_mode": DeliveryMode.manual})
+        elif (
+            settings.delivery_mode is DeliveryMode.auto and not get_settings().auto_delivery_allowed
+        ):
+            settings = settings.model_copy(update={"delivery_mode": DeliveryMode.pull_request})
         settings = _stamp_delivery(settings, ProjectSettings(), user.id)
         _check_budgets(settings, ProjectSettings())
         conn.execute(
@@ -291,6 +299,9 @@ def update_project(project_id: str, body: ProjectUpdate, request: Request) -> Pr
     with transaction() as conn:
         user = _user(conn, request)
         org_id, _ = require_project(conn, user, project_id, MemberRole.owner)
+        # Project row before any audit (organization) lock: the order assessment starts
+        # take (quota, then create_assessment's audit), so the two cannot deadlock.
+        conn.execute(sa.select(projects.c.id).where(projects.c.id == project_id).with_for_update())
         values: dict[str, Any] = {}
         changed_delivery = False
         if body.name is not None:
@@ -298,6 +309,17 @@ def update_project(project_id: str, body: ProjectUpdate, request: Request) -> Pr
         if body.settings is not None:
             before = project_settings(conn, project_id)
             _check_budgets(body.settings, before)
+            if (
+                body.settings.delivery_mode is DeliveryMode.auto
+                and before.delivery_mode is not DeliveryMode.auto
+                and not get_settings().auto_delivery_allowed
+            ):
+                raise ApiError(
+                    ErrorCode.VALIDATION_FAILED,
+                    "committing fixes straight to the default branch is turned off on this "
+                    "deployment; choose pull request or manual delivery",
+                    422,
+                )
             settings = _stamp_delivery(body.settings, before, user.id)
             values["settings"] = settings.model_dump(mode="json")
             if not before.delivery_authorized_by and settings.delivery_authorized_by:
@@ -380,6 +402,7 @@ def connect_repository(project_id: str, body: RepositoryConnect, request: Reques
                 _refresh_personal_installation_repositories,
                 can_connect,
                 verify_installation_access,
+                verify_user_access,
             )
 
             # Access snapshots are captured at sign-in; refresh the user's personal
@@ -399,12 +422,33 @@ def connect_repository(project_id: str, body: RepositoryConnect, request: Reques
             # sign-in); confirm live before recording a repository every GitHub read
             # would fail for.
             verify_installation_access(body.full_name, body.installation_id)
-        if conn.execute(
-            sa.select(repositories.c.id).where(repositories.c.full_name == body.full_name)
-        ).scalar():
+            # ...and the user's own access, which the snapshot can't vouch for after a
+            # removal from the organization or the repository.
+            verify_user_access(
+                body.full_name,
+                body.installation_id,
+                gh.github_login if gh else None,
+                gh.github_id if gh else None,
+            )
+        rows = (
+            conn.execute(sa.select(repositories).where(repositories.c.full_name == body.full_name))
+            .mappings()
+            .all()
+        )
+        live = next((r for r in rows if r["disconnected_at"] is None), None)
+        if live is not None:
+            # A repeated connect (double click, second tab) of a live repository in this
+            # same project is a no-op; a live one elsewhere stays a conflict, without ids.
+            if live["project_id"] == project_id:
+                return _repo(live)
             raise ApiError(
                 ErrorCode.CONFLICT_STATE, "repository already connected to a project", 409
             )
+        if any(r["project_id"] == project_id for r in rows):
+            raise ApiError(
+                ErrorCode.CONFLICT_STATE, "repository is disconnected; reconnect it instead", 409
+            )
+        # Parked rows in other projects are history only; they no longer lock the name.
         rid = new_id(IdPrefix.rep)
         conn.execute(
             sa.insert(repositories).values(
@@ -475,6 +519,63 @@ def update_repository(repo_id: str, body: RepositoryUpdate, request: Request) ->
             .mappings()
             .one()
         )
+
+
+@router.get("/repositories/{repo_id}/automation-status", response_model=AutomationStatus)
+def automation_status(repo_id: str, request: Request) -> AutomationStatus:
+    """Whether a new push or pull request on this repository would actually be reviewed, and
+    every reason it would not. Mirrors the gates in backend.auto_commits (schedule and
+    assess_commit), so the UI shows one derived answer instead of separate toggles."""
+    from backend.auto_commits import authors
+
+    with transaction() as conn:
+        repo = _repo_access(conn, _user(conn, request), repo_id)
+        project_id = repo["project_id"]
+        settings = project_settings(conn, project_id)
+        blocked: list[tuple[str, str]] = []
+        off: list[tuple[str, str]] = []
+        if repo["disconnected_at"] is not None:
+            blocked.append(("disconnected", "The repository is disconnected. Reconnect it first."))
+        elif repo["installation_id"] is None:
+            blocked.append(("no_github_app", "Ari has no GitHub App access to this repository."))
+        if not repo["automatic_assessments"]:
+            off.append(("repository_off", "Automatic reviews are off for this repository."))
+        if not settings.monitoring_policy.enabled:
+            off.append(("project_monitoring_off", "Project monitoring is off."))
+        review = settings.review
+        if not review.review_pushes and not review.review_pull_requests:
+            off.append(
+                ("no_change_types", "Neither pushes nor pull requests are selected for review.")
+            )
+        if active_scope_for_repo(conn, project_id, repo_id) is None:
+            blocked.append(
+                ("no_active_scope", "No approved, unexpired testing scope covers this repository.")
+            )
+        resets_at = None
+        quota = check_project_quota(conn, project_id, utcnow(), reserve=False)
+        if quota is not None:
+            resets_at = quota.resets_at.isoformat()
+            blocked.append(("quota_reached", rate_limit_message(quota)))
+        notes: list[tuple[str, str]] = []
+        if authors():
+            notes.append(
+                (
+                    "author_allowlist",
+                    "On this deployment, only commits by authors the Ari operator approved "
+                    "are reviewed automatically.",
+                )
+            )
+    # A repository Ari can't reach is blocked whatever the switches say; otherwise a switch
+    # the owner turned off is the headline, and missing scope/quota block an enabled setup.
+    unreachable = [r for r in blocked if r[0] in ("disconnected", "no_github_app")]
+    state = "blocked" if unreachable else "off" if off else "blocked" if blocked else "ready"
+    ordered = unreachable + off + [r for r in blocked if r not in unreachable] + notes
+    return AutomationStatus(
+        repo_id=repo_id,
+        state=state,
+        reasons=[AutomationReason(code=c, message=m) for c, m in ordered],
+        resets_at=resets_at,
+    )
 
 
 def _setup(repo: dict[str, Any]) -> RepositorySetup:
@@ -655,16 +756,35 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
     ``automatic_assessments`` or revoked deploy mappings: the owner opts back
     in explicitly.
     """
-    from backend.db import users
+    from backend.db import github_repo_access, users
 
     with transaction() as conn:
         user = _user(conn, request)
         repo = _repo_access(conn, user, repo_id, MemberRole.owner)
-        if repo["installation_id"] is not None:
+        installation_id = repo["installation_id"]
+        if installation_id is None and not get_settings().is_dev:
+            # The grant was detached (App uninstalled or the repo removed from it) or never
+            # existed: reactivating needs a current installation, found through this user's
+            # own access rows and verified below exactly like a recorded one.
+            installation_id = conn.execute(
+                sa.select(github_repo_access.c.installation_id).where(
+                    github_repo_access.c.user_id == user.id,
+                    github_repo_access.c.full_name == repo["full_name"],
+                )
+            ).scalar()
+            if installation_id is None:
+                raise ApiError(
+                    ErrorCode.FORBIDDEN,
+                    "Ari's GitHub App no longer reaches this repository; install the App on "
+                    "it, sign in with GitHub again, then reconnect",
+                    403,
+                )
+        if installation_id is not None:
             from backend.api.github_repos import (
                 _refresh_personal_installation_repositories,
                 can_connect,
                 verify_installation_access,
+                verify_user_access,
             )
 
             gh = conn.execute(
@@ -674,18 +794,37 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
                 _refresh_personal_installation_repositories(
                     user.id, gh.github_login, gh.github_id, strict=True
                 )
-            verify_installation_access(repo["full_name"], repo["installation_id"])
-            if not can_connect(conn, user.id, repo["full_name"], repo["installation_id"]):
+            verify_installation_access(repo["full_name"], installation_id)
+            verify_user_access(
+                repo["full_name"],
+                installation_id,
+                gh.github_login if gh else None,
+                gh.github_id if gh else None,
+            )
+            if not can_connect(conn, user.id, repo["full_name"], installation_id):
                 raise ApiError(
                     ErrorCode.FORBIDDEN,
                     "you no longer have access to this repository through its installation",
                     403,
                 )
-        if "disconnected_at" in repo and repo["disconnected_at"] is not None:
+        # Also for a live row whose grant an uninstall detached: record the verified one.
+        if (
+            repo["disconnected_at"] is not None
+            and conn.execute(
+                sa.select(repositories.c.id).where(
+                    repositories.c.full_name == repo["full_name"],
+                    repositories.c.disconnected_at.is_(None),
+                )
+            ).first()
+        ):
+            raise ApiError(
+                ErrorCode.CONFLICT_STATE, "this repository is now connected to another project", 409
+            )
+        if repo["disconnected_at"] is not None or installation_id != repo["installation_id"]:
             conn.execute(
                 sa.update(repositories)
                 .where(repositories.c.id == repo_id)
-                .values(disconnected_at=None)
+                .values(disconnected_at=None, installation_id=installation_id)
             )
             _audit(
                 conn,
@@ -696,8 +835,65 @@ def reconnect_repository(repo_id: str, request: Request) -> dict[str, Any]:
                 "repository",
                 repo_id,
                 full_name=repo["full_name"],
+                installation_id=installation_id,
             )
         return {"id": repo_id, "disconnected": False}
+
+
+@router.post(
+    "/repositories/{repo_id}/recipe/retry", status_code=202, response_model=RecipeRetryAccepted
+)
+def retry_build_recipe(repo_id: str, request: Request) -> RecipeRetryAccepted:
+    """Owner re-run of the build-recipe proposal after a failed or invalid result. The job
+    re-reads the repository through the GitHub App, so revoked access fails again honestly;
+    a recipe that already exists is still skipped, never overwritten."""
+    with transaction() as conn:
+        user = _user(conn, request)
+        _owner_repo(conn, user, repo_id)
+        # Row lock: simultaneous retries queue here, so the second sees the first's job.
+        repo = (
+            conn.execute(
+                sa.select(repositories).where(repositories.c.id == repo_id).with_for_update()
+            )
+            .mappings()
+            .one()
+        )
+        if repo["disconnected_at"] is not None:
+            raise ApiError(ErrorCode.CONFLICT_STATE, "repository is disconnected", 409)
+        if repo["installation_id"] is None:
+            raise ApiError(
+                ErrorCode.VALIDATION_FAILED,
+                "build recipes are proposed only for repositories connected through the GitHub App",
+                422,
+            )
+        active = conn.execute(
+            sa.select(jobs_table.c.id).where(
+                jobs_table.c.kind == "propose_build_recipe",
+                jobs_table.c.payload["repo_id"].astext == repo_id,
+                jobs_table.c.status.in_(["queued", "waiting", "running"]),
+            )
+        ).scalar()
+        if active is not None:  # a double click or second tab joins the pending run
+            return RecipeRetryAccepted(job_id=active, queued=False)
+        limiter.check(f"recipe_retry:{repo_id}", 5, 3600)
+        job_id, _ = jobs.enqueue(
+            conn,
+            "propose_build_recipe",
+            {"repo_id": repo_id},
+            dedupe_key=f"recipe:{repo_id}:retry:{new_id(IdPrefix.job)}",
+            project_id=repo["project_id"],  # project backpressure and concurrency apply
+        )
+        _audit(
+            conn,
+            project_org(conn, repo["project_id"]),
+            repo["project_id"],
+            user,
+            "repository.recipe_retry_requested",
+            "repository",
+            repo_id,
+            job_id=job_id,
+        )
+        return RecipeRetryAccepted(job_id=job_id, queued=True)
 
 
 @router.post("/repositories/{repo_id}/snapshots", status_code=202, response_model=Snapshot)
@@ -1054,11 +1250,31 @@ def _decide_subject_approval(
 
 @router.get("/projects/{project_id}/approvals")
 def list_approvals(
-    project_id: str, request: Request, status: ApprovalStatus | None = None
+    project_id: str,
+    request: Request,
+    status: ApprovalStatus | None = None,
+    repo_id: str | None = None,
 ) -> dict[str, Any]:
     with transaction() as conn:
         require_project(conn, _user(conn, request), project_id)
         q = sa.select(approvals.c.doc).where(approvals.c.project_id == project_id)
+        if repo_id:
+            # Linked server-side: an assessment on this repository, or a scope targeting it.
+            q = q.where(
+                sa.or_(
+                    approvals.c.assessment_id.in_(
+                        sa.select(assessments.c.id).where(assessments.c.repo_id == repo_id)
+                    ),
+                    sa.and_(
+                        approvals.c.subject_type == ApprovalSubject.scope.value,
+                        approvals.c.subject_id.in_(
+                            sa.select(authorized_scopes.c.id).where(
+                                authorized_scopes.c.doc["targets"].contains([{"repo_id": repo_id}])
+                            )
+                        ),
+                    ),
+                )
+            )
         if status:
             q = q.where(approvals.c.status == status.value)
         return {
@@ -1187,7 +1403,7 @@ def start_assessment(
                     503,
                 )
             commit_sha = commits[0]["sha"]
-        quota = check_project_quota(conn, project_id, utcnow(), manual=True)
+        quota = check_project_quota(conn, project_id, utcnow())
         if quota is not None:
             raise ApiError(
                 ErrorCode.RATE_LIMITED,
@@ -1239,12 +1455,15 @@ def list_assessments(
     request: Request,
     limit: int = Query(50, ge=1, le=200),
     cursor: str | None = None,
+    repo_id: str | None = None,
 ) -> dict[str, Any]:
     with transaction() as conn:
         require_project(conn, _user(conn, request), project_id)
         q = sa.select(assessments.c.id, assessments.c.doc).where(
             assessments.c.project_id == project_id
         )
+        if repo_id:
+            q = q.where(assessments.c.repo_id == repo_id)
         if cursor:
             q = q.where(assessments.c.id < cursor)
         rows = [
@@ -1540,11 +1759,28 @@ def assessment_report(assessment_id: str, request: Request) -> dict[str, Any]:
 
 @router.get("/projects/{project_id}/findings")
 def list_findings(
-    project_id: str, request: Request, status: FindingStatus | None = None, kind: str | None = None
+    project_id: str,
+    request: Request,
+    status: FindingStatus | None = None,
+    kind: str | None = None,
+    repo_id: str | None = None,
 ) -> dict[str, Any]:
     with transaction() as conn:
         require_project(conn, _user(conn, request), project_id)
         q = sa.select(findings.c.doc).where(findings.c.project_id == project_id)
+        if repo_id:
+            # By the assessment's repository, or the repository snapshot the finding is pinned
+            # to; never by which assessments a client happened to load.
+            q = q.where(
+                sa.or_(
+                    findings.c.assessment_id.in_(
+                        sa.select(assessments.c.id).where(assessments.c.repo_id == repo_id)
+                    ),
+                    findings.c.doc["snapshot_id"].astext.in_(
+                        sa.select(snapshots.c.id).where(snapshots.c.repo_id == repo_id)
+                    ),
+                )
+            )
         if status:
             q = q.where(findings.c.status == status.value)
         if kind:

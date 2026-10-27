@@ -25,7 +25,7 @@ export function CommitAssessmentProvider({ repoId, children }: { repoId: string;
       let cursor: string | undefined;
       let pages = 0;
       do {
-        const page = await api().assessments(projectId, { cursor, signal: controller.signal });
+        const page = await api().assessments(projectId, { cursor, repoId, signal: controller.signal });
         items.push(...page.items);
         cursor = page.next_cursor ?? undefined;
         pages += 1;

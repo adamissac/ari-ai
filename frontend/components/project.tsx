@@ -7,8 +7,9 @@ import { createContext, useContext, useEffect, useState, useSyncExternalStore, t
 import { useSelectedRepo } from '@/lib/selected-repo';
 import { api } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
-import { ErrorState, Loading, Mono, inputClass } from '@/components/ui';
-import { isSetupComplete, progressToServer, readLegacySetupProgress, SETUP_SAVED_EVENT } from '@/lib/setup-progress';
+import { AutomationStatus } from '@/components/automation-status';
+import { ErrorState, Loading, Mono, StaleNotice, inputClass } from '@/components/ui';
+import { isLegacySetupEvidence, isSetupComplete, progressToServer, readLegacySetupProgress, SETUP_SAVED_EVENT } from '@/lib/setup-progress';
 
 interface ProjectValue {
   project: Project;
@@ -157,7 +158,8 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const project = useResource(`project:${id}`, signal => api().project(id, { signal }));
-  const repos = useResource(`repos:${id}`, signal => api().repositories(id, { signal }));
+  // Polled so a disconnect or reconnect in another tab or by another owner shows up here.
+  const repos = useResource(`repos:${id}`, signal => api().repositories(id, { signal }), 30000);
   const repoItems = repos.status === 'ready' ? repos.data.items : [];
   const { selectedRepo, selectRepo } = useSelectedRepo(id, repoItems);
   const selectedRepoId = selectedRepo?.id ?? null;
@@ -167,7 +169,7 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   );
   const setupCheck = useResource(
     selectedRepoId ? `setup-check:${id}:${selectedRepoId}` : null,
-    signal => hasRepoAssessment(id, selectedRepoId!, signal),
+    signal => hasLegacySetupEvidence(id, selectedRepoId!, signal),
   );
   const reloadSavedSetup = savedSetup.reload;
   useEffect(() => {
@@ -198,10 +200,14 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   const complete = isSetupComplete({ answers: {}, complete: knownComplete }, setupCheck.status === 'ready' && setupCheck.data);
   const setupRoute = pathname === `${base}/setup` || pathname.startsWith(`${base}/setup/`);
   // First-run surfaces (onboarding checklist, live-defense connect) must stay
-  // reachable before any assessment exists: they are how setup completes.
+  // reachable before any assessment exists: they are how setup completes. A run that
+  // already exists, and the approvals it waits on, stay reachable too: unfinished setup
+  // must never keep a co-owner from a decision another member's run is waiting for.
   const freeRoute = setupRoute
     || pathname === `${base}/onboarding` || pathname.startsWith(`${base}/onboarding/`)
-    || pathname === `${base}/live-defense` || pathname.startsWith(`${base}/live-defense/`);
+    || pathname === `${base}/live-defense` || pathname.startsWith(`${base}/live-defense/`)
+    || pathname.startsWith(`${base}/assessments/`)
+    || pathname === `${base}/approvals` || pathname.startsWith(`${base}/approvals/`);
   // Only lock on a confirmed "not finished" from the server; a disconnected repo has no setup to finish.
   const locked = Boolean(selectedRepo && !selectedRepo.disconnected && setupReady && savedSetup.status === 'ready' && !complete);
   useEffect(() => {
@@ -236,7 +242,12 @@ export function ProjectShell({ children }: { children: ReactNode }) {
                     value={selectedRepo?.id ?? ''}
                     onChange={event => selectRepo(event.target.value)}
                   >
-                    {repoItems.map(repo => <option key={repo.id} value={repo.id}>{repo.full_name} · {repo.disconnected ? 'disconnected' : repo.default_branch}</option>)}
+                    {repoItems.filter(repo => !repo.disconnected).map(repo => <option key={repo.id} value={repo.id}>{repo.full_name} · {repo.default_branch}</option>)}
+                    {repoItems.some(repo => repo.disconnected) && (
+                      <optgroup label="Disconnected (history only)">
+                        {repoItems.filter(repo => repo.disconnected).map(repo => <option key={repo.id} value={repo.id}>{repo.full_name} · disconnected</option>)}
+                      </optgroup>
+                    )}
                   </select>
                   <svg aria-hidden="true" className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m7 10 5 5 5-5" /></svg>
                 </span>
@@ -252,11 +263,15 @@ export function ProjectShell({ children }: { children: ReactNode }) {
                   <Link className="text-brand hover:underline" href={`${base}/settings#connect-repo`}>Connect one</Link>
                 </span>}
           </div>
-          <span className="flex shrink-0 items-center gap-2 text-xs text-muted" aria-label={`Monitoring ${monitoring ? 'on' : 'off'}`}>
-            <span aria-hidden="true" className={`h-2 w-2 rounded-full ${monitoring ? 'bg-ok' : 'bg-faint'}`} />
-            Monitoring {monitoring ? 'on' : 'off'}
-          </span>
+          {selectedRepo
+            ? <AutomationStatus repoId={selectedRepo.id} />
+            : <span className="flex shrink-0 items-center gap-2 text-xs text-muted" aria-label={`Monitoring ${monitoring ? 'on' : 'off'}`}>
+              <span aria-hidden="true" className={`h-2 w-2 rounded-full ${monitoring ? 'bg-ok' : 'bg-faint'}`} />
+              Monitoring {monitoring ? 'on' : 'off'}
+            </span>}
         </header>
+        {project.refreshError !== undefined && <StaleNotice what="project settings" onRetry={project.reload} />}
+        {repos.refreshError !== undefined && <StaleNotice what="repository connections" onRetry={repos.reload} />}
         <ProjectNavigation base={base} repoId={selectedRepo?.id ?? null} locked={locked} />
         <div className="project-body min-w-0 pt-6">{children}</div>
       </div>
@@ -264,11 +279,11 @@ export function ProjectShell({ children }: { children: ReactNode }) {
   );
 }
 
-async function hasRepoAssessment(projectId: string, repoId: string, signal: AbortSignal): Promise<boolean> {
+async function hasLegacySetupEvidence(projectId: string, repoId: string, signal: AbortSignal): Promise<boolean> {
   let cursor: string | undefined;
   do {
-    const page = await api().assessments(projectId, { ...(cursor ? { cursor } : {}), signal });
-    if (page.items.some(assessment => assessment.repo_id === repoId)) return true;
+    const page = await api().assessments(projectId, { repoId, ...(cursor ? { cursor } : {}), signal });
+    if (page.items.some(isLegacySetupEvidence)) return true;
     cursor = page.next_cursor ?? undefined;
   } while (cursor);
   return false;

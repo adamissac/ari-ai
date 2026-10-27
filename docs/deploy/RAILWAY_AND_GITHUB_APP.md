@@ -80,9 +80,8 @@ For strictly manual operation, switch `automatic_assessments` OFF per repository
 (or disable project monitoring). Manual Run remains available when the repository
 switch is OFF.
 
-Eligible pushed commits use the automatic project quota, counting all project triggers
-against 10 starts per rolling hour and 50 per rolling day. Manual starts count only
-manual-trigger assessments against those limits; the $50 global rolling-day spend cap
+Eligible pushed commits and manual starts share one project pool of 10 starts per
+rolling hour and 50 per rolling day; the $50 global rolling-day spend cap
 applies across all triggers and projects. Over-quota commits are skipped, not retried.
 `WORKER_PROCESSES` (default 12, ~80 MB each) runs that many commits at once; jobs are
 claimed with `SKIP LOCKED`. Signed webhooks are never rate limited: GitHub does not

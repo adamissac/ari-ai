@@ -15,10 +15,12 @@ const mocks = vi.hoisted(() => ({
   reloadProject: vi.fn(),
   server: null as unknown,
   saveRepositorySetup: vi.fn(),
+  updateRepository: vi.fn(),
+  updateProject: vi.fn(),
 }));
 vi.mock('@/lib/api', async importOriginal => ({
   ...await importOriginal<typeof import('@/lib/api')>(),
-  api: () => ({ saveRepositorySetup: mocks.saveRepositorySetup }),
+  api: () => ({ saveRepositorySetup: mocks.saveRepositorySetup, updateRepository: mocks.updateRepository, updateProject: mocks.updateProject }),
 }));
 vi.mock('@/components/project', () => ({ useProject: () => mocks.project }));
 vi.mock('@/components/onboarding/build-recipe-readiness', () => ({ BuildRecipeReadiness: () => <p>Recipe readiness</p> }));
@@ -146,4 +148,80 @@ it('links saved reviews to the Commits assessment history', async () => {
   expect(await screen.findByTestId('setup-step-8')).toBeTruthy();
   expect(screen.getByRole('link', { name: 'See your reviews' }).getAttribute('href'))
     .toBe(`/projects/${project.id}/commits?repo=${encodeURIComponent(repo.id)}#assessments`);
+});
+
+const ALL_ANSWERS = {
+  readiness: true,
+  strictness: '2',
+  reviewChanges: true,
+  comments: false,
+  watch: false,
+  scope: true,
+  delivery: 'pull_request',
+} as const;
+
+it('shows finished setup as complete instead of asking the questions again', async () => {
+  mocks.server = { ...serverSetup({ answers: { ...ALL_ANSWERS, reviewStart: true }, complete: true }), completed_at: '2026-10-26T12:00:00Z' };
+  render(<SetupPage />);
+  expect(await screen.findByTestId('setup-done')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull();
+  expect(screen.queryByTestId('setup-step-8')).toBeNull();
+  expect(screen.getByRole('link', { name: 'Go to Analytics' }).getAttribute('href')).toBe(`/projects/${project.id}?repo=${repo.id}`);
+  fireEvent.click(screen.getByRole('button', { name: 'Back to setup' }));
+  expect(screen.queryByTestId('setup-done')).toBeNull();
+});
+
+it('leaves the walkthrough once setup is finished', async () => {
+  localStorage.setItem(`ari-tour:${project.id}`, 'complete');
+  mocks.server = serverSetup({ answers: ALL_ANSWERS, complete: false });
+  render(<SetupPage />);
+  expect(await screen.findByTestId('setup-step-8')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Finish setup' }));
+  expect(await screen.findByTestId('setup-done')).toBeTruthy();
+  expect(mocks.saveRepositorySetup).toHaveBeenCalledWith(repo.id, expect.objectContaining({ complete: true }));
+});
+
+it('does not offer direct commits to the default branch', async () => {
+  mocks.server = serverSetup({ answers: { readiness: true, strictness: '2', reviewChanges: true, comments: false, watch: false, scope: true }, complete: false });
+  render(<SetupPage />);
+  expect(await screen.findByTestId('setup-step-7')).toBeTruthy();
+  expect(screen.getByText('Open a pull request')).toBeTruthy();
+  expect(screen.queryByText('Commit to the default branch')).toBeNull();
+});
+
+it('turns on automatic reviews for this repository when the owner says to watch it', async () => {
+  mocks.updateProject.mockResolvedValue(project);
+  mocks.updateRepository.mockResolvedValue({ ...repo, automatic_assessments: true });
+  mocks.server = serverSetup({ answers: { readiness: true, strictness: '2', reviewChanges: true, comments: false }, complete: false });
+  render(<SetupPage />);
+  expect(await screen.findByTestId('setup-step-5')).toBeTruthy();
+  fireEvent.click(screen.getByLabelText('Yes, watch for commits'));
+  fireEvent.click(screen.getByRole('button', { name: /^Continue$/ }));
+  expect(await screen.findByTestId('setup-step-6')).toBeTruthy();
+  expect(mocks.updateRepository).toHaveBeenCalledWith(repo.id, { automatic_assessments: true });
+});
+
+it('persists the watch answer even when the loaded repository already matches it', async () => {
+  mocks.updateProject.mockResolvedValue(project);
+  mocks.updateRepository.mockResolvedValue({ ...repo, automatic_assessments: false });
+  mocks.server = serverSetup({ answers: { readiness: true, strictness: '2', reviewChanges: true, comments: false }, complete: false });
+  render(<SetupPage />);
+  expect(await screen.findByTestId('setup-step-5')).toBeTruthy();
+  fireEvent.click(screen.getByLabelText('No, do not watch yet'));
+  fireEvent.click(screen.getByRole('button', { name: /^Continue$/ }));
+  expect(await screen.findByTestId('setup-step-6')).toBeTruthy();
+  expect(mocks.updateRepository).toHaveBeenLastCalledWith(repo.id, { automatic_assessments: false });
+});
+
+it('opting one repository out leaves project monitoring on for the others', async () => {
+  mocks.project = { project: { ...project, settings: { ...project.settings, monitoring_policy: { enabled: true } } }, reloadProject: vi.fn() };
+  mocks.updateProject.mockResolvedValue(project);
+  mocks.updateRepository.mockResolvedValue({ ...repo, automatic_assessments: false });
+  mocks.server = serverSetup({ answers: { readiness: true, strictness: '2', reviewChanges: true, comments: false }, complete: false });
+  render(<SetupPage />);
+  expect(await screen.findByTestId('setup-step-5')).toBeTruthy();
+  fireEvent.click(screen.getByLabelText('No, do not watch yet'));
+  fireEvent.click(screen.getByRole('button', { name: /^Continue$/ }));
+  expect(await screen.findByTestId('setup-step-6')).toBeTruthy();
+  expect(mocks.updateProject.mock.calls.at(-1)![1].settings.monitoring_policy.enabled).toBe(true);
 });

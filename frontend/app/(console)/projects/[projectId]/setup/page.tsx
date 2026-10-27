@@ -51,12 +51,10 @@ export default function SetupPage() {
   const repoParam = searchParams.get('repo');
   const repos = useResource(`setup-repos:${project.id}`, signal => api().repositories(project.id, { signal }));
   const scopes = useResource(`setup-scopes:${project.id}`, signal => api().scopes(project.id, { signal }));
-  const runs = useResource(`setup-runs:${project.id}`, signal => api().assessments(project.id, { signal }));
 
-  if (repos.status === 'loading' || scopes.status === 'loading' || runs.status === 'loading') return <Loading label="Loading setup" />;
+  if (repos.status === 'loading' || scopes.status === 'loading') return <Loading label="Loading setup" />;
   if (repos.status === 'error') return <ErrorState error={repos.error} onRetry={repos.reload} />;
   if (scopes.status === 'error') return <ErrorState error={scopes.error} onRetry={scopes.reload} />;
-  if (runs.status === 'error') return <ErrorState error={runs.error} onRetry={runs.reload} />;
   const repo = repos.data.items.find(item => item.id === repoParam)
     ?? repos.data.items.find(item => !item.disconnected)
     ?? repos.data.items[0];
@@ -72,23 +70,25 @@ export default function SetupPage() {
     );
   }
   const scope = scopeStateFor(scopes.data.items, repo.id, new Date());
-  const hasRun = runs.data.items.some(assessment => assessment.repo_id === repo.id);
   return (
     <SavedWalkthrough
       key={repo.id}
       repo={repo}
       scope={scope}
-      hasRun={hasRun}
-      reload={() => { scopes.reload(); runs.reload(); reloadProject(); }}
+      reload={() => { scopes.reload(); reloadProject(); }}
     />
   );
 }
 
-function SavedWalkthrough(props: { repo: Repository; scope: ReturnType<typeof scopeStateFor>; hasRun: boolean; reload: () => void }) {
+function SavedWalkthrough(props: { repo: Repository; scope: ReturnType<typeof scopeStateFor>; reload: () => void }) {
+  const { project } = useProject();
   const setup = useResource(`setup-progress:${props.repo.id}`, signal => api().repositorySetup(props.repo.id, { signal }));
-  if (setup.status === 'loading') return <Loading label="Loading saved setup" />;
+  // Filtered on the server: another repository's newer runs can't hide this one's.
+  const runs = useResource(`setup-runs:${project.id}:${props.repo.id}`, signal => api().assessments(project.id, { signal, repoId: props.repo.id }));
+  if (setup.status === 'loading' || runs.status === 'loading') return <Loading label="Loading saved setup" />;
   if (setup.status === 'error') return <ErrorState error={setup.error} onRetry={setup.reload} context="Could not load saved setup" />;
-  return <Walkthrough {...props} saved={setup.data} />;
+  if (runs.status === 'error') return <ErrorState error={runs.error} onRetry={runs.reload} />;
+  return <Walkthrough {...props} hasRun={runs.data.items.length > 0} reload={() => { runs.reload(); props.reload(); }} saved={setup.data} />;
 }
 
 function Walkthrough({
@@ -113,15 +113,19 @@ function Walkthrough({
   const currentQuestion = questionOverride ?? resumeSetupQuestion(progress);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
-  const [finished, setFinished] = useState(false);
+  // Finished setup opens on the completed view; it is never asked again (Back to setup reopens it).
+  const [finished, setFinished] = useState(initial.progress.complete);
   const [startedAssessmentId, setStartedAssessmentId] = useState<string | null>(null);
   const review = project.settings.review;
   const [strictness, setStrictness] = useState(review.strictness);
   const [pushes, setPushes] = useState(review.review_pushes);
   const [pullRequests, setPullRequests] = useState(review.review_pull_requests);
   const [comments, setComments] = useState(review.comment_on_pull_requests);
-  const [watch, setWatch] = useState(project.settings.monitoring_policy.enabled);
+  // Per repository: starts from this repository's own automatic switch.
+  const [watch, setWatch] = useState(repo.automatic_assessments);
   const [delivery, setDelivery] = useState<DeliveryMode>(project.settings.delivery_mode);
+  // Direct default-branch commits are off for pilot deployments; only show the choice already in effect.
+  const deliveryChoices = DELIVERY.filter(([mode]) => mode !== 'auto' || project.settings.delivery_mode === 'auto');
   const authorized = scope.kind === 'active';
   const savedAnswer = progress.answers[QUESTION_KEYS[currentQuestion - 1] as SetupQuestion];
   const strictnessLabel = STRICTNESS.find(([value]) => value === strictness)?.[1] ?? 'Unknown';
@@ -186,9 +190,16 @@ function Walkthrough({
       case 5:
         await persistSettings({
           ...project.settings,
-          monitoring_policy: { ...project.settings.monitoring_policy, enabled: watch },
+          // Opting in needs project monitoring on; opting this repository out must not
+          // switch it off for the project's other repositories.
+          monitoring_policy: { ...project.settings.monitoring_policy, enabled: watch || project.settings.monitoring_policy.enabled },
           review: { ...review, strictness, review_pushes: pushes, review_pull_requests: pullRequests, comment_on_pull_requests: comments },
         });
+        // Watching means this repository's commits are actually reviewed: the per-repository
+        // automatic switch is the gate pushes check, so the answer always sets it (the
+        // repository prop is a snapshot and can be stale after Back).
+        await api().updateRepository(repo.id, { automatic_assessments: watch });
+        window.dispatchEvent(new Event('ari:automation-changed'));
         await recordAnswer('watch', watch);
         return;
       case 6:
@@ -308,7 +319,7 @@ function Walkthrough({
                 <fieldset>
                   <legend className="mb-3 text-sm font-medium">Which changes may trigger automatic reviews?</legend>
                   <div className="divide-y divide-line">
-                    <label className="flex items-center gap-3 py-3 text-sm"><input type="checkbox" checked={pushes} onChange={event => setPushes(event.target.checked)} />Pushes to the default branch</label>
+                    <label className="flex items-center gap-3 py-3 text-sm"><input type="checkbox" checked={pushes} onChange={event => setPushes(event.target.checked)} />Pushes to any branch</label>
                     <label className="flex items-center gap-3 py-3 text-sm"><input type="checkbox" checked={pullRequests} onChange={event => setPullRequests(event.target.checked)} />Pull requests</label>
                   </div>
                   <p className="mt-3 text-xs text-muted">Automatic reviews are opt-in per repository; these choices only select eligible change types.</p>
@@ -327,7 +338,7 @@ function Walkthrough({
               )}
               {currentQuestion === 5 && (
                 <fieldset>
-                  <legend className="mb-3 text-sm font-medium">Should Ari watch this project for new commits?</legend>
+                  <legend className="mb-3 text-sm font-medium">Should Ari review new commits on this repository automatically?</legend>
                   <p className="mb-3 text-sm text-muted">Monitoring can notice changes, but automatic testing still requires an approved scope for this repository.</p>
                   <div className="divide-y divide-line">
                     {[[true, 'Yes, watch for commits'], [false, 'No, do not watch yet']] .map(([value, label]) => (
@@ -353,7 +364,7 @@ function Walkthrough({
                 <fieldset>
                   <legend className="mb-3 text-sm font-medium">How should Ari deliver verified fixes?</legend>
                   <div className="divide-y divide-line">
-                    {DELIVERY.map(([mode, label, hint]) => (
+                    {deliveryChoices.map(([mode, label, hint]) => (
                       <label key={mode} className="flex cursor-pointer items-start gap-3 py-3 text-sm">
                         <input type="radio" name="delivery" checked={delivery === mode} onChange={() => setDelivery(mode)} />
                         <span><span className="block font-semibold">{label}</span><span className="mt-1 block text-xs text-muted">{hint}</span></span>
@@ -371,7 +382,7 @@ function Walkthrough({
                     <Summary label="Review pushes" value={pushes ? 'Yes' : 'No'} />
                     <Summary label="Review pull requests" value={pullRequests ? 'Yes' : 'No'} />
                     <Summary label="Leave PR comments" value={comments ? 'Yes' : 'No'} />
-                    <Summary label="Watch project" value={watch ? 'Yes' : 'No'} />
+                    <Summary label="Review new commits automatically" value={watch ? 'Yes' : 'No'} />
                     <Summary label="Testing scope" value={scopeLabel} />
                     <Summary label="Fix delivery" value={deliveryLabel} />
                   </dl>

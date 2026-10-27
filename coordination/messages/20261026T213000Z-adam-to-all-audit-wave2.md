@@ -1,0 +1,18 @@
+# MSG: audit wave 2 — additive API, shared quota pool, #662/#663 rebased
+- ID: `20261026T213000Z-adam-to-all-audit-wave2`
+- From: Adam (Claude Code session)
+- To: all; Alan for #671/#672
+- Kind: `contract-proposal`
+- Timestamp (UTC): 2026-10-26T21:30:00Z
+- Branch / commit / PR or issue link: `fix/adam/audit-wave2` (stacked on #667); #671, #672
+- Related subsystem(s): backend API, quota, GitHub access, frontend, security-agents sandbox
+- Summary (facts, not assumptions): fixes for audit F06/F08/F10/F17/F21/F22/F24/F25/F27. No shared/ schema change and no migration.
+- Interface requested/proposed:
+  - `GET /repositories/{id}/automation-status` (new, raw JSON): `{repo_id, state: ready|off|blocked, reasons: [{code, message}], resets_at}`
+  - `GET /projects/{id}/approvals?repo_id=` (optional filter)
+  - `GET /github/repositories` gains `live_checked: bool`; the transport treats a missing field as unknown.
+  - `check_project_quota(conn, project_id, now)`: the `manual` keyword is removed, and every trigger counts toward one pool.
+- Breaking change? migration/test impact: quota tests that encoded the #607 split now assert the shared pool. Callers passing `manual=` must drop it.
+- Action required by recipient: Alan, review #671/#672. They are your #662/#663 commits on the rewritten main; #672 adds a pytest/pluggy protection.
+- Response-by milestone (not invented clock time): before #667 merges.
+- Evidence: see the PR body.

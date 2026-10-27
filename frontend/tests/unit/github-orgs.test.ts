@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { groupByOrg, repoName } from '@/lib/github-orgs';
 
-const repo = (full_name: string, extra: { private?: boolean; connected?: string } = {}) => ({
+const repo = (full_name: string, extra: { private?: boolean; connected?: string; disconnected?: boolean } = {}) => ({
   full_name,
   installation_id: 1,
   default_branch: 'main',
   private: extra.private ?? false,
   connected_repo_id: extra.connected ?? null,
+  disconnected: extra.disconnected ?? false,
 });
 
 describe('groupByOrg', () => {
@@ -16,6 +17,11 @@ describe('groupByOrg', () => {
     expect(orgs[0]!.repos.map(r => r.full_name)).toEqual(['Acme/api', 'Acme/web']);
     expect(orgs[0]!.connected).toBe(1);
     expect(orgs[0]!.private).toBe(1);
+  });
+
+  it('does not count a disconnected repository as connected', () => {
+    const orgs = groupByOrg([repo('Acme/api', { connected: 'repo_1', disconnected: true }), repo('Acme/web', { connected: 'repo_2' })]);
+    expect(orgs[0]!.connected).toBe(1);
   });
 
   it('is empty for no repositories', () => {

@@ -1,4 +1,4 @@
-import type { RepositorySetup, RepositorySetupUpdate } from '@hackatl/frontend-transport';
+import type { Assessment, RepositorySetup, RepositorySetupUpdate } from '@hackatl/frontend-transport';
 
 export const SETUP_QUESTIONS = [
   'readiness',
@@ -61,8 +61,17 @@ export function canVisitSetupQuestion(progress: SetupProgress, questionNumber: n
   return Number.isInteger(questionNumber) && questionNumber >= 1 && questionNumber <= resumeSetupQuestion(progress);
 }
 
-export function isSetupComplete(progress: SetupProgress, hasAssessment: boolean): boolean {
-  return progress.complete || hasAssessment;
+export function isSetupComplete(progress: SetupProgress, hasLegacyEvidence: boolean): boolean {
+  return progress.complete || hasLegacyEvidence;
+}
+
+/**
+ * Repositories reviewed before the walkthrough existed should not be sent back through it.
+ * Only a review a person started that actually finished counts; a failed, cancelled or
+ * automatic run proves nothing about what the owner chose.
+ */
+export function isLegacySetupEvidence(assessment: Pick<Assessment, 'trigger' | 'state'>): boolean {
+  return assessment.trigger === 'manual' && assessment.state === 'COMPLETED';
 }
 
 /** Fired after setup progress is saved so the project shell re-reads the server copy. */

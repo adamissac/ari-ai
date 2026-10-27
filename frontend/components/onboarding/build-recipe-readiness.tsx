@@ -2,6 +2,7 @@
 
 import type { Repository } from '@hackatl/frontend-transport';
 import { ApiError } from '@hackatl/frontend-transport';
+import { useState } from 'react';
 import { Button, ErrorState, Loading, Tag } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
@@ -109,5 +110,30 @@ export function BuildRecipeReadiness({ projectId, repo, compact = false }: { pro
       </div>
     );
   }
+  if (!compact && (latest.action === 'recipe.failed' || latest.action === 'recipe.invalid')) {
+    return <div className="space-y-3"><Result event={latest} compact={false} /><RetryRecipe key={latest.at} repoId={repo.id} onRefresh={events.reload} /></div>;
+  }
   return <Result event={latest} compact={compact} />;
+}
+
+/**
+ * A failed proposal is not a dead end: the owner can ask Ari to try again after fixing the cause.
+ * Keyed by the result it retries, so a newer result resets it.
+ */
+function RetryRecipe({ repoId, onRefresh }: { repoId: string; onRefresh: () => void }) {
+  const [state, setState] = useState<'idle' | 'busy' | 'queued'>('idle');
+  const [error, setError] = useState<unknown>(null);
+  const retry = async () => {
+    setState('busy');
+    setError(null);
+    try { await api().retryBuildRecipe(repoId); setState('queued'); onRefresh(); } catch (err) { setError(err); setState('idle'); }
+  };
+  return (
+    <div>
+      {state === 'queued'
+        ? <p role="status" className="flex flex-wrap items-center gap-3 text-sm text-muted">Retry queued. Ari re-reads the repository and records a new result here. <Button onClick={onRefresh}>Refresh</Button></p>
+        : <Button onClick={() => void retry()} disabled={state === 'busy'}>{state === 'busy' ? 'Queuing…' : 'Retry build recipe'}</Button>}
+      {error !== null && <div className="mt-2"><ErrorState error={error} context="Could not queue a retry" /></div>}
+    </div>
+  );
 }

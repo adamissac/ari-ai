@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { answerSetupQuestion, canVisitSetupQuestion, initialSetupProgress, isSetupComplete, parseSetupProgress, progressFromServer, progressToServer, resumeSetupQuestion, setupProgressKey } from '@/lib/setup-progress';
+import { answerSetupQuestion, canVisitSetupQuestion, initialSetupProgress, isLegacySetupEvidence, isSetupComplete, parseSetupProgress, progressFromServer, progressToServer, resumeSetupQuestion, setupProgressKey } from '@/lib/setup-progress';
 
 describe('setup progress', () => {
   it('resumes at the first unanswered question and prevents skipping ahead', () => {
@@ -43,5 +43,15 @@ describe('setup progress', () => {
     expect(initialSetupProgress(empty, null)).toEqual({ progress: empty, migrate: false });
     const server = { answers: { readiness: true, strictness: '1' }, complete: false };
     expect(initialSetupProgress(server, legacy)).toEqual({ progress: server, migrate: false });
+  });
+});
+
+describe('legacy setup evidence', () => {
+  it('counts only a finished review a person started', () => {
+    expect(isLegacySetupEvidence({ trigger: 'manual', state: 'COMPLETED' })).toBe(true);
+    for (const state of ['FAILED', 'CANCELLED', 'CREATED', 'AWAITING_APPROVAL'] as const) {
+      expect(isLegacySetupEvidence({ trigger: 'manual', state })).toBe(false);
+    }
+    expect(isLegacySetupEvidence({ trigger: 'monitoring', state: 'COMPLETED' })).toBe(false);
   });
 });

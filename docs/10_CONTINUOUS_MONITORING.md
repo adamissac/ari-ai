@@ -84,8 +84,8 @@ pipeline; a nonempty comma-separated value selects the per-commit reviewer sched
 Both paths apply `review_pushes`,
 `review_pull_requests`, `review_draft_prs`, branch globs, author globs, finding
 strictness, PR comments and an optional hourly cap in Project Settings. Branch
-and author globs are case-insensitive. Empty push include-branches means the
-default branch; empty PR include-branches means every base branch. Empty author
+and author globs are case-insensitive. Empty include-branches means every branch,
+for pushes and for PR base branches alike. Empty author
 includes means everyone; `*[bot]` is excluded by default. Strictness filters only
 the PR comment; all findings remain stored.
 
@@ -115,9 +115,8 @@ full runs. Blank, quoted-empty, or standalone `*` values use the impact-gated
 monitoring policy above; project reviewer settings filter both paths. Attribution
 alone is email-derived, not authorization.
 
-Automatic starts count all project triggers toward 10 assessments per rolling hour
-and 50 per rolling day; manual starts count only manual-trigger assessments against
-those limits. Owners may lower the hourly limit per project. A $50/day spend cap
+Manual and automatic starts share one project pool of 10 assessments per rolling hour
+and 50 per rolling day. Owners may lower the hourly limit per project. A $50/day spend cap
 still applies globally across all triggers and projects. Over-quota automatic
 requests are recorded as skipped, not deferred. Full runs use the normal project
 budget, clamped to operator caps. Monitoring and approved sandbox scope remain

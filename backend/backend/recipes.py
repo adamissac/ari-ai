@@ -795,7 +795,7 @@ def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
             .mappings()
             .first()
         )
-        if repo is None or repo["installation_id"] is None:
+        if repo is None or repo["installation_id"] is None or repo["disconnected_at"] is not None:
             return {
                 "status": "skipped",
                 "reason": "repository is not connected through the GitHub App",
@@ -900,7 +900,9 @@ def enqueue_for_installation(
     ids = list(
         conn.execute(
             sa.select(repositories.c.id).where(
-                repositories.c.full_name.in_(names), repositories.c.installation_id.is_not(None)
+                repositories.c.full_name.in_(names),
+                repositories.c.installation_id.is_not(None),
+                repositories.c.disconnected_at.is_(None),
             )
         ).scalars()
     )

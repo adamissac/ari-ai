@@ -29,6 +29,7 @@ from backend.db import (
 )
 from backend.github import GitHubApp, GitHubNotConfigured
 from backend.settings import get_settings
+from shared.api import AccessibleRepository, AccessibleRepositoryList
 from shared.errors import ErrorCode
 
 log = logging.getLogger(__name__)
@@ -63,17 +64,74 @@ def can_connect(conn: Connection, user_id: str, full_name: str, installation_id:
     )
 
 
+_CAN_GRANT = frozenset({"admin", "write"})  # base permissions (maintain reports as write)
+
+
+_CAN_READ = frozenset({"admin", "write", "read"})
+
+
+def verify_user_access(
+    full_name: str,
+    installation_id: int,
+    login: str | None,
+    github_id: int | None,
+    minimum: frozenset[str] = _CAN_GRANT,
+) -> None:
+    """Confirm with GitHub — right now — that `login` may still write to `full_name`.
+
+    The sign-in snapshot says what the user could reach then; it outlives a removal from the
+    organization or the repository. Granting Ari access to a repository needs write or higher
+    today. Dev/test identities have no real GitHub account, so the snapshot stands there.
+    """
+    if get_settings().is_dev:
+        return
+    if not login or github_id is None:
+        raise ApiError(
+            ErrorCode.FORBIDDEN, "sign in with GitHub again to connect repositories", 403
+        )
+    try:
+        permission = GitHubApp().collaborator_permission(
+            installation_id, full_name, login, github_id
+        )
+    except GitHubNotConfigured as exc:
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE,
+            "GitHub access can't be verified right now (GitHub App not configured)",
+            503,
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE,
+            "GitHub could not confirm your access to the repository right now — try again",
+            503,
+        ) from exc
+    if permission not in minimum:
+        raise ApiError(
+            ErrorCode.FORBIDDEN,
+            "GitHub no longer gives you "
+            f"{'write access' if minimum == _CAN_GRANT else 'access'} to this repository",
+            403,
+        )
+
+
 def verify_installation_access(full_name: str, installation_id: int) -> None:
     """Confirm with GitHub — right now — that `installation_id` still grants `full_name`.
 
     The sign-in snapshot (`can_connect`) goes stale when the installation was deleted, the
     repository was removed from it, or the App was reconfigured since the user signed in.
-    When the App isn't configured (dev/test), the snapshot check stands alone.
+    When the App isn't configured, the snapshot check stands alone only in dev/test;
+    elsewhere a grant that cannot be checked live is refused.
     """
     try:
         app = GitHubApp()
-    except GitHubNotConfigured:
-        return
+    except GitHubNotConfigured as exc:
+        if get_settings().is_dev:
+            return
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE,
+            "GitHub access can't be verified right now (GitHub App not configured)",
+            503,
+        ) from exc
     try:
         names = {r["full_name"] for r in app.installation_repositories(installation_id)}
     except httpx.HTTPStatusError as exc:
@@ -104,6 +162,19 @@ def verify_installation_access(full_name: str, installation_id: int) -> None:
         )
 
 
+def _drop_own_login_rows(user_id: str, login: str) -> None:
+    """Forget this user's access rows for repositories under `login`'s own account."""
+    with transaction() as conn:
+        conn.execute(
+            sa.delete(github_repo_access).where(
+                github_repo_access.c.user_id == user_id,
+                sa.func.lower(github_repo_access.c.full_name).startswith(
+                    f"{login.casefold()}/", autoescape=True
+                ),
+            )
+        )
+
+
 def _refresh_personal_installation_repositories(
     user_id: str, login: str | None, github_id: int | None, *, strict: bool = False
 ) -> bool:
@@ -124,6 +195,9 @@ def _refresh_personal_installation_repositories(
         not isinstance(login, str)
         or not login.strip()
         or (github_id is None and settings.is_dev and settings.auth_dev_login_enabled)
+        # A login can be renamed and re-registered by someone else; outside dev only the
+        # immutable GitHub account id may vouch for a personal installation.
+        or (github_id is None and not settings.is_dev)
     ):
         return False
 
@@ -131,6 +205,9 @@ def _refresh_personal_installation_repositories(
         app = GitHubApp()
         installation = app.user_installation(login)
         if installation is None:
+            # GitHub confirms the user has no personal installation (uninstalled): rows for
+            # repositories under their own account came from it and are no longer reachable.
+            _drop_own_login_rows(user_id, login)
             return False
         account = installation.get("account")
         installation_id = installation.get("id")
@@ -148,6 +225,10 @@ def _refresh_personal_installation_repositories(
                 isinstance(account_login, str) and account_login.casefold() == login.casefold()
             )
         if not trusted:
+            # The login now names a different account (renamed and re-registered): repositories
+            # under it are that account's, so this user's rows for them are stale.
+            if account.get("type") == "User" and github_id is not None:
+                _drop_own_login_rows(user_id, login)
             return False
         repositories_for_installation = app.installation_repositories(installation_id)
     except GitHubNotConfigured:
@@ -219,8 +300,8 @@ def _refresh_personal_installation_repositories(
     return True
 
 
-@router.get("/github/repositories")
-def list_accessible_repositories(request: Request) -> dict[str, Any]:
+@router.get("/github/repositories", response_model=AccessibleRepositoryList)
+def list_accessible_repositories(request: Request) -> AccessibleRepositoryList:
     """Repositories the user can connect, and whether each is already connected."""
     with transaction() as conn:
         user = require_user(conn, request)
@@ -231,10 +312,9 @@ def list_accessible_repositories(request: Request) -> dict[str, Any]:
             .mappings()
             .one_or_none()
         )
-    if identity is not None:
-        _refresh_personal_installation_repositories(
-            user.id, identity["github_login"], identity["github_id"]
-        )
+    live_checked = identity is not None and _refresh_personal_installation_repositories(
+        user.id, identity["github_login"], identity["github_id"]
+    )
 
     # The joined repo row must be in a project the user belongs to — shared
     # GitHub visibility of a full_name is not Ari tenant membership.
@@ -251,7 +331,11 @@ def list_accessible_repositories(request: Request) -> dict[str, Any]:
     )
     with transaction() as conn:
         rows = conn.execute(
-            sa.select(github_repo_access, repositories.c.id.label("repo_id"))
+            sa.select(
+                github_repo_access,
+                repositories.c.id.label("repo_id"),
+                repositories.c.disconnected_at,
+            )
             .select_from(github_repo_access)
             .join(
                 repositories,
@@ -265,22 +349,34 @@ def list_accessible_repositories(request: Request) -> dict[str, Any]:
             .order_by(github_repo_access.c.full_name)
         ).mappings()
         items = [
-            {
-                "full_name": r["full_name"],
-                "installation_id": r["installation_id"],
-                "default_branch": r["default_branch"],
-                "private": r["private"],
-                "connected_repo_id": r["repo_id"],
-            }
+            AccessibleRepository(
+                full_name=r["full_name"],
+                installation_id=r["installation_id"],
+                default_branch=r["default_branch"],
+                private=r["private"],
+                connected_repo_id=r["repo_id"],
+                # The row outlives a disconnect (history); this says whether it is live.
+                disconnected=r["disconnected_at"] is not None,
+            )
             for r in rows
         ]
+    # A name can join a parked history row and a live one; list it once, live first.
+    by_name: dict[str, AccessibleRepository] = {}
+    for item in items:
+        kept = by_name.get(item.full_name)
+        if kept is None or (kept.disconnected and not item.disconnected):
+            by_name[item.full_name] = item
+    items = list(by_name.values())
     s = get_settings()
     slug = s.github_app_slug
-    return {
-        "items": items,
-        "install_url": f"{s.github_web_url}/apps/{slug}/installations/new" if slug else None,
-        "next_cursor": None,
-    }
+    return AccessibleRepositoryList(
+        items=items,
+        install_url=f"{s.github_web_url}/apps/{slug}/installations/new" if slug else None,
+        # False: no live re-check ran (no personal installation, or GitHub failed); rows are
+        # from the last sign-in and webhooks. Organization rows are never re-listed here.
+        # Connecting always re-verifies with GitHub, so a stale row can never be connected.
+        live_checked=live_checked,
+    )
 
 
 @router.get("/repositories/{repo_id}/commits")
@@ -347,12 +443,24 @@ def repository_commit(repo: str, sha: str, request: Request) -> dict[str, Any]:
             .mappings()
             .first()
         )
+        identity = conn.execute(
+            sa.select(users.c.github_login, users.c.github_id).where(users.c.id == user.id)
+        ).first()
     if access is None:
         raise ApiError(
             ErrorCode.FORBIDDEN,
             "This repository is not reachable through your GitHub App installation.",
             403,
         )
+    # The access row is a sign-in snapshot; private code is served only to someone GitHub
+    # says can read the repository right now.
+    verify_user_access(
+        repo,
+        access["installation_id"],
+        identity.github_login if identity else None,
+        identity.github_id if identity else None,
+        minimum=_CAN_READ,
+    )
     try:
         data = GitHubApp().commit(access["installation_id"], repo, sha)
     except GitHubNotConfigured as exc:

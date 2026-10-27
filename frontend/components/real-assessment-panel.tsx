@@ -8,7 +8,7 @@ import { RepositoryAutomation } from '@/components/repository-automation';
 import { ErrorState } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
-import { connectRepo, projectForRepository } from '@/lib/github-connect';
+import { connectRepo, liveRepoId, projectForRepository } from '@/lib/github-connect';
 import { assessmentsForCommit, loadCommitAssessments, isSandboxOnlyScope, scopeBody, scopeStateFor } from '@/lib/real-assessment';
 import { ASSESSMENT_STATE, TERMINAL_STATES } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
@@ -38,7 +38,7 @@ export function RealAssessmentPanel({
   onRunSelected?: (assessmentId: string) => void;
 }) {
   const router = useRouter();
-  const [connectedRepoId, setConnectedRepoId] = useState(repo.connected_repo_id);
+  const [connectedRepoId, setConnectedRepoId] = useState(liveRepoId(repo));
   const [acceptedRun, setAcceptedRun] = useState<Assessment | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<unknown>(null);
@@ -53,11 +53,11 @@ export function RealAssessmentPanel({
     const historyKey = `${repoId}:${sha}`;
     const readHistory = async () => {
       if (history.current?.key !== historyKey) {
-        const items = await loadCommitAssessments(cursor => api().assessments(projectId, { signal, ...(cursor ? { cursor } : {}) }), repoId, sha);
+        const items = await loadCommitAssessments(cursor => api().assessments(projectId, { signal, repoId, ...(cursor ? { cursor } : {}) }), repoId, sha);
         history.current = { key: historyKey, items };
         return items;
       }
-      const newest = await api().assessments(projectId, { signal });
+      const newest = await api().assessments(projectId, { signal, repoId });
       const matches = assessmentsForCommit(newest.items, repoId, sha);
       if (matches.length) { history.current = { key: historyKey, items: matches }; return matches; }
       const previous = history.current.items[0];

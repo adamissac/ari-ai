@@ -13,9 +13,9 @@ test('organization → repository → commit keeps real agent work and replay in
   let quickReads = 0;
   page.on('request', request => { if (request.url().endsWith('/api/analyze')) quickReads++; });
   await page.route('**/api/v1/github/repositories', route => route.fulfill({ json: { items: [
-    { full_name: full, installation_id: 1, default_branch: 'main', private: true, connected_repo_id: env('E2E_WORKSPACE_REPO_ID') },
-    { full_name: `${org}/sibling-repository`, installation_id: 1, default_branch: 'main', private: true, connected_repo_id: null },
-  ], next_cursor: null, install_url: null } }));
+    { full_name: full, installation_id: 1, default_branch: 'main', private: true, connected_repo_id: env('E2E_WORKSPACE_REPO_ID'), disconnected: false },
+    { full_name: `${org}/sibling-repository`, installation_id: 1, default_branch: 'main', private: true, connected_repo_id: null, disconnected: false },
+  ], next_cursor: null, install_url: null, live_checked: true } }));
   await page.route(`**/api/v1/repositories/${env('E2E_WORKSPACE_REPO_ID')}/commits`, route => route.fulfill({ json: { items: [
     { sha, message: 'Selected payment change', author: 'test-author', committed_at: null, html_url: null },
     { sha: otherSha, message: 'A different commit', author: 'test-author', committed_at: null, html_url: null },

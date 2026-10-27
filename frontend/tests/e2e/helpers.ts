@@ -29,7 +29,10 @@ export async function completeSetup(
   await page.goto(`/projects/${projectId}/setup?repo=${encodeURIComponent(repoId)}`);
   // Setup is saved on the server, so a second user of the same repo resumes where it was left.
   const step = page.locator('[data-testid^="setup-step-"]');
-  await expect(step).toBeVisible();
+  const done = page.getByTestId('setup-done');
+  await expect(step.or(done)).toBeVisible();
+  // Setup already finished (by this or another user): it is shown as complete, never asked again.
+  if (await done.isVisible()) return;
   const start = Number((await step.getAttribute('data-testid'))!.slice('setup-step-'.length));
   for (let question = start; question < 8; question += 1) {
     if (question === 6) {

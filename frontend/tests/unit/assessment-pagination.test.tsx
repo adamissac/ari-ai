@@ -26,7 +26,7 @@ it('says the list is truncated and appends older checks, deduped by id', async (
   expect(screen.getByTestId('assessments-truncated').textContent).toContain('Showing the newest 3 checks');
   fireEvent.click(screen.getByTestId('load-older-assessments'));
   await waitFor(() => expect(screen.queryByTestId('assessments-truncated')).toBeNull());
-  expect(mocks.assessments).toHaveBeenCalledWith('prj_one', { cursor: 'asm_003' });
+  expect(mocks.assessments).toHaveBeenCalledWith('prj_one', { cursor: 'asm_003', repoId: 'repo-1' });
   expect(within(screen.getByTestId('assessment-history-mobile-list')).getAllByRole('link', { name: /^Open run & replay asm_/ }).map(a => a.getAttribute('href')?.split('?')[0]?.split('/').at(-1))).toEqual(['asm_005', 'asm_004', 'asm_003', 'asm_002', 'asm_001']);
 });
 

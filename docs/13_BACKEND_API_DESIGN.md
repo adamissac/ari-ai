@@ -121,9 +121,9 @@ Event types: `assessment.state_changed`, `assessment.progress`, `finding.updated
 
 ## Rate limits (MVP)
 Per user: authenticated mutations are limited to 60 req/min; GET and HEAD reads use
-a separate limit of 600 req/min. Automatic starts count all project triggers toward
-10 assessments per rolling hour and 50 per rolling day. Manual starts count only
-manual-trigger assessments against the same limits. The global daily spend cap is
+a separate limit of 600 req/min. Manual and automatic starts share one project pool
+of 10 assessments per rolling hour and 50 per rolling day; every start counts every
+recent assessment, whatever its trigger. The global daily spend cap is
 $50 across all projects and triggers. Manual starts blocked by a quota return 429
 `RATE_LIMITED` with a reset time. Automatic starts blocked by a quota are recorded
 as skipped and are not queued or retried. Webhooks are limited to 100/min per

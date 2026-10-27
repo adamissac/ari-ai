@@ -5,11 +5,11 @@ import type { AccessibleRepository, AuthorizedScope } from '@hackatl/frontend-tr
 const mocks = vi.hoisted(() => ({ repository: vi.fn(), updateRepository: vi.fn(), scopes: vi.fn(), assessments: vi.fn(), approveScope: vi.fn(), startAssessment: vi.fn(), assessment: vi.fn(), push: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock('@/lib/api', () => ({ api: () => mocks, idempotencyKey: () => 'key-test' }));
-vi.mock('@/lib/github-connect', () => ({ projectForRepository: async () => 'prj_test', connectRepo: vi.fn() }));
+vi.mock('@/lib/github-connect', () => ({ projectForRepository: async () => 'prj_test', connectRepo: vi.fn(), liveRepoId: (r: AccessibleRepository) => r.disconnected ? null : r.connected_repo_id }));
 vi.mock('@/components/ui', () => ({ ErrorState: ({ context }: { context?: string }) => <div role="alert">{context}</div> }));
 import { RealAssessmentPanel } from '@/components/real-assessment-panel';
 
-const repo: AccessibleRepository = { full_name: 'alice/app', installation_id: 1, default_branch: 'main', private: true, connected_repo_id: 'repo_test' };
+const repo: AccessibleRepository = { full_name: 'alice/app', installation_id: 1, default_branch: 'main', private: true, connected_repo_id: 'repo_test', disconnected: false };
 const scope: AuthorizedScope = {
   id: 'scp_test', project_id: 'prj_test', name: 'Sandbox', status: 'pending', requested_by: 'usr_alice',
   approved_by: null, approved_at: null, expires_at: '2099-01-01T00:00:00Z', notes: null,

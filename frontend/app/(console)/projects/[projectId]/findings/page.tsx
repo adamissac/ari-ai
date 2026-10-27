@@ -4,12 +4,11 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useProject } from '@/components/project';
 import { Term } from '@/components/term';
-import { Async, Badge, Button, Empty, ErrorState, Loading, Mono, PageTitle, Panel, Tag, Time } from '@/components/ui';
+import { Async, Badge, Button, Empty, Mono, PageTitle, Panel, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
 import { FINDING_GROUP_NOTE, findingGroup, findingGroupCounts, type FindingGroup } from '@/lib/findings';
 import { shortSha } from '@/lib/format';
 import { FINDING_STATUS, SEVERITY } from '@/lib/status';
-import { findingsForRepo } from '@/lib/repo-analytics';
 import { useResource } from '@/lib/use-resource';
 
 const TABS = [
@@ -21,10 +20,7 @@ const TABS = [
 
 export default function FindingsPage() {
   const { project, selectedRepo } = useProject();
-  const findings = useResource(`findings:${project.id}`, s => api().findings(project.id, { signal: s }));
-  const assessments = useResource(`findings-assessments:${project.id}`, s => api().assessments(project.id, { signal: s }));
-  const snapshots = useResource(selectedRepo ? `findings-snapshots:${selectedRepo.id}` : null,
-    s => selectedRepo ? api().snapshots(selectedRepo.id, { limit: 100 }, { signal: s }) : Promise.resolve({ items: [], next_cursor: null }));
+  const findings = useResource(selectedRepo ? `findings:${project.id}:${selectedRepo.id}` : null, s => api().findings(project.id, { signal: s, repoId: selectedRepo!.id }));
   const [tab, setTab] = useState<FindingGroup>('open');
   return (
     <div className="flex min-w-0 flex-col gap-6">
@@ -41,10 +37,7 @@ export default function FindingsPage() {
       </div>
       <Async resource={findings} label="findings">
         {page => {
-          if (assessments.status === 'loading' || snapshots.status === 'loading') return <Loading label="Loading repository findings" />;
-          if (assessments.status === 'error') return <ErrorState error={assessments.error} onRetry={assessments.reload} />;
-          if (snapshots.status === 'error') return <ErrorState error={snapshots.error} onRetry={snapshots.reload} />;
-          const repoItems = findingsForRepo(selectedRepo.id, assessments.data.items, page.items, snapshots.data.items.map(snapshot => snapshot.id));
+          const repoItems = page.items;
           const counts = findingGroupCounts(repoItems);
           const items = repoItems.filter(f => findingGroup(f.status) === tab);
           if (items.length === 0 && tab === 'open' && counts.open === 0 && counts.hypothesis + counts.fixed + counts.closed > 0) {
