@@ -224,3 +224,23 @@ def test_mid_line_secret_values_are_redacted_without_breaking_parse(
         for i in parser.issues
         if i.path in {"app/midline.py", "app/closers.py", "app/still_code.py"}
     ]
+
+
+def test_javascript_is_indexed_and_bulk_data_yields_to_code(repository: tuple[Path, str]) -> None:
+    path, _ = repository
+    (path / "web").mkdir()
+    (path / "web/app.js").write_text("export function login(user) { return user.id; }\n")
+    (path / "web/view.tsx").write_text("export const View = () => null;\n")
+    (path / "web/vendor.min.js").write_text("var a=1;" * 50 + "\n")
+    (path / "data").mkdir()
+    (path / "data/big.json").write_text('{"rows": "' + "x" * 4000 + '"}\n')
+    sha = commit(path)
+    _, files, issues = GitReader(path).read(sha)
+    languages = {f.path: f.language for f in files}
+    assert languages["web/app.js"] == "javascript" and languages["web/view.tsx"] == "typescript"
+    assert "web/vendor.min.js" not in languages  # minified bundles are not code to review
+    # A budget too small for everything keeps the code and skips the data, with a reason.
+    code_bytes = sum(len(f.content.encode()) for f in files if f.path != "data/big.json")
+    _, kept, skipped = GitReader(path, Limits(max_total_bytes=code_bytes + 100)).read(sha)
+    assert "web/app.js" in {f.path for f in kept}
+    assert {i.path: i.reason for i in skipped}["data/big.json"] == "over the index size budget"
