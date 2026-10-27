@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Console, Defense Lab and site pages now use darker, route-specific versions of the landing lava-lamp background, and the project header, repo bar and tabs share one translucent band instead of alternating dark/light stripes.
+- Removed the landing explainer video without a replacement for now, aligned the pricing FAQ answers to a consistent divider and question-text baseline, and shortened the scroll-driven story tracks.
 - Reframed Defense Lab as a recorded network-defense console with recommendation-only status and local demo approvals.
 - Removed the misaligned Setup coach marks and post-setup tour; question guidance now sits inline and completion links to the project workspace.
 - Audit follow-up (F06/F08/F10/F17/F21/F22/F24/F25/F27):
