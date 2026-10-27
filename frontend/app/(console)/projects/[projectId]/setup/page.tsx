@@ -193,11 +193,10 @@ function Walkthrough({
           review: { ...review, strictness, review_pushes: pushes, review_pull_requests: pullRequests, comment_on_pull_requests: comments },
         });
         // Watching means this repository's commits are actually reviewed: the per-repository
-        // automatic switch is the gate pushes check, so the answer sets it too.
-        if (repo.automatic_assessments !== watch) {
-          await api().updateRepository(repo.id, { automatic_assessments: watch });
-          window.dispatchEvent(new Event('ari:automation-changed'));
-        }
+        // automatic switch is the gate pushes check, so the answer always sets it (the
+        // repository prop is a snapshot and can be stale after Back).
+        await api().updateRepository(repo.id, { automatic_assessments: watch });
+        window.dispatchEvent(new Event('ari:automation-changed'));
         await recordAnswer('watch', watch);
         return;
       case 6:
