@@ -2,10 +2,10 @@ import { ApiError } from '@hackatl/frontend-transport';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ approvals: [] as unknown[], findings: [] as unknown[], assessments: [] as unknown[] }));
+const state = vi.hoisted(() => ({ approvals: [] as unknown[], findings: [] as unknown[], assessments: [] as unknown[], deliveryMode: 'manual' as string }));
 
 vi.mock('@/components/project', () => ({ useProject: () => ({
-  project: { id: 'prj_1' },
+  project: { id: 'prj_1', settings: { delivery_mode: state.deliveryMode } },
   selectedRepo: { id: 'rep_1', full_name: 'acme/payments', default_branch: 'main' },
 }) }));
 vi.mock('@/components/session', () => ({ useSession: () => ({ me: { user: { id: 'usr_me' } } }) }));
@@ -28,6 +28,7 @@ afterEach(() => {
   cleanup();
   state.approvals = [];
   state.findings = [];
+  state.deliveryMode = 'manual';
   state.assessments = [];
 });
 
@@ -79,9 +80,39 @@ describe('approval inbox explains who decides and what is allowed', () => {
     expect((screen.getByRole('button', { name: 'Approve pr' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it('describes the execution boundary when nothing is pending', () => {
+  it('describes the execution boundary when nothing is pending and delivery is manual', () => {
     render(<ApprovalsPage />);
+    expect(screen.getByTestId('approval-delivery-note').textContent).toContain('Ari asks here before it builds a candidate fix');
     expect(screen.getByText(/never merges or deploys on its own/)).toBeTruthy();
+  });
+
+  it('does not promise a human decision when standing owner authorization delivers fixes as pull requests', () => {
+    state.deliveryMode = 'pull_request';
+    render(<ApprovalsPage />);
+    const note = screen.getByTestId('approval-delivery-note').textContent ?? '';
+    expect(note).not.toContain('asks here before it builds');
+    expect(note).toContain('approved automatically');
+    expect(note).toContain('pull request');
+    expect(note).toContain('never merges or deploys');
+  });
+
+  it('says that auto-commit delivery pushes without a human check', () => {
+    state.deliveryMode = 'auto';
+    render(<ApprovalsPage />);
+    const note = screen.getByTestId('approval-delivery-note').textContent ?? '';
+    expect(note).toContain('approved automatically');
+    expect(note).toContain('default branch');
+    expect(note).not.toContain('never merges');
+  });
+
+  it('labels an auto-approved remediation as automatic, not as a decision you made', () => {
+    state.deliveryMode = 'pull_request';
+    state.approvals = [approval({ requested_by: null, status: 'approved', decided_by: 'usr_me', decided_at: '2026-10-27T00:01:00Z', reason: 'auto delivery: pre-approved by the project owner' })];
+    render(<ApprovalsPage />);
+    const decided = screen.getByTestId('approval-decided').textContent ?? '';
+    expect(decided).toContain('Approved automatically');
+    expect(decided).toContain('on your behalf');
+    expect(decided).not.toMatch(/Decided by you/);
   });
 });
 

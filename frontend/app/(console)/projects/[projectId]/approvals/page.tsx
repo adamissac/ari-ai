@@ -1,6 +1,6 @@
 'use client';
 
-import type { Approval, ApprovalSubject } from '@hackatl/frontend-transport';
+import type { Approval, ApprovalSubject, DeliveryMode } from '@hackatl/frontend-transport';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useProject } from '@/components/project';
@@ -24,6 +24,14 @@ const WHAT: Record<ApprovalSubject, { will: string; wont: string }> = {
   pr: { will: 'Lets the platform open a pull request with the verified patch for human review.', wont: 'Merge the pull request or deploy.' },
 };
 
+const DELIVERY_NOTE: Record<DeliveryMode, string> = {
+  manual: 'Ari asks here before it builds a candidate fix or opens a pull request, and it never merges or deploys on its own.',
+  pull_request: 'Fix delivery is set to "Open a pull request": candidate fixes are approved automatically on behalf of the owner who authorized delivery, and each independently verified fix arrives as a pull request. Sandbox testing scopes are still decided here. Ari never merges or deploys on its own.',
+  auto: 'Fix delivery is set to "Commit to the default branch": candidate fixes are approved automatically on behalf of the owner who authorized delivery, and each independently verified fix is committed to the default branch with no human check (a pull request if the branch moved or is protected). Sandbox testing scopes are still decided here.',
+};
+const AUTO_APPROVED_REASON = 'auto delivery';
+const isAutoApproved = (a: Approval) => a.status === 'approved' && (a.reason ?? '').startsWith(AUTO_APPROVED_REASON);
+
 export default function ApprovalsPage() {
   const { project, selectedRepo } = useProject();
   const [wholeProject, setWholeProject] = useState(false);
@@ -42,9 +50,14 @@ export default function ApprovalsPage() {
       <Async resource={approvals} label="approvals">
         {page => {
           const items = [...page.items].sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending') || b.requested_at.localeCompare(a.requested_at));
-          return items.length === 0 ? <Empty>No approvals requested yet. Ari asks here before it builds a candidate fix or opens a pull request, and it never merges or deploys on its own.</Empty> : (
-            <ul className="flex flex-col gap-3">{items.map(a => <ApprovalRow key={a.id} approval={a} onDone={approvals.reload} />)}</ul>
-          );
+          return (<>
+            <p className="mb-3 text-xs text-muted" data-testid="approval-delivery-note">
+              {DELIVERY_NOTE[project.settings.delivery_mode]} Change it under <Link className="text-accent hover:underline" href={`/projects/${project.id}/settings`}>Settings → Fix delivery</Link>.
+            </p>
+            {items.length === 0 ? <Empty>No approvals requested yet.</Empty> : (
+              <ul className="flex flex-col gap-3">{items.map(a => <ApprovalRow key={a.id} approval={a} onDone={approvals.reload} />)}</ul>
+            )}
+          </>);
         }}
       </Async>
     </Panel>
@@ -106,7 +119,12 @@ function ApprovalRow({ approval, onDone }: { approval: Approval; onDone: () => v
           )}
         </>)
       ) : (
-        <p className="mt-2 text-xs text-muted">Decided by {approval.decided_by === me.user.id ? 'you' : <Mono>{approval.decided_by ?? '—'}</Mono>} <Time iso={approval.decided_at} />{approval.reason && <> — {approval.reason}</>}</p>
+        <p className="mt-2 text-xs text-muted" data-testid="approval-decided">
+          {isAutoApproved(approval)
+            ? <>Approved automatically {approval.decided_by === me.user.id ? 'on your behalf' : <>on behalf of <Mono>{approval.decided_by ?? '—'}</Mono></>} under the project&apos;s fix-delivery setting; no one clicked Approve.</>
+            : <>Decided by {approval.decided_by === me.user.id ? 'you' : <Mono>{approval.decided_by ?? '—'}</Mono>}</>}
+          {' '}<Time iso={approval.decided_at} />{approval.reason && <> — {approval.reason}</>}
+        </p>
       )}
       {error !== null && <div className="mt-2"><ErrorState error={error} context="Decision not recorded" /></div>}
     </li>
