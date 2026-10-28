@@ -373,3 +373,102 @@ def test_default_bot_exclusion_still_skips_bots(automatic, settings_override, lo
     assert post_webhook(alice, p).status_code == 202
     worker.drain(kinds=["process_github_delivery", "assess_github_commit"])
     assert records() == []
+
+
+# --- Codex independent review: revocation race, lost responses, several PRs per commit --
+
+
+@pytest.mark.parametrize("legacy_payload", [False, True])
+def test_disconnect_committed_after_precheck_still_blocks_the_review_post(
+    automatic, monkeypatch, legacy_payload
+):
+    """The disconnect lands between the handler's pre-check and the GitHub call. A job
+    queued before ``repo_id`` was in the payload is not cancelled by the disconnect, so
+    only the locked re-check right before the POST protects it."""
+    alice, bob, ids, _ = automatic
+    seed_pr_assessment(ids, bob)
+    if legacy_payload:
+        with transaction() as conn:
+            conn.execute(
+                sa.update(jobs)
+                .where(jobs.c.kind == "post_pr_review")
+                .values(payload=jobs.c.payload.op("-")("repo_id"))
+            )
+    calls = []
+
+    class GitHub:
+        def post_pull_request_review(self, *args):
+            calls.append(args)
+
+    def disconnect_then_client():
+        assert alice.post(f"/api/v1/repositories/{ids['repo']}/disconnect").status_code == 200
+        return GitHub()
+
+    monkeypatch.setattr("backend.auto_commits.github_client", disconnect_then_client)
+    worker.drain(kinds=["post_pr_review"])
+    assert calls == []
+    assert not audits("monitoring.pr_review_posted")
+    if legacy_payload:
+        assert job("post_pr_review")["status"] == "succeeded"
+        assert audits("monitoring.pr_review_skipped")
+    else:
+        assert job("post_pr_review")["status"] == "cancelled"
+
+
+def test_disconnect_cancels_queued_pr_review_jobs(automatic):
+    alice, bob, ids, _ = automatic
+    seed_pr_assessment(ids, bob)
+    assert job("post_pr_review")["status"] == "queued"
+    assert alice.post(f"/api/v1/repositories/{ids['repo']}/disconnect").status_code == 200
+    assert job("post_pr_review")["status"] == "cancelled"
+
+
+def test_lost_review_response_is_never_replayed(automatic, monkeypatch):
+    """GitHub may have created the review; the job must not post again on its own."""
+    _, bob, ids, _ = automatic
+    seed_pr_assessment(ids, bob)
+    calls = []
+
+    class GitHub:
+        def post_pull_request_review(self, *args):
+            calls.append(args)
+            raise httpx.ReadTimeout("response lost", request=httpx.Request("POST", "https://x"))
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+    worker.drain(kinds=["post_pr_review"])
+    assert len(calls) == 1
+    row = job("post_pr_review")
+    assert row["status"] == "recovery_required", row["status"]
+    make_due("post_pr_review")
+    worker.drain(kinds=["post_pr_review"])
+    assert len(calls) == 1  # an operator decides; nothing replays an uncertain effect
+
+
+def test_two_pull_requests_sharing_a_commit_both_get_reviews(automatic, monkeypatch):
+    alice, bob, ids, _ = automatic
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    push(alice, HEAD)
+    assert post_webhook(alice, pr_payload(number=7), event="pull_request").status_code == 202
+    assert post_webhook(alice, pr_payload(number=8), event="pull_request").status_code == 202
+    worker.drain(kinds=["process_github_delivery", "assess_github_commit"])
+    assert records() == [HEAD]  # one assessment for the commit
+    with transaction() as conn:
+        assessment_id = conn.execute(sa.select(assessments.c.id)).scalar_one()
+    complete(assessment_id)
+    calls = []
+
+    class GitHub:
+        def post_pull_request_review(self, *args):
+            calls.append(args)
+
+        def commit(self, installation, repo, sha):
+            return {"sha": sha, "author": {"login": "adamissac"}}
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+    worker.drain(kinds=["post_pr_review"])
+    assert sorted(c[2] for c in calls) == [7, 8]
+    # A third PR opened after the assessment finished gets its own review, nothing is reposted.
+    assert post_webhook(alice, pr_payload(number=9), event="pull_request").status_code == 202
+    worker.drain(kinds=["process_github_delivery", "assess_github_commit", "post_pr_review"])
+    assert sorted(c[2] for c in calls) == [7, 8, 9]
+    assert records() == [HEAD]

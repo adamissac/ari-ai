@@ -33,7 +33,13 @@ from backend.services import (
     project_settings,
 )
 from backend.settings import get_settings
-from backend.worker import JobContext, JobDeferred, PermanentJobError, handler
+from backend.worker import (
+    EffectNotApplied,
+    JobContext,
+    JobDeferred,
+    PermanentJobError,
+    handler,
+)
 from shared.assessment import Assessment, AssessmentState, AssessmentTrigger
 from shared.audit import ActorType
 from shared.base import utcnow
@@ -562,6 +568,8 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
         )
         if repo["installation_id"] != p["installation_id"]:
             return policy_exit(p, "repository installation changed", conn)
+        if repo["disconnected_at"] is not None:  # disconnect committed during the lookup
+            return policy_exit(p, "repository disconnected", conn)
         if not repo["automatic_assessments"]:
             return policy_exit(p, "repository automatic assessments disabled", conn)
         settings = project_settings(conn, repo["project_id"])
@@ -582,7 +590,7 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                 )
             ).scalar_one()
             rrq = ReassessmentRequest.model_validate(row)
-            if p.get("pr_number") and not existing["doc"].get("pr_number"):
+            if p.get("pr_number"):
                 _link_pull_request(conn, existing, rrq, int(p["pr_number"]))
             if rrq.assessment_id:
                 return {"assessment_id": rrq.assessment_id, "idempotent_replay": True}
@@ -770,13 +778,56 @@ def _pr_review_body(
 def _link_pull_request(
     conn: Connection, event: Any, rrq: ReassessmentRequest, pr_number: int
 ) -> None:
-    """Attach a PR to the commit's existing event so its one assessment is reviewed there."""
+    """Attach a PR to the commit's existing request so its one assessment is reviewed there.
+
+    The first PR is recorded on the commit's own event; every further PR sharing the
+    commit gets its own event under the same request, so each one receives a review."""
     from backend.host import _enqueue_pr_review
 
-    doc = {**event["doc"], "pr_number": pr_number}
-    conn.execute(
-        sa.update(monitoring_events).where(monitoring_events.c.id == event["id"]).values(doc=doc)
-    )
+    linked = {
+        int(doc["pr_number"])
+        for doc in conn.execute(
+            sa.select(monitoring_events.c.doc).where(monitoring_events.c.id.in_(rrq.event_ids))
+        ).scalars()
+        if doc.get("pr_number")
+    }
+    if pr_number in linked:
+        return
+    if not event["doc"].get("pr_number"):
+        doc = {**event["doc"], "pr_number": pr_number}
+        conn.execute(
+            sa.update(monitoring_events)
+            .where(monitoring_events.c.id == event["id"])
+            .values(doc=doc)
+        )
+    else:
+        linked_event = MonitoringEvent.model_validate(
+            {
+                **event["doc"],
+                "id": new_id(IdPrefix.evt),
+                "type": EventType.pull_request.value,
+                "pr_number": pr_number,
+                "dedupe_key": f"{event['dedupe_key']}:pr:{pr_number}",
+            }
+        )
+        conn.execute(
+            pg_insert(monitoring_events)
+            .values(
+                id=linked_event.id,
+                project_id=linked_event.project_id,
+                repo_id=linked_event.repo_id,
+                dedupe_key=linked_event.dedupe_key,
+                status=linked_event.status.value,
+                doc=linked_event.model_dump(mode="json"),
+            )
+            .on_conflict_do_nothing(index_elements=["dedupe_key"])
+        )
+        updated = rrq.model_copy(update={"event_ids": [*rrq.event_ids, linked_event.id]})
+        conn.execute(
+            sa.update(reassessment_requests)
+            .where(reassessment_requests.c.id == rrq.id)
+            .values(doc=updated.model_dump(mode="json"))
+        )
     log.info(
         "linked pull request #%d to commit event=%s assessment=%s",
         pr_number,
@@ -794,6 +845,10 @@ def _link_pull_request(
     assessment = Assessment.model_validate(assessment_doc)
     if assessment.state in (AssessmentState.COMPLETED, AssessmentState.AWAITING_APPROVAL):
         _enqueue_pr_review(conn, assessment)
+
+
+class _RepositoryRevoked(EffectNotApplied):
+    """The repository was disconnected (or its installation changed) before the POST."""
 
 
 @handler("post_pr_review")
@@ -829,8 +884,9 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
             .scalars()
             .all()
         )
-        pr_event = next((event for event in event_docs if event.get("pr_number")), None)
-        if pr_event is None:
+        linked = [int(event["pr_number"]) for event in event_docs if event.get("pr_number")]
+        pr_number = int(ctx.job.payload.get("pr_number") or next(iter(linked), 0))
+        if not pr_number:
             return {"noop": "assessment is not linked to a pull request"}
         settings = project_settings(conn, assessment.project_id)
         if not settings.review.comment_on_pull_requests:
@@ -871,16 +927,58 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
         body, finding_count = _pr_review_body(
             assessment_id, assessment.project_id, finding_docs, settings.review.strictness
         )
-        pr_number = int(pr_event["pr_number"])
         project_id = assessment.project_id
         repo_full_name = repo["full_name"]
         installation_id = repo["installation_id"]
         org_id = project_org(conn, project_id)
 
     ctx.check_cancelled()
+    client = github_client()
     try:
-        github_client().post_pull_request_review(installation_id, repo_full_name, pr_number, body)
-    except httpx.HTTPStatusError as exc:
+        # The effect guard makes a lost response ``recovery_required`` instead of a replay:
+        # GitHub may already have created the review, and only an operator can tell.
+        with ctx.effect(f"prreview:{assessment_id}:pr:{pr_number}"):
+            with transaction() as conn:
+                # Same row lock as POST /repositories/{id}/disconnect, taken right before the
+                # network call: a disconnect that committed since the pre-check is seen, and
+                # one still holding the row is waited for. Released before the call itself;
+                # repository locks are never held across a provider request.
+                live = (
+                    conn.execute(
+                        sa.select(repositories.c.disconnected_at, repositories.c.installation_id)
+                        .where(repositories.c.id == assessment.repo_id)
+                        .with_for_update()
+                    )
+                    .mappings()
+                    .one()
+                )
+                if (
+                    live["disconnected_at"] is not None
+                    or live["installation_id"] != installation_id
+                ):
+                    raise _RepositoryRevoked()
+            try:
+                client.post_pull_request_review(installation_id, repo_full_name, pr_number, body)
+            except httpx.HTTPStatusError as exc:
+                raise EffectNotApplied() from exc  # GitHub answered without creating the review
+    except _RepositoryRevoked:
+        with transaction() as conn:
+            audit.record(
+                conn,
+                org_id=org_id,
+                project_id=project_id,
+                actor_type=ActorType.system,
+                actor_id="monitoring",
+                action="monitoring.pr_review_skipped",
+                subject_type="assessment",
+                subject_id=assessment_id,
+                details={"reason": "repository disconnected", "pr_number": pr_number},
+            )
+        log.info("pr review for %s skipped: repository disconnected before post", assessment_id)
+        return {"noop": "repository disconnected"}
+    except EffectNotApplied as guard:
+        exc = guard.__cause__
+        assert isinstance(exc, httpx.HTTPStatusError)
         status_code = exc.response.status_code
         delay = _rate_limit_delay(exc)
         if delay is not None:
@@ -892,7 +990,7 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
                     delay,
                 )
                 raise JobDeferred(delay, "GitHub rate limit") from exc
-            raise  # rate limited for too long: ordinary retry budget, then dead + alert
+            raise exc from None  # rate limited for too long: ordinary retry budget, then dead + alert
         if 400 <= status_code < 500:
             with transaction() as conn:
                 audit.record(
@@ -910,7 +1008,7 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
                 ErrorCode.VALIDATION_FAILED,
                 f"GitHub rejected PR review (HTTP {status_code})",
             ) from exc
-        raise
+        raise exc from None  # 5xx: GitHub answered, nothing was created; normal retry path
 
     with transaction() as conn:
         audit.record(

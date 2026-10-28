@@ -128,31 +128,37 @@ _STATUS_EDGES: dict[FindingStatus, frozenset[FindingStatus]] = {
 _ANYTIME = frozenset({_S.needs_recheck, _S.accepted_risk, _S.closed})
 
 
-def _enqueue_pr_review(conn: Connection, assessment: Assessment) -> None:
-    from backend import jobs
-
+def linked_pull_requests(conn: Connection, assessment: Assessment) -> list[int]:
+    """Every pull request the assessment's GitHub events were linked to, in PR order."""
     request_id = assessment.reassessment_request_id
     if request_id is None:
-        return
+        return []
     request = conn.execute(
         sa.select(reassessment_requests.c.doc).where(reassessment_requests.c.id == request_id)
     ).scalar_one_or_none()
     if not request:
-        return
+        return []
     event_docs = conn.execute(
         sa.select(monitoring_events.c.doc).where(
             monitoring_events.c.id.in_(request.get("event_ids", []) or [""])
         )
     ).scalars()
-    if not any(event.get("pr_number") for event in event_docs):
-        return
-    jobs.enqueue(
-        conn,
-        "post_pr_review",
-        {"assessment_id": assessment.id},
-        dedupe_key=f"prreview:{assessment.id}",
-        priority=80,
-    )
+    return sorted({int(event["pr_number"]) for event in event_docs if event.get("pr_number")})
+
+
+def _enqueue_pr_review(conn: Connection, assessment: Assessment) -> None:
+    """One review job per linked pull request. ``repo_id`` in the payload lets a
+    repository disconnect cancel queued and running review jobs."""
+    from backend import jobs
+
+    for pr_number in linked_pull_requests(conn, assessment):
+        jobs.enqueue(
+            conn,
+            "post_pr_review",
+            {"assessment_id": assessment.id, "repo_id": assessment.repo_id, "pr_number": pr_number},
+            dedupe_key=f"prreview:{assessment.id}:pr:{pr_number}",
+            priority=80,
+        )
 
 
 def _emit(
