@@ -32,6 +32,7 @@ from sqlalchemy.engine import Connection
 from backend import audit, jobs
 from backend.artifacts import ArtifactStore
 from backend.checkouts import FULL_NAME_RE, CheckoutError, _git, _locked, auth_env, fetch_commit
+from backend.connection_guard import RepositoryDetached, require_connected
 from backend.db import (
     approvals,
     assessments,
@@ -384,10 +385,6 @@ def _reason(exc: Exception) -> str:
     return str(exc)[:300]
 
 
-class _Disconnected(Exception):
-    """The repository was disconnected after delivery started."""
-
-
 @handler("deliver_verified_patch")
 def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
     ctx.check_cancelled()
@@ -478,13 +475,9 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
     tip_state = "unknown"
 
     def still_connected() -> None:
-        # The owner can disconnect while this job runs; re-check before each GitHub write.
-        with transaction() as conn:
-            gone = conn.execute(
-                sa.select(repositories.c.disconnected_at).where(repositories.c.id == repo["id"])
-            ).scalar_one_or_none()
-        if gone is not None:
-            raise _Disconnected
+        # The owner can disconnect, or GitHub can detach the installation, while this job
+        # runs; re-check right before each GitHub write.
+        require_connected(str(repo["id"]), iid)
 
     try:
         still_connected()
@@ -549,9 +542,9 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
             title=f"fix: {patch.rationale}"[:120],
             body=pr_body,
         )
-    except _Disconnected:
-        finish("delivery.skipped", reason="repository is disconnected", fallback_from=fallback)
-        return {"status": "skipped", "reason": "repository is disconnected"}
+    except RepositoryDetached as exc:
+        finish("delivery.skipped", reason=exc.reason, fallback_from=fallback)
+        return {"status": "skipped", "reason": exc.reason}
     except (CheckoutError, httpx.HTTPError) as exc:
         if isinstance(exc, httpx.HTTPError) and _transient(exc):
             raise  # the queue retries with backoff; the branch and PR steps are idempotent
