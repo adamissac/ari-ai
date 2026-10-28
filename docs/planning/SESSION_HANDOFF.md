@@ -6,7 +6,7 @@ adds an entry before ending.
 ### 2026-10-27 — Devin (agent, Alan) — security audit of main @ c03a5501
 - Did: Audited trust boundaries; fixed disconnect not stopping queued/in-flight `deliver_verified_patch` and `post_pr_review`; after Codex's NO-GO on #694 added `backend/connection_guard.py` (re-check `disconnected_at` + `installation_id` right before every GitHub write, incl. `propose_build_recipe`); report in `docs/reviews/2026-10-27-security-audit/REPORT.md`.
 - State of the code: Branch `devin/*-security-audit`; PR open, not merged.
-- Commands run and results: targeted pytest (delivery, auto-commits, PR review, build recipes, installation lifecycle, redaction, 9 security tests) — 205 passed; ruff, format, mypy clean.
+- Commands run and results: targeted pytest (delivery, auto-commits, PR review, build recipes, installation lifecycle, redaction, 9 security tests) — 196 passed; ruff, format, mypy clean.
 - Decisions made (ADR links): `repositories.disconnected_at` gates every GitHub write, not only job cancellation.
 - Assumptions / open questions (RQ links): None.
 - Next steps: P2 broader `redact_code` literal forms (see report).
