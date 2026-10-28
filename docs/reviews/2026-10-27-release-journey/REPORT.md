@@ -36,7 +36,7 @@ fixed on #11).
 ## Commands and results (this VM)
 
 - `uv run pytest -q -p no:cacheprovider backend/tests` — 879 passed, 9 skipped (base, before new tests).
-- `uv run pytest -q backend/tests/test_release_journey.py` — 4 passed, 3 xfailed (strict) on this branch; on #12 @ `6223f419` the 3 become XPASS(strict).
+- `uv run pytest -q backend/tests/test_release_journey.py` — 4 passed, 3 xfailed (strict) on this branch; 7 passed in a tree that also contains the review-pipeline fix (adamissac/ari-ai#693 / m-alan08#12 @ `6223f419`).
 - `ruff check`, `ruff format --check`, `mypy`, `shared.export --check`, `shared.examples --check` — clean.
 - Frontend: lint, typecheck, unit (109 files / 472 tests), production build — pass.
 - `tests/e2e/stack.py` full suite (base) — 56 passed, exit 0. `release-journey.spec.ts` — 1 passed.
@@ -49,5 +49,8 @@ fixed on #11).
 
 ## Merge-order note
 
-Whichever of this PR and #12 merges second must drop the `xfail` marker on
-`test_default_bot_exclusion_does_not_skip_human_logins`.
+No action needed in either order. `test_default_bot_exclusion_does_not_skip_human_logins` is a
+strict xfail only while `backend.auto_commits._matches` lacks the `literal_brackets` option
+introduced by #693; once that lands the same test is a hard assertion (verified: 7 passed on
+canonical main + #693 + #694 + this branch). A plain strict xfail failed with XPASS(strict) in
+that combined tree, which is why the marker is conditional.

@@ -7,6 +7,7 @@ code consults it for access checks (so the installation and collaborator checks 
 
 from __future__ import annotations
 
+import inspect
 import types
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -16,7 +17,7 @@ import pytest
 import sqlalchemy as sa
 from helpers import add_member, post_webhook, push_payload
 
-from backend import worker
+from backend import auto_commits, worker
 from backend.db import jobs, transaction
 from backend.settings import get_settings
 
@@ -340,10 +341,18 @@ def _push(client, full_name: str, sha: str, ref: str, sender: str, installation_
     assert post_webhook(client, p).status_code == 202
 
 
+def _author_patterns_use_literal_brackets() -> bool:
+    """True once the review-pipeline fix (adamissac/ari-ai#693) is in the tree."""
+    return "literal_brackets" in inspect.signature(auto_commits._matches).parameters
+
+
+# Strict xfail only while the defect is present, so the test is a hard assertion in any
+# tree that contains the fix and still fails loudly if the fix regresses or the probe lies.
 @pytest.mark.xfail(
+    condition=not _author_patterns_use_literal_brackets(),
     strict=True,
     reason="P1: fnmatch reads the default '*[bot]' exclusion as a character class, so it "
-    "skips every login ending in b/o/t; owned by the review-pipeline session",
+    "skips every login ending in b/o/t; fixed by the review-pipeline PR (#693)",
 )
 @pytest.mark.parametrize("login", ["bob", "octo", "scott"])
 def test_default_bot_exclusion_does_not_skip_human_logins(
