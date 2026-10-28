@@ -13,7 +13,7 @@ OPS_TOKEN=... deploy/scripts/smoke_staging.sh <staging-url>
 
 | # | Item | Verified by |
 |---|---|---|
-| 1 | CI success on the release commit | `release_check.py` (via `gh` when authed, else manual). Every check must have run and succeeded: an empty check list FAILs, and a SKIPPED/NEUTRAL check (gitleaks, audit, regression gates) is reported by name and blocks under `--strict` unless named with `--allow-skipped-check` |
+| 1 | CI success on the release commit | `release_check.py` (via `gh` when authed, else manual). Every check must have run and succeeded: an empty check list FAILs, and a SKIPPED/NEUTRAL check (gitleaks, audit, regression gates) is reported by name and blocks under `--strict` unless named with `--allow-skipped-check`. Commit statuses (`state`/`context` rows) count like check runs. Under `--strict` every gate in `REQUIRED_GATES` must have produced a row; a gate that did not run is a FAIL |
 | 2 | Migration compatibility — DB at code head | `migration_status` / `ops/status` `at_head` |
 | 3 | Secrets and configuration valid for the env | `hackatl-preflight` (also runs at every boot) |
 | 4 | Authentication required, authorization enforced | `smoke_staging.sh` (401 unauth, POST rejected, foreign CORS rejected, dev-login 404) |

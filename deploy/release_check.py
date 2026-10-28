@@ -24,6 +24,30 @@ REPO = Path(__file__).resolve().parents[1]
 
 results: list[tuple[str, str, str]] = []
 
+# Every gate that must produce a row before --strict can sign off. A gate that never
+# ran (e.g. --no-http, an exception, a future refactor) is a missing-evidence FAIL,
+# not a silent pass.
+REQUIRED_GATES: tuple[str, ...] = (
+    "CI success",
+    "secrets and configuration",
+    "migration compatibility",
+    "health check",
+    "readiness + job queue availability",
+    "authentication required",
+    "worker/job-queue visibility",
+    "first-responder OFF by default",
+    "stuck assessments/jobs",
+    "failed jobs (24h)",
+    "recommendation-only posture",
+    "emergency-stop endpoint",
+    "cancellation endpoint",
+    "first-responder OFF (database)",
+    "backup and recovery",
+    "backup readable",
+    "rollback readiness",
+    "read-only pilot scope",
+)
+
 
 def report(status: str, name: str, evidence: str) -> None:
     results.append((status, name, evidence))
@@ -90,6 +114,11 @@ def check_ci(strict: bool = False, allow_skipped: tuple[str, ...] = ()) -> None:
     def names(cs: list[dict[str, Any]]) -> str:
         return ", ".join(sorted(name(c) for c in cs)[:8])
 
+    for c in checks:  # StatusContext rows carry state/context instead of status/conclusion/name
+        if "state" in c and "status" not in c:
+            state = str(c.get("state") or "").upper()
+            c["status"] = "COMPLETED" if state in ("SUCCESS", "FAILURE", "ERROR") else "PENDING"
+            c["conclusion"] = state
     completed = [c for c in checks if c.get("status") in ("COMPLETED", "SUCCESS")]
     pending = [c for c in checks if c not in completed]
     failed = [
@@ -377,7 +406,16 @@ def main() -> int:
     check_rollback()
     check_pilot_scope()
 
-    blocking = ("FAIL", "WARN", "SKIP") if args.strict else ("FAIL",)
+    return finalize(strict=args.strict)
+
+
+def finalize(strict: bool) -> int:
+    if strict:
+        seen = {name for _, name, _ in results}
+        for gate in REQUIRED_GATES:
+            if gate not in seen:
+                report("FAIL", gate, "gate produced no evidence (did not run)")
+    blocking = ("FAIL", "WARN", "SKIP") if strict else ("FAIL",)
     fails = sum(1 for s, *_ in results if s in blocking)
     print("---")
     print(f"release check: {len(results)} checks, {fails} failed")

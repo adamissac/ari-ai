@@ -62,6 +62,8 @@ Railway secret store only. Pilot-specific variables:
    The CI gate counts only checks that ran and succeeded; a skipped security or
    regression check blocks unless you name it with `--allow-skipped-check`
    (only for opt-in jobs such as `live`), and a PR with no checks fails.
+   Strict mode also refuses to sign off when any gate in `REQUIRED_GATES`
+   produced no row (so `--no-http`, a crash or a skipped section cannot pass).
    for every gate. Paste both outputs into the release note.
 
 ## 4. Monitoring

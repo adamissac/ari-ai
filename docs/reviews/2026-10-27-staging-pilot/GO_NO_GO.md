@@ -56,6 +56,10 @@ Evidence files are in [`evidence/`](evidence/) (copied from the gitignored
   `PASS all 0 checks green`, and SKIPPED/no-conclusion checks (e.g. gitleaks, audit)
   counted as green. Now an empty rollup FAILs, skipped checks are named and block
   under `--strict`, and only `--allow-skipped-check NAME` opt-in jobs may be skipped.
+  Follow-up hardening of the same gate: commit-status rows (`state`/`context`, e.g.
+  Devin Review) are read like check runs instead of being misfiled as pending, and
+  strict sign-off requires every `REQUIRED_GATES` entry to have produced a row —
+  a gate that never ran (`--no-http`, exception) is a FAIL, not silence.
 
 ## Residual risks
 

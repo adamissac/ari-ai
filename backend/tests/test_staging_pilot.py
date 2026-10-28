@@ -290,3 +290,33 @@ def test_ci_gate_passes_only_when_every_non_allowlisted_check_succeeded(monkeypa
     assert _ci_gate(monkeypatch, [_done("backend-tests", "SUCCESS")], strict=True)[0] == "PASS"
     failing = [_done("backend-tests", "FAILURE"), _done("live", "SKIPPED")]
     assert _ci_gate(monkeypatch, failing, strict=True, allow=("live",))[0] == "FAIL"
+
+
+def test_ci_gate_reads_commit_statuses_as_well_as_check_runs(monkeypatch) -> None:
+    # `gh pr view --json statusCheckRollup` mixes CheckRun rows (status/conclusion/name) with
+    # StatusContext rows (state/context); a failing or pending commit status must not vanish.
+    ok = [_done("backend-tests", "SUCCESS"), {"context": "Devin Review", "state": "SUCCESS"}]
+    assert _ci_gate(monkeypatch, ok, strict=True)[0] == "PASS"
+    failing = [_done("backend-tests", "SUCCESS"), {"context": "Devin Review", "state": "FAILURE"}]
+    status, detail = _ci_gate(monkeypatch, failing, strict=True)
+    assert status == "FAIL" and "Devin Review" in detail
+    pending = [_done("backend-tests", "SUCCESS"), {"context": "Devin Review", "state": "PENDING"}]
+    assert _ci_gate(monkeypatch, pending, strict=True)[0] == "WARN"
+
+
+def test_strict_signoff_requires_every_gate_to_have_reported() -> None:
+    rc = _release_check()
+    rc.results.clear()
+    for gate in rc.REQUIRED_GATES:
+        rc.report("PASS", gate, "ok")
+    assert rc.finalize(strict=True) == 0
+    rc.results.clear()
+    assert rc.finalize(strict=True) != 0  # nothing ran: must not sign off
+    rc.results.clear()
+    for gate in rc.REQUIRED_GATES[1:]:
+        rc.report("PASS", gate, "ok")
+    assert rc.finalize(strict=True) != 0  # one gate never produced a row
+    assert any(s == "FAIL" and rc.REQUIRED_GATES[0] in n for s, n, _ in rc.results)
+    rc.results.clear()
+    rc.report("PASS", rc.REQUIRED_GATES[0], "ok")
+    assert rc.finalize(strict=False) == 0  # non-strict keeps today's FAIL-only semantics
