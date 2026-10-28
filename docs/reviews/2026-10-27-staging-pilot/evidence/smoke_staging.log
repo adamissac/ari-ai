@@ -19,4 +19,4 @@ PASS staging is recommendation-only
 PASS staging direct delivery disabled
 PASS openapi.json served-or-gated (404)
 ---
-smoke: 20 passed, 0 failed (http://127.0.0.1:51403)
+smoke: 20 passed, 0 failed (http://127.0.0.1:41847)

@@ -1,6 +1,6 @@
-[SKIP] CI success: no pull requests found for branch "devin/1793143123-staging-pilot-readiness"
+[WARN] CI success: 6 checks skipped, not evidence: CodeRabbit, independent-codex, live, pin, publish, strict-regressions
 [WARN] config: SESSION_SECRET is unset (declared in .env.example for signed payloads): SESSION_SECRET is unset (declared in .env.example for signed payloads)
-[WARN] config: API_BASE_URL is not https (http: API_BASE_URL is not https (http://127.0.0.1:51403)
+[WARN] config: API_BASE_URL is not https (http: API_BASE_URL is not https (http://127.0.0.1:41847)
 [WARN] config: FRONTEND_ORIGIN is not https (http: FRONTEND_ORIGIN is not https (http://127.0.0.1:3000)
 [PASS] secrets and configuration: APP_ENV=staging, no blocking errors
 [PASS] migration compatibility: at head ['0021']
@@ -15,9 +15,9 @@
 [PASS] emergency-stop endpoint: mounted (unauthenticated request rejected)
 [PASS] cancellation endpoint: mounted (unauthenticated request rejected)
 [PASS] first-responder OFF (database): no project has a non-off stored mode
-[PASS] backup and recovery: hackatl-20261027T233013Z.dump (0.0h old)
-[PASS] backup readable: pg_restore --list ok on hackatl-20261027T233013Z.dump
-[PASS] rollback readiness: restore script + runbook present; deployed-from sha e986bcff
+[PASS] backup and recovery: hackatl-20261028T035653Z.dump (0.0h old)
+[PASS] backup readable: pg_restore --list ok on hackatl-20261028T035653Z.dump
+[PASS] rollback readiness: restore script + runbook present; deployed-from sha e244dc26
 [PASS] read-only pilot scope: APP_ENV=staging, dev login off, feature_flags=none
 ---
 release check: 21 checks, 0 failed

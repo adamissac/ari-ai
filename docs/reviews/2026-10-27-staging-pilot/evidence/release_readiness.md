@@ -1,7 +1,7 @@
 # Pilot release-readiness report — GO
 
-- Mode: `local` · Commit: `e986bcff`
-- Started: 2026-10-27T23:29:43+00:00 · Finished: 2026-10-27T23:30:17+00:00
+- Mode: `local` · Commit: `e244dc26`
+- Started: 2026-10-28T03:56:23+00:00 · Finished: 2026-10-28T03:56:57+00:00
 - 25 checks: 0 FAIL, 0 WARN, 25 PASS, 0 SKIP
 
 | Check | Result | Evidence |
@@ -10,20 +10,20 @@
 | Preflight rejects staging without secrets | PASS | exit=1; errors include missing secrets |
 | Preflight accepts complete staging config | PASS | config+worker checks pass |
 | Alembic migrations to unified head | PASS | at head ['0021'] |
-| API boots under staging config | PASS | /healthz 200 on :51403 |
+| API boots under staging config | PASS | /healthz 200 on :41847 |
 | Worker boots (preflight + migrate gate) | PASS | real hackatl-worker started |
 | Worker graceful SIGTERM (deploy drain) | PASS | idle worker exited rc=0 |
-| Staging smoke suite (real HTTP) | PASS | smoke: 20 passed, 0 failed (http://127.0.0.1:51403) |
-| Job claim → run → complete | PASS | release_probe_success job job_01M5ZV5RHCD7MD37Z4KW1MH1HT succeeded (attempts=1) |
+| Staging smoke suite (real HTTP) | PASS | smoke: 20 passed, 0 failed (http://127.0.0.1:41847) |
+| Job claim → run → complete | PASS | release_probe_success job job_01M60AE1J31Z91JM74XB6T9KZ0 succeeded (attempts=1) |
 | Critical-failure alert webhook | PASS | sink received job_failed_permanent severity=critical |
 | Secret redaction in alert payload | PASS | payload carries [REDACTED:anthropic_key], raw key absent |
 | Worker JSON log format (staging auto) | PASS | 4 parseable JSON log lines |
 | Secret never reaches worker log stream | PASS | raw probe secret absent from worker output |
-| Worker crash → lease expiry → re-claim | PASS | killed owner devin-box:36814; job job_01M5ZV5SM1FEEAV4Y5KPHTXT1F succeeded attempts=2 |
-| pg_dump backup | PASS | hackatl-20261027T233013Z.dump (size:   124K) |
+| Worker crash → lease expiry → re-claim | PASS | killed owner devin-box:81348; job job_01M60AE2MT3PZ8SYKP8EZ29NMX succeeded attempts=2 |
+| pg_dump backup | PASS | hackatl-20261028T035653Z.dump (size:   124K) |
 | Restore drill into scratch DB | PASS | restored DB at head, jobs rows=3 |
-| Operator session → create project | PASS | project prj_01M5ZV6EJ5SMR9ZWYTYBDP1R4A via minted session |
-| Non-member cannot read foreign project | PASS | GET /projects/prj_01M5ZV6EJ5SMR9ZWYTYBDP1R4A as non-member -> 404 |
+| Operator session → create project | PASS | project prj_01M60AEQMHTQGRPD5ZAM72S6MV via minted session |
+| Non-member cannot read foreign project | PASS | GET /projects/prj_01M60AEQMHTQGRPD5ZAM72S6MV as non-member -> 404 |
 | Emergency stop requires owner role | PASS | non-owner POST emergency-stop -> 404 |
 | Emergency-stop end-to-end (API→queue→worker) | PASS | POST -> 201; worker job status=succeeded |
 | Emergency-stop clear path | PASS | clear -> 200, active=False |
