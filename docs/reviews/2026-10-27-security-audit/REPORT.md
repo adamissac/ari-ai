@@ -27,6 +27,38 @@ disconnect during the slow fetch/tip-check window also stops the write.
 were still posted to the pull request after disconnect.
 Fix (`backend/backend/auto_commits.py`): no-op when `disconnected_at` is set.
 
+### H2 — High — Check-then-write window; installation detachment not re-checked; build-recipe writes unguarded (Reproduced, fixed; Codex re-review 2026-10-28)
+Codex's independent review of #694 found three gaps left by H1/M1:
+1. The disconnect check ran in its own transaction, then the GitHub write followed. A
+   disconnect landing between the two (e.g. during `fetch_commit`, or between
+   `post_pr_review`'s read and its POST) still let the push / review reach GitHub.
+2. Only `disconnected_at` was consulted. When GitHub detached the App installation
+   (`installation.deleted`, `installation_repositories.removed`, `repository.deleted` →
+   `installations._detach` clears `repositories.installation_id`), the running job kept
+   using the token it had already minted and wrote anyway.
+3. `propose_build_recipe` checked the connection once at job start, then spent the slow
+   analysis/draft phase without re-checking before the write token, `push_patch`, or
+   `open_pull_request`.
+Repro (all five fail on `ea3d58e6`, pass now):
+`test_installation_detached_during_delivery_stops_before_the_github_write`
+(`FakeApp.calls == [('push', 'main', True)]`),
+`test_disconnect_right_before_the_pr_review_post_stops_it` and
+`test_installation_detached_before_the_pr_review_post_stops_it` (review POSTed),
+`test_disconnect_during_recipe_drafting_stops_the_push_and_pr` and
+`test_installation_detached_during_recipe_drafting_stops_the_push_and_pr` (recipe PR opened
+and `ari/build-recipe` pushed to the remote).
+Fix (`backend/backend/connection_guard.py`): `require_connected(repo_id, installation_id)`
+re-reads `disconnected_at` and `installation_id` and raises `RepositoryDetached` with the
+reason when the repo is disconnected, detached, or re-bound to another installation.
+`deliver_verified_patch` and `propose_build_recipe` call it immediately before the write
+token, each push, and the pull request (recording `delivery.skipped` / `recipe.skipped`
+with the reason); `post_pr_review` calls `connection_problem` immediately before the POST.
+The read is still not atomic with the GitHub call itself — a disconnect committed while the
+HTTP request is in flight cannot be recalled — but the window is now the single network
+call rather than the whole job, and `assess_commit` already serialises its scheduling
+under a row lock. Not changed: `installations.py` (detachment itself was complete; what
+was missing was that running writers never looked at it).
+
 ### P2 — N8 password-literal leakage: historical forms fixed; broader literal forms remain (Reviewed, not fixed)
 On current main the reported N8 forms (quoted mapping keys, subscripts, annotated
 assignments) and the N9 statement-boundary regression are fixed:
@@ -68,5 +100,7 @@ provider calls use the repo's own installation, so no cross-tenant read was foun
 - Concurrency of duplicate webhook deliveries under real parallel requests.
 
 ## Regression coverage
-`backend/tests/test_security_audit_disconnect_writes.py` (4 tests: queued auto push,
-queued PR-mode delivery audit, disconnect mid-delivery, queued PR review comment).
+`backend/tests/test_security_audit_disconnect_writes.py` (9 tests: queued auto push,
+queued PR-mode delivery audit, disconnect mid-delivery, queued PR review comment;
+installation detached mid-delivery, disconnect / detachment immediately before the review
+POST, disconnect / detachment during build-recipe drafting).
