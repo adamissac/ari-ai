@@ -34,8 +34,12 @@ test('multi-repository project: connect, per-repository setup, disconnect and re
   expect(created.status(), await created.text()).toBe(201);
   const projectId = ((await created.json()) as { id: string }).id;
 
-  const connect = async (name: string): Promise<void> => {
-    await page.goto(`/projects/${projectId}/settings#connect-repo`);
+  // `repo` pins the project's selected repository: without it the shell picks the first
+  // live row of the API list, whose order is unspecified, and an unfinished pick redirects
+  // Settings to that repository's Setup (see REPORT.md, P2).
+  const connect = async (name: string, repo?: string): Promise<void> => {
+    const query = repo ? `?repo=${encodeURIComponent(repo)}` : '';
+    await page.goto(`/projects/${projectId}/settings${query}#connect-repo`);
     await page.getByLabel('owner/name').fill(name);
     await page.getByRole('button', { name: 'Connect', exact: true }).click();
   };
@@ -52,7 +56,7 @@ test('multi-repository project: connect, per-repository setup, disconnect and re
   expect(firstId).toBe(await idOf(first));
   await completeSetup(page, projectId, firstId);
   // A second repository joins the same project's Repositories list.
-  await connect(second);
+  await connect(second, firstId);
   await expect(page.getByTestId(`repo-controls-${second}`)).toBeVisible();
   const secondId = await idOf(second);
   expect(secondId).not.toBe(firstId);

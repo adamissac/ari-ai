@@ -2794,6 +2794,6 @@ Exact b6d5108b6f0678a6af9546f60d28508716cc4982: 194 pass/0 fail/0 skip, exit0, s
 
 - Tests and review only; no product code changed. New: `backend/tests/test_release_journey.py`, `frontend/tests/e2e/release-journey.spec.ts`, `docs/reviews/2026-10-27-release-journey/REPORT.md`.
 - P1 (review-pipeline lane, fix on m-alan08/ari-ai#12): default `exclude_authors=["*[bot]"]` is a `fnmatch` character class, so pushes by logins ending in b/o/t are skipped. Strict xfail here is XFAIL on `main` and XPASS(strict) on #12; whichever PR lands second drops the marker.
-- P2 (UX lane): connecting a second repository from Settings stays on Settings rather than opening that repository's Setup.
+- P2 (UX + backend): after connecting an additional repository, the landing page is unpredictable because the shell selects the first row of the unordered repositories list (no ORDER BY) and an unfinished pick redirects Settings to Setup; the spec pins `?repo=` to stay deterministic.
 - Verified on this VM: backend 879 passed / 9 skipped (base); new backend tests 4 passed / 3 strict xfail; full real-stack E2E 56 passed; `release-journey.spec.ts` 1 passed; contract freshness, ruff, mypy, frontend lint/typecheck/unit/build clean.
 - Not executed: live GitHub OAuth/App installation, live model, Docker sandbox.
