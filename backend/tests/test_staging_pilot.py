@@ -241,3 +241,52 @@ def test_release_gate_fails_on_stuck_work_or_unsafe_staging_posture() -> None:
         _gate({k: v for k, v in safe.items() if k != "stuck"})["stuck assessments/jobs"] == "FAIL"
     )
     assert _gate(safe | {"failed_jobs_24h": {"dead": 2}})["failed jobs (24h)"] == "WARN"
+
+
+# --- CI evidence gate (Codex release review findings) --------------------------------------
+
+
+def _ci_gate(monkeypatch, checks: list[dict] | None, *, strict: bool, allow: tuple[str, ...] = ()):
+    import json
+    import subprocess
+    from types import SimpleNamespace
+
+    rc = _release_check()
+    rollup = json.dumps({"number": 1, "statusCheckRollup": checks})
+
+    def fake_run(cmd, **_kw):
+        if cmd[:2] == ["gh", "pr"]:
+            return SimpleNamespace(returncode=0, stdout=rollup, stderr="")
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    rc.check_ci(strict=strict, allow_skipped=allow)
+    return {name: (status, detail) for status, name, detail in rc.results}["CI success"]
+
+
+def _done(name: str, conclusion: str | None) -> dict:
+    return {"name": name, "status": "COMPLETED", "conclusion": conclusion}
+
+
+def test_ci_gate_rejects_an_empty_check_list(monkeypatch) -> None:
+    assert _ci_gate(monkeypatch, [], strict=True)[0] == "FAIL"
+    assert _ci_gate(monkeypatch, [], strict=False)[0] == "FAIL"
+    assert _ci_gate(monkeypatch, None, strict=True)[0] == "FAIL"
+
+
+def test_ci_gate_does_not_count_skipped_security_checks_as_pass(monkeypatch) -> None:
+    checks = [_done("backend-tests", "SUCCESS"), _done("gitleaks", "SKIPPED"), _done("audit", None)]
+    status, detail = _ci_gate(monkeypatch, checks, strict=True)
+    assert status != "PASS"
+    assert "gitleaks" in detail and "audit" in detail
+    assert _ci_gate(monkeypatch, checks, strict=False)[0] == "WARN"
+
+
+def test_ci_gate_passes_only_when_every_non_allowlisted_check_succeeded(monkeypatch) -> None:
+    checks = [_done("backend-tests", "SUCCESS"), _done("live", "SKIPPED")]
+    assert _ci_gate(monkeypatch, checks, strict=True)[0] != "PASS"
+    status, detail = _ci_gate(monkeypatch, checks, strict=True, allow=("live",))
+    assert status == "PASS" and "live" in detail
+    assert _ci_gate(monkeypatch, [_done("backend-tests", "SUCCESS")], strict=True)[0] == "PASS"
+    failing = [_done("backend-tests", "FAILURE"), _done("live", "SKIPPED")]
+    assert _ci_gate(monkeypatch, failing, strict=True, allow=("live",))[0] == "FAIL"

@@ -36,7 +36,7 @@ Evidence files are in [`evidence/`](evidence/) (copied from the gitignored
 | S2 | Remote gates: `smoke_staging.sh` + `release_check.py --strict` against staging | **MISSING** | `--strict` must exit 0 (no WARN/SKIP) |
 | S3 | Staging backup + restore drill on the staging database | **MISSING** | runbook §8 |
 | S4 | One real-model assessment on an owner-authorized staging repository, ending at `AWAITING_APPROVAL` with no PR/push | **MISSING** | staging-only Anthropic key; never a customer key |
-| S5 | PR CI green | pending | GitHub checks on this PR |
+| S5 | PR CI green | PASS (e244dc26) | adamissac/ari-ai#695: 21 checks passed, 0 failed; skipped: `live`, `publish`, `pin` (opt-in/release-only), `strict-regressions`, `independent-codex`, `CodeRabbit` (external reviews). Re-verify on the final head |
 
 ## What changed (why the verdict needed it)
 
@@ -51,7 +51,11 @@ Evidence files are in [`evidence/`](evidence/) (copied from the gitignored
   `execution.stuck_assessments`), failed jobs in the last 24h, and the pilot
   posture. It also no longer crashes when a running job has no heartbeat yet.
 - `release_check.py --strict` makes WARN/SKIP block, so "every gate has evidence"
-  can be checked by a machine.
+  can be checked by a machine. Codex release review found two holes in the CI gate,
+  both reproduced and fixed with regression tests: an empty check list reported
+  `PASS all 0 checks green`, and SKIPPED/no-conclusion checks (e.g. gitleaks, audit)
+  counted as green. Now an empty rollup FAILs, skipped checks are named and block
+  under `--strict`, and only `--allow-skipped-check NAME` opt-in jobs may be skipped.
 
 ## Residual risks
 

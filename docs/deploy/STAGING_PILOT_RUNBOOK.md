@@ -55,9 +55,13 @@ Railway secret store only. Pilot-specific variables:
    ```sh
    OPS_TOKEN=... deploy/scripts/smoke_staging.sh https://<staging-api>
    uv run python deploy/release_check.py --base-url https://<staging-api> \
-       --ops-token "$OPS_TOKEN" --backup-dir backups/ --strict
+       --ops-token "$OPS_TOKEN" --backup-dir backups/ --strict \
+       --allow-skipped-check live
    ```
-   `--strict` turns every WARN/SKIP into a failure: the pilot needs PASS evidence
+   `--strict` turns every WARN/SKIP into a failure: the pilot needs PASS evidence.
+   The CI gate counts only checks that ran and succeeded; a skipped security or
+   regression check blocks unless you name it with `--allow-skipped-check`
+   (only for opt-in jobs such as `live`), and a PR with no checks fails.
    for every gate. Paste both outputs into the release note.
 
 ## 4. Monitoring

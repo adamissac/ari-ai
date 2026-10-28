@@ -18,6 +18,7 @@ import sys
 import time
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 REPO = Path(__file__).resolve().parents[1]
 
@@ -52,7 +53,15 @@ def req_status(url: str, method: str = "GET") -> tuple[int, dict]:
         return e.code, {}
 
 
-def check_ci() -> None:
+def check_ci(strict: bool = False, allow_skipped: tuple[str, ...] = ()) -> None:
+    """Every CI check must have run and succeeded.
+
+    A skipped check (SKIPPED/NEUTRAL/no conclusion) is not evidence: gitleaks, audit or
+    the regression gates being skipped must block sign-off, so they are reported by name
+    and count as SKIP (blocking under --strict). Opt-in jobs an operator consciously
+    accepts as skipped are named with --allow-skipped-check. An empty rollup means
+    GitHub reported no checks at all and is a FAIL, never "0 checks green".
+    """
     gh = subprocess.run(["which", "gh"], capture_output=True)
     if gh.returncode != 0:
         report("SKIP", "CI success", "gh CLI not installed; confirm checks on the PR page")
@@ -70,25 +79,40 @@ def check_ci() -> None:
     if pr.returncode != 0:
         report("SKIP", "CI success", pr.stderr.strip()[:200] or "no PR for this branch")
         return
-    checks = json.loads(pr.stdout)["statusCheckRollup"]
-    bad = [
-        c
-        for c in checks
-        if c.get("conclusion") not in ("SUCCESS", None, "SKIPPED")
-        or c.get("status") not in ("COMPLETED", "SUCCESS")
+    checks = json.loads(pr.stdout).get("statusCheckRollup") or []
+    if not checks:
+        report("FAIL", "CI success", "GitHub reported no checks for this PR")
+        return
+
+    def name(c: dict[str, Any]) -> str:
+        return str(c.get("name") or c.get("context") or "?")
+
+    def names(cs: list[dict[str, Any]]) -> str:
+        return ", ".join(sorted(name(c) for c in cs)[:8])
+
+    completed = [c for c in checks if c.get("status") in ("COMPLETED", "SUCCESS")]
+    pending = [c for c in checks if c not in completed]
+    failed = [
+        c for c in completed if c.get("conclusion") not in ("SUCCESS", "SKIPPED", "NEUTRAL", None)
     ]
-    pending = [c for c in checks if c.get("status") not in ("COMPLETED", "SUCCESS")]
-    if bad:
-        report(
-            "FAIL",
-            "CI success",
-            f"{len(bad)} failing/pending checks: "
-            + ", ".join(c.get("name", "?") for c in (bad or pending)[:5]),
-        )
+    skipped = [c for c in completed if c.get("conclusion") != "SUCCESS" and c not in failed]
+    allowed = [c for c in skipped if name(c) in allow_skipped]
+    unexplained = [c for c in skipped if c not in allowed]
+    if failed:
+        report("FAIL", "CI success", f"{len(failed)} failing checks: {names(failed)}")
     elif pending:
-        report("WARN", "CI success", f"{len(pending)} checks still pending")
+        report("WARN", "CI success", f"{len(pending)} checks still pending: {names(pending)}")
+    elif unexplained:
+        report(
+            "SKIP" if strict else "WARN",
+            "CI success",
+            f"{len(unexplained)} checks skipped, not evidence: {names(unexplained)}",
+        )
     else:
-        report("PASS", "CI success", f"all {len(checks)} checks green")
+        detail = f"all {len(checks) - len(allowed)} checks green"
+        if allowed:
+            detail += f"; allow-listed skipped: {names(allowed)}"
+        report("PASS", "CI success", detail)
 
 
 def check_config() -> None:
@@ -332,10 +356,17 @@ def main() -> int:
         action="store_true",
         help="WARN/SKIP also fail: every gate must carry PASS evidence (pilot sign-off)",
     )
+    p.add_argument(
+        "--allow-skipped-check",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="CI check that may be SKIPPED without blocking (opt-in jobs such as 'live')",
+    )
     args = p.parse_args()
     base = args.base_url.rstrip("/")
 
-    check_ci()
+    check_ci(strict=args.strict, allow_skipped=tuple(args.allow_skipped_check))
     check_config()
     check_migrations()
     if not args.no_http:
