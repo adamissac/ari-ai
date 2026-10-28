@@ -53,11 +53,24 @@ reason when the repo is disconnected, detached, or re-bound to another installat
 `deliver_verified_patch` and `propose_build_recipe` call it immediately before the write
 token, each push, and the pull request (recording `delivery.skipped` / `recipe.skipped`
 with the reason); `post_pr_review` calls `connection_problem` immediately before the POST.
-The read is still not atomic with the GitHub call itself — a disconnect committed while the
-HTTP request is in flight cannot be recalled — but the window is now the single network
-call rather than the whole job, and `assess_commit` already serialises its scheduling
-under a row lock. Not changed: `installations.py` (detachment itself was complete; what
-was missing was that running writers never looked at it).
+Revocation race (second pass): a re-check alone still left a window — check commits,
+disconnect commits, write starts. Repro: `test_disconnect_waits_for_an_in_flight_push_instead_of_racing_it`
+(real threads: a push blocked mid-flight, disconnect returned 200 while it was running).
+Fix: `connection_guard.github_write(repo_id, installation_id)` holds a per-repository
+write lease (Postgres advisory lock, own connection, released when the block exits) around
+each push, pull-request open and review POST, and re-checks the connection once the lease
+is held; `POST /repositories/{id}/disconnect` takes the same lease (`hold_github_writes`)
+before setting `disconnected_at`. So a write either finishes before the disconnect commits,
+or the disconnect committed first and the write is skipped; when disconnect returns 200 no
+write is running and none will start. Disconnect waits at most 20 s for a stuck write and
+then answers 409 `CONFLICT_STATE` ("still finishing; retry") rather than lying with a 200
+(`test_disconnect_reports_a_stuck_write_instead_of_hanging`). The lease is an advisory lock,
+not the `repositories` row lock, so the revocation-protocol rule in
+`services.repository_revocation_locked` (never hold the row locks across a provider call)
+still holds. Installation detachment by GitHub is not serialised the same way: by the time
+the webhook arrives GitHub has already revoked the token, so a write racing it fails at
+GitHub. Not changed: `installations.py` (detachment itself was complete; what was missing
+was that running writers never looked at it).
 
 ### P2 — N8 password-literal leakage: historical forms fixed; broader literal forms remain (Reviewed, not fixed)
 On current main the reported N8 forms (quoted mapping keys, subscripts, annotated
@@ -100,7 +113,8 @@ provider calls use the repo's own installation, so no cross-tenant read was foun
 - Concurrency of duplicate webhook deliveries under real parallel requests.
 
 ## Regression coverage
-`backend/tests/test_security_audit_disconnect_writes.py` (9 tests: queued auto push,
+`backend/tests/test_security_audit_disconnect_writes.py` (11 tests: queued auto push,
 queued PR-mode delivery audit, disconnect mid-delivery, queued PR review comment;
 installation detached mid-delivery, disconnect / detachment immediately before the review
-POST, disconnect / detachment during build-recipe drafting).
+POST, disconnect / detachment during build-recipe drafting; disconnect vs. an in-flight
+push under real threads; disconnect 409 on a stuck write).

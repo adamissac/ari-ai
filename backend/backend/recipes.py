@@ -39,7 +39,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from backend import audit, jobs
 from backend.checkouts import CheckoutError, _git, _locked, auth_env, fetch_commit
-from backend.connection_guard import RepositoryDetached, require_connected
+from backend.connection_guard import RepositoryDetached, github_write, require_connected
 from backend.db import repositories, transaction
 from backend.services import project_org
 from backend.settings import get_settings
@@ -853,16 +853,16 @@ def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
             "chore: add Ari sandbox build recipe\n\nDrafted by Ari from the repository's code."
         )
         with _locked(repo_dir):
-            require_connected(str(repo["id"]), iid)
-            push_patch(
-                repo_dir, full_name, sha, new_file_diff(d.files()), write, message, BRANCH,
-                github_web_url=s.github_web_url,
+            with github_write(str(repo["id"]), iid):
+                push_patch(
+                    repo_dir, full_name, sha, new_file_diff(d.files()), write, message, BRANCH,
+                    github_web_url=s.github_web_url,
+                )  # fmt: skip
+        with github_write(str(repo["id"]), iid):
+            url = app.open_pull_request(
+                iid, full_name, head=BRANCH, base=branch,
+                title="Add Ari sandbox build recipe", body=pr_body(d, facts),
             )  # fmt: skip
-        require_connected(str(repo["id"]), iid)
-        url = app.open_pull_request(
-            iid, full_name, head=BRANCH, base=branch,
-            title="Add Ari sandbox build recipe", body=pr_body(d, facts),
-        )  # fmt: skip
     except RepositoryDetached as exc:
         return finish("recipe.skipped", reason=exc.reason, commit_sha=sha)
     except (CheckoutError, IntelligenceError, httpx.HTTPError) as exc:  # too big, refused, gone

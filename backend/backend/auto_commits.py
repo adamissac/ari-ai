@@ -13,7 +13,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import Connection
 
 from backend import audit, jobs
-from backend.connection_guard import connection_problem
+from backend.connection_guard import RepositoryDetached, github_write
 from backend.db import (
     assessments,
     findings,
@@ -757,11 +757,15 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
         org_id = project_org(conn, project_id)
 
     ctx.check_cancelled()
-    # The owner may have disconnected, or GitHub detached the installation, since the read above.
-    if (problem := connection_problem(str(assessment.repo_id), int(installation_id))) is not None:
-        return {"noop": problem}
     try:
-        github_client().post_pull_request_review(installation_id, repo_full_name, pr_number, body)
+        # The owner may have disconnected, or GitHub detached the installation, since the read
+        # above; the write lease re-checks and keeps a concurrent disconnect out until the POST is done.
+        with github_write(str(assessment.repo_id), int(installation_id)):
+            github_client().post_pull_request_review(
+                installation_id, repo_full_name, pr_number, body
+            )
+    except RepositoryDetached as exc:
+        return {"noop": exc.reason}
     except httpx.HTTPStatusError as exc:
         status_code = exc.response.status_code
         if 400 <= status_code < 500:

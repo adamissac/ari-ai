@@ -8,6 +8,8 @@ write token or pushing.
 
 from __future__ import annotations
 
+import threading
+
 import sqlalchemy as sa
 from test_auto_commits import automatic, seed_pr_assessment  # noqa: F401
 from test_auto_delivery import FakeApp, _actions, reference, wired  # noqa: F401
@@ -220,3 +222,63 @@ def test_installation_detached_during_recipe_drafting_stops_the_push_and_pr(
     assert _recipe_branch(bare) == ""
     assert _audit("recipe.pr_opened") == []
     assert _audit("recipe.skipped")[0]["reason"] == "GitHub App installation was detached"
+
+
+# --- Revocation race: disconnect must not return while a GitHub write is in flight ----------
+
+
+def test_disconnect_waits_for_an_in_flight_push_instead_of_racing_it(
+    wired,  # noqa: F811
+    monkeypatch,
+) -> None:
+    """Re-checking right before the write still leaves a window: the check commits, the
+    owner's disconnect commits, then the push starts. The write must hold the repository's
+    write lease so disconnect blocks until the push is over (or, if disconnect got there
+    first, the write is skipped)."""
+    from backend import delivery
+
+    alice, ids, _ = wired("auto")
+    entered, release = threading.Event(), threading.Event()
+    real_push = delivery.push_patch
+
+    def slow_push(*a, **k):
+        entered.set()
+        assert release.wait(10), "test never released the push"
+        return real_push(*a, **k)
+
+    monkeypatch.setattr(delivery, "push_patch", slow_push)
+    writer = threading.Thread(
+        target=worker.run_one, args=("race-writer", ["deliver_verified_patch"]), daemon=True
+    )
+    writer.start()
+    assert entered.wait(10), "delivery never reached the push"
+
+    outcome: dict[str, int] = {}
+    disconnect = threading.Thread(
+        target=lambda: outcome.update(
+            status=alice.post(f"/api/v1/repositories/{ids['repo']}/disconnect").status_code
+        ),
+        daemon=True,
+    )
+    disconnect.start()
+    disconnect.join(1.5)
+    try:
+        assert disconnect.is_alive(), "disconnect returned 200 while a GitHub push was in flight"
+    finally:
+        release.set()
+        writer.join(15)
+        disconnect.join(15)
+    assert outcome["status"] == 200
+    assert FakeApp.calls == [("push", "main", True)]
+    assert "delivery.pushed" in _actions()
+
+
+def test_disconnect_reports_a_stuck_write_instead_of_hanging(wired) -> None:  # noqa: F811
+    import pytest
+
+    from backend.connection_guard import WriteInProgress, github_write, hold_github_writes
+
+    _, ids, _ = wired("auto")
+    with github_write(ids["repo"], 7), transaction() as conn:
+        with pytest.raises(WriteInProgress):
+            hold_github_writes(conn, ids["repo"], timeout_s=1)

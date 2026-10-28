@@ -32,7 +32,7 @@ from sqlalchemy.engine import Connection
 from backend import audit, jobs
 from backend.artifacts import ArtifactStore
 from backend.checkouts import FULL_NAME_RE, CheckoutError, _git, _locked, auth_env, fetch_commit
-from backend.connection_guard import RepositoryDetached, require_connected
+from backend.connection_guard import RepositoryDetached, github_write, require_connected
 from backend.db import (
     approvals,
     assessments,
@@ -503,21 +503,21 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
                 finish("delivery.skipped", reason=reason, tip_sha=tip)
                 return {"status": "skipped", "reason": reason}
             if mode is DeliveryMode.auto:
-                still_connected()
                 try:
-                    sha = push_patch(
-                        repo_dir, full_name, base, diff, token, message, default_branch,
-                        require_tip=True, github_web_url=web,
-                    )  # fmt: skip
+                    with github_write(str(repo["id"]), iid):
+                        sha = push_patch(
+                            repo_dir, full_name, base, diff, token, message, default_branch,
+                            require_tip=True, github_web_url=web,
+                        )  # fmt: skip
                     finish("delivery.pushed", commit_sha=sha, branch=default_branch)
                     return {"status": "pushed", "commit_sha": sha, "branch": default_branch}
                 except CheckoutError as exc:  # branch moved, or push refused (protection)
                     fallback = _reason(exc)
             branch = f"ari/fix-{patch.id}"
-            still_connected()
-            sha = push_patch(
-                repo_dir, full_name, base, diff, token, message, branch, github_web_url=web
-            )
+            with github_write(str(repo["id"]), iid):
+                sha = push_patch(
+                    repo_dir, full_name, base, diff, token, message, branch, github_web_url=web
+                )
         pr_body = (
             f"Verified fix from Ari for finding `{patch.finding_id}` (patch `{patch.id}`, "
             f"verification `{verification.id}`). Review and merge to apply."
@@ -533,15 +533,15 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
                 f"moved to `{tip[:12]}` and this change no longer applies cleanly. Rebase it or "
                 "re-run the review on the latest commit."
             )
-        still_connected()
-        url = app.open_pull_request(
-            iid,
-            full_name,
-            head=branch,
-            base=default_branch,
-            title=f"fix: {patch.rationale}"[:120],
-            body=pr_body,
-        )
+        with github_write(str(repo["id"]), iid):
+            url = app.open_pull_request(
+                iid,
+                full_name,
+                head=branch,
+                base=default_branch,
+                title=f"fix: {patch.rationale}"[:120],
+                body=pr_body,
+            )
     except RepositoryDetached as exc:
         finish("delivery.skipped", reason=exc.reason, fallback_from=fallback)
         return {"status": "skipped", "reason": exc.reason}

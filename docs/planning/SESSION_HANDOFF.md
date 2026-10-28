@@ -6,11 +6,11 @@ adds an entry before ending.
 ### 2026-10-27 — Devin (agent, Alan) — security audit of main @ c03a5501
 - Did: Audited trust boundaries; fixed disconnect not stopping queued/in-flight `deliver_verified_patch` and `post_pr_review`; after Codex's NO-GO on #694 added `backend/connection_guard.py` (re-check `disconnected_at` + `installation_id` right before every GitHub write, incl. `propose_build_recipe`); report in `docs/reviews/2026-10-27-security-audit/REPORT.md`.
 - State of the code: Branch `devin/*-security-audit`; PR open, not merged.
-- Commands run and results: targeted pytest (delivery, auto-commits, PR review, build recipes, installation lifecycle, redaction, 9 security tests) — 196 passed; ruff, format, mypy clean.
+- Commands run and results: targeted pytest (delivery, auto-commits, PR review, build recipes, installation lifecycle, redaction, 11 security tests) — 179 + 2 suites passed (see PR); ruff, format, mypy clean.
 - Decisions made (ADR links): `repositories.disconnected_at` gates every GitHub write, not only job cancellation.
 - Assumptions / open questions (RQ links): None.
 - Next steps: P2 broader `redact_code` literal forms (see report).
-- Warnings for the next session: Jobs whose payload lacks `repo_id` are not cancelled by disconnect; any handler that writes to GitHub must call `connection_guard.require_connected` right before the write, not only at job start. #693 also edits `post_pr_review`; the 3-line guard insert there sits directly above `post_pull_request_review(...)`.
+- Warnings for the next session: Jobs whose payload lacks `repo_id` are not cancelled by disconnect; any handler that writes to GitHub must wrap the write in `connection_guard.github_write(repo_id, installation_id)` (write lease + re-check); disconnect takes the same lease via `hold_github_writes`. #693 also edits `post_pr_review`; the 3-line guard insert there sits directly above `post_pull_request_review(...)`.
 
 ### 2026-10-27 — Devin (agent, Adam) — wildcard per-commit assessment routing
 - Did: Routed non-empty author configuration, including `*`, through per-commit scheduling; added wildcard push and unlisted-author regressions.
