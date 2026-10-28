@@ -16,6 +16,8 @@ All notable changes are documented here. Format follows
   - A repository disconnect now cancels queued PR review jobs, and a disconnect that lands between the review job's pre-check and the GitHub call is seen under the repository lock before posting.
   - A GitHub review POST whose response is lost leaves the job `recovery_required` for an operator instead of being retried into a duplicate review.
   - Several pull requests sharing one head commit each get their own review comment from the commit's single assessment.
+  - A review is posted once per pull request even when two review jobs reach it (one queued before this release, or concurrently); the duplicate is skipped and audited.
+  - Identical GitHub webhook deliveries arriving at the same moment are acknowledged with the job that owns the delivery.
 
 - Settings → Repositories manages every repository in the project from one place. Each row has an Automatic reviews ON/OFF switch, the derived automatic-review status, and Disconnect (with confirmation); disconnected rows show Reconnect. The header's automatic-review status links to it.
 - JavaScript/TypeScript repositories: code intelligence indexes `.js/.mjs/.cjs/.jsx/.ts/.tsx/.html` as text (Python is still the only language parsed into symbols), skips minified bundles, and keeps code ahead of bulk data when a repository exceeds the index size budget. Files over the budget are skipped with a recorded reason instead of failing the whole index. The reviewer reports defects in non-Python code as unvalidated hypotheses rather than writing pytest for them.

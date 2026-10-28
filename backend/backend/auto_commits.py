@@ -15,6 +15,7 @@ from sqlalchemy.engine import Connection
 from backend import audit, jobs
 from backend.db import (
     assessments,
+    audit_events,
     findings,
     monitoring_events,
     projects,
@@ -851,6 +852,51 @@ class _RepositoryRevoked(EffectNotApplied):
     """The repository was disconnected (or its installation changed) before the POST."""
 
 
+class _AlreadyPosted(EffectNotApplied):
+    """Another job already delivered this review (or has it settled)."""
+
+
+class _ReviewInFlight(EffectNotApplied):
+    """An older job is posting this review right now; look again later."""
+
+
+def _review_already_delivered(
+    conn: Connection, *, job_id: str, assessment_id: str, pr_number: int, effect_key: str
+) -> None:
+    """Serialized under the assessment row lock: skip when another job posted (or settled)
+    this review; yield to an older job whose POST is in flight. Catches jobs that reach the
+    same review under different dedupe keys, e.g. one queued before per-PR keys existed."""
+    from backend.db import jobs as jobs_table
+
+    conn.execute(
+        sa.select(assessments.c.id).where(assessments.c.id == assessment_id).with_for_update()
+    )
+    posted = any(
+        (doc.get("details") or {}).get("pr_number") == pr_number
+        for doc in conn.execute(
+            sa.select(audit_events.c.doc).where(
+                audit_events.c.doc["action"].astext == "monitoring.pr_review_posted",
+                audit_events.c.doc["subject_id"].astext == assessment_id,
+            )
+        ).scalars()
+    )
+    siblings = (
+        conn.execute(
+            sa.select(jobs_table.c.id, jobs_table.c.effect_state).where(
+                jobs_table.c.kind == "post_pr_review",
+                jobs_table.c.id != job_id,
+                jobs_table.c.effect_key == effect_key,
+            )
+        )
+        .mappings()
+        .all()
+    )
+    if posted or any(s["effect_state"] == "settled" for s in siblings):
+        raise _AlreadyPosted()
+    if any(s["effect_state"] == "in_flight" and s["id"] < job_id for s in siblings):
+        raise _ReviewInFlight()
+
+
 @handler("post_pr_review")
 def post_pr_review(ctx: JobContext) -> dict[str, Any]:
     assessment_id = ctx.job.payload["assessment_id"]
@@ -937,7 +983,8 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
     try:
         # The effect guard makes a lost response ``recovery_required`` instead of a replay:
         # GitHub may already have created the review, and only an operator can tell.
-        with ctx.effect(f"prreview:{assessment_id}:pr:{pr_number}"):
+        effect_key = f"prreview:{assessment_id}:pr:{pr_number}"
+        with ctx.effect(effect_key):
             with transaction() as conn:
                 # Same row lock as POST /repositories/{id}/disconnect, taken right before the
                 # network call: a disconnect that committed since the pre-check is seen, and
@@ -957,6 +1004,13 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
                     or live["installation_id"] != installation_id
                 ):
                     raise _RepositoryRevoked()
+                _review_already_delivered(
+                    conn,
+                    job_id=ctx.job.id,
+                    assessment_id=assessment_id,
+                    pr_number=pr_number,
+                    effect_key=effect_key,
+                )
             try:
                 client.post_pull_request_review(installation_id, repo_full_name, pr_number, body)
             except httpx.HTTPStatusError as exc:
@@ -976,6 +1030,23 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
             )
         log.info("pr review for %s skipped: repository disconnected before post", assessment_id)
         return {"noop": "repository disconnected"}
+    except _AlreadyPosted:
+        with transaction() as conn:
+            audit.record(
+                conn,
+                org_id=org_id,
+                project_id=project_id,
+                actor_type=ActorType.system,
+                actor_id="monitoring",
+                action="monitoring.pr_review_skipped",
+                subject_type="assessment",
+                subject_id=assessment_id,
+                details={"reason": "review already posted", "pr_number": pr_number},
+            )
+        log.info("pr review for %s #%d skipped: already posted", assessment_id, pr_number)
+        return {"noop": "review already posted", "pr_number": pr_number}
+    except _ReviewInFlight:
+        raise JobDeferred(15.0, "another job is posting this review") from None
     except EffectNotApplied as guard:
         exc = guard.__cause__
         assert isinstance(exc, httpx.HTTPStatusError)

@@ -472,3 +472,76 @@ def test_two_pull_requests_sharing_a_commit_both_get_reviews(automatic, monkeypa
     worker.drain(kinds=["process_github_delivery", "assess_github_commit", "post_pr_review"])
     assert sorted(c[2] for c in calls) == [7, 8, 9]
     assert records() == [HEAD]
+
+
+# --- duplicate delivery -----------------------------------------------------------------
+
+
+def test_concurrent_identical_deliveries_process_once(automatic):
+    """GitHub retries fast: two identical deliveries arrive at the same moment."""
+    alice, bob, ids, _ = automatic
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    p = push_payload(["README.md"], head=HEAD)
+    p["sender"] = {"login": "adamissac"}
+    p["commits"] = [{"id": HEAD, "modified": ["README.md"], "author": {"username": "adamissac"}}]
+    delivery = "22222222-aaaa-bbbb-cccc-000000000002"
+    gate = threading.Barrier(4)
+    results = []
+
+    def deliver():
+        gate.wait()
+        results.append(post_webhook(alice, p, delivery=delivery))
+
+    threads = [threading.Thread(target=deliver) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert sorted(r.status_code for r in results) == [200, 200, 200, 202]
+    acks = [r.json() for r in results]
+    accepted = [a for a in acks if a["accepted"]]
+    assert len(accepted) == 1
+    assert all(a["job_id"] == accepted[0]["job_id"] for a in acks)  # losers point at the job
+    with transaction() as conn:
+        assert (
+            conn.execute(sa.select(sa.func.count()).select_from(webhook_deliveries)).scalar_one()
+            == 1
+        )
+        kinds = list(
+            conn.execute(
+                sa.select(jobs.c.kind).where(jobs.c.kind == "process_github_delivery")
+            ).scalars()
+        )
+    assert len(kinds) == 1
+    worker.drain(kinds=["process_github_delivery", "assess_github_commit"])
+    assert records() == [HEAD]
+
+
+def test_legacy_review_job_and_per_pr_job_post_once(automatic, monkeypatch):
+    """A review job queued before per-PR keys existed must not post alongside the new one."""
+    _, bob, ids, _ = automatic
+    assessment_id = seed_pr_assessment(ids, bob)
+    with transaction() as conn:
+        conn.execute(
+            sa.update(jobs)
+            .where(jobs.c.kind == "post_pr_review")
+            .values(
+                dedupe_key=f"prreview:{assessment_id}", payload={"assessment_id": assessment_id}
+            )
+        )
+        from backend.host import _enqueue_pr_review
+        from shared.assessment import Assessment
+
+        doc = conn.execute(
+            sa.select(assessments.c.doc).where(assessments.c.id == assessment_id)
+        ).scalar_one()
+        _enqueue_pr_review(conn, Assessment.model_validate(doc))  # the upgraded code path
+    calls = []
+
+    class GitHub:
+        def post_pull_request_review(self, *args):
+            calls.append(args)
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+    worker.drain(kinds=["post_pr_review"])
+    assert [c[2] for c in calls] == [7]

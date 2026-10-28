@@ -129,11 +129,17 @@ async def github_webhook(request: Request) -> JSONResponse:
                 .on_conflict_do_nothing()
                 .returning(webhook_deliveries.c.delivery_id)
             ).scalar()
-            if inserted is None:  # concurrent duplicate won the race
+            if inserted is None:  # a concurrent identical delivery won the race
+                winner = conn.execute(
+                    sa.select(webhook_deliveries.c.job_id).where(
+                        webhook_deliveries.c.delivery_id == delivery
+                    )
+                ).scalar_one_or_none()
                 return WebhookAck(
                     delivery_id=delivery,
                     duplicate=True,
                     accepted=False,
+                    job_id=winner,
                     reason="duplicate delivery",
                 )
             job_id, _ = jobs.enqueue(
