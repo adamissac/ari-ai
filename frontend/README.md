@@ -214,3 +214,5 @@ Keep organization/repository/commit navigation scoped to the selected repository
 
 
 Connected repo/commit pages expose a per-repository Automatic runs switch. ON shows background-run status; OFF exposes manual Run. The backend schedules independently of browser visits. Quick reads use Haiku 5.5 only. See backend README and issue #380 for prerequisites and quotas.
+
+- Approvals: the fix-delivery note reads `GET /projects/{id}/delivery-authority` (`state`: manual / inactive / active / revoked, plus `effective_mode`) and shows nothing about automatic approval until it has loaded.

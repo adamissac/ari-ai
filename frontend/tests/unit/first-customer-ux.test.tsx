@@ -2,7 +2,8 @@ import { ApiError } from '@hackatl/frontend-transport';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ approvals: [] as unknown[], findings: [] as unknown[], assessments: [] as unknown[], deliveryMode: 'manual' as string }));
+const MANUAL_AUTHORITY = { configured_mode: 'manual', effective_mode: 'manual', state: 'manual', authorized_by: null, direct_commits_allowed: true };
+const state = vi.hoisted(() => ({ approvals: [] as unknown[], findings: [] as unknown[], assessments: [] as unknown[], deliveryMode: 'manual' as string, authority: { status: 'ready', data: null as unknown, error: undefined as unknown } }));
 
 vi.mock('@/components/project', () => ({ useProject: () => ({
   project: { id: 'prj_1', settings: { delivery_mode: state.deliveryMode } },
@@ -11,7 +12,7 @@ vi.mock('@/components/project', () => ({ useProject: () => ({
 vi.mock('@/components/session', () => ({ useSession: () => ({ me: { user: { id: 'usr_me' } } }) }));
 vi.mock('@/lib/action-key', () => ({ useActionKeys: () => ({ keyFor: () => 'key', done: () => {} }) }));
 vi.mock('@/lib/use-resource', () => ({
-  useResource: (key: string | null) => ({
+  useResource: (key: string | null) => key?.startsWith('delivery-authority') ? { ...state.authority, data: state.authority.data ?? MANUAL_AUTHORITY, reload: vi.fn() } : ({
     status: 'ready',
     data: { items: key?.startsWith('approvals') ? state.approvals : key?.includes('assessments') ? state.assessments : state.findings, next_cursor: null },
     error: undefined,
@@ -30,7 +31,10 @@ afterEach(() => {
   state.findings = [];
   state.deliveryMode = 'manual';
   state.assessments = [];
+  state.authority = { status: 'ready', data: null, error: undefined };
 });
+
+const authority = (over: Record<string, unknown>) => { state.authority = { status: 'ready', data: { ...MANUAL_AUTHORITY, ...over }, error: undefined }; };
 
 const apiError = (status: number, code: ConstructorParameters<typeof ApiError>[1]['code'], message: string) => new ApiError(status, { code, message, details: {}, request_id: 'req_1' });
 
@@ -88,6 +92,7 @@ describe('approval inbox explains who decides and what is allowed', () => {
 
   it('does not promise a human decision when standing owner authorization delivers fixes as pull requests', () => {
     state.deliveryMode = 'pull_request';
+    authority({ configured_mode: 'pull_request', effective_mode: 'pull_request', state: 'active', authorized_by: 'usr_owner' });
     render(<ApprovalsPage />);
     const note = screen.getByTestId('approval-delivery-note').textContent ?? '';
     expect(note).not.toContain('asks here before it builds');
@@ -98,11 +103,64 @@ describe('approval inbox explains who decides and what is allowed', () => {
 
   it('says that auto-commit delivery pushes without a human check', () => {
     state.deliveryMode = 'auto';
+    authority({ configured_mode: 'auto', effective_mode: 'auto', state: 'active', authorized_by: 'usr_owner' });
     render(<ApprovalsPage />);
     const note = screen.getByTestId('approval-delivery-note').textContent ?? '';
     expect(note).toContain('approved automatically');
     expect(note).toContain('default branch');
     expect(note).not.toContain('never merges');
+  });
+
+  it('does not claim automatic approval when pull request mode has no recorded authorizer (inactive)', () => {
+    state.deliveryMode = 'pull_request';
+    authority({ configured_mode: 'pull_request', effective_mode: 'manual', state: 'inactive', authorized_by: null });
+    render(<ApprovalsPage />);
+    const note = screen.getByTestId('approval-delivery-note');
+    expect(note.getAttribute('data-state')).toBe('inactive');
+    expect(note.textContent).not.toContain('candidate fixes are approved automatically');
+    expect(note.textContent).toContain('no owner has authorized it');
+    expect(note.textContent).toContain('Ari asks here before it builds a candidate fix');
+  });
+
+  it('says a demoted authorizer ended automatic approval (revoked)', () => {
+    state.deliveryMode = 'pull_request';
+    authority({ configured_mode: 'pull_request', effective_mode: 'manual', state: 'revoked', authorized_by: 'usr_former' });
+    render(<ApprovalsPage />);
+    const note = screen.getByTestId('approval-delivery-note').textContent ?? '';
+    expect(note).not.toContain('candidate fixes are approved automatically');
+    expect(note).toContain('no longer an owner');
+    expect(note).toContain('Ari asks here before it builds a candidate fix');
+  });
+
+  it('says direct commits become pull requests when the deployment forbids them', () => {
+    state.deliveryMode = 'auto';
+    authority({ configured_mode: 'auto', effective_mode: 'pull_request', state: 'active', authorized_by: 'usr_owner', direct_commits_allowed: false });
+    render(<ApprovalsPage />);
+    const note = screen.getByTestId('approval-delivery-note').textContent ?? '';
+    expect(note).toContain('does not allow direct commits');
+    expect(note).toContain('arrives as a pull request');
+    expect(note).not.toContain('committed to the default branch with no human check');
+  });
+
+  it('makes no authorization claim while the effective authority is loading', () => {
+    state.deliveryMode = 'pull_request';
+    state.authority = { status: 'loading', data: null, error: undefined };
+    render(<ApprovalsPage />);
+    const note = screen.getByTestId('approval-delivery-note');
+    expect(note.getAttribute('data-state')).toBe('loading');
+    expect(note.textContent).not.toContain('approved automatically on behalf');
+    expect(note.textContent).not.toContain('Ari asks here before');
+  });
+
+  it('says it cannot tell when the effective authority failed to load', () => {
+    state.deliveryMode = 'pull_request';
+    state.authority = { status: 'error', data: null, error: apiError(503, 'SUBSYSTEM_UNAVAILABLE', 'down') };
+    render(<ApprovalsPage />);
+    const note = screen.getByTestId('approval-delivery-note');
+    expect(note.getAttribute('data-state')).toBe('error');
+    expect(note.textContent).toContain('cannot say whether candidate fixes are approved automatically');
+    expect(note.textContent).not.toContain('approved automatically on behalf');
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
   });
 
   it('labels an auto-approved remediation as automatic, not as a decision you made', () => {
