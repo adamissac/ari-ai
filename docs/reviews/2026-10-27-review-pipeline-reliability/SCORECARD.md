@@ -58,3 +58,13 @@ at the `GitHubApp` boundary. Real GitHub was not called.
 - `log.info` when a PR is linked to an existing commit event.
 - `log.warning` when a webhook redelivery reprocesses a dead/failed job.
 - Audit `monitoring.pr_review_skipped` when the repository was disconnected.
+
+## Codex round 2 (2026-10-29)
+
+| Finding | Fix | Regression (fails on 184b8c62) |
+|---|---|---|
+| Older legacy retry preempts a newer in-flight per-PR review (id tie-break) | Arbitration and `begin_effect` share one locked transaction (`JobContext.effect(reserve=...)`). Any running in-flight sibling defers the job; an uncertain sibling yields an audited skip. | `test_due_legacy_retry_cannot_preempt_a_newer_in_flight_review`, `test_uncertain_review_on_a_newer_job_blocks_the_older_job` |
+| HTTP 5xx after GitHub accepted the review is retried into a duplicate | Hidden marker plus read-back reconciliation. Found = posted, absent = retry, unknown = `recovery_required`. | `test_review_accepted_then_http_500_is_reconciled_not_reposted`, `test_http_500_with_unknown_outcome_requires_recovery`, `test_review_marker_lookup_pages_through_reviews` |
+| (preserved) a confirmed-absent 5xx still retries | n/a | `test_http_500_confirmed_absent_on_github_is_retried` (passes before and after) |
+
+Verified: local PostgreSQL with threaded workers and a fake GitHub client. Unverified: the live GitHub reviews API (real pagination and read-after-write consistency). Dependency: #694's write lease is needed to close the disconnect window during the POST.

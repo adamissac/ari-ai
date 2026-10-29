@@ -857,14 +857,18 @@ class _AlreadyPosted(EffectNotApplied):
 
 
 class _ReviewInFlight(EffectNotApplied):
-    """An older job is posting this review right now; look again later."""
+    """Another job owns this review and is posting it right now; look again later."""
+
+
+class _ReviewUncertain(EffectNotApplied):
+    """Another job's POST of this review has an unknown outcome; an operator reconciles it."""
 
 
 def _review_already_delivered(
     conn: Connection, *, job_id: str, assessment_id: str, pr_number: int, effect_key: str
 ) -> None:
     """Serialized under the assessment row lock: skip when another job posted (or settled)
-    this review; yield to an older job whose POST is in flight. Catches jobs that reach the
+    this review; yield to any job that already reserved it. Catches jobs that reach the
     same review under different dedupe keys, e.g. one queued before per-PR keys existed."""
     from backend.db import jobs as jobs_table
 
@@ -882,7 +886,7 @@ def _review_already_delivered(
     )
     siblings = (
         conn.execute(
-            sa.select(jobs_table.c.id, jobs_table.c.effect_state).where(
+            sa.select(jobs_table.c.id, jobs_table.c.status, jobs_table.c.effect_state).where(
                 jobs_table.c.kind == "post_pr_review",
                 jobs_table.c.id != job_id,
                 jobs_table.c.effect_key == effect_key,
@@ -893,8 +897,26 @@ def _review_already_delivered(
     )
     if posted or any(s["effect_state"] == "settled" for s in siblings):
         raise _AlreadyPosted()
-    if any(s["effect_state"] == "in_flight" and s["id"] < job_id for s in siblings):
+    # Ownership goes to whichever job reserved the effect first, never to the older job:
+    # the caller commits its own in-flight mark in this same locked transaction.
+    in_flight = [s for s in siblings if s["effect_state"] == "in_flight"]
+    if any(s["status"] == "running" for s in in_flight):
         raise _ReviewInFlight()
+    if in_flight:
+        raise _ReviewUncertain()
+
+
+def _review_marker_found(
+    client: Any, installation_id: int, full_name: str, pr_number: int, marker: str
+) -> bool | None:
+    """Whether GitHub holds the review carrying ``marker``; ``None`` when it cannot tell."""
+    try:
+        return bool(
+            client.pull_request_review_has_marker(installation_id, full_name, pr_number, marker)
+        )
+    except Exception:
+        log.warning("could not reconcile pr review on %s #%d", full_name, pr_number, exc_info=True)
+        return None
 
 
 @handler("post_pr_review")
@@ -984,37 +1006,56 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
         # The effect guard makes a lost response ``recovery_required`` instead of a replay:
         # GitHub may already have created the review, and only an operator can tell.
         effect_key = f"prreview:{assessment_id}:pr:{pr_number}"
-        with ctx.effect(effect_key):
-            with transaction() as conn:
-                # Same row lock as POST /repositories/{id}/disconnect, taken right before the
-                # network call: a disconnect that committed since the pre-check is seen, and
-                # one still holding the row is waited for. Released before the call itself;
-                # repository locks are never held across a provider request.
-                live = (
-                    conn.execute(
-                        sa.select(repositories.c.disconnected_at, repositories.c.installation_id)
-                        .where(repositories.c.id == assessment.repo_id)
-                        .with_for_update()
-                    )
-                    .mappings()
-                    .one()
+        marker = f"\n\n<!-- ari-review:{effect_key} -->"
+
+        def reserve(conn: Connection) -> None:
+            # Same row lock as POST /repositories/{id}/disconnect, taken right before the
+            # network call: a disconnect that committed since the pre-check is seen, and
+            # one still holding the row is waited for. Released before the call itself;
+            # repository locks are never held across a provider request.
+            live = (
+                conn.execute(
+                    sa.select(repositories.c.disconnected_at, repositories.c.installation_id)
+                    .where(repositories.c.id == assessment.repo_id)
+                    .with_for_update()
                 )
-                if (
-                    live["disconnected_at"] is not None
-                    or live["installation_id"] != installation_id
-                ):
-                    raise _RepositoryRevoked()
-                _review_already_delivered(
-                    conn,
-                    job_id=ctx.job.id,
-                    assessment_id=assessment_id,
-                    pr_number=pr_number,
-                    effect_key=effect_key,
-                )
+                .mappings()
+                .one()
+            )
+            if live["disconnected_at"] is not None or live["installation_id"] != installation_id:
+                raise _RepositoryRevoked()
+            _review_already_delivered(
+                conn,
+                job_id=ctx.job.id,
+                assessment_id=assessment_id,
+                pr_number=pr_number,
+                effect_key=effect_key,
+            )
+
+        # Arbitration and the in-flight mark commit in one transaction under the assessment
+        # row lock, so exactly one job owns the review before any POST is dispatched.
+        with ctx.effect(effect_key, reserve=reserve):
             try:
-                client.post_pull_request_review(installation_id, repo_full_name, pr_number, body)
-            except httpx.HTTPStatusError as exc:
-                raise EffectNotApplied() from exc  # GitHub answered without creating the review
+                client.post_pull_request_review(
+                    installation_id, repo_full_name, pr_number, body + marker
+                )
+            except httpx.HTTPStatusError as answer:
+                if answer.response.status_code < 500:
+                    raise EffectNotApplied() from answer  # GitHub refused before acting
+                # A 5xx can follow a review GitHub already created: look for this one's marker.
+                found = _review_marker_found(
+                    client, installation_id, repo_full_name, pr_number, marker
+                )
+                if found is None:
+                    raise  # outcome unknown: recovery_required, never replayed blindly
+                if not found:
+                    raise EffectNotApplied() from answer
+                log.warning(
+                    "pr review for %s #%d was created despite HTTP %d",
+                    assessment_id,
+                    pr_number,
+                    answer.response.status_code,
+                )
     except _RepositoryRevoked:
         with transaction() as conn:
             audit.record(
@@ -1045,6 +1086,21 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
             )
         log.info("pr review for %s #%d skipped: already posted", assessment_id, pr_number)
         return {"noop": "review already posted", "pr_number": pr_number}
+    except _ReviewUncertain:
+        with transaction() as conn:
+            audit.record(
+                conn,
+                org_id=org_id,
+                project_id=project_id,
+                actor_type=ActorType.system,
+                actor_id="monitoring",
+                action="monitoring.pr_review_skipped",
+                subject_type="assessment",
+                subject_id=assessment_id,
+                details={"reason": "another review attempt is uncertain", "pr_number": pr_number},
+            )
+        log.warning("pr review for %s #%d skipped: outcome uncertain", assessment_id, pr_number)
+        return {"noop": "another review attempt is uncertain", "pr_number": pr_number}
     except _ReviewInFlight:
         raise JobDeferred(15.0, "another job is posting this review") from None
     except EffectNotApplied as guard:
