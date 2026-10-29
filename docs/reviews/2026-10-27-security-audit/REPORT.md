@@ -72,7 +72,29 @@ the webhook arrives GitHub has already revoked the token, so a write racing it f
 GitHub. Not changed: `installations.py` (detachment itself was complete; what was missing
 was that running writers never looked at it).
 
-### P2 — N8 password-literal leakage: historical forms fixed; broader literal forms remain (Reviewed, not fixed)
+### P1 — Codex review 2026-10-29: write-token mint sat outside the write lease (Fixed)
+`deliver_verified_patch` and `propose_build_recipe` re-checked the connection and then
+called `installation_token(write=True)` without the lease, so a disconnect could commit
+and return 200 in between and the job still asked GitHub for a new write token (the later
+push/PR step was correctly blocked). Both mints now run inside `github_write`, the same
+lease disconnect takes; `post_pr_review` and `open_pull_request` already mint inside the
+lease. Other provider-access paths reviewed: `checkouts.py` and the recipe/delivery fetch
+use read tokens or the already-minted write token for reads (not a new write-access
+request); webhook redelivery uses the App JWT, not a repository token. Regressions:
+`backend/tests/test_disconnect_write_token_ordering.py` (real threads + local Postgres:
+disconnect-after-check, in-flight mint, 409 timeout, retried job, recipe, PR review).
+
+### P2 — N8 password-literal leakage: remaining literal forms (Fixed 2026-10-29; inherited from main, not a #694 regression)
+Fixed in `backend/redaction.py`: `_CODE_KV_PATTERN` accepts r/b/f/u string prefixes and
+single-line triple-quoted literals, and `redact_code` tracks each diff section's file
+header so unquoted YAML (`password: x`) and dotenv (`DB_PASSWORD=x`) values are redacted
+only in YAML/dotenv files (Python expressions are untouched). The sealed, Verify-bound diff
+is stored unredacted and stays byte-identical. Regressions:
+`backend/tests/test_redaction_literal_forms.py` (synthetic placeholders only). Remaining
+limitation: multi-line triple-quoted literals and YAML block scalars (`password: |`) are not
+redacted in the viewer diff; key-shaped tokens inside them still are.
+
+Original finding (2026-10-27):
 On current main the reported N8 forms (quoted mapping keys, subscripts, annotated
 assignments) and the N9 statement-boundary regression are fixed:
 `test_rc4_n8_artifact_disclosure.py` + `test_rc4_n9_statement_boundaries.py` pass (7).

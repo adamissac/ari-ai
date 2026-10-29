@@ -4,8 +4,10 @@ A job that writes to GitHub (fix delivery, build-recipe PRs, PR review comments)
 for minutes after it was queued. In that window the owner may disconnect the repository
 (`repositories.disconnected_at`) or GitHub may detach the App installation
 (`repositories.installation_id` cleared or replaced by a reconnect). The initial check at
-job start does not cover that, so handlers call `require_connected` immediately before
-minting a write token, pushing, opening a pull request, or posting a review.
+job start does not cover that, so handlers wrap every write-capable provider request
+(minting a write token, pushing, opening a pull request, posting a review) in
+`github_write`, which holds the repository's write lease and re-checks the connection
+under it. A disconnect that has returned 200 is therefore never followed by a new request.
 """
 
 from __future__ import annotations

@@ -32,7 +32,7 @@ from sqlalchemy.engine import Connection
 from backend import audit, jobs
 from backend.artifacts import ArtifactStore
 from backend.checkouts import FULL_NAME_RE, CheckoutError, _git, _locked, auth_env, fetch_commit
-from backend.connection_guard import RepositoryDetached, github_write, require_connected
+from backend.connection_guard import RepositoryDetached, github_write
 from backend.db import (
     approvals,
     assessments,
@@ -474,15 +474,12 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
     tip: str | None = None
     tip_state = "unknown"
 
-    def still_connected() -> None:
-        # The owner can disconnect, or GitHub can detach the installation, while this job
-        # runs; re-check right before each GitHub write.
-        require_connected(str(repo["id"]), iid)
-
     try:
-        still_connected()
         app = GitHubApp(settings=s)
-        token = app.installation_token(iid, write=True, repository=full_name.split("/", 1)[1])
+        # Minting the write token is itself a provider write-access request: hold the write
+        # lease so a disconnect that has returned 200 can never be followed by a new token.
+        with github_write(str(repo["id"]), iid):
+            token = app.installation_token(iid, write=True, repository=full_name.split("/", 1)[1])
         with _locked(repo_dir):
             fetch_commit(repo_dir, full_name, base, token, github_web_url=web)
             try:

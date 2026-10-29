@@ -39,7 +39,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from backend import audit, jobs
 from backend.checkouts import CheckoutError, _git, _locked, auth_env, fetch_commit
-from backend.connection_guard import RepositoryDetached, github_write, require_connected
+from backend.connection_guard import RepositoryDetached, github_write
 from backend.db import repositories, transaction
 from backend.services import project_org
 from backend.settings import get_settings
@@ -846,9 +846,10 @@ def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
         from backend.delivery import push_patch
 
         # Drafting can take a minute; the owner may have disconnected, or GitHub detached the
-        # installation, since the check at the top. Re-check before every write.
-        require_connected(str(repo["id"]), iid)
-        write = app.installation_token(iid, write=True, repository=full_name.split("/", 1)[1])
+        # installation, since the check at the top. The write lease re-checks before the
+        # write token is minted and before every write that uses it.
+        with github_write(str(repo["id"]), iid):
+            write = app.installation_token(iid, write=True, repository=full_name.split("/", 1)[1])
         message = (
             "chore: add Ari sandbox build recipe\n\nDrafted by Ari from the repository's code."
         )

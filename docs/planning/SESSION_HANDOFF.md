@@ -3,6 +3,15 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-10-29 — Devin (agent, Alan) — Codex review fixes on #694 (disconnect boundary + redaction)
+- Did: Moved the `installation_token(write=True)` mint in `delivery.py` and `recipes.py` inside `connection_guard.github_write`; extended `redact_code` (r/b/f prefixes, single-line triple quotes, YAML/dotenv values by diff file header).
+- State of the code: Branch `devin/1793142933-security-audit` (PR #694), not merged. Merge order #694 → #693 → #696 → #695.
+- Commands run and results: see PR #694 description (exact SHA, counts).
+- Decisions made (ADR links): Write-token minting counts as a GitHub write and takes the lease; the lease is never nested (separate blocks for mint, push, PR).
+- Assumptions / open questions (RQ links): None.
+- Next steps: Independent Codex re-review.
+- Warnings for the next session: `github_write` is not re-entrant (second lease on another connection would wait for itself); never nest it.
+
 ### 2026-10-27 — Devin (agent, Alan) — security audit of main @ c03a5501
 - Did: Audited trust boundaries; fixed disconnect not stopping queued/in-flight `deliver_verified_patch` and `post_pr_review`; after Codex's NO-GO on #694 added `backend/connection_guard.py` (re-check `disconnected_at` + `installation_id` right before every GitHub write, incl. `propose_build_recipe`); report in `docs/reviews/2026-10-27-security-audit/REPORT.md`.
 - State of the code: Branch `devin/*-security-audit`; PR open, not merged.
