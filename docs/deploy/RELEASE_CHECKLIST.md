@@ -41,3 +41,7 @@ OPS_TOKEN=... deploy/scripts/smoke_staging.sh <staging-url>
 
 The staging pilot procedure (deploy, monitor, emergency disable, rollback) is
 [STAGING_PILOT_RUNBOOK.md](STAGING_PILOT_RUNBOOK.md).
+
+## Candidate binding (strict sign-off)
+
+Run `python deploy/release_check.py --strict --expected-sha <full PR head sha> --base-url <staging>`. Sign-off FAILs unless every required check (`REQUIRED_CHECKS`, or the `--require-check` list) succeeded on that exact SHA. The PR head must equal it before and after the results are read, and `/healthz` `git_sha` must equal it. Missing, skipped, pending, failed or stale results are never evidence.

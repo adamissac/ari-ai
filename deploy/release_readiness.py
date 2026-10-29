@@ -69,6 +69,7 @@ class Report:
     started_at: str = ""
     finished_at: str = ""
     git_sha: str = ""
+    expected_sha: str = ""
     mode: str = "local"
 
     def add(self, cid: str, name: str, status: str, evidence: str, t0: float) -> None:
@@ -92,7 +93,8 @@ class Report:
         lines = [
             f"# Pilot release-readiness report — {self.verdict}",
             "",
-            f"- Mode: `{self.mode}` · Commit: `{self.git_sha}`",
+            f"- Mode: `{self.mode}` · Commit: `{self.git_sha}`"
+            f" · Expected candidate: `{self.expected_sha or 'not bound'}`",
             f"- Started: {self.started_at} · Finished: {self.finished_at}",
             f"- {len(self.checks)} checks: {self.fails} FAIL, {len(warns)} WARN, "
             f"{sum(1 for c in self.checks if c.status == 'PASS')} PASS, "
@@ -130,6 +132,7 @@ class Report:
                     "verdict": self.verdict,
                     "mode": self.mode,
                     "git_sha": self.git_sha,
+                    "expected_sha": self.expected_sha,
                     "started_at": self.started_at,
                     "finished_at": self.finished_at,
                     "checks": [c.__dict__ for c in self.checks],
@@ -885,6 +888,7 @@ def run_local(report: Report, out_dir: Path, keep_db: bool, db_url_override: str
             [
                 sys.executable,
                 "deploy/release_check.py",
+                *(["--expected-sha", report.expected_sha] if report.expected_sha else []),
                 "--base-url",
                 base,
                 "--ops-token",
@@ -1005,6 +1009,7 @@ def run_remote(report: Report, base: str, ops_token: str | None, out_dir: Path) 
         [
             sys.executable,
             "deploy/release_check.py",
+            *(["--expected-sha", report.expected_sha] if report.expected_sha else []),
             "--base-url",
             base,
             "--ops-token",
@@ -1046,6 +1051,11 @@ def main() -> int:
         help="use this PostgreSQL instead of the embedded scratch server",
     )
     p.add_argument("--keep-db", action="store_true")
+    p.add_argument(
+        "--expected-sha",
+        default=None,
+        help="candidate commit the report vouches for; CI results and the deployment must match",
+    )
     args = p.parse_args()
 
     report = Report(
@@ -1053,6 +1063,10 @@ def main() -> int:
         mode="remote" if args.remote else "local",
     )
     report.git_sha = sh(["git", "rev-parse", "--short", "HEAD"]).stdout.strip()
+    report.expected_sha = (args.expected_sha or "").lower()
+    head = sh(["git", "rev-parse", "HEAD"]).stdout.strip().lower()
+    if report.expected_sha and not args.remote and head != report.expected_sha:
+        p.error(f"local HEAD {head[:12]} is not the expected candidate {report.expected_sha[:12]}")
     out_dir = Path(args.out)
 
     if args.remote:
