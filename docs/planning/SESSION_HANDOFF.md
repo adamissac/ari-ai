@@ -3,6 +3,12 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-10-30 — Devin (agent, Adam) — project-band CI assertion
+- Did: Updated the sticky-band E2E assertion to verify the border-image paint source rather than the intentionally transparent CSS background.
+- State of code: `fix/adam/project-band-full-bleed`, PR #722.
+- Commands run and results: Targeted `console-scroll-layout.spec.ts` passed (1 test); ESLint passed for the spec.
+- Next steps: Push the test adjustment and resume the PR CI loop.
+
 ### 2026-10-29 — Devin (agent, Adam) — full-bleed project band
 - Did: Converted the project header and sticky tabs to viewport-wide border-image paint while preserving the content column and tab-bar height.
 - State of code: `fix/adam/project-band-full-bleed`, based on current `origin/main`.

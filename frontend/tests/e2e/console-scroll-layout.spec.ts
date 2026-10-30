@@ -35,6 +35,7 @@ test('console header and tab band stay stacked while scrolling Analytics', async
             position: style.position,
             zIndex: style.zIndex,
             background: style.backgroundColor,
+            borderImageSource: style.borderImageSource,
           };
         };
         return {
@@ -51,7 +52,7 @@ test('console header and tab band stay stacked while scrolling Analytics', async
       expect(Number(layout.siteHeader?.zIndex)).toBeGreaterThan(Number(layout.tabBand?.zIndex));
       expect(layout.tabBand?.position).toBe('sticky');
       expect(layout.tabBand!.top).toBeGreaterThanOrEqual(layout.siteHeader!.bottom);
-      expect(layout.tabBand?.background).not.toBe('rgba(0, 0, 0, 0)');
+      expect(layout.tabBand?.borderImageSource).not.toBe('none');
       if (scrollY === 300) {
         expect(Math.abs(layout.tabBand!.top - layout.siteHeader!.bottom)).toBeLessThanOrEqual(1);
       }
