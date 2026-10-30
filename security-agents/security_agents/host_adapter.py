@@ -461,7 +461,21 @@ class HostSink(AssessmentSink):
             self.join_review()
         if self.result is not None and dst in (AssessmentState.COMPLETED, AssessmentState.AWAITING_APPROVAL):
             _store_standards_artifacts(self, self.result)
-        self.host.transition(_host_state(dst), note)
+        if (
+            dst is AssessmentState.FAILED
+            and self.result is not None
+            and self.result.error_code
+            and callable(getattr(self.host, "terminate", None))
+        ):
+            from shared.errors import ErrorCode as SharedErrorCode
+
+            self.host.terminate(
+                _host_state(dst),
+                SharedErrorCode(self.result.error_code.value),
+                self.result.error_detail or note or "Assessment failed",
+            )
+        else:
+            self.host.transition(_host_state(dst), note)
         if dst is AssessmentState.FUNCTIONAL_REVIEW:
             self._review = threading.Thread(target=self._run_review, name="functional-review", daemon=True)
             self._review.start()

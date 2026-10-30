@@ -25,6 +25,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -40,6 +41,46 @@ from .conftest import PAYMENTS_LITE_DIR
 shared = pytest.importorskip("shared", reason="canonical shared package not importable")
 import shared.assessment as shared_assessment  # noqa: E402
 import shared.findings as shared_findings  # noqa: E402
+
+
+def test_failed_transition_preserves_orchestrator_error() -> None:
+    from shared.errors import ErrorCode as SharedErrorCode
+
+    from security_agents.host_adapter import HostSink
+
+    class Host:
+        def terminate(self, state, code, message):
+            self.terminated = (state, code, message)
+
+    host = Host()
+    sink = HostSink(host=host, commit_sha="a" * 40)
+    sink.result = SimpleNamespace(error_code=ErrorCode.SNAPSHOT_NOT_READY, error_detail="index unavailable")
+    sink.on_transition(AssessmentState.INDEXING, AssessmentState.FAILED, "index unavailable")
+    assert host.terminated == (
+        shared_assessment.AssessmentState.FAILED,
+        SharedErrorCode.SNAPSHOT_NOT_READY,
+        "index unavailable",
+    )
+
+
+def test_failure_details_are_available_when_transition_is_emitted() -> None:
+    from security_agents.workflow.orchestrator import Orchestrator
+
+    result = SimpleNamespace(error_code=None, error_detail=None)
+
+    def goto(state, note):
+        assert state is AssessmentState.FAILED
+        assert result.error_code is ErrorCode.SNAPSHOT_NOT_READY
+        assert result.error_detail == note == "index unavailable"
+
+    fake = SimpleNamespace(
+        result=result,
+        _goto=goto,
+        _audit=lambda *args, **kwargs: None,
+        config=SimpleNamespace(assessment_id="asm_test"),
+    )
+    assert Orchestrator._fail(fake, ErrorCode.SNAPSHOT_NOT_READY, "index unavailable") is result
+
 
 SUBMIT = "submit_result"
 

@@ -361,6 +361,13 @@ class AssessmentHost:
     def _set_state(
         self, target: AssessmentState, message: str, error: ErrorBody | None = None
     ) -> Assessment:
+        if target is AssessmentState.FAILED:
+            if error is None:
+                error = ErrorBody(
+                    code=ErrorCode.INTERNAL, message=message[:500].strip() or "Assessment failed"
+                )
+            elif not error.message.strip():
+                error = error.model_copy(update={"message": "Assessment failed"})
         with transaction() as conn:
             row = self._row(conn, lock=True)
             a = Assessment.model_validate(row["doc"])
