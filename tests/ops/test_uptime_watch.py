@@ -55,17 +55,26 @@ LIVE = [
 
 class HealthTests(unittest.TestCase):
     def test_ok(self):
-        self.assertIsNone(uptime_watch.check_health("https://x/healthz", opener_returning(b'{"status":"ok"}')))
+        self.assertIsNone(
+            uptime_watch.check_health("https://x/healthz", opener_returning(b'{"status":"ok"}'))
+        )
 
     def test_application_not_found_404(self):
         err = HTTPError("u", 404, "Not Found", {}, None)
-        self.assertIn("HTTP 404", uptime_watch.check_health("https://x/healthz", opener_raising(err)))
+        self.assertIn(
+            "HTTP 404", uptime_watch.check_health("https://x/healthz", opener_raising(err))
+        )
 
     def test_unreachable(self):
-        self.assertIn("unreachable", uptime_watch.check_health("https://x/healthz", opener_raising(URLError("x"))))
+        self.assertIn(
+            "unreachable",
+            uptime_watch.check_health("https://x/healthz", opener_raising(URLError("x"))),
+        )
 
     def test_non_json(self):
-        self.assertIn("non-JSON", uptime_watch.check_health("https://x/healthz", opener_returning(b"<html>")))
+        self.assertIn(
+            "non-JSON", uptime_watch.check_health("https://x/healthz", opener_returning(b"<html>"))
+        )
 
 
 class EvaluateTests(unittest.TestCase):
