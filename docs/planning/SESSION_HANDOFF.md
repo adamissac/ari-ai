@@ -3,6 +3,13 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-10-29 — Devin (agent, Adam) — full-bleed project band
+- Did: Converted the project header and sticky tabs to viewport-wide border-image paint while preserving the content column and tab-bar height.
+- State of code: `fix/adam/project-band-full-bleed`, based on current `origin/main`.
+- Commands run and results: Frontend lint, typecheck, and production build passed. Playwright captures at 2560×1300, 1920×1080, and 1440×900 verified equal scroll/client widths and aligned content; the 600px scrolled Analytics capture verified the sticky tab bar.
+- Screenshots: `/home/ubuntu/shots/band/` (Setup, Analytics, and scrolled Analytics).
+- Next steps: Commit and push; CI follow-up is handled separately.
+
 ### 2026-10-27 — Devin (agent, Adam) — wildcard per-commit assessment routing
 - Did: Routed non-empty author configuration, including `*`, through per-commit scheduling; added wildcard push and unlisted-author regressions.
 - State of the code: Branch `fix/adam/per-commit-wildcard`; ready to commit and push.
