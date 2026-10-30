@@ -438,6 +438,26 @@ def host_and_orchestrator(tmp_path, monkeypatch):
     return host, orchestrator, gateway
 
 
+def test_fresh_orchestrator_carries_host_ledger(host_and_orchestrator, tmp_path, monkeypatch):
+    host, adapter, _ = host_and_orchestrator
+    assessment = host.assessment()
+    assessment.usage = SimpleNamespace(input_tokens=123, output_tokens=45, usd=0.25, sandbox_seconds=12)
+    monkeypatch.setattr(host, "assessment", lambda: assessment)
+    workdir = tmp_path / "fresh"
+    workdir.mkdir()
+    intel = adapter._build_intel(adapter.target_dir, workdir, host)
+    orchestrator = adapter._make_orchestrator(host, intel, workdir)
+    assert orchestrator.result.usage.input_tokens == 123
+    assert orchestrator.result.usage.output_tokens == 45
+    assert orchestrator.result.usage.usd == 0.25
+    assert orchestrator.result.usage.sandbox_seconds == 12
+    assert orchestrator.sink.sandbox_charged == 12
+    orchestrator.sink.settle([], 12)
+    assert host.charged == []
+    orchestrator.sink.settle([], 15)
+    assert host.charged[-1].sandbox_seconds == 3
+
+
 # --------------------------------------------------------------------------- tests
 
 
