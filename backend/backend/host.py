@@ -49,6 +49,7 @@ from backend.db import (
     authorized_scopes,
     finding_records,
     findings,
+    job_events,
     jobs,
     monitoring_events,
     patch_candidates,
@@ -57,6 +58,7 @@ from backend.db import (
     transaction,
     verification_results,
 )
+from backend.settings import get_settings
 from shared.assessment import (
     TERMINAL_STATES,
     AgentName,
@@ -414,7 +416,28 @@ class AssessmentHost:
                 or a.created_at
             )
             now = utcnow()
-            estimate = max(0.0, (now - last).total_seconds())
+            if a.state is AssessmentState.AWAITING_APPROVAL:
+                estimate = 0.0
+            else:
+                started = (
+                    conn.execute(
+                        sa.select(job_events.c.created_at)
+                        .join(jobs, job_events.c.job_id == jobs.c.id)
+                        .where(
+                            jobs.c.kind == "run_assessment",
+                            jobs.c.payload["assessment_id"].astext == self.assessment_id,
+                            job_events.c.to_status == "running",
+                            job_events.c.created_at <= last,
+                        )
+                        .order_by(job_events.c.created_at.desc(), job_events.c.seq.desc())
+                        .limit(1)
+                    ).scalar_one_or_none()
+                    or last
+                )
+                estimate = min(
+                    max(0.0, (now - started).total_seconds()),
+                    max(0, get_settings().worker_lease_s),
+                )
             usage = a.usage.model_copy(
                 update={"sandbox_seconds": a.usage.sandbox_seconds + estimate}
             )
