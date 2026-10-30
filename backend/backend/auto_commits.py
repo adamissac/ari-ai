@@ -865,7 +865,13 @@ class _ReviewUncertain(EffectNotApplied):
 
 
 def _review_already_delivered(
-    conn: Connection, *, job_id: str, assessment_id: str, pr_number: int, effect_key: str
+    conn: Connection,
+    *,
+    job_id: str,
+    project_id: str,
+    assessment_id: str,
+    pr_number: int,
+    effect_key: str,
 ) -> None:
     """Serialized under the assessment row lock: skip when another job posted (or settled)
     this review; yield to any job that already reserved it. Catches jobs that reach the
@@ -879,6 +885,7 @@ def _review_already_delivered(
         (doc.get("details") or {}).get("pr_number") == pr_number
         for doc in conn.execute(
             sa.select(audit_events.c.doc).where(
+                audit_events.c.project_id == project_id,
                 audit_events.c.doc["action"].astext == "monitoring.pr_review_posted",
                 audit_events.c.doc["subject_id"].astext == assessment_id,
             )
@@ -943,17 +950,14 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
         ).scalar_one_or_none()
         if request_doc is None:
             return {"noop": "reassessment request not found"}
-        event_docs = (
-            conn.execute(
-                sa.select(monitoring_events.c.doc).where(
-                    monitoring_events.c.id.in_(request_doc.get("event_ids", []) or [""])
-                )
-            )
-            .scalars()
-            .all()
+        from backend.host import linked_pull_requests
+
+        # A job queued before per-PR keys carries no PR number: it covers the first linked PR,
+        # the same one _enqueue_pr_review leaves to it.
+        pr_number = int(
+            ctx.job.payload.get("pr_number")
+            or next(iter(linked_pull_requests(conn, assessment)), 0)
         )
-        linked = [int(event["pr_number"]) for event in event_docs if event.get("pr_number")]
-        pr_number = int(ctx.job.payload.get("pr_number") or next(iter(linked), 0))
         if not pr_number:
             return {"noop": "assessment is not linked to a pull request"}
         settings = project_settings(conn, assessment.project_id)
@@ -1027,6 +1031,7 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
             _review_already_delivered(
                 conn,
                 job_id=ctx.job.id,
+                project_id=project_id,
                 assessment_id=assessment_id,
                 pr_number=pr_number,
                 effect_key=effect_key,

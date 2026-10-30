@@ -164,10 +164,11 @@ def _enqueue_pr_review(conn: Connection, assessment: Assessment) -> None:
     if not linked:
         return
     legacy = conn.execute(
-        sa.select(jobs_table.c.id).where(jobs_table.c.dedupe_key == f"prreview:{assessment.id}")
+        sa.select(jobs_table.c.status).where(jobs_table.c.dedupe_key == f"prreview:{assessment.id}")
     ).scalar_one_or_none()
+    legacy_live = legacy is not None and legacy not in ("dead", "failed", "cancelled", "timed_out")
     for pr_number in linked:
-        if legacy is not None and pr_number == linked[0]:
+        if legacy_live and pr_number == linked[0]:
             continue
         jobs.enqueue(
             conn,

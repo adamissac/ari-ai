@@ -545,3 +545,130 @@ def test_legacy_review_job_and_per_pr_job_post_once(automatic, monkeypatch):
     monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
     worker.drain(kinds=["post_pr_review"])
     assert [c[2] for c in calls] == [7]
+
+
+# --- self-audit: concurrent PR linking, uncertain sibling reviews, dead legacy jobs ------
+
+
+def test_concurrent_pr_links_for_one_commit_keep_both_prs(automatic, monkeypatch):
+    """Two workers link PR 7 and PR 8 to the same assessed commit at the same moment."""
+    alice, bob, ids, _ = automatic
+    bob.post(f"/api/v1/scopes/{ids['scope']}/approve")
+    push(alice, HEAD)
+    with transaction() as conn:
+        assessment_id = conn.execute(sa.select(assessments.c.id)).scalar_one()
+    complete(assessment_id)
+    assert post_webhook(alice, pr_payload(number=7), event="pull_request").status_code == 202
+    assert post_webhook(alice, pr_payload(number=8), event="pull_request").status_code == 202
+    worker.drain(kinds=["process_github_delivery"])
+    gate = threading.Barrier(2)
+
+    def commit(self, installation, repo, sha):
+        gate.wait(timeout=10)  # both linking jobs are past their pre-checks together
+        return {"sha": sha, "author": {"login": "adamissac"}}
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp.commit", commit)
+    threads = [
+        threading.Thread(target=worker.run_one, args=(f"w{i}", ["assess_github_commit"]))
+        for i in range(2)
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    from backend.host import linked_pull_requests
+    from shared.assessment import Assessment
+
+    with transaction() as conn:
+        doc = conn.execute(
+            sa.select(assessments.c.doc).where(assessments.c.id == assessment_id)
+        ).scalar_one()
+        assert sorted(linked_pull_requests(conn, Assessment.model_validate(doc))) == [7, 8]
+    calls = []
+
+    class GitHub:
+        def post_pull_request_review(self, *args):
+            calls.append(args)
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+    worker.drain(kinds=["post_pr_review"])
+    assert sorted(c[2] for c in calls) == [7, 8]
+    assert records() == [HEAD]
+
+
+@pytest.mark.parametrize(
+    "sibling_status,expect", [("recovery_required", "skipped"), ("running", "deferred")]
+)
+def test_review_yields_to_an_older_job_for_the_same_review(
+    automatic, monkeypatch, sibling_status, expect
+):
+    """An older job's POST is in flight (or ended uncertain): never post a second time."""
+    _, bob, ids, _ = automatic
+    from backend import jobs as jobs_api
+
+    with transaction() as conn:
+        older, _ = jobs_api.enqueue(conn, "post_pr_review", {}, dedupe_key="older-sibling")
+    assessment_id = seed_pr_assessment(ids, bob)
+    with transaction() as conn:
+        conn.execute(
+            sa.update(jobs)
+            .where(jobs.c.id == older)
+            .values(
+                status=sibling_status,
+                effect_state="in_flight",
+                effect_key=f"prreview:{assessment_id}:pr:7",
+            )
+        )
+    calls = []
+
+    class GitHub:
+        def post_pull_request_review(self, *args):
+            calls.append(args)
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+    worker.drain(kinds=["post_pr_review"])
+    assert calls == []
+    with transaction() as conn:
+        mine = (
+            conn.execute(
+                sa.select(jobs).where(jobs.c.dedupe_key == f"prreview:{assessment_id}:pr:7")
+            )
+            .mappings()
+            .one()
+        )
+    if expect == "skipped":
+        assert mine["status"] == "succeeded"
+        assert audits("monitoring.pr_review_skipped")
+    else:
+        assert mine["status"] == "queued" and mine["defer_count"] >= 1
+
+
+def test_dead_legacy_review_job_does_not_block_the_per_pr_job(automatic, monkeypatch):
+    _, bob, ids, _ = automatic
+    assessment_id = seed_pr_assessment(ids, bob)
+    with transaction() as conn:
+        conn.execute(
+            sa.update(jobs)
+            .where(jobs.c.kind == "post_pr_review")
+            .values(
+                dedupe_key=f"prreview:{assessment_id}",
+                payload={"assessment_id": assessment_id},
+                status="dead",
+            )
+        )
+        from backend.host import _enqueue_pr_review
+        from shared.assessment import Assessment
+
+        doc = conn.execute(
+            sa.select(assessments.c.doc).where(assessments.c.id == assessment_id)
+        ).scalar_one()
+        _enqueue_pr_review(conn, Assessment.model_validate(doc))
+    calls = []
+
+    class GitHub:
+        def post_pull_request_review(self, *args):
+            calls.append(args)
+
+    monkeypatch.setattr("backend.auto_commits.GitHubApp", GitHub)
+    worker.drain(kinds=["post_pr_review"])
+    assert [c[2] for c in calls] == [7]
