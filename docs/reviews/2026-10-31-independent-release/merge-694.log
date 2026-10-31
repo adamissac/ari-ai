@@ -1,0 +1,8 @@
+Auto-merging CHANGELOG.md
+CONFLICT (content): Merge conflict in CHANGELOG.md
+Auto-merging backend/README.md
+CONFLICT (content): Merge conflict in backend/README.md
+Auto-merging backend/backend/auto_commits.py
+CONFLICT (content): Merge conflict in backend/backend/auto_commits.py
+Auto-merging docs/planning/SESSION_HANDOFF.md
+Automatic merge failed; fix conflicts and then commit the result.

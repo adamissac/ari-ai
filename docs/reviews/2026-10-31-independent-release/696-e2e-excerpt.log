@@ -1,0 +1,40 @@
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9623750Z   1) [chromium] › tests/e2e/landing.spec.ts:226:1 › process cards traverse with scrolling again ────
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9624450Z 
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9624789Z     Error: expect(locator).toHaveAttribute(expected) failed
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9625258Z 
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9625597Z     Locator:  locator('#how').locator('.story-card').first()
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9626150Z     Expected: "true"
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9626561Z     Received: ""
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9626897Z     Timeout:  20000ms
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9627120Z 
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9627269Z     Call log:
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9628126Z       - Expect "toHaveAttribute" locator('#how').locator('.story-card').first() with timeout 20000ms
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9629229Z       - waiting for locator('#how').locator('.story-card').first()
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9630284Z         44 × locator resolved to <li class="story-card">…</li>
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9630853Z            - unexpected value "null"
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9631074Z 
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9631080Z 
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9631388Z       234 |       window.scrollTo(0, top + (el.clientHeight - innerHeight) * p);
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9631873Z       235 |     }, progress);
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9632384Z     > 236 |     await expect(cards.nth(index)).toHaveAttribute('data-active', 'true');
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9632926Z           |                                    ^
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9633248Z       237 |   }
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9633874Z       238 | });
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9634199Z       239 |
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9634827Z         at /home/runner/work/ari-ai/ari-ai/frontend/tests/e2e/landing.spec.ts:236:36
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9635371Z 
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9636110Z     attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9637702Z     test-results/landing-process-cards-traverse-with-scrolling-again-chromium/test-failed-19.png
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9639140Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9639678Z 
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9640495Z     attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9641343Z     test-results/landing-process-cards-traverse-with-scrolling-again-chromium/test-failed-1.png
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9642141Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9642433Z 
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9642828Z     attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9644130Z     test-results/landing-process-cards-traverse-with-scrolling-again-chromium/test-failed-2.png
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9645047Z     ────────────────────────────────────────────────────────────────────────────────────────────────
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9645357Z 
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9645756Z     attachment #4: screenshot (image/png) ──────────────────────────────────────────────────────────
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9646469Z     test-results/landing-process-cards-traverse-with-scrolling-again-chromium/test-failed-3.png
+e2e	UNKNOWN STEP	2026-10-30T00:07:12.9647664Z     ────────────────────────────────────────────────────────────────────────────────────────────────
