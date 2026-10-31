@@ -201,6 +201,15 @@ export function handoffNote(own: readonly RunFacts[], next: readonly RunFacts[] 
   return 'Finished, and the next agent has a recorded run.';
 }
 
+/**
+ * True when some model turn was scripted, replayed or of an unknown mode. 'none' steps make no
+ * model call at all, so a live run that also has deterministic steps is still a live run.
+ */
+export function hasNonLiveModelTurns(modes: Iterable<string>): boolean {
+  for (const m of modes) if (m !== 'live' && m !== 'none') return true;
+  return false;
+}
+
 /** provider_mode is persisted per run; 'live' is the only value that means a real model call. */
 export function providerLabel(mode: string): StatusView {
   if (mode === 'live') return v('Live provider', 'ok', '●');
