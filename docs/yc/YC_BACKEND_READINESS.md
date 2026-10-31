@@ -27,7 +27,7 @@ without access this session did not have.
 
 - `adamissac/ari-ai` `main` = `4271503e` (#742; only docs/status commits since `9437e217`).
 - Composed integration tree (not a PR, for audit only): `m-alan08/ari-ai` branch `devin/1793447000-yc-integration`
-  = `7b9bfdd98f89c1af5e4d35d787db46a9c24584d2` = `c9eedf7a` (main + #693 + #694 + #695 + #723 + #725 + the
+  = `e76d3a73` (`7b9bfdd9` + the #694 redaction fix) ; `7b9bfdd98f89c1af5e4d35d787db46a9c24584d2` = `c9eedf7a` (main + #693 + #694 + #695 + #723 + #725 + the
   #693×#694 regression test + the P2 fix) merged with main `4271503e` + the R1 harness fix. (Previous: `c9eedf7a`, `71281707`.)
 - R1 harness fix on top of #725: `m-alan08/ari-ai` branch `devin/1793473000-r1-restart-harness` = `4f0c37e6`
   (#725 `79067534` + one commit touching only `deploy/evidence/restart_recovery.py`).
@@ -73,6 +73,11 @@ All on the local embedded Postgres stack; FakeLLM/scripted transports where test
 | integ `7b9bfdd9` | `uv run python deploy/evidence/restart_recovery.py --out ~/ev-integ2` (clean tree) | S1, S2a, S2b, S3, S7, S4, S5, S6 all PASS, exit 0 |
 | integ `7b9bfdd9` | `make check` ; `uv run mypy` | pass ; `Success: no issues found in 41 source files` |
 | integ `7b9bfdd9` | `uv run pytest -q -p no:cacheprovider backend/tests security-agents/tests tests/ops` | **1907 passed, 32 skipped**, exit 0 (12m55s) |
+| #694 `8d320084` | redaction tests before the fix | **11 failed**, 16 passed |
+| #694 `8d320084` | redaction files ; `make check` ; `uv run mypy` ; `uv run pytest -q -p no:cacheprovider backend/tests` | 41 passed ; pass ; no issues ; **962 passed, 9 skipped**, exit 0 |
+| integ `e76d3a73` | canary probes (13 + 16 forms) | 0 leaks ; 1 leak (nginx `auth_token value;`, documented) |
+| integ `7b9bfdd9` | `uv run python deploy/release_readiness.py` (local scratch stack) | GO, 21 PASS / 0 FAIL — local only, not staging |
+| integ `e76d3a73` | `uv run pytest -q -p no:cacheprovider backend/tests security-agents/tests tests/ops` | **1919 passed, 32 skipped**, exit 0 (16m24s) |
 | #723 `56204e4a` | `python -m unittest tests/ops/test_uptime_watch.py -v` (py3.12) | 8 passed |
 | prod (read-only) | `python scripts/ops/uptime_watch.py` without tokens | reports `healthz returned HTTP 404`, exit 1 |
 
@@ -94,6 +99,20 @@ GitHub CI for #693 and #723 could not be read (provider API rate limit) — NOT 
   which encoded the unsafe behaviour. It fails before the fix (2 POSTs) and passes after it.
 - Trade-off: a 503 where GitHub really did not create the review now waits for an operator instead of retrying
   itself. A missing review can be recovered; a duplicate posted to a customer's PR cannot be taken back.
+
+## Fixed: unquoted credential values in config/shell/Docker/XML diffs (#694 `8d320084`)
+
+- Reproduction: an independent synthetic-canary probe of `redact_code` (the redactor `ArtifactStore.put_text(kind=diff)`
+  uses before marking a diff redacted) on integ `7b9bfdd9` left unquoted values readable in 9 of 16 file forms:
+  `.ini`, `.cfg`, `.properties` (`spring.datasource.password=`), `.conf`, `.sh` (`export GITHUB_TOKEN=`), a bare
+  `env` file, Dockerfile `ENV`/`ARG`, compose `- POSTGRES_PASSWORD=` list entries and XML `<password>` elements.
+  `main` additionally leaks triple-quoted Python, unquoted YAML and `.env` (already fixed by #694).
+- Fix (`backend/backend/redaction.py`): the per-file unquoted-value rule now also covers those formats. Values that
+  reference something else (`${VAR}`, `$(cmd)`) are left alone, and `.py` files are unaffected.
+- Regression tests: `test_unquoted_values_in_config_shell_docker_and_xml_files_are_redacted` (11 cases: all
+  **failed** before the fix, pass after) and `test_references_in_config_shell_docker_and_xml_files_are_left_alone`
+  in `backend/tests/test_redaction_literal_forms.py`.
+- Known remaining gap: separator-less directives such as nginx `auth_token value;` are not redacted.
 
 ## Fixed: R1 restart-recovery harness (branch `devin/1793473000-r1-restart-harness`)
 
@@ -130,5 +149,5 @@ GitHub CI for #693 and #723 could not be read (provider API rate limit) — NOT 
 2. Merge order decision and merges by owners: #693 → #694 → #725 → #723 → #695 (CHANGELOG-only conflicts after #694).
 3. Owner decision: take the R1 harness commit into #725 (cherry-pick `4f0c37e6`) so #725 merges with matching evidence.
 4. `RAILWAY_TOKEN` Actions secret present and `uptime-watch` producing a green run after #723 merges — NOT VERIFIED.
-5. Codex audit of integ `7b9bfdd9` / #694 `32dc528d` (or of `main` after merges), including the P2 fix.
+5. Codex audit of integ `e76d3a73` / #694 `8d320084` (or of `main` after merges), including the P2 fix.
 6. Real end-to-end journey on an authorized test repository against a live deployment — NOT VERIFIED (see YC_E2E_EVIDENCE.md).
