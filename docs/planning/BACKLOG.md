@@ -258,3 +258,7 @@ No prompt relay is needed after activation. See
 Installation PRs: canonical #614; fork #9 (main), #10 (ci/upstream-main). Fork #9
 controller Docker unit/layout/actionlint checks passed at abd61416; paid activation
 remains OFF pending manual installation and protected credential/session setup.
+
+
+## AUDIT-20261031 — Independent first-customer release gate
+Owner: Alan (independent auditor), requested by repository owner. Snapshot audit COMPLETE; release certification BLOCKED on #693/#694 union and authorized exact-SHA staging evidence. Branch feat/alan/independent-release-audit-20261031. See root YC release documents.

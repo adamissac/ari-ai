@@ -1,0 +1,9 @@
+
+ RUN  v5.0.5 /private/tmp/ari-release-audit/repo/frontend
+
+
+ Test Files  2 passed (2)
+      Tests  17 passed (17)
+   Start at  03:41:05
+   Duration  898ms (environment 69%, import 13%, tests 9%, transform 9%)
+

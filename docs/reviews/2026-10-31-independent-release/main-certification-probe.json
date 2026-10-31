@@ -1,0 +1,28 @@
+[
+  {
+    "checks": [],
+    "results": [
+      [
+        "PASS",
+        "CI success",
+        "all 0 checks green"
+      ]
+    ]
+  },
+  {
+    "checks": [
+      {
+        "name": "backend-tests",
+        "status": "COMPLETED",
+        "conclusion": "SKIPPED"
+      }
+    ],
+    "results": [
+      [
+        "PASS",
+        "CI success",
+        "all 1 checks green"
+      ]
+    ]
+  }
+]
