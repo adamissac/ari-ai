@@ -9,18 +9,28 @@ without access this session did not have.
 
 1. **Production is down.** `GET https://ari-ai-production-76d4.up.railway.app/healthz` and `/readyz` return
    Railway `404 "Application not found"` (observed 2026-10-31 07:36Z and 07:42Z); the Vercel frontend reports
-   `backendReachable:false`. Same signature as the 2026-10-28 incident. Needs a Railway redeploy by someone with
-   project access (runbook §2). This session has no Railway credentials and deployed nothing.
+   `backendReachable:false`. Same signature as the 2026-10-28 incident. Re-observed 2026-10-31 ~19:00Z (unchanged).
+   GitHub deployment records: the last production deployment (id `7427265892`, SHA `8c4036e5`, env
+   `adventurous-adaptation / production`) went **inactive at 2026-10-30 00:23:24Z** with no replacement, and no
+   deployment exists for any later `main` merge. The `storage-watch` run on 2026-10-31 (Railway token) still
+   reads `postgres-volume` (4209/10000 MB) and a backup at 16:45:02Z, so the project and Postgres volume exist.
+   Classification: **infrastructure/routing — the app service's deployment was removed**, not an app startup
+   crash (a crashed container yields a Railway 502/503, not "Application not found"). *Why* it was removed needs
+   the Railway activity log (founder action, runbook §2). Data integrity is inferred from volume/backup health
+   only, not checked. Needs a Railway redeploy by someone with project access. This session has no Railway
+   credentials and deployed nothing.
 2. The five reliability PRs are open, none merged. Composed together they pass the local suites (below), but
    they are not on `main`, so production (once redeployed from `main`) still lacks every fix here.
-3. One harness expectation conflicts with #725 (finding R1). Codex has not audited the composed tree.
+3. R1 (harness vs #725) is fixed on a branch (below), not merged. Codex has not audited the composed tree.
 
 ## Canonical state
 
-- `adamissac/ari-ai` `main` = `9437e217d65aa1be22fa7b4f54f723200cd428c8`.
+- `adamissac/ari-ai` `main` = `4271503e` (#742; only docs/status commits since `9437e217`).
 - Composed integration tree (not a PR, for audit only): `m-alan08/ari-ai` branch `devin/1793447000-yc-integration`
-  = `c9eedf7a9827e66095b126a6a52fcc64dd8af519` = main + #693 + #694 + #695 + #723 + #725 (merge order) + the
-  #693×#694 regression test + the P2 fix below. (Previous audited head: `71281707`.)
+  = `7b9bfdd98f89c1af5e4d35d787db46a9c24584d2` = `c9eedf7a` (main + #693 + #694 + #695 + #723 + #725 + the
+  #693×#694 regression test + the P2 fix) merged with main `4271503e` + the R1 harness fix. (Previous: `c9eedf7a`, `71281707`.)
+- R1 harness fix on top of #725: `m-alan08/ari-ai` branch `devin/1793473000-r1-restart-harness` = `4f0c37e6`
+  (#725 `79067534` + one commit touching only `deploy/evidence/restart_recovery.py`).
 
 | PR | Lane | Head SHA | Conflicts with main/others |
 |---|---|---|---|
@@ -59,6 +69,10 @@ All on the local embedded Postgres stack; FakeLLM/scripted transports where test
 | #694 `32dc528d` (P2 fix) | `uv run pytest -q -p no:cacheprovider backend/tests/test_pr_review_effect_ownership.py` before the fix | new P2 test **fails** (`assert 2 == 1`: two accepted POSTs) |
 | #694 `32dc528d` (final head) | targeted review/disconnect/auto_commits files; then `uv run pytest -q -p no:cacheprovider backend/tests` | **157 passed**; **950 passed, 9 skipped**, exit 0 |
 | integ `c9eedf7a` | targeted review/disconnect/auto_commits/auto_delivery files | **209 passed**, exit 0 |
+| #725+R1 `4f0c37e6` | `uv run python deploy/evidence/restart_recovery.py --out ~/ev-725` | S1, S2a, S2b, S3, S7, S4, S5, S6 all PASS, exit 0 |
+| integ `7b9bfdd9` | `uv run python deploy/evidence/restart_recovery.py --out ~/ev-integ2` (clean tree) | S1, S2a, S2b, S3, S7, S4, S5, S6 all PASS, exit 0 |
+| integ `7b9bfdd9` | `make check` ; `uv run mypy` | pass ; `Success: no issues found in 41 source files` |
+| integ `7b9bfdd9` | `uv run pytest -q -p no:cacheprovider backend/tests security-agents/tests tests/ops` | **1907 passed, 32 skipped**, exit 0 (12m55s) |
 | #723 `56204e4a` | `python -m unittest tests/ops/test_uptime_watch.py -v` (py3.12) | 8 passed |
 | prod (read-only) | `python scripts/ops/uptime_watch.py` without tokens | reports `healthz returned HTTP 404`, exit 1 |
 
@@ -81,9 +95,19 @@ GitHub CI for #693 and #723 could not be read (provider API rate limit) — NOT 
 - Trade-off: a 503 where GitHub really did not create the review now waits for an operator instead of retrying
   itself. A missing review can be recovered; a duplicate posted to a customer's PR cannot be taken back.
 
+## Fixed: R1 restart-recovery harness (branch `devin/1793473000-r1-restart-harness`)
+
+- Reproduction: on integ `71281707` S2 timed out (`last=AWAITING_APPROVAL`) because #725 restarts once instead of failing.
+- Fix (harness only, no product code): S2 is split. **S2a** SIGKILLs a worker mid-run and asserts: state reaches
+  `AWAITING_APPROVAL`, exactly one `automatic_restart=true` event, one `assessment.lost_worker_recovery` audit row
+  `to=SCOPE_CHECK`, carried `sandbox_seconds >= estimated_sandbox_seconds > 0` (observed 6.793 >= 6). **S2b** kills
+  a fresh assessment twice and asserts `FAILED` + `CONFLICT_STATE`, audit transitions `[SCOPE_CHECK, FAILED]`,
+  `automatic_restart` values `[True, False]` (no second restart). S7 now uses S2b's failure.
+- Pre-existing `ruff` F841 (`deadline`, `decided`) in this file exist on `main` too; the file is outside `make check`. Left as is.
+
 ## Findings routed to owners (not fixed here)
 
-- **R1 (#725, Adam) — evidence harness contradicts the new recovery semantics.** `deploy/evidence/restart_recovery.py`
+- **R1 (#725, Adam) — FIXED above; original note kept for history.** `deploy/evidence/restart_recovery.py`
   S2 SIGKILLs a worker mid-assessment and waits for `FAILED/CONFLICT_STATE`. With #725 the assessment restarts once
   and reaches `AWAITING_APPROVAL`, so S2 times out and S3–S6 never run (S7's comment also assumes S2 is FAILED).
   The product behaviour looks intended; the harness (and RELEASE_CHECKLIST evidence that cites it) needs updating
@@ -104,7 +128,7 @@ GitHub CI for #693 and #723 could not be read (provider API rate limit) — NOT 
 
 1. Production redeploy + post-deploy verification (operator with Railway access).
 2. Merge order decision and merges by owners: #693 → #694 → #725 → #723 → #695 (CHANGELOG-only conflicts after #694).
-3. R1 harness update, then re-run `restart_recovery.py` on the composed tree.
+3. Owner decision: take the R1 harness commit into #725 (cherry-pick `4f0c37e6`) so #725 merges with matching evidence.
 4. `RAILWAY_TOKEN` Actions secret present and `uptime-watch` producing a green run after #723 merges — NOT VERIFIED.
-5. Codex audit of `c9eedf7a` / #694 `32dc528d` (or of `main` after merges), including the P2 fix.
+5. Codex audit of integ `7b9bfdd9` / #694 `32dc528d` (or of `main` after merges), including the P2 fix.
 6. Real end-to-end journey on an authorized test repository against a live deployment — NOT VERIFIED (see YC_E2E_EVIDENCE.md).

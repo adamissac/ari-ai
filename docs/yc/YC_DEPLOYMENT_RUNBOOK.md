@@ -23,6 +23,17 @@ are unavailable, and its `capabilities` block shows LLM/GitHub App/sandbox/artif
 
 Railway's 404 "Application not found" means no live deployment is serving the domain — not an app error.
 
+Evidence for the 2026-10-31 outage (read-only): GitHub's last production deployment record (SHA `8c4036e5`)
+went inactive 2026-10-30 00:23:24Z with no newer deployment; `storage-watch` still reads the Postgres volume and a
+2026-10-31 16:45Z backup. So the app service's deployment (or the service) was removed while Postgres stayed.
+
+Founder actions, in order (each needs Railway project access):
+1. Railway → project `dfea884e-…` → *Activity*: record who/what removed the ari-ai deployment around 2026-10-30 00:23Z
+   (manual removal, plan/usage limit, failed redeploy, or service deletion). This is the root cause; nothing else has it.
+2. Check billing/usage limits; if the plan paused services, fix that first or the redeploy will be removed again.
+3. Do steps 1–5 below, then §3. Send Devin the deployed SHA plus `/healthz` and `/readyz` bodies to record.
+4. Add `RAILWAY_TOKEN` as an Actions secret (if missing) and merge #723 so the next removal alerts within 15 min.
+
 1. Railway → project → environment `production`. For **Postgres** and **ari-ai** check *Deployments*:
    is there a latest deployment, and is it `SUCCESS`? Note what removed the deployment (activity log) for the
    incident record — the root cause of the 10-28 and 10-31 removals is still unknown.
