@@ -8,6 +8,21 @@ Before starting, the customer receives [PILOT_SCOPE.md](PILOT_SCOPE.md) and
 [DATA_HANDLING.md](DATA_HANDLING.md) and signs the pilot consent items in
 [FIRST_FIVE_PLAN.md](FIRST_FIVE_PLAN.md).
 
+Updated 2026-10-31 for the first paid pilot ([MVP_SCOPE](../planning/MVP_SCOPE.md),
+[YC_PRODUCT_READINESS](../yc/YC_PRODUCT_READINESS.md)). Goal of the first session: a confirmed
+finding with executed evidence, and if one exists, an approved fix accepted by independent re-test.
+
+## Before any customer session (owner)
+
+- [ ] Hosted stack is up on one SHA: `/readyz` 200 and `/api/frontend-version` shows
+      `backendReachable:true`, `sameCommit:true`. If not, do not onboard; reschedule.
+- [ ] A live assessment has completed on the hosted stack against our own staging repository
+      this week (LAUNCH_BLOCKERS L2).
+- [ ] Teammates: each developer signs in with GitHub and gets their own organization. Until
+      organization invites exist (ENGINEERING_EXECUTION_PLAN G4), run the pilot from one
+      owner's organization. An operator adds a teammate's membership only on the owner's
+      written request, recorded in the ops log; never share a session.
+
 ## Step 0 — eligibility check (owner, ~10 min)
 
 - [ ] Repository is Python-primary, ≤ 10,000 files, ≤ 32 MB.
@@ -46,6 +61,8 @@ Before starting, the customer receives [PILOT_SCOPE.md](PILOT_SCOPE.md) and
       a sandbox. Customer reviews and merges it like any PR.
 - [ ] If the recipe PR is `unsupported`/`invalid`, the repo needs human setup
       — owner assists; do not force it.
+- [ ] Connecting opens **Setup** (eight questions). Question 6 approves sandbox testing
+      (Step 4 below); question 8 can start the first assessment. Connecting alone runs nothing.
 
 ## Step 4 — approve the AuthorizedScope (customer + owner, 5 min)
 
@@ -70,7 +87,11 @@ Before starting, the customer receives [PILOT_SCOPE.md](PILOT_SCOPE.md) and
 ## Step 6 — first assessment (customer + owner, ~5 min)
 
 - [ ] Pick a recent commit → start a manual assessment.
-- [ ] Expected duration ~2–4 min. Watch the pillar loop live if desired.
+- [ ] Duration: the 45-case eval baseline is a 153 s median (METRICS.md); hosted live
+      duration is not yet measured (record it). The page shows elapsed time and keeps running
+      if the customer leaves it.
+- [ ] A run with no findings shows what was and was not tested; "limited coverage" is not a
+      clean result. Say so.
 - [ ] If the run fails, it stays visibly failed — we do not mark it green;
       owner re-runs or investigates.
 
@@ -83,6 +104,15 @@ Before starting, the customer receives [PILOT_SCOPE.md](PILOT_SCOPE.md) and
 - [ ] Review any fix PR together; merge decision is always the customer's.
 - [ ] Agree on remaining findings: fix, accept-risk (records an
       `AcceptRisk`), or dispute (feeds the false-positive metric).
+
+## Step 8 — weekly health report (owner, 10 min/week)
+
+- [ ] With an owner session of the customer's organization (never a cross-customer account):
+      `ARI_SESSION=<cookie> uv run python scripts/pilot/health_report.py --base-url <backend> --project <prj_id>`.
+- [ ] Record the output in the ops spreadsheet, not in the product. It reports assessments by
+      state, model spend, confirmed / ruled-out / unconfirmed findings, fixes written and
+      verified, stale approvals and time from project creation to first confirmed finding and
+      first verified fix. Report zeros as zeros.
 
 ## Revocation and control — what the customer can always do
 
