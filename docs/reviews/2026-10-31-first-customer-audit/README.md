@@ -44,3 +44,18 @@ No backend change is in this PR. Needed for launch, in priority order:
    tested). The frontend currently derives coverage from agent runs only, which is honest but coarse.
 3. Open PR #725 (restart after lost worker state; FAILED always carries an error) supports P1-1;
    merging it makes the "did not finish" panel always show a cause.
+4. During the e2e run the worker logged `register_verified_regression` jobs ending **dead** with
+   `RuntimeError: SNAPSHOT_NOT_READY: Regression waits for a canonical assessment snapshot`
+   (`backend/backend/intelligence_jobs.py:36`). Tests still pass; confirm whether verified fixes
+   are silently missing their regression registration.
+
+## Evidence
+
+- `npm run lint`, `npm run typecheck`: clean. `npx vitest run`: 110 files, 481 tests passed.
+- `stack.py` (real API + PostgreSQL + worker + Next + Playwright, Chrome): `journey`, `honesty`,
+  `conflict-recovery`, `onboarding`, `pages`, `demo-recovery` specs — 28 passed.
+- Manual browser walkthrough on `stack_manual.py`: setup → start (commit prefilled, scope
+  "Sandbox testing for acme/payments-lite") → phases update live → approve two fixes → outcome
+  "2 confirmed / 2 approved / 2 proposed / 2 verified"; second run cancelled → "This check did not
+  finish" with a working restart link.
+
