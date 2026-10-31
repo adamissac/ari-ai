@@ -66,6 +66,7 @@ from shared.assessment import (
     AgentRunStatus,
     Assessment,
     AssessmentState,
+    AssessmentTrigger,
     ToolCallRecord,
     can_transition,
 )
@@ -629,6 +630,14 @@ class AssessmentHost:
             )
             if target in (AssessmentState.COMPLETED, AssessmentState.AWAITING_APPROVAL):
                 _enqueue_pr_review(conn, new)
+            if (
+                target in TERMINAL_STATES
+                and a.trigger is AssessmentTrigger.monitoring
+                and a.repo_id
+            ):
+                from backend.pipeline import start_coalesced_followup
+
+                start_coalesced_followup(conn, a.repo_id)
             return new
 
     def progress(self, message: str, *, agent: AgentName | None = None, **data: Any) -> None:
