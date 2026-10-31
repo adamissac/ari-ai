@@ -4,6 +4,7 @@ persisted records, history kept after a later disposition, and no other organiza
 from __future__ import annotations
 
 import importlib.util
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -95,6 +96,24 @@ def pilot(client_factory):
         f"/api/v1/projects/{ids['project']}/assessments", json={**start, "commit_sha": "d" * 40}
     ).json()["assessment"]
     assert alice.post(f"/api/v1/assessments/{second['id']}/cancel").status_code == 200
+    # A second scope left unapproved: one pending approval for the stale-backlog count.
+    pending = alice.post(
+        f"/api/v1/projects/{ids['project']}/scopes",
+        json={
+            "name": "sandbox-2",
+            "expires_at": (utcnow() + timedelta(days=7)).isoformat(),
+            "targets": [
+                {
+                    "kind": "sandbox_build",
+                    "repo_id": ids["repo"],
+                    "build_recipe_ref": "examples/payments-lite/sandbox.yaml",
+                    "exposed_ports": [8080],
+                }
+            ],
+            "allowed_check_categories": ["authorization.ownership"],
+        },
+    )
+    assert pending.status_code == 201, pending.text
     return alice, ids
 
 
@@ -123,6 +142,13 @@ def test_report_counts_only_persisted_records(pilot) -> None:
     t = out["activation_minutes"]
     assert t["first_assessment"] is not None and t["first_confirmed_finding"] is not None
     assert t["first_completed"] is None and t["first_verified_fix"] is None
+
+    assert out["approvals"]["pending"] == 1
+    assert out["approvals"]["stale_pending"] == 0
+    later = report.summarize(
+        report.collect(_getter(alice), ids["project"]), now=utcnow() + timedelta(hours=49)
+    )
+    assert later["approvals"]["stale_pending"] == 1
 
     text = report.render(out)
     assert "first verified fix not yet" in text

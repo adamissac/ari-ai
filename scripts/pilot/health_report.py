@@ -147,7 +147,7 @@ def summarize(data: dict[str, Any], now: datetime | None = None) -> dict[str, An
         "approvals": {
             "pending": len(pending),
             "stale_pending": sum(
-                1 for a in pending if (t := _ts(a.get("created_at"))) and now - t > STALE_APPROVAL
+                1 for a in pending if (t := _ts(a.get("requested_at"))) and now - t > STALE_APPROVAL
             ),
             "approved": sum(1 for a in approvals if a["status"] == "approved"),
             "declined": sum(1 for a in approvals if a["status"] == "declined"),
