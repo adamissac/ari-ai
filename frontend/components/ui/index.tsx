@@ -78,6 +78,7 @@ export function RollText({ children }: { children: string }) {
 
 export function ErrorState({ error, onRetry, context }: { error: unknown; onRetry?: () => void; context?: string }) {
   const e = describeError(error);
+  const signedOut = e.status === 401 || e.code === 'UNAUTHENTICATED' || e.code === 'CSRF_FAILED';
   return (
     <div role="alert" data-testid="error-state" className="rounded-md border border-bad/40 bg-bad/5 p-3 text-sm shadow-sm hover:shadow-md transition-shadow duration-300">
       <p className="font-semibold text-bad"><span aria-hidden="true">× </span>{context ? `${context}: ` : ''}{e.title}</p>
@@ -89,9 +90,12 @@ export function ErrorState({ error, onRetry, context }: { error: unknown; onRetr
         </p>
       )}
       {e.kind === 'protocol' && <ContractSkewHint />}
-      {(onRetry || e.status === 403 || e.status === 404) && (
+      {(onRetry || e.status === 403 || e.status === 404 || signedOut) && (
         <div className="mt-2 flex flex-wrap items-center gap-3">
-          {onRetry && <Button onClick={onRetry}>Retry</Button>}
+          {/* Retrying an expired session only fails again; a full navigation re-runs the session check and shows sign-in. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          {signedOut && <a className="text-sm font-semibold text-brand hover:underline" href="/connect" data-testid="sign-in-again">Sign in again</a>}
+          {onRetry && !signedOut && <Button onClick={onRetry}>Retry</Button>}
           {(e.status === 403 || e.status === 404) && <Link className="text-sm font-semibold text-brand hover:underline" href="/connect">Back to projects</Link>}
         </div>
       )}
