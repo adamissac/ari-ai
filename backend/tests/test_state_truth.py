@@ -606,3 +606,29 @@ def test_commit_contents_need_live_read_access_not_the_sign_in_snapshot(
     permission["value"] = "read"
     assert alice.get(url, params=params).status_code != 403
     assert served == ["a" * 40]
+
+
+def test_compare_paths_counts_both_ends_of_a_rename(monkeypatch):
+    from backend.github import GitHubApp
+
+    app = GitHubApp.__new__(GitHubApp)
+    files = [{"filename": "docs/auth.py", "previous_filename": "app/auth.py", "status": "renamed"}]
+    monkeypatch.setattr(app, "_get", lambda *a, **k: {"files": files}, raising=False)
+    paths, complete = app.compare_paths(1, "acme/shop", "a" * 40, "b" * 40)
+    assert paths == ["app/auth.py", "docs/auth.py"] and complete
+
+
+def test_a_github_outage_during_sign_in_is_a_clear_503_not_a_500(
+    client_factory, settings_override, monkeypatch
+):
+    import httpx
+
+    settings_override(github_oauth_client_id="cid", github_oauth_client_secret="secret")
+    down = httpx.MockTransport(lambda request: httpx.Response(502, text="<html>Bad gateway</html>"))
+    real = httpx.Client
+    monkeypatch.setattr("backend.api.auth.httpx.Client", lambda **kw: real(transport=down, **kw))
+    c = client_factory()
+    c.cookies.set("hackatl_oauth_state", "s1")
+    r = c.get("/api/v1/auth/github/callback", params={"code": "c", "state": "s1"})
+    assert r.status_code == 503, r.text
+    assert "try signing in again" in r.json()["error"]["message"]

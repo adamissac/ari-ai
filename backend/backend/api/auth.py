@@ -231,23 +231,41 @@ def github_callback(
         raise ApiError(ErrorCode.FORBIDDEN, "invalid OAuth state", 403)
     if not (s.github_oauth_client_id and s.github_oauth_client_secret):
         raise ApiError(ErrorCode.SUBSYSTEM_UNAVAILABLE, "GitHub OAuth is not configured", 503)
-    with httpx.Client(timeout=15) as client:
-        tok = client.post(
-            f"{s.github_web_url}/login/oauth/access_token",
-            headers={"Accept": "application/json"},
-            data={
-                "client_id": s.github_oauth_client_id,
-                "client_secret": s.github_oauth_client_secret.get_secret_value(),
-                "code": code,
-            },
-        ).json()
-        access = tok.get("access_token")
-        if not access:
-            raise ApiError(ErrorCode.UNAUTHENTICATED, "GitHub did not issue a token", 401)
-        gh = client.get(
-            f"{s.github_api_url}/user",
-            headers={"Authorization": f"Bearer {access}", "Accept": "application/vnd.github+json"},
-        ).json()
+    # A GitHub outage (timeout, 5xx, an HTML error page) is not a sign-in failure of ours:
+    # say so with a retryable 503 instead of an unhandled 500.
+    try:
+        with httpx.Client(timeout=15) as client:
+            tok = client.post(
+                f"{s.github_web_url}/login/oauth/access_token",
+                headers={"Accept": "application/json"},
+                data={
+                    "client_id": s.github_oauth_client_id,
+                    "client_secret": s.github_oauth_client_secret.get_secret_value(),
+                    "code": code,
+                },
+            )
+            tok.raise_for_status()
+            access = tok.json().get("access_token")
+            if not access:
+                raise ApiError(ErrorCode.UNAUTHENTICATED, "GitHub did not issue a token", 401)
+            user = client.get(
+                f"{s.github_api_url}/user",
+                headers={
+                    "Authorization": f"Bearer {access}",
+                    "Accept": "application/vnd.github+json",
+                },
+            )
+            user.raise_for_status()
+            gh = user.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        log.warning("GitHub sign-in exchange failed: %s", type(exc).__name__)
+        raise ApiError(
+            ErrorCode.SUBSYSTEM_UNAVAILABLE,
+            "GitHub is not responding right now; please try signing in again in a minute",
+            503,
+        ) from exc
+    if not isinstance(gh, dict):
+        raise ApiError(ErrorCode.UNAUTHENTICATED, "GitHub user lookup failed", 401)
     login, gid = gh.get("login"), gh.get("id")
     if not isinstance(login, str):
         raise ApiError(ErrorCode.UNAUTHENTICATED, "GitHub user lookup failed", 401)
