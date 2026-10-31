@@ -6,7 +6,11 @@ import type { RelayItem } from '@/lib/relay';
  * proposed → approved → verified. Every number comes from the persisted findings,
  * agent runs and approval records passed in; nothing is inferred beyond them.
  */
-interface FindingFacts { id: string; kind: string; status: string }
+interface FindingFacts { id: string; kind: string; status: string; history?: readonly { from_status: string | null; to_status: string }[] }
+
+/** Every status the finding has held, so a later disposition (e.g. accepted risk) does not erase what the run did. */
+const reached = (f: FindingFacts): Set<string> => new Set([f.status, ...(f.history ?? []).flatMap(h => [h.to_status, ...(h.from_status ? [h.from_status] : [])])]);
+const ever = (f: FindingFacts, set: ReadonlySet<string>) => [...reached(f)].some(s => set.has(s));
 interface RunFacts { agent: string; step_key: string; status: string; provider_mode: string }
 interface ApprovalFacts { subject_type: string; status: string }
 
@@ -27,18 +31,18 @@ export interface OutcomeCounts {
 }
 
 export function outcomeCounts(findings: readonly FindingFacts[], runs: readonly RunFacts[], approvals: readonly ApprovalFacts[] | null): OutcomeCounts {
-  const confirmed = findings.filter(f => CONFIRMED.has(f.status)).length;
-  const ruledOut = findings.filter(f => f.status === 'refuted').length;
-  // Count a fix only when the finding's own status records a patch: a fix-writing run can
-  // succeed without producing one (e.g. a repair that changes no implementation code).
+  const confirmed = findings.filter(f => ever(f, CONFIRMED)).length;
+  const ruledOut = findings.filter(f => !ever(f, CONFIRMED) && reached(f).has('refuted')).length;
+  // Count a fix only when the finding's status history records a patch: a fix-writing run
+  // can succeed without producing one (e.g. a repair that changes no implementation code).
   const fixApprovals = (approvals ?? []).filter(a => a.subject_type === 'remediation');
   return {
     findings: findings.length,
     confirmed,
     ruledOut,
     unconfirmed: findings.length - confirmed - ruledOut,
-    fixesProposed: findings.filter(f => FIXED.has(f.status)).length,
-    fixesVerified: findings.filter(f => VERIFIED.has(f.status)).length,
+    fixesProposed: findings.filter(f => ever(f, FIXED)).length,
+    fixesVerified: findings.filter(f => ever(f, VERIFIED)).length,
     approved: fixApprovals.filter(a => a.status === 'approved').length,
     declined: fixApprovals.filter(a => a.status === 'declined').length,
     pending: fixApprovals.filter(a => a.status === 'pending').length,

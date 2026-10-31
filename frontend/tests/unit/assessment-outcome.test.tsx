@@ -36,6 +36,17 @@ it('counts findings, proposals, approvals and verified fixes only from records',
   });
 });
 
+it('keeps what the run recorded after a finding is later accepted as a risk', () => {
+  const history = [
+    { from_status: 'hypothesis', to_status: 'validated' },
+    { from_status: 'validated', to_status: 'patch_proposed' },
+    { from_status: 'patch_proposed', to_status: 'verified' },
+    { from_status: 'verified', to_status: 'accepted_risk' },
+  ];
+  const n = outcomeCounts([{ id: 'f1', kind: 'security', status: 'accepted_risk', history }], [], []);
+  expect(n).toMatchObject({ confirmed: 1, ruledOut: 0, unconfirmed: 0, fixesProposed: 1, fixesVerified: 1 });
+});
+
 it('calls a no-findings run limited when the security agents never tested anything', () => {
   const relay = agentRelay({ runs: [run('reviewer')] as never, findings: [], state: 'COMPLETED', approvals: [], skipNote: 'no entry points' });
   const c = coverage(relay, [run('reviewer')], 'no entry points');
