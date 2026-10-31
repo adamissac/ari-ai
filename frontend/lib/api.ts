@@ -29,7 +29,7 @@ const RECOVERY_BY_CODE: Record<string, string> = {
   UNAUTHENTICATED: 'Your session ended. Sign in again, then retry.',
   CSRF_FAILED: 'Your session ended. Sign in again, then retry.',
   RATE_LIMITED: 'Too many requests in a short time. Wait a minute, then retry.',
-  SUBSYSTEM_UNAVAILABLE: 'A service Ari depends on (such as GitHub) did not respond, so nothing was started. Retry in a minute. If it keeps failing, check that the Ari GitHub App is still installed on this repository.',
+  SUBSYSTEM_UNAVAILABLE: 'A service Ari depends on did not respond, so nothing was started. Retry in a minute.',
   SNAPSHOT_NOT_READY: 'Ari is still indexing this commit. Retry in a minute.',
   SCOPE_DENIED: 'Sandbox testing is not approved for this repository. Approve a sandbox scope in setup or Scopes, then retry.',
   APPROVAL_REQUIRED: 'This step waits for a human decision. Open Approvals to see what is pending.',
@@ -37,7 +37,18 @@ const RECOVERY_BY_CODE: Record<string, string> = {
   IDEMPOTENCY_CONFLICT: 'This changed since the page loaded. Retry to load the latest state.',
 };
 
-function recoveryFor(status: number, code: string | undefined): string | undefined {
+const ARI_OUTAGE_RECOVERY =
+  'Ari itself is not answering, so this is not a problem with your GitHub connection, permissions or repository. Nothing was started. Retry in a few minutes.';
+const GITHUB_HINT = ' If it keeps failing, check that the Ari GitHub App is still installed on this repository.';
+
+/** The same-origin proxy marks envelopes it wrote because the API never answered. */
+function isAriOutage(error: ApiError): boolean {
+  return error.error.code === 'SUBSYSTEM_UNAVAILABLE' && error.error.details?.origin === 'proxy';
+}
+
+function recoveryFor(status: number, code: string | undefined, message: string): string | undefined {
+  // Point at the GitHub App only when the API said GitHub was the part that failed.
+  if (code === 'SUBSYSTEM_UNAVAILABLE') return RECOVERY_BY_CODE.SUBSYSTEM_UNAVAILABLE + (/github/i.test(message) ? GITHUB_HINT : '');
   if (code && RECOVERY_BY_CODE[code]) return RECOVERY_BY_CODE[code];
   if (status === 401) return RECOVERY_BY_CODE.UNAUTHENTICATED;
   if (status === 403) return 'Your account is not allowed to do this here. Ask a project owner for access. For a GitHub repository, also check that the Ari GitHub App can still reach it.';
@@ -50,6 +61,9 @@ function recoveryFor(status: number, code: string | undefined): string | undefin
 /** Turn any thrown value into honest, user-facing text. Never echoes payloads. */
 export function describeError(error: unknown): DescribedError {
   if (error instanceof ApiError) {
+    if (isAriOutage(error)) {
+      return { kind: 'api', title: 'Ari is unavailable', detail: error.error.message, code: error.error.code, status: error.status, requestId: null, recovery: ARI_OUTAGE_RECOVERY };
+    }
     return {
       kind: 'api',
       title: error.status === 401 ? 'Not signed in' : error.status === 403 ? 'Not permitted' : error.status === 404 ? 'Not found' : `Request failed (${error.status})`,
@@ -57,7 +71,7 @@ export function describeError(error: unknown): DescribedError {
       code: error.error.code,
       status: error.status,
       requestId: error.error.request_id,
-      recovery: recoveryFor(error.status, error.error.code),
+      recovery: recoveryFor(error.status, error.error.code, error.error.message),
     };
   }
   if (error instanceof ProtocolError) {
