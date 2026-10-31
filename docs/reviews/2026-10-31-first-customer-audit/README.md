@@ -56,6 +56,6 @@ No backend change is in this PR. Needed for launch, in priority order:
   `conflict-recovery`, `onboarding`, `pages`, `demo-recovery` specs — 28 passed.
 - Manual browser walkthrough on `stack_manual.py`: setup → start (commit prefilled, scope
   "Sandbox testing for acme/payments-lite") → phases update live → approve two fixes → outcome
-  "2 confirmed / 2 approved / 2 proposed / 2 verified"; second run cancelled → "This check did not
+  "2 confirmed / 2 approved / 2 verified" (the walkthrough exposed a wrong "No fix was written"; fixed in 2c18c6f2 and covered by a unit test using the step keys observed on that run, not re-walked in the browser); second run cancelled → "This check did not
   finish" with a working restart link.
 
