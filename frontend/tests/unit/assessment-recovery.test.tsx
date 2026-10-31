@@ -4,7 +4,7 @@ import { ApiError } from '@hackatl/frontend-transport';
 import { StartAssessment } from '@/components/start-assessment';
 
 const mocks = vi.hoisted(() => ({ start: vi.fn(), push: vi.fn(), reload: vi.fn(), projectId: 'prj_one', sequence: 0 }));
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }), useSearchParams: () => new URLSearchParams() }));
 vi.mock('@/components/project', () => ({ useProject: () => ({
   project: { id: mocks.projectId, name: 'owned', settings: { monitoring_policy: { enabled: true } } },
   selectedRepo: { id: 'rep_one', full_name: 'owned/repo', default_branch: 'main' },
