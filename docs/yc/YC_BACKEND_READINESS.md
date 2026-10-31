@@ -64,6 +64,7 @@ All on the local embedded Postgres stack; FakeLLM/scripted transports where test
 
 Skipped tests are opt-in live tests (`RUN_LIVE_LLM_EVAL`, `REHEARSAL_LIVE`) or missing optional `rl_defense`; none ran.
 GitHub CI for #693 and #723 could not be read (provider API rate limit) — NOT VERIFIED, not "failed".
+#694 CI: `4e35c397` failed one e2e test (`landing.spec.ts` "process cards traverse with scrolling again", `data-active` empty). #694's `frontend/` is byte-identical to main; the test passed 5/5 locally on main (`--repeat-each=5`); CI on `32dc528d` is fully green including e2e. So it was a flake, not caused by #694. Green CI is not release certification.
 
 ## Fixed after Codex review (P2, duplicate review)
 
