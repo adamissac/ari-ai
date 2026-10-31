@@ -12,6 +12,7 @@ interface ApprovalFacts { subject_type: string; status: string }
 
 const CONFIRMED: ReadonlySet<string> = new Set(['validated', 'diagnosed', 'patch_proposed', 'verified', 'patch_rejected', 'unresolved', 'hardened']);
 const VERIFIED: ReadonlySet<string> = new Set(['verified', 'hardened']);
+const FIXED: ReadonlySet<string> = new Set(['patch_proposed', 'verified', 'patch_rejected', 'hardened']);
 const SECURITY_AGENTS: ReadonlySet<string> = new Set(['scout', 'probe']);
 
 export interface OutcomeCounts {
@@ -29,15 +30,18 @@ export interface OutcomeCounts {
 export function outcomeCounts(findings: readonly FindingFacts[], runs: readonly RunFacts[], approvals: readonly ApprovalFacts[] | null): OutcomeCounts {
   const confirmed = findings.filter(f => CONFIRMED.has(f.status)).length;
   const ruledOut = findings.filter(f => f.status === 'refuted').length;
-  // A proposed fix is a Patch run that finished for that finding (step key `patch:<finding id>`).
-  const patched = new Set(runs.filter(r => r.agent === 'patch' && r.status === 'succeeded' && r.step_key.startsWith('patch:')).map(r => r.step_key.slice('patch:'.length)));
+  // A fix was written when a fix-writing step finished for the finding: Patch for security
+  // findings (`remediation:<id>:patch`) or the reviewer's repair step (`repair:<id>`), or
+  // when the finding's own status records a fix.
+  const fixRuns = runs.filter(r => r.status === 'succeeded' && (r.agent === 'patch' || r.step_key.startsWith('repair:')));
+  const patched = (f: FindingFacts) => FIXED.has(f.status) || fixRuns.some(r => r.step_key.split(':').includes(f.id));
   const fixApprovals = (approvals ?? []).filter(a => a.subject_type === 'remediation');
   return {
     findings: findings.length,
     confirmed,
     ruledOut,
     unconfirmed: findings.length - confirmed - ruledOut,
-    fixesProposed: findings.filter(f => patched.has(f.id)).length,
+    fixesProposed: findings.filter(patched).length,
     fixesVerified: findings.filter(f => VERIFIED.has(f.status)).length,
     approved: fixApprovals.filter(a => a.status === 'approved').length,
     declined: fixApprovals.filter(a => a.status === 'declined').length,

@@ -3,6 +3,13 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-10-31 — Claude Code (agent, Alan) — first-customer audit, assessment outcome and recovery, YC demo docs
+- Did: Audited the journey on the manual real stack (`docs/reviews/2026-10-31-first-customer-audit/README.md`). Assessment page: outcome panel (found / fix approval / proposed / verified / delivered), "did not finish" recovery with a prefilled restart link, honest no-findings coverage (limited vs not-proof), live phase-log refresh, elapsed-time note. Connect: what connecting does (incl. build-recipe PR), install dead end, error placement. Start assessment: `?commit=` prefill and readable scope name. Demo docs in `docs/demo/yc-w27/`.
+- State of the code: Branch `feat/alan/first-customer-ux` off `main` `9437e217`; frontend and docs only; avoids every file PR #696 touches.
+- Commands run and results: `npm run lint`, `npm run typecheck`, `npx vitest run` (all passing); targeted `stack.py` e2e (see PR); manual browser walkthrough of happy path and a cancelled run.
+- Assumptions / open questions: Proposed-fix detection uses step keys `remediation:<id>:patch` and `repair:<id>` plus finding status; a backend coverage record would be more precise.
+- Next steps: Devin verifies one live hosted assessment (P0-1); terminology pass after #696 merges.
+
 ### 2026-10-27 — Devin (agent, Adam) — wildcard per-commit assessment routing
 - Did: Routed non-empty author configuration, including `*`, through per-commit scheduling; added wildcard push and unlisted-author regressions.
 - State of the code: Branch `fix/adam/per-commit-wildcard`; ready to commit and push.

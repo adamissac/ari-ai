@@ -24,11 +24,11 @@ function view(state: Assessment['state'], findings: Finding[], runs: ReturnType<
 it('counts findings, proposals, approvals and verified fixes only from records', () => {
   const findings = [
     { id: 'f1', kind: 'security', status: 'hardened' },
-    { id: 'f2', kind: 'functional', status: 'patch_rejected' },
+    { id: 'f2', kind: 'functional', status: 'diagnosed' },
     { id: 'f3', kind: 'security', status: 'hypothesis' },
     { id: 'f4', kind: 'security', status: 'refuted' },
   ];
-  const runs = [run('patch', 'succeeded', 'patch:f1'), run('patch', 'succeeded', 'patch:f2'), run('patch', 'failed', 'patch:f3')];
+  const runs = [run('patch', 'succeeded', 'remediation:f1:patch'), run('reviewer', 'succeeded', 'repair:f2'), run('patch', 'failed', 'remediation:f3:patch')];
   const approvals = [{ subject_type: 'remediation', status: 'approved' }, { subject_type: 'remediation', status: 'declined' }, { subject_type: 'scope', status: 'approved' }];
   expect(outcomeCounts(findings, runs, approvals)).toEqual({
     findings: 4, confirmed: 2, ruledOut: 1, unconfirmed: 1, fixesProposed: 2, fixesVerified: 1, approved: 1, declined: 1, pending: 0,
