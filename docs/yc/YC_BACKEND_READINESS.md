@@ -19,13 +19,13 @@ without access this session did not have.
 
 - `adamissac/ari-ai` `main` = `9437e217d65aa1be22fa7b4f54f723200cd428c8`.
 - Composed integration tree (not a PR, for audit only): `m-alan08/ari-ai` branch `devin/1793447000-yc-integration`
-  = `712817073f8a23d7f2fcfd550ca13eed66d99374` = main + #693 + #694 + #695 + #723 + #725 (merge order) + the
-  #693×#694 regression test.
+  = `c9eedf7a9827e66095b126a6a52fcc64dd8af519` = main + #693 + #694 + #695 + #723 + #725 (merge order) + the
+  #693×#694 regression test + the P2 fix below. (Previous audited head: `71281707`.)
 
 | PR | Lane | Head SHA | Conflicts with main/others |
 |---|---|---|---|
 | [#693](https://github.com/adamissac/ari-ai/pull/693) review pipeline reliability | review delivery | `c3d5e552` | code conflict with #694 in `auto_commits.post_pr_review` |
-| [#694](https://github.com/adamissac/ari-ai/pull/694) disconnect / write safety | disconnect | `4e35c397` (updated this session; now contains #693) | resolved — merge #693 first or #694 alone |
+| [#694](https://github.com/adamissac/ari-ai/pull/694) disconnect / write safety | disconnect | `32dc528d` (updated this session; now contains #693 + P2 fix) | resolved — merge #693 first or #694 alone |
 | [#695](https://github.com/adamissac/ari-ai/pull/695) staging pilot / release signoff | deploy gates | `9cbacc3e` | CHANGELOG, SESSION_HANDOFF only |
 | [#723](https://github.com/adamissac/ari-ai/pull/723) production uptime watchdog (Adam) | monitoring | `56204e4a` | CHANGELOG only |
 | [#725](https://github.com/adamissac/ari-ai/pull/725) assessment lost-state recovery (Adam) | lifecycle | `79067534` | CHANGELOG only |
@@ -55,12 +55,30 @@ All on the local embedded Postgres stack; FakeLLM/scripted transports where test
 | integ `facd76fc` (before the test commit) | targeted: review_pipeline_reliability, pr_review_effect_ownership, security_audit_disconnect_writes, disconnect_write_token_ordering, auto_commits, auto_delivery, assessment_restart, e2e_host, staging_pilot, release_signoff_binding, parallel_migrations | **270 passed**, exit 0 |
 | integ `71281707` | `uv run python deploy/evidence/restart_recovery.py --out /tmp/ari-evidence` | S1 PASS; **S2 FAIL** (`poll timeout after 180s; last=AWAITING_APPROVAL`) → finding R1 |
 | #694 `ff047025` | targeted: review_pipeline_reliability, pr_review_effect_ownership, security_audit_disconnect_writes, disconnect_write_token_ordering, review_post_disconnect_lease, auto_commits, auto_delivery, redaction_literal_forms | **224 passed**, exit 0 (`4e35c397` adds a CHANGELOG-only commit) |
-| #694 `4e35c397` (final head) | `uv run pytest -q -p no:cacheprovider backend/tests` | **950 passed, 9 skipped**, exit 0 |
+| #694 `4e35c397`  | `uv run pytest -q -p no:cacheprovider backend/tests` | **950 passed, 9 skipped**, exit 0 |
+| #694 `32dc528d` (P2 fix) | `uv run pytest -q -p no:cacheprovider backend/tests/test_pr_review_effect_ownership.py` before the fix | new P2 test **fails** (`assert 2 == 1`: two accepted POSTs) |
+| #694 `32dc528d` (final head) | targeted review/disconnect/auto_commits files; then `uv run pytest -q -p no:cacheprovider backend/tests` | **157 passed**; **950 passed, 9 skipped**, exit 0 |
+| integ `c9eedf7a` | targeted review/disconnect/auto_commits/auto_delivery files | **209 passed**, exit 0 |
 | #723 `56204e4a` | `python -m unittest tests/ops/test_uptime_watch.py -v` (py3.12) | 8 passed |
 | prod (read-only) | `python scripts/ops/uptime_watch.py` without tokens | reports `healthz returned HTTP 404`, exit 1 |
 
 Skipped tests are opt-in live tests (`RUN_LIVE_LLM_EVAL`, `REHEARSAL_LIVE`) or missing optional `rl_defense`; none ran.
 GitHub CI for #693 and #723 could not be read (provider API rate limit) — NOT VERIFIED, not "failed".
+
+## Fixed after Codex review (P2, duplicate review)
+
+- **P2 (Codex): an accepted review POST that answers 5xx could be posted twice.** `post_pr_review` read the PR's
+  reviews back right after the 5xx and treated "marker not found" as proof of non-application, so the job retried.
+  GitHub reads can lag the write, so a review that was created could be posted a second time. Codex's fake-provider
+  probe showed two accepted POSTs for one effect.
+- Fix (#694 `32dc528d`, `backend/backend/auto_commits.py`): after a 5xx, only a found marker settles the effect as
+  posted. Not found, or a failed lookup, now ends the job `recovery_required` with no automatic retry. An operator
+  resolves it through the existing `resolve_recovery` path (`applied` / `not_applied` / `retry`).
+- Regression test: `test_accepted_post_with_503_and_lagging_read_back_is_not_reposted` in
+  `backend/tests/test_pr_review_effect_ownership.py`. It replaces `test_http_500_confirmed_absent_on_github_is_retried`,
+  which encoded the unsafe behaviour. It fails before the fix (2 POSTs) and passes after it.
+- Trade-off: a 503 where GitHub really did not create the review now waits for an operator instead of retrying
+  itself. A missing review can be recovered; a duplicate posted to a customer's PR cannot be taken back.
 
 ## Findings routed to owners (not fixed here)
 
@@ -87,5 +105,5 @@ GitHub CI for #693 and #723 could not be read (provider API rate limit) — NOT 
 2. Merge order decision and merges by owners: #693 → #694 → #725 → #723 → #695 (CHANGELOG-only conflicts after #694).
 3. R1 harness update, then re-run `restart_recovery.py` on the composed tree.
 4. `RAILWAY_TOKEN` Actions secret present and `uptime-watch` producing a green run after #723 merges — NOT VERIFIED.
-5. Codex audit of `712817073f8a…` (or of `main` after merges).
+5. Codex audit of `c9eedf7a` / #694 `32dc528d` (or of `main` after merges), including the P2 fix.
 6. Real end-to-end journey on an authorized test repository against a live deployment — NOT VERIFIED (see YC_E2E_EVIDENCE.md).
