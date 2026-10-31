@@ -21,6 +21,8 @@ export function backendOrigin(value: string | undefined = process.env.BACKEND_OR
   return origin;
 }
 
+const OUTAGE = 'The Ari service is not running right now. Nothing was started, and no repository was read or changed. Try again later.';
+
 const envelope = (code: string, message: string, status: number): Response =>
   Response.json({ error: { code, message, details: {}, request_id: null } }, { status });
 
@@ -60,6 +62,12 @@ export async function proxy(request: Request): Promise<Response> {
   if (upstream.status >= 500 && !(await isApiError(upstream.clone()))) {
     await upstream.body?.cancel();
     return envelope('SUBSYSTEM_UNAVAILABLE', 'The API is restarting. Try again in a moment.', 503);
+  }
+  // Railway answers for a service with no running deployment itself ("Application not found",
+  // 404, x-railway-fallback). That is an outage, not a missing resource or a contract break.
+  if (upstream.headers.get('x-railway-fallback') === 'true') {
+    await upstream.body?.cancel();
+    return envelope('SUBSYSTEM_UNAVAILABLE', OUTAGE, 503);
   }
   const out = new Headers();
   for (const name of RESPONSE_HEADERS) {
