@@ -1,4 +1,4 @@
-import type { AccessibleRepository } from '@hackatl/frontend-transport';
+import { ApiError, type AccessibleRepository } from '@hackatl/frontend-transport';
 import { api, idempotencyKey } from '@/lib/api';
 
 /**
@@ -41,6 +41,17 @@ export async function connectRepo(org: string, repo: AccessibleRepository): Prom
   if (repo.connected_repo_id) return repo.connected_repo_id;
   const pid = await projectFor(org);
   return (await api().connectRepository(pid, { full_name: repo.full_name, default_branch: repo.default_branch, installation_id: repo.installation_id })).id;
+}
+
+/** Claim a repository another Ari project holds (GitHub admins only); returns its new id. */
+export async function claimRepo(org: string, repo: AccessibleRepository): Promise<string> {
+  const pid = await projectFor(org);
+  return (await api().claimRepository(pid, { full_name: repo.full_name, default_branch: repo.default_branch, installation_id: repo.installation_id })).id;
+}
+
+/** True for the 409 a connect gets when another Ari project already has the repository live. */
+export function takenElsewhere(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 409 && error.error.message === 'repository already connected to a project';
 }
 
 /** The repository's own project, as the API records it (no scan of every project). */

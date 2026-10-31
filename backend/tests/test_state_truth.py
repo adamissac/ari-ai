@@ -9,7 +9,14 @@ import sqlalchemy as sa
 from helpers import setup_project
 
 from backend.api.github_repos import store_repo_access
-from backend.db import assessments, github_repo_access, jobs, repositories, transaction
+from backend.db import (
+    assessments,
+    audit_events,
+    github_repo_access,
+    jobs,
+    repositories,
+    transaction,
+)
 from backend.quota import check_project_quota
 from backend.services import create_assessment
 from shared.assessment import AssessmentTrigger
@@ -606,3 +613,61 @@ def test_commit_contents_need_live_read_access_not_the_sign_in_snapshot(
     permission["value"] = "read"
     assert alice.get(url, params=params).status_code != 403
     assert served == ["a" * 40]
+
+
+def _claim_setup(client_factory, monkeypatch, permission):
+    from backend.db import users
+    from backend.settings import get_settings
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    bobs_project = _project(bob, "bob")
+    bobs = _connect(bob, bobs_project, "acme/shop").json()["id"]  # Bob got there first
+    with transaction() as conn:
+        store_repo_access(conn, alice.me["user"]["id"], [ACME])
+        conn.execute(
+            sa.update(users).where(users.c.id == alice.me["user"]["id"]).values(github_id=4242)
+        )
+    production = get_settings().model_copy(update={"app_env": "production"})
+    monkeypatch.setattr("backend.api.github_repos.get_settings", lambda: production)
+
+    class GitHub:
+        def user_installation(self, login):
+            return None
+
+        def installation_repositories(self, installation_id):
+            return [ACME]
+
+        def collaborator_permission(self, installation_id, full_name, login, github_id):
+            return permission
+
+    monkeypatch.setattr("backend.api.github_repos.GitHubApp", GitHub)
+    body = {"full_name": "acme/shop", "installation_id": 42, "default_branch": "main"}
+    return alice, bob, bobs, _project(alice), body
+
+
+def test_a_github_admin_can_claim_a_repository_another_project_holds(client_factory, monkeypatch):
+    alice, bob, bobs, pid, body = _claim_setup(client_factory, monkeypatch, "admin")
+    assert alice.post(f"/api/v1/projects/{pid}/repositories", json=body).status_code == 409
+    claimed = alice.post(f"/api/v1/projects/{pid}/repositories/claim", json=body)
+    assert claimed.status_code == 201, claimed.text
+    assert claimed.json()["project_id"] == pid and claimed.json()["id"] != bobs
+    old = bob.get(f"/api/v1/repositories/{bobs}").json()  # Bob keeps the history row
+    assert old["disconnected"] is True
+    with transaction() as conn:
+        actions = (
+            conn.execute(
+                sa.select(audit_events.c.doc["action"].astext).where(
+                    audit_events.c.doc["subject_id"].astext == bobs
+                )
+            )
+            .scalars()
+            .all()
+        )
+    assert "repository.claimed_away" in actions
+
+
+def test_only_a_github_admin_can_claim(client_factory, monkeypatch):
+    alice, bob, bobs, pid, body = _claim_setup(client_factory, monkeypatch, "write")
+    refused = alice.post(f"/api/v1/projects/{pid}/repositories/claim", json=body)
+    assert refused.status_code == 403 and "admin access" in refused.text
+    assert bob.get(f"/api/v1/repositories/{bobs}").json()["disconnected"] is False

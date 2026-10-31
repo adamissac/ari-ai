@@ -2,15 +2,17 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import ConnectReposPage from '@/app/(console)/connect/[org]/page';
 
-const mocks = vi.hoisted(() => ({ useResource: vi.fn(), push: vi.fn() }));
+const mocks = vi.hoisted(() => ({ useResource: vi.fn(), push: vi.fn(), connectRepo: vi.fn(), claimRepo: vi.fn(), projectForRepository: vi.fn() }));
 vi.mock('@/lib/use-resource', () => ({ useResource: mocks.useResource }));
 vi.mock('next/navigation', () => ({
   useParams: () => ({ org: 'acme' }),
   useRouter: () => ({ push: mocks.push }),
 }));
 vi.mock('@/lib/github-connect', () => ({
-  connectRepo: vi.fn(),
-  projectForRepository: vi.fn(),
+  connectRepo: mocks.connectRepo,
+  claimRepo: mocks.claimRepo,
+  projectForRepository: mocks.projectForRepository,
+  takenElsewhere: (e: unknown) => e instanceof Error && e.message === 'taken',
 }));
 
 const longName = 'acme/a-repository-name-that-is-long-enough-to-require-a-title-attribute';
@@ -47,4 +49,14 @@ it('filters full repository names case-insensitively and titles long names', () 
   expect(screen.queryByTestId(`connect-repo-${longName}`)).toBeNull();
   fireEvent.change(screen.getByLabelText('Filter repositories'), { target: { value: 'no-match' } });
   expect(screen.getByText('No repositories match "no-match"')).toBeTruthy();
+});
+
+it('offers a claim when another project already has the repository, and claims on click', async () => {
+  mocks.connectRepo.mockRejectedValueOnce(new Error('taken'));
+  mocks.claimRepo.mockResolvedValue('rep_claimed01');
+  mocks.projectForRepository.mockResolvedValue('prj_mine');
+  render(<ConnectReposPage />);
+  fireEvent.click(screen.getByTestId(`connect-repo-${longName}`).querySelector('button')!);
+  fireEvent.click(await screen.findByRole('button', { name: /Claim it/ }));
+  await vi.waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/projects/prj_mine/setup?repo=rep_claimed01'));
 });
