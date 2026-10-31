@@ -1,0 +1,8 @@
+......                                                                   [100%]
+=============================== warnings summary ===============================
+backend/tests/test_delivery_authority_view.py::test_deployment_gate_turns_direct_commits_into_pull_requests
+  /private/tmp/ari-release-audit/repo/backend/tests/conftest.py:182: PytestWarning: Value of environment variable ALLOW_AUTO_DELIVERY type should be str, but got False (type: bool); converted to str implicitly
+    monkeypatch.setenv(k.upper(), v)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+6 passed, 1 warning in 0.98s

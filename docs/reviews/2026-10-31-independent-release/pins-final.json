@@ -1,0 +1,38 @@
+[
+  {
+    "headRefOid": "c3d5e552e4fe8e9b66dbf30fab190609e42ec5c9",
+    "mergeStateStatus": "BEHIND",
+    "number": 693,
+    "state": "OPEN"
+  },
+  {
+    "headRefOid": "72753087abef39a84103fe9fbcf43248430a7ebb",
+    "mergeStateStatus": "BEHIND",
+    "number": 694,
+    "state": "OPEN"
+  },
+  {
+    "headRefOid": "9cbacc3ed5a787992e8e4de95021faa2ba31abcd",
+    "mergeStateStatus": "BEHIND",
+    "number": 695,
+    "state": "OPEN"
+  },
+  {
+    "headRefOid": "e0622b8d91dfb332cea5587147eda3418f3cd810",
+    "mergeStateStatus": "BEHIND",
+    "number": 696,
+    "state": "OPEN"
+  },
+  {
+    "headRefOid": "56204e4aa073540125489ac7e54a080ec6abea3d",
+    "mergeStateStatus": "BEHIND",
+    "number": 723,
+    "state": "OPEN"
+  },
+  {
+    "headRefOid": "79067534d044c097140b5aa60469caeb1629cb33",
+    "mergeStateStatus": "BEHIND",
+    "number": 725,
+    "state": "OPEN"
+  }
+]
