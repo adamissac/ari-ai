@@ -189,3 +189,27 @@ def test_a_burst_of_signed_deliveries_is_never_rejected(client_factory):
     payload = push_payload(["app.py"])
     codes = {post_webhook(c, payload).status_code for _ in range(150)}
     assert codes == {202}
+
+
+def test_a_push_coalesced_behind_a_running_assessment_runs_when_it_ends(client_factory) -> None:
+    from backend.host import AssessmentHost
+    from shared.assessment import AssessmentState
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    post_webhook(alice, push_payload(["app/a.py"], head="d" * 40))
+    post_webhook(alice, push_payload(["app/b.py"], head="e" * 40))
+    post_webhook(alice, push_payload(["app/c.py"], head="f" * 40))
+    _process()
+
+    def rrqs():
+        url = f"/api/v1/projects/{ids['project']}/reassessments"
+        return {r["head_sha"][0]: r for r in alice.get(url).json()["items"]}
+
+    before = rrqs()
+    assert before["d"]["status"] == "started"
+    assert before["e"]["status"] == before["f"]["status"] == "coalesced"
+    AssessmentHost(before["d"]["assessment_id"]).terminate(AssessmentState.CANCELLED, None, "done")
+    after = rrqs()
+    assert after["f"]["status"] == "started" and after["f"]["assessment_id"]  # newest runs
+    assert after["e"]["status"] == "skipped" and "superseded" in after["e"]["reason"]
