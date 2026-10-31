@@ -27,6 +27,14 @@ export default function ConnectOrgsPage() {
           </dl>
           <p className="border-t border-line py-3 text-sm text-muted"><strong className="font-medium text-ink">Revoke or limit access</strong> · GitHub → Settings → Applications → Installed GitHub Apps → Ari → Configure → Uninstall, or limit to selected repositories.</p>
         </section>
+        <section aria-label="What happens next" className="mb-6" data-testid="connect-next-steps">
+          <h2 className="label-mono mb-2 text-muted">What happens when you connect a repository</h2>
+          <ol className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+            <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">1 · No check runs yet</p><p className="mt-1 text-muted">Connecting records the repository. If it has no build recipe, Ari proposes one as a pull request on <code className="font-mono text-xs">ari/build-recipe</code> for you to merge or close. No tests run and nothing is pushed to your default branch.</p></li>
+            <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">2 · You answer eight setup questions</p><p className="mt-1 text-muted">Including whether to approve sandbox testing for 30 days and how verified fixes reach you. Automatic reviews stay off unless you turn them on.</p></li>
+            <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">3 · You start the first check</p><p className="mt-1 text-muted">The agents review one commit in an isolated copy and record findings with evidence. You approve any fix before it is built.</p></li>
+          </ol>
+        </section>
         {list.status === 'loading' && <Loading label="Loading your GitHub organizations" />}
         {list.status === 'error' && <ErrorState error={list.error} onRetry={list.reload} context="Could not list your GitHub repositories" />}
         {list.status === 'ready' && (() => {
@@ -37,6 +45,7 @@ export default function ConnectOrgsPage() {
               {orgs.length === 0 ? (
                 <Panel title="No repositories yet" className="text-center">
                   <p data-testid="connect-empty" className="mx-auto max-w-md text-sm text-muted">Install the {BRAND_NAME} GitHub App on an organization or your account.</p>
+                  {install === null && <p className="mx-auto mt-3 max-w-md text-sm text-muted" data-testid="connect-no-install-link">If the App is already installed, use Refresh from GitHub above. Otherwise ask an owner of your GitHub organization to install it, then refresh.</p>}
                   {install !== null && <a href={install} className="mt-5 inline-flex h-9 items-center gap-2 rounded-lg bg-brand px-3.5 text-sm font-medium text-on-brand hover:bg-brand-deep"><GitHubMark />Install the GitHub App</a>}
                 </Panel>
               ) : (
