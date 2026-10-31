@@ -3,8 +3,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ApiError } from '@hackatl/frontend-transport';
 import { StartAssessment } from '@/components/start-assessment';
 
-const mocks = vi.hoisted(() => ({ start: vi.fn(), push: vi.fn(), reload: vi.fn(), projectId: 'prj_one', sequence: 0 }));
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }), useSearchParams: () => new URLSearchParams() }));
+const mocks = vi.hoisted(() => ({ start: vi.fn(), push: vi.fn(), reload: vi.fn(), projectId: 'prj_one', sequence: 0, commit: '' }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }), useSearchParams: () => new URLSearchParams(mocks.commit ? { commit: mocks.commit } : {}) }));
 vi.mock('@/components/project', () => ({ useProject: () => ({
   project: { id: mocks.projectId, name: 'owned', settings: { monitoring_policy: { enabled: true } } },
   selectedRepo: { id: 'rep_one', full_name: 'owned/repo', default_branch: 'main' },
@@ -18,7 +18,7 @@ vi.mock('@/lib/use-resource', () => ({ useResource: (key: string | null) => ({
   status: 'ready', reload: mocks.reload,
   data: { items: key?.startsWith('scopes:') ? [{ id: 'scp_one', name: 'owned scope', status: 'active', targets: [{ repo_id: 'rep_one' }] }] : [] },
 }) }));
-beforeEach(() => { mocks.start.mockReset(); mocks.push.mockReset(); mocks.projectId = 'prj_one'; mocks.sequence = 0; });
+beforeEach(() => { mocks.commit = ''; mocks.start.mockReset(); mocks.push.mockReset(); mocks.projectId = 'prj_one'; mocks.sequence = 0; });
 afterEach(cleanup);
 function fill() {
   fireEvent.change(screen.getByLabelText('Authorized scope'), { target: { value: 'scp_one' } });
@@ -54,4 +54,13 @@ it('does not carry an action key across project changes', async () => {
   mocks.projectId = 'prj_two'; view.rerender(<StartAssessment onStarted={() => {}} />); await submit();
   expect(mocks.start.mock.calls[1]![0]).toBe('prj_two');
   expect(mocks.start.mock.calls[1]![2]).not.toBe(mocks.start.mock.calls[0]![2]);
+});
+
+it('follows the selected commit when ?commit= changes without a remount', () => {
+  mocks.commit = 'a'.repeat(40);
+  const { rerender } = render(<StartAssessment onStarted={() => {}} />);
+  expect((screen.getByLabelText('Commit SHA') as HTMLInputElement).value).toBe('a'.repeat(40));
+  mocks.commit = 'c'.repeat(40);
+  rerender(<StartAssessment onStarted={() => {}} />);
+  expect((screen.getByLabelText('Commit SHA') as HTMLInputElement).value).toBe('c'.repeat(40));
 });

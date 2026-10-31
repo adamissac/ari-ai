@@ -13,7 +13,6 @@ interface ApprovalFacts { subject_type: string; status: string }
 const CONFIRMED: ReadonlySet<string> = new Set(['validated', 'diagnosed', 'patch_proposed', 'verified', 'patch_rejected', 'unresolved', 'hardened']);
 const VERIFIED: ReadonlySet<string> = new Set(['verified', 'hardened']);
 const FIXED: ReadonlySet<string> = new Set(['patch_proposed', 'verified', 'patch_rejected', 'hardened']);
-const SECURITY_AGENTS: ReadonlySet<string> = new Set(['scout', 'probe']);
 
 export interface OutcomeCounts {
   findings: number;
@@ -30,18 +29,15 @@ export interface OutcomeCounts {
 export function outcomeCounts(findings: readonly FindingFacts[], runs: readonly RunFacts[], approvals: readonly ApprovalFacts[] | null): OutcomeCounts {
   const confirmed = findings.filter(f => CONFIRMED.has(f.status)).length;
   const ruledOut = findings.filter(f => f.status === 'refuted').length;
-  // A fix was written when a fix-writing step finished for the finding: Patch for security
-  // findings (`remediation:<id>:patch`) or the reviewer's repair step (`repair:<id>`), or
-  // when the finding's own status records a fix.
-  const fixRuns = runs.filter(r => r.status === 'succeeded' && (r.agent === 'patch' || r.step_key.startsWith('repair:')));
-  const patched = (f: FindingFacts) => FIXED.has(f.status) || fixRuns.some(r => r.step_key.split(':').includes(f.id));
+  // Count a fix only when the finding's own status records a patch: a fix-writing run can
+  // succeed without producing one (e.g. a repair that changes no implementation code).
   const fixApprovals = (approvals ?? []).filter(a => a.subject_type === 'remediation');
   return {
     findings: findings.length,
     confirmed,
     ruledOut,
     unconfirmed: findings.length - confirmed - ruledOut,
-    fixesProposed: findings.filter(patched).length,
+    fixesProposed: findings.filter(f => FIXED.has(f.status)).length,
     fixesVerified: findings.filter(f => VERIFIED.has(f.status)).length,
     approved: fixApprovals.filter(a => a.status === 'approved').length,
     declined: fixApprovals.filter(a => a.status === 'declined').length,
@@ -63,10 +59,11 @@ export function coverage(relay: readonly RelayItem[], runs: readonly RunFacts[],
   const gaps: string[] = [];
   const failed = agents.filter(a => a.status === 'failed' || a.status === 'cancelled').map(a => a.label);
   if (failed.length) gaps.push(`${failed.join(', ')} stopped with an error, so ${failed.length === 1 ? 'its' : 'their'} part of the check is missing.`);
-  if (!agents.some(a => SECURITY_AGENTS.has(a.agent) && a.status === 'done')) {
+  // Scout only reads code; sandbox testing happened only if Probe finished its step.
+  if (!agents.some(a => a.agent === 'probe' && a.status === 'done')) {
     gaps.push(skipNote
-      ? `The security agents did not test anything: the run ended early (${skipNote}).`
-      : 'The security agents did not test anything in this run.');
+      ? `No security test was executed: the run ended early (${skipNote}).`
+      : 'No security test was executed in this run (Probe did not run).');
   }
   if (runs.some(r => r.provider_mode !== 'live' && r.provider_mode !== 'none')) {
     gaps.push('Some model turns were not live (recorded or scripted), so this run demonstrates the workflow rather than a fresh analysis.');

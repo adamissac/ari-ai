@@ -24,11 +24,12 @@ function view(state: Assessment['state'], findings: Finding[], runs: ReturnType<
 it('counts findings, proposals, approvals and verified fixes only from records', () => {
   const findings = [
     { id: 'f1', kind: 'security', status: 'hardened' },
-    { id: 'f2', kind: 'functional', status: 'diagnosed' },
+    { id: 'f2', kind: 'functional', status: 'patch_rejected' },
     { id: 'f3', kind: 'security', status: 'hypothesis' },
     { id: 'f4', kind: 'security', status: 'refuted' },
   ];
-  const runs = [run('patch', 'succeeded', 'remediation:f1:patch'), run('reviewer', 'succeeded', 'repair:f2'), run('patch', 'failed', 'remediation:f3:patch')];
+  // A succeeded repair run alone (f3) is not a written fix; only recorded patch statuses count.
+  const runs = [run('patch', 'succeeded', 'remediation:f1:patch'), run('reviewer', 'succeeded', 'repair:f3')];
   const approvals = [{ subject_type: 'remediation', status: 'approved' }, { subject_type: 'remediation', status: 'declined' }, { subject_type: 'scope', status: 'approved' }];
   expect(outcomeCounts(findings, runs, approvals)).toEqual({
     findings: 4, confirmed: 2, ruledOut: 1, unconfirmed: 1, fixesProposed: 2, fixesVerified: 1, approved: 1, declined: 1, pending: 0,
@@ -39,7 +40,15 @@ it('calls a no-findings run limited when the security agents never tested anythi
   const relay = agentRelay({ runs: [run('reviewer')] as never, findings: [], state: 'COMPLETED', approvals: [], skipNote: 'no entry points' });
   const c = coverage(relay, [run('reviewer')], 'no entry points');
   expect(c.kind).toBe('limited');
-  expect(c.kind === 'limited' && c.gaps.join(' ')).toContain('security agents did not test anything: the run ended early (no entry points)');
+  expect(c.kind === 'limited' && c.gaps.join(' ')).toContain('No security test was executed: the run ended early (no entry points)');
+});
+
+it('Scout finishing without Probe is not security testing', () => {
+  const runs = ['reviewer', 'scout'].map(a => run(a));
+  const relay = agentRelay({ runs: runs as never, findings: [], state: 'COMPLETED', approvals: [], skipNote: 'no hypotheses' });
+  const c = coverage(relay, runs, 'no hypotheses');
+  expect(c.kind).toBe('limited');
+  expect(c.ran).toContain('Scout');
 });
 
 it('flags non-live model turns as limited coverage', () => {

@@ -22,6 +22,12 @@ export function StartAssessment({ onStarted }: { onStarted: () => void }) {
   const scopes = useResource(`scopes:${project.id}`, signal => api().scopes(project.id, { signal }));
   const [scopeId, setScopeId] = useState('');
   const [sha, setSha] = useState(() => (SHA.test(commit) ? commit : ''));
+  // Selecting another commit on the same page changes ?commit= without remounting this form.
+  const [seenCommit, setSeenCommit] = useState(commit);
+  if (commit !== seenCommit) {
+    setSeenCommit(commit);
+    setSha(SHA.test(commit) ? commit : '');
+  }
   const [key, setKey] = useState<{ sig: string; value: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
