@@ -35,7 +35,7 @@ Read [DEMO_PREREQUISITES.md](DEMO_PREREQUISITES.md) first. Words to say are in
 
 | Symptom | Do this |
 |---|---|
-| Any page shows **Backend unreachable** or a red error | Stop. Reload the tab. If it persists, record with the fallback below. |
+| Any page shows **Ari is unavailable**, **Backend unreachable** or another red error | Stop. Reload the tab. If it persists, the hosted API is down (check `/api/frontend-version` → `backendReachable`); record with the fallback below. |
 | The assessment page shows **Not a live-provider run** | It is not a live run. Either use a different bookmarked run or say "scripted model replies" on screen. |
 | Sign-in loops back to the sign-in page | Sign out, clear cookies for the site, sign in again before recording. |
 
@@ -58,6 +58,7 @@ development login `e2e-alice`. Then:
 3. On the assessment page click **Approve remediation → Confirm approval** for each fix request.
    The run completes in about 30 seconds.
 4. Now follow the click path above using this stack's pages. The yellow **Not a live-provider run**
-   banner stays visible: say "model replies are scripted for this recording".
+   banner stays visible on the assessment page, and **Not from a live-provider run** on the finding
+   page: say "model replies are scripted for this recording".
 
 Stop the stack with Ctrl-C when done; it deletes its temporary database.

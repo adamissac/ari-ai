@@ -18,7 +18,7 @@ import { currentPhaseSentence } from '@/lib/phase';
 import { agentRelay, earlyEndNote, providerNote } from '@/lib/relay';
 import { useResource } from '@/lib/use-resource';
 import {
-  agentRole, ASSESSMENT_STATE, FINDING_STATUS, providerLabel,
+  agentRole, ASSESSMENT_STATE, FINDING_STATUS, hasNonLiveModelTurns, providerLabel,
   railSteps, SEVERITY, TERMINAL_STATES,
 } from '@/lib/status';
 
@@ -259,7 +259,7 @@ function ProviderSummary({ runs }: { runs: AgentRun[] }) {
   const modes = new Map<string, number>();
   for (const r of runs) modes.set(r.provider_mode, (modes.get(r.provider_mode) ?? 0) + 1);
   if (modes.size === 0) return null;
-  const notLive = [...modes.keys()].some(m => m !== 'live');
+  const notLive = hasNonLiveModelTurns(modes.keys());
   return (
     <div className={`mb-4 rounded-md border px-3 py-2 text-sm ${notLive ? 'border-warn/50 bg-warn/10' : 'border-ok/40 bg-ok/5'}`} data-testid="provider-summary">
       <span className="font-semibold">{notLive ? 'Not a live-provider run. ' : 'Live provider run. '}</span>
