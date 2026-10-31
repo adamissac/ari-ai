@@ -3,6 +3,13 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-10-31 — Claude Code (agent, Alan) — first-customer frontend integration (#696 + #740 + #746)
+- Did: Merged #746, #740 and #696 onto `main` `40df6984` (only conflict: this file). Fixed the semantic conflict between #746's outage mapping and #696's GitHub App recovery text (proxy marks its own envelopes `details.origin=proxy`; UI says "Ari is unavailable"). Expired sessions show Sign in again. Assessment and finding pages share one live/scripted rule (`hasNonLiveModelTurns`); the finding page labels scripted runs.
+- State of the code: Branch `feat/alan/first-customer-frontend-integration`; frontend and docs only; no backend, contract or migration changes.
+- Commands run and results: see PR body (lint, typecheck, vitest, transport tests, build, `stack.py` Playwright).
+- Assumptions / open questions: Hosted backend still returned Railway 404 "Application not found" at 2026-10-31 (read-only probe), so no hosted live run exists; the YC demo uses the documented scripted-model fallback.
+- Next steps: Codex review (`coordination/messages/20261031T213000Z-claude-to-codex-frontend-integration.md`); backend deploy before frontend (#696 adds `/delivery-authority`).
+
 ### 2026-10-31 — Claude Code (agent, Alan) — first-customer audit, assessment outcome and recovery, YC demo docs
 - Did: Audited the journey on the manual real stack (`docs/reviews/2026-10-31-first-customer-audit/README.md`). Assessment page: outcome panel (found / fix approval / proposed / verified / delivered), "did not finish" recovery with a prefilled restart link, honest no-findings coverage (limited vs not-proof), live phase-log refresh, elapsed-time note. Connect: what connecting does (incl. build-recipe PR), install dead end, error placement. Start assessment: `?commit=` prefill and readable scope name. Demo docs in `docs/demo/yc-w27/`.
 - State of the code: Branch `feat/alan/first-customer-ux` off `main` `9437e217`; frontend and docs only; avoids every file PR #696 touches.
