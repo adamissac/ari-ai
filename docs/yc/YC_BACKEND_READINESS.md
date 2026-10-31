@@ -55,6 +55,7 @@ All on the local embedded Postgres stack; FakeLLM/scripted transports where test
 | integ `facd76fc` (before the test commit) | targeted: review_pipeline_reliability, pr_review_effect_ownership, security_audit_disconnect_writes, disconnect_write_token_ordering, auto_commits, auto_delivery, assessment_restart, e2e_host, staging_pilot, release_signoff_binding, parallel_migrations | **270 passed**, exit 0 |
 | integ `71281707` | `uv run python deploy/evidence/restart_recovery.py --out /tmp/ari-evidence` | S1 PASS; **S2 FAIL** (`poll timeout after 180s; last=AWAITING_APPROVAL`) → finding R1 |
 | #694 `ff047025` | targeted: review_pipeline_reliability, pr_review_effect_ownership, security_audit_disconnect_writes, disconnect_write_token_ordering, review_post_disconnect_lease, auto_commits, auto_delivery, redaction_literal_forms | **224 passed**, exit 0 (`4e35c397` adds a CHANGELOG-only commit) |
+| #694 `4e35c397` (final head) | `uv run pytest -q -p no:cacheprovider backend/tests` | **950 passed, 9 skipped**, exit 0 |
 | #723 `56204e4a` | `python -m unittest tests/ops/test_uptime_watch.py -v` (py3.12) | 8 passed |
 | prod (read-only) | `python scripts/ops/uptime_watch.py` without tokens | reports `healthz returned HTTP 404`, exit 1 |
 
