@@ -8,6 +8,7 @@ import { AgentTeam } from '@/components/agent-team';
 import { Term } from '@/components/term';
 import { useParam, useProject } from '@/components/project';
 import { ApprovalGate } from '@/components/assessment-approval-gate';
+import { AssessmentOutcome } from '@/components/assessment-outcome';
 import { Badge, Empty, ErrorState, Loading, Mono, PageTitle, Panel, Stat, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
 import { CancelButton } from '@/components/assessment-cancel';
@@ -43,6 +44,7 @@ export default function AssessmentPage() {
   const [technicalOpen, setTechnicalOpen] = useState(false);
   const [approvals, setApprovals] = useState<Approval[] | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const reloadPhaseLog = useRef<() => void>(() => {});
   const approvalsReq = useRef(0);
   const detailReq = useRef(0);
   const projectId = project.id;
@@ -74,7 +76,9 @@ export default function AssessmentPage() {
   // Records change only when an event says so; coalesce bursts into one refetch.
   const scheduleRefresh = useCallback(() => {
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
-    refreshTimer.current = setTimeout(() => loadDetail(), 250);
+    // The phase list reads the persisted log too; refresh it with the record so a phase
+    // the run already finished is never shown as skipped until the next poll.
+    refreshTimer.current = setTimeout(() => { loadDetail(); reloadPhaseLog.current(); }, 250);
   }, [loadDetail]);
 
   useEffect(() => {
@@ -102,6 +106,8 @@ export default function AssessmentPage() {
     signal => fullEventLog(after => api().eventsLog(id, after, { signal })),
     running ? 5000 : undefined,
   );
+  const phaseLogReload = phaseLog.reload;
+  useEffect(() => { reloadPhaseLog.current = phaseLogReload; }, [phaseLogReload]);
   useEffect(() => {
     if (!running) return;
     const t = setInterval(() => loadDetail(), 5000);
@@ -118,6 +124,7 @@ export default function AssessmentPage() {
   if (!detail) return <Loading label="Loading assessment" />;
   const a = detail.assessment;
   const terminal = TERMINAL_STATES.has(a.state);
+  const relay = agentRelay({ runs: detail.agent_runs, findings: detail.findings, state: a.state, approvals: relayApprovals, skipNote });
 
   return (
     <>
@@ -128,17 +135,23 @@ export default function AssessmentPage() {
       />
       {detailError !== null && <p role="status" className="mb-2 text-xs text-warn" data-testid="detail-stale">Could not refresh this assessment. Showing the last successfully loaded records, which may be out of date.</p>}
       <p className="mb-4 text-base text-ink" data-testid="assessment-phase">{currentPhaseSentence(a.state)}</p>
+      {!terminal && a.state !== 'AWAITING_APPROVAL' && (
+        <p className="-mt-2 mb-4 text-sm text-muted" data-testid="assessment-running-note">
+          Running on Ari&apos;s servers for <Elapsed since={a.created_at} />. It keeps running if you leave this page; find it again under Commits → Runs &amp; replay. It stops at its budget limit and never runs past it.
+        </p>
+      )}
       {a.error && (
         <div role="alert" className="mb-4 rounded-md border border-bad/40 bg-bad/5 p-3 text-sm">
-          <p className="font-semibold text-bad">Assessment error · {a.error.code}</p>
+          <p className="font-semibold text-bad">Recorded error · <span className="font-mono text-xs">{a.error.code}</span></p>
           <p className="text-muted">{a.error.message}</p>
         </div>
       )}
+      <AssessmentOutcome assessment={a} findings={detail.findings} runs={detail.agent_runs} approvals={relayApprovals} relay={relay} skipNote={skipNote} projectId={project.id} />
       <ProviderSummary runs={detail.agent_runs} />
       {a.state === 'AWAITING_APPROVAL' && <ApprovalGate projectId={project.id} events={events} findings={detail?.findings ?? []} onDecided={() => loadDetail()} />}
       <div className="mt-4 rounded-xl border border-line bg-panel p-5">
         <AgentRelay
-          items={agentRelay({ runs: detail.agent_runs, findings: detail.findings, state: a.state, approvals: relayApprovals, skipNote })}
+          items={relay}
           selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'}
           onSelect={setSelectedAgent}
         />
@@ -164,7 +177,7 @@ export default function AssessmentPage() {
           )}
         </Panel>
         <section aria-label="Phases of this check">
-          <h2 className="mb-2 text-sm font-semibold">Progress through the six phases</h2>
+          <h2 className="mb-2 text-sm font-semibold">Progress through each phase</h2>
           <AssessmentPhases
             state={a.state}
             findingStatuses={detail.findings.map(finding => finding.status)}
@@ -313,4 +326,15 @@ function EventLog({ events }: { events: StreamEvent[] }) {
       ))}
     </ol>
   );
+}
+
+/** Wall-clock time since the run was created, ticking each second while mounted. */
+function Elapsed({ since }: { since: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const s = Math.max(0, Math.floor((now - Date.parse(since)) / 1000));
+  return <span data-testid="assessment-elapsed">{s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`}</span>;
 }
