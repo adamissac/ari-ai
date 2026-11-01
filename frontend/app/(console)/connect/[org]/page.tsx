@@ -8,7 +8,7 @@ import { Avatar } from '@/components/demo/ui';
 import { Empty, ErrorState, Field, Loading, PageTitle, Tag, inputClass } from '@/components/ui';
 import { SetupLayout } from '@/components/onboarding/stepper';
 import { api } from '@/lib/api';
-import { connectRepo, projectForRepository } from '@/lib/github-connect';
+import { claimRepo, connectRepo, projectForRepository, takenElsewhere } from '@/lib/github-connect';
 import { groupByOrg, repoName } from '@/lib/github-orgs';
 import { useResource } from '@/lib/use-resource';
 
@@ -20,13 +20,15 @@ export default function ConnectReposPage() {
   const list = useResource('github-repos', signal => api().githubRepositories({ signal }));
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [failed, setFailed] = useState<AccessibleRepository | null>(null);
   const [filter, setFilter] = useState('');
 
-  const open = async (repo: AccessibleRepository) => {
+  const open = async (repo: AccessibleRepository, claim = false) => {
     setBusy(repo.full_name);
     setError(null);
+    setFailed(repo);
     try {
-      const repoId = await connectRepo(login, repo);
+      const repoId = claim ? await claimRepo(login, repo) : await connectRepo(login, repo);
       const projectId = await projectForRepository(repoId);
       router.push(projectId
         ? `/projects/${projectId}/setup?repo=${encodeURIComponent(repoId)}`
@@ -47,6 +49,12 @@ export default function ConnectReposPage() {
         </nav>
         <PageTitle eyebrow="Repositories / 02" title={<span className="flex items-center gap-4"><Avatar login={login} size={40} /><span>{login}</span></span>} subtitle="Select a repository to review its changes. Connecting opens setup. No check runs until you approve sandbox testing and start one." />
         {error !== null && <div className="mb-4" data-testid="connect-repo-error"><ErrorState error={error} context="Could not connect the repository" /></div>}
+        {failed && takenElsewhere(error) && (
+          <div className="mb-4 rounded-xl border border-line bg-panel p-4 text-sm" data-testid="claim-repo">
+            <p className="text-muted">Another Ari project already has <span className="font-mono text-ink">{failed.full_name}</span> connected. If you are an admin of this repository on GitHub, you can take it over: the other project is disconnected (its history is kept) and the repository connects here.</p>
+            <button type="button" className="mt-3 rounded-lg bg-brand px-4 py-2 font-medium text-on-brand hover:bg-brand-deep disabled:opacity-50" disabled={busy !== null} onClick={() => void open(failed, true)}>{busy ? 'Claiming…' : 'Claim it (GitHub admins only)'}</button>
+          </div>
+        )}
         {list.status === 'loading' && <Loading label="Loading repositories" />}
         {list.status === 'error' && <ErrorState error={list.error} onRetry={list.reload} context="Could not list your GitHub repositories" />}
         {list.status === 'ready' && !org && (
