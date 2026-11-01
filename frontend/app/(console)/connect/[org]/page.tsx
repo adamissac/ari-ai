@@ -47,7 +47,14 @@ export default function ConnectReposPage() {
         <nav aria-label="Breadcrumb" className="mb-5 text-sm text-muted">
           <Link href="/connect" className="hover:text-ink">Organizations</Link><span aria-hidden="true" className="mx-2">/</span><span className="text-ink">{login}</span>
         </nav>
-        <PageTitle eyebrow="Repositories / 02" title={<span className="flex items-center gap-4"><Avatar login={login} size={40} /><span>{login}</span></span>} subtitle="Select a repository to review its changes." />
+        <PageTitle eyebrow="Repositories / 02" title={<span className="flex items-center gap-4"><Avatar login={login} size={40} /><span>{login}</span></span>} subtitle="Select a repository to review its changes. Connecting opens setup. No check runs until you approve sandbox testing and start one." />
+        {error !== null && <div className="mb-4" data-testid="connect-repo-error"><ErrorState error={error} context="Could not connect the repository" /></div>}
+        {failed && takenElsewhere(error) && (
+          <div className="mb-4 rounded-xl border border-line bg-panel p-4 text-sm" data-testid="claim-repo">
+            <p className="text-muted">Another Ari project already has <span className="font-mono text-ink">{failed.full_name}</span> connected. If you are an admin of this repository on GitHub, you can take it over: the other project is disconnected (its history is kept) and the repository connects here.</p>
+            <button type="button" className="mt-3 rounded-lg bg-brand px-4 py-2 font-medium text-on-brand hover:bg-brand-deep disabled:opacity-50" disabled={busy !== null} onClick={() => void open(failed, true)}>{busy ? 'Claiming…' : 'Claim it (GitHub admins only)'}</button>
+          </div>
+        )}
         {list.status === 'loading' && <Loading label="Loading repositories" />}
         {list.status === 'error' && <ErrorState error={list.error} onRetry={list.reload} context="Could not list your GitHub repositories" />}
         {list.status === 'ready' && !org && (
@@ -88,13 +95,6 @@ export default function ConnectReposPage() {
           </>
         )}
         {list.status === 'ready' && list.data.live_checked === false && (<p className="mt-2 text-xs text-muted" data-testid="repo-access-unverified">Access shown is from your last GitHub sign-in. Ari confirms access with GitHub when you connect.</p>)}
-        {error !== null && <div className="mt-3"><ErrorState error={error} context="Could not connect the repository" /></div>}
-        {failed && takenElsewhere(error) && (
-          <div className="mt-3 rounded-xl border border-line bg-panel p-4 text-sm" data-testid="claim-repo">
-            <p className="text-muted">Another Ari project already has <span className="font-mono text-ink">{failed.full_name}</span> connected. If you are an admin of this repository on GitHub, you can take it over: the other project is disconnected (its history is kept) and the repository connects here.</p>
-            <button type="button" className="mt-3 rounded-lg bg-brand px-4 py-2 font-medium text-on-brand hover:bg-brand-deep disabled:opacity-50" disabled={busy !== null} onClick={() => void open(failed, true)}>{busy ? 'Claiming…' : 'Claim it (GitHub admins only)'}</button>
-          </div>
-        )}
       </div>
     </SetupLayout>
   );
