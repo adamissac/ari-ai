@@ -114,13 +114,23 @@ def pilot(client_factory):
         },
     )
     assert pending.status_code == 201, pending.text
+    # A second repository, connected then disconnected: kept as a record, not counted.
+    gone = alice.post(
+        f"/api/v1/projects/{ids['project']}/repositories",
+        json={"full_name": "acme/retired-service", "installation_id": None},
+    )
+    assert gone.status_code == 201, gone.text
+    assert alice.post(f"/api/v1/repositories/{gone.json()['id']}/disconnect").status_code == 200
     return alice, ids
 
 
 def test_report_counts_only_persisted_records(pilot) -> None:
     alice, ids = pilot
-    out = report.summarize(report.collect(_getter(alice), ids["project"]))
+    data = report.collect(_getter(alice), ids["project"])
+    out = report.summarize(data)
 
+    # The API lists the disconnected repository too; the report must not count it.
+    assert len(data["repositories"]) == 2
     assert out["repositories"] == 1
     assert out["assessments"]["total"] == 2
     assert out["assessments"]["by_state"]["CANCELLED"] == 1

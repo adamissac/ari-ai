@@ -116,7 +116,12 @@ def summarize(data: dict[str, Any], now: datetime | None = None) -> dict[str, An
     usd = round(sum(a.get("usage", {}).get("usd", 0.0) for a in asms), 4)
     return {
         "project": {"id": data["project"]["id"], "name": data["project"]["name"]},
-        "repositories": len(data["repositories"]),
+        # Disconnecting keeps the record; only live connections count.
+        "repositories": sum(
+            1
+            for r in data["repositories"]
+            if not r.get("disconnected") and not r.get("disconnected_at")
+        ),
         "assessments": {
             "total": len(asms),
             "by_state": dict(sorted(states.items())),
