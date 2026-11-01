@@ -189,7 +189,7 @@ test('problem chapter eases to the short change-check headline', async ({ page }
     const top = el.getBoundingClientRect().top + window.scrollY;
     window.scrollTo(0, top + (el.clientHeight - window.innerHeight) * 0.9);
   });
-  await expect(page.getByText('EVERY CHANGE. CHECKED.', { exact: true })).toBeVisible();
+  await expect(page.getByText('CHANGES. CHECKED.', { exact: true })).toBeVisible();
   await expect(page.getByTestId('story-timeline-capsule')).toHaveCSS('color', 'rgb(255, 255, 255)');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(1440);
 });
