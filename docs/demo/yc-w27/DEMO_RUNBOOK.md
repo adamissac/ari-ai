@@ -26,6 +26,12 @@ There are two paths, and the recording must say which one it is.
 `backendReachable:false`, and no live hosted assessment has been recorded. Use Path B until
 Devin/the Railway operator restore production and gate 3 is met.
 
+**Update 2026-11-01T00:21Z: gate 1 met.** `/readyz` 200 (database, queue, 12 workers, LLM mode
+`live` with `claude-haiku-5-5`, GitHub App and Vercel sandbox configured), and
+`/api/frontend-version` reported `sameCommit:true` on `d2de9ddd`. Gates 2–4 were not checked; gate 3
+(a completed live hosted assessment) still requires an approved spend cap and a run. Path A is
+still not available until all four hold.
+
 # Path A — live hosted
 
 ## Before you press record (5 minutes)
