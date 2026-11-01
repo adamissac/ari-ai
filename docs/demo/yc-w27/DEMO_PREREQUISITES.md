@@ -1,7 +1,7 @@
 # YC demo prerequisites
 
 Everything below must be true **before** you record. If any line is not, use the
-fallback in [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md#fallback-local-real-stack) and say on screen
+fallback in [DEMO_RUNBOOK.md](DEMO_RUNBOOK.md#path-b--local-real-stack-scripted-model-replies) and say on screen
 that model replies are scripted.
 
 ## Honesty rules (non-negotiable)
