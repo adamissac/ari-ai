@@ -83,7 +83,7 @@ from ..tools import (
     default_registry,
     recipe_from_snapshot,
 )
-from ..tools.services import sandbox_setup
+from ..tools.services import NODE_DRIVERS, sandbox_setup
 from .states import (
     AssessmentState,
     RemediationState,
@@ -697,11 +697,12 @@ class Orchestrator:
         recipe = self._recipe()
         if node_recipe.is_node(recipe):
             issues = node_recipe.problems(recipe)
-            return (
-                f"invalid node_http build recipe ({'; '.join(issues[:3])}); security agents skipped"
-                if issues
-                else None
-            )
+            if issues:
+                return f"invalid node_http build recipe ({'; '.join(issues[:3])}); security agents skipped"
+            driver = getattr(self.driver, "name", "")
+            if driver not in NODE_DRIVERS:
+                return f"node_http targets are not supported on the {driver} sandbox yet; security agents skipped"
+            return None
         entries = self.intel.entry_points()
         if not entries:
             return "no HTTP entry points in snapshot index; security agents skipped"

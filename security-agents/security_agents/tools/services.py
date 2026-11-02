@@ -51,7 +51,7 @@ from ..sandbox.workspace import (
 from .registry import ToolContext
 
 CHECKS_DIR = Path(__file__).parent.parent / "checks"
-NODE_DRIVERS = frozenset({"local-process", "vercel-sandbox"})
+NODE_DRIVERS = frozenset({"local-process"})  # vercel-sandbox: ADR-0023 step 3b
 
 PYTEST_SUMMARY = re.compile(
     r"(?:(?P<passed>\d+) passed)?(?:, )?(?:(?P<failed>\d+) failed)?(?:, )?(?:(?P<errors>\d+) error)?"
