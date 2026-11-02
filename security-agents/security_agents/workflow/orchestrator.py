@@ -562,11 +562,10 @@ class Orchestrator:
 
         # ---- INDEXING (code intelligence is an upstream subsystem)
         self._goto(AssessmentState.INDEXING, self.intel.provenance().get("status", ""))
-        if not self.intel.entry_points():
-            # No HTTP entry points are recognised (only Python web routes are; a JavaScript
-            # app has none). The functional review still runs on the commit; the security
-            # agents have no attack surface to test, so they are skipped and labelled as such.
-            note = "no HTTP entry points in snapshot index; security agents skipped"
+        note = self._no_testable_surface()
+        if note:
+            # The functional review still runs on the commit; the security agents have no
+            # attack surface they can serve and test, so they are skipped and labelled.
             self._goto(AssessmentState.FUNCTIONAL_REVIEW, "functional review only: " + note)
             self._goto(AssessmentState.RECON, "skipped: " + note)
             return self._report_or_wait(note)
@@ -691,6 +690,19 @@ class Orchestrator:
 
     def _wait_external(self) -> bool:
         return bool(self.external_pending and self.external_pending())
+
+    def _no_testable_surface(self) -> str | None:
+        """Why the agents cannot run, or None. JS/TS routes are indexed (ADR-0023) but only a
+        Python target can be served until the node_http recipe kind lands."""
+        entries = self.intel.entry_points()
+        if not entries:
+            return "no HTTP entry points in snapshot index; security agents skipped"
+        if not any(str(e.path).endswith(".py") for e in entries):
+            return (
+                f"{len(entries)} JavaScript/TypeScript HTTP entry points, but no servable build "
+                "recipe for them yet (ADR-0023); security agents skipped"
+            )
+        return None
 
     def _report_or_wait(self, note: str) -> AssessmentResult:
         """Security work ended early. If a functional remediation approval is still owed,

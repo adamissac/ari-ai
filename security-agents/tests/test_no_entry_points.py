@@ -58,3 +58,44 @@ def test_no_entry_points_completes_with_functional_review_only(tmp_path):
     assert AssessmentState.FUNCTIONAL_REVIEW.value in states  # the reviewer is started here
     assert result.runs == [] and result.findings == []
     assert any("security agents skipped" in note for *_, note in result.state_log.entries)
+
+
+class JsEntryPointsOnly(NoEntryPoints):
+    """The real index, with its routes relabelled as JavaScript handlers."""
+
+    def entry_points(self, *args, **kwargs):
+        return [
+            e.model_copy(update={"path": "api/" + e.path.rsplit("/", 1)[-1].replace(".py", ".js")})
+            for e in self._inner.entry_points(*args, **kwargs)
+        ]
+
+
+def test_js_only_entry_points_skip_with_a_precise_label(tmp_path):
+    staging = tmp_path / "staging"
+    copy_tree(PAYMENTS_LITE, staging)
+    shutil.copy2(BUILD_RECIPE, staging / "build_recipe.json")
+    snapshot = SnapshotHandle.from_directory(
+        staging, tmp_path / "snapshot", snapshot_id="snp_jsentry", repo_id="rep_jsentry"
+    )
+    intel = JsEntryPointsOnly(LocalIntel(snapshot))
+    assert intel.entry_points()
+    result = Orchestrator(
+        OrchestratorConfig(
+            assessment_id="asm_jsentry",
+            project_id="prj_jsentry",
+            org_id="org_jsentry",
+            scope=live_scope(),
+            target_id=TARGET_ID,
+            requested_by="usr_requester",
+            budget=Budget(max_tokens=100_000, max_usd=1.0, max_wall_clock_s=300.0),
+        ),
+        intel=intel,
+        gateway=ProviderGateway(FakeLLM({})),
+        driver=LocalProcessDriver(allow=True),
+        library=default_library(),
+        workdir=tmp_path / "work",
+    ).run()
+    assert result.state is AssessmentState.COMPLETED, (result.error_code, result.error_detail)
+    assert result.runs == [] and result.findings == []
+    notes = [note for *_, note in result.state_log.entries]
+    assert any("JavaScript/TypeScript HTTP entry points" in n and "skipped" in n for n in notes)

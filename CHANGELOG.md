@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- JavaScript/TypeScript HTTP routes are indexed as entry points (ADR-0023): Next.js App Router and Pages API, Vercel functions, Express, and Cloud Functions `onRequest`. Assessments of repositories whose only routes are JS/TS still skip the security agents, now with a label naming the routes found, until a Node build recipe can serve them.
 - Failed assessments now record an error code and a readable reason.
 - Assessments interrupted by a lost worker can restart once, retaining usage and conservatively estimating unsettled sandbox time.
 - Ops: `uptime-watch` workflow (every 15 min) opens `[ops-alert] Production is down` when `/healthz` fails or any Railway service has no live deployment, and closes it on recovery. Production was down from 2026-10-28 20:13 UTC until 2026-10-30 because both Railway deployments were removed and nothing alerted.

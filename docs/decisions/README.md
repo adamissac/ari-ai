@@ -42,3 +42,4 @@ before Phase 1 implementation relies on them.
 - [ADR-0020: independent authorization gate for live controls (accepted)](0020-live-defense-control-authorization.md)
 - [ADR-0021: per-project fix delivery mode, auto, pull request or manual](0021-auto-delivery-mode.md)
 - [ADR-0022: boundaries of live policy enforcement in the isolated lab (proposed)](0022-live-lab-enforcement-boundaries.md)
+- [ADR-0023: security-agent testing for JavaScript/TypeScript repositories (proposed)](0023-js-ts-security-agent-testing.md)
