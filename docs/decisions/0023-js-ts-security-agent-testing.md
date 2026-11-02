@@ -129,6 +129,11 @@ run, no host credentials ([§4](../15_SECURITY_BOUNDARIES.md#4-sandbox-requireme
   4. Run the Python check runner against `SANDBOX_TARGET_URL`.
 - The `http` check transport is allowed on the Vercel driver as well as Docker. Both
   provide a target reachable only inside the run boundary.
+- **Rollout:** the Vercel path is opt-in (`SECURITY_AGENTS_NODE_ON_VERCEL=1`) until a live
+  smoke on Vercel passes. Without the flag, production skips `node_http` targets with a
+  label. Node is the official tarball, pinned by sha256 per architecture. firebase-tools
+  checks the emulator JAR it fetches. Emulator JARs are read from
+  `FIREBASE_EMULATORS_PATH`, so a run never downloads one.
 - For local development without Docker, `LocalProcessDriver` can run the same flow
   behind its existing opt-in flag. Tests use real emulators: a local Java and the cached
   JAR are enough.

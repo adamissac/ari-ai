@@ -136,3 +136,12 @@ def test_node_recipe_on_a_driver_without_node_support_skips_with_a_label(tmp_pat
     assert result.runs == []
     notes = [note for *_, note in result.state_log.entries]
     assert any("not supported on the vercel-sandbox sandbox yet" in n for n in notes), notes
+
+
+def test_vercel_node_support_is_opt_in(monkeypatch):
+    from security_agents.tools.services import node_drivers
+
+    monkeypatch.delenv("SECURITY_AGENTS_NODE_ON_VERCEL", raising=False)
+    assert "vercel-sandbox" not in node_drivers()
+    monkeypatch.setenv("SECURITY_AGENTS_NODE_ON_VERCEL", "1")
+    assert "vercel-sandbox" in node_drivers()

@@ -52,7 +52,9 @@ async function startEmulators() {
   const child = spawn(process.execPath, [bin, 'emulators:start', '--only', only.join(','),
     '--project', cfg.project_id, '--config', join(dir, 'firebase.json')], {
     cwd: dir, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, HOME: dir, FIREBASE_CLI_DISABLE_UPDATE_CHECK: 'true', NO_UPDATE_NOTIFIER: '1' },
+    // Emulator JARs come from the platform cache only: the run has no egress to fetch them.
+    env: { ...process.env, HOME: dir, FIREBASE_EMULATORS_PATH: cfg.emulators_path,
+      FIREBASE_CLI_DISABLE_UPDATE_CHECK: 'true', NO_UPDATE_NOTIFIER: '1' },
   });
   child.stdout.on('data', (d) => process.stderr.write(d));
   child.stderr.on('data', (d) => process.stderr.write(d));
