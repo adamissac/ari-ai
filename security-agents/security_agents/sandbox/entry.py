@@ -8,6 +8,7 @@ dispatch one of a fixed set of platform-defined modes:
     pytest <args...>            run the target's test suite
     check  <params.json>        run one reviewed check template (harness.py)
     netprobe <host> <port>      SB-03/SB-04 fixture: attempt a TCP connection
+    nodetest <runner> <args...> run the target's vitest/jest suite (ADR-0023)
 
 The network guard below is defence in depth for the local dev driver. It is NOT
 the security boundary; Docker `--network none` / internal networks are.
@@ -190,29 +191,46 @@ def _build_pytest_audit_plugin(pytest: object) -> object:
 
 
 def _install_network_guard() -> None:
-    if NETWORK not in ("none", "target-inprocess"):
+    if NETWORK not in ("none", "target-inprocess", "loopback"):
         return
+    # loopback: the local driver's Node target and emulators listen on 127.0.0.1 only.
+    loopback = NETWORK == "loopback"
 
     def _denied(*_a: object, **_k: object) -> None:
         raise PermissionError("SANDBOX_POLICY_VIOLATION: network disabled in this sandbox")
 
+    def _local(address: object) -> bool:
+        return loopback and isinstance(address, tuple) and address[0] in ("127.0.0.1", "::1")
+
     real_connect = socket.socket.connect
     real_connect_ex = socket.socket.connect_ex
+    real_getaddrinfo = socket.getaddrinfo
+    real_create_connection = socket.create_connection
 
     def connect(self: socket.socket, address: object) -> None:
-        if self.family in (socket.AF_INET, socket.AF_INET6):
+        if self.family in (socket.AF_INET, socket.AF_INET6) and not _local(address):
             _denied()
         return real_connect(self, address)  # type: ignore[arg-type]
 
     def connect_ex(self: socket.socket, address: object) -> int:
-        if self.family in (socket.AF_INET, socket.AF_INET6):
+        if self.family in (socket.AF_INET, socket.AF_INET6) and not _local(address):
             _denied()
         return real_connect_ex(self, address)  # type: ignore[arg-type]
 
+    def getaddrinfo(host: object, *a: object, **k: object) -> object:
+        if not (loopback and host in ("127.0.0.1", "::1", "localhost")):
+            _denied()
+        return real_getaddrinfo(host, *a, **k)  # type: ignore[arg-type]
+
+    def create_connection(address: object, *a: object, **k: object) -> object:
+        if not _local(address):
+            _denied()
+        return real_create_connection(address, *a, **k)  # type: ignore[arg-type]
+
     socket.socket.connect = connect  # type: ignore[method-assign]
     socket.socket.connect_ex = connect_ex  # type: ignore[method-assign]
-    socket.getaddrinfo = _denied  # type: ignore[assignment]
-    socket.create_connection = _denied  # type: ignore[assignment]
+    socket.getaddrinfo = getaddrinfo  # type: ignore[assignment]
+    socket.create_connection = create_connection  # type: ignore[assignment]
 
 
 def _emit_out() -> None:
@@ -234,6 +252,64 @@ def _emit_out() -> None:
     sys.stdout.flush()
 
 
+NODE_RUNNERS = {
+    "vitest": ("node_modules/vitest/vitest.mjs", ["--reporter=json", "--outputFile={out}"]),
+    "jest": ("node_modules/jest/bin/jest.js", ["--json", "--outputFile={out}"]),
+}
+
+
+def _node_test(runner: str, args: list[str]) -> int:
+    """Run the target's own vitest/jest (JSON reporter) and report in pytest's shape: the
+    summary line, `FAILED <id>` lines, and a test-id audit (hook audit is pytest-only)."""
+    import subprocess
+
+    if runner not in NODE_RUNNERS:
+        print(f"1 error: unknown node test runner {runner!r}")
+        return 2
+    script, extra = NODE_RUNNERS[runner]
+    report = os.path.join(OUT, "node_tests.json")
+    cmd = ["node", os.path.join(WORKSPACE, script), *args, *(e.format(out=report) for e in extra)]
+    proc = subprocess.run(cmd, cwd=WORKSPACE, capture_output=True, text=True)
+    sys.stderr.write(proc.stderr[-20000:])
+    try:
+        with open(report) as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        print(proc.stdout[-5000:])
+        print("1 error: the node test runner produced no JSON report")
+        return 2
+    outcomes: dict[str, str] = {}
+    for suite in data.get("testResults", []):
+        rel = os.path.relpath(str(suite.get("name", "")), WORKSPACE)
+        for case in suite.get("assertionResults", []):
+            title = str(case.get("fullName") or case.get("title") or "")
+            nodeid = rel + "::" + "_".join(title.split())
+            status = str(case.get("status"))
+            outcomes[nodeid] = {"passed": "passed", "failed": "failed"}.get(status, "skipped")
+        if suite.get("status") == "failed" and not suite.get("assertionResults"):
+            outcomes[rel + "::<collection>"] = "error"
+    for nodeid, outcome in sorted(outcomes.items()):
+        if outcome == "failed":
+            print(f"FAILED {nodeid}")
+    counts = {
+        k: sum(1 for o in outcomes.values() if o == k) for k in ("passed", "failed", "skipped", "error")
+    }
+    print(", ".join(f"{n} {k}" for k, n in counts.items() if n) or "no tests ran")
+    with open(os.path.join(OUT, "pytest_audit.json"), "w") as fh:
+        json.dump(
+            {
+                "version": 1,
+                "complete": True,
+                "runner": runner,
+                "phases": {"collection": [], "final": []},
+                "nodeids": sorted(outcomes),
+                "outcomes": outcomes,
+            },
+            fh,
+        )
+    return 0 if outcomes and not counts["failed"] and not counts["error"] else 1
+
+
 def main(argv: list[str]) -> int:
     if not argv:
         return 2
@@ -253,6 +329,8 @@ def main(argv: list[str]) -> int:
     try:
         if mode == "pytest":
             code = int(pytest.main(["-p", "no:cacheprovider", *args], plugins=[audit]))
+        elif mode == "nodetest":
+            code = _node_test(args[0], args[1:])
         elif mode == "check":
             import harness  # type: ignore[import-not-found]
 

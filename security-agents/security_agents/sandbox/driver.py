@@ -29,6 +29,7 @@ from typing import Literal, Protocol
 from ..contracts import ErrorCode, PlatformError, new_id
 from ..redact import redact_text
 from ..scope_guard import Decision
+from . import node
 from .workspace import copy_tree
 
 ENTRY_SRC = Path(__file__).with_name("entry.py")
@@ -64,7 +65,7 @@ class SandboxSpec:
     profile: SandboxProfile
     network: NetworkMode
     workspace: Path  # host dir copied *into* the sandbox (never mounted)
-    mode: Literal["pytest", "check", "netprobe"]
+    mode: Literal["pytest", "check", "netprobe", "nodetest"]
     args: list[str]
     labels: dict[str, str]
     limits: SandboxLimits = field(default_factory=SandboxLimits)
@@ -78,6 +79,9 @@ class SandboxSpec:
     pip: tuple[str, ...] = ()
     apt: tuple[str, ...] = ()
     include: tuple[str, ...] = ()
+    # node_http targets (ADR-0023): the platform-derived launcher config. The driver starts
+    # emulators (and the app, when `serve` is set) inside the run boundary on loopback.
+    node_stack: dict[str, object] | None = None
 
 
 @dataclass
@@ -153,6 +157,13 @@ def validate_spec(spec: SandboxSpec) -> None:
             raise PlatformError(
                 ErrorCode.SCOPE_DENIED, "target-only network requires an allowed scope decision"
             )
+    if spec.node_stack is not None and (
+        spec.target_app is not None or (spec.node_stack.get("serve") and spec.network != "target-only")
+    ):
+        raise PlatformError(
+            ErrorCode.SANDBOX_POLICY_VIOLATION,
+            "a served node target needs the target-only network and no target app",
+        )
     if spec.target_workspace is not None or spec.target_app is not None:
         if spec.network != "target-only":
             raise PlatformError(
@@ -247,10 +258,13 @@ class LocalProcessDriver:
             home.mkdir()
             tmp = root / "tmp"
             tmp.mkdir()
+            if spec.node_stack is not None and (spec.workspace / "package-lock.json").is_file():
+                (ws / "node_modules").symlink_to(node.ensure_node_modules(spec.workspace))
             for p in ws.rglob("*"):
-                if p.is_file():
+                if p.is_file() and "node_modules" not in p.parts:
                     p.chmod(0o444)
             network = "target-inprocess" if spec.network == "target-only" else "none"
+            stack = node.LocalStack(ws, spec.node_stack, tmp) if spec.node_stack is not None else None
             env = {
                 "PATH": "/usr/bin:/bin",
                 "HOME": str(home),
@@ -261,6 +275,8 @@ class LocalProcessDriver:
                 "PYTHONDONTWRITEBYTECODE": "1",
                 "LANG": "C.UTF-8",
             }
+            if stack is not None:
+                env.update(stack.env(), SANDBOX_NETWORK="loopback")
             argv = [self.python, "-I", "-B", str(ws / ".sandbox" / "entry.py"), spec.mode, *spec.args]
             limits = spec.limits
 
@@ -287,6 +303,11 @@ class LocalProcessDriver:
                 timed_out = True
                 os.killpg(proc.pid, signal.SIGKILL)
                 stdout_b, stderr_b = proc.communicate()
+            finally:
+                target_log = ""
+                if stack is not None:
+                    stack.stop()
+                    target_log = _cap(stack.log())
             duration = time.monotonic() - t0
             out_files: dict[str, bytes] = {}
             total = 0
@@ -311,6 +332,7 @@ class LocalProcessDriver:
                 timed_out=timed_out,
                 started_at=started,
                 labels=dict(spec.labels),
+                target_log=target_log,
             )
         finally:
             for p in root.rglob("*"):

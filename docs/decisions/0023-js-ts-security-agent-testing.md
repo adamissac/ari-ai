@@ -71,9 +71,13 @@ validated. Nothing in it reaches a shell. The platform chooses every command.
   start command.
   - `vercel_functions`: a ~100-line platform Node server. It mounts each `api/*` default
     export with Vercel's `req`/`res` helpers (`res.status().json()`, parsed JSON body).
-  - `next`: `next build`, then `next start`.
+  - `next`: `next build`, then `next start` (not implemented yet).
   - `express_module`: `{"module": "server/app.js", "export": "app"}`, listened on by the
-    platform.
+    platform (not implemented yet).
+
+  The launcher (`security_agents/sandbox/node_stack.mjs`) starts the emulators, seeds the
+  identities and documents, and serves the adapter. It logs requests in uvicorn's
+  access-log shape, so the existing `target_contact` evidence works unchanged.
 - **`env`** values are literal strings, matched by `^[A-Za-z0-9 ._:/@-]{0,200}$`, or one
   platform placeholder.
   - `$sandbox_service_account` is a throwaway RSA service account generated per run. It
@@ -88,8 +92,11 @@ validated. Nothing in it reaches a shell. The platform chooses every command.
   `recipe.identities[name].auth_header`, so the existing templates work unchanged.
 - **`seed`** documents are written through the Firestore emulator's admin path
   (`Authorization: Bearer owner`), before the rules are evaluated for test identities.
-- **`test_command`** names a runner from a closed set (`vitest`, `jest`, `node-test`)
-  plus validated args. It runs with network `none`, except for loopback to the emulators.
+- **`test_command`** names a runner from a closed set (`vitest`, `jest`) plus validated
+  args. It runs with network `none`, except for loopback to the emulators. The sandbox
+  entry runs it with a JSON reporter and reports in pytest's shape, plus a test-id audit,
+  so Verify's "protected tests not collected" check applies to JS suites too. The hook
+  audit is pytest-only.
 - `backend/recipes.py` drafts this kind on connect when the repository has
   `package.json` and either detected routes or `firebase.json`. The draft is opened as
   the same setup PR. The owner merging it is the approval, as for Python.

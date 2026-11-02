@@ -4,6 +4,7 @@
   "description": "Platform-owned Node packages for the sandbox (ADR-0023). Never derived from the repository under test.",
   "dependencies": {
     "@firebase/rules-unit-testing": "4.0.1",
-    "firebase": "11.10.0"
+    "firebase": "11.10.0",
+    "firebase-tools": "13.35.1"
   }
 }
