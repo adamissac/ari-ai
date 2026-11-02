@@ -8,6 +8,7 @@ servers) is not detected; nothing here executes repository code.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 from pathlib import PurePosixPath
 
 import tree_sitter_javascript
@@ -54,7 +55,7 @@ def _text(node: Node | None) -> str:
     return node.text.decode("utf-8", "replace") if node is not None and node.text else ""
 
 
-def _walk(node: Node):
+def _walk(node: Node) -> Iterator[Node]:
     stack = [node]
     while stack:
         n = stack.pop()
