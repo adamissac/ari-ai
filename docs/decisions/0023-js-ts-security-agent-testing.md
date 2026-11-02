@@ -134,8 +134,9 @@ run, no host credentials ([§4](../15_SECURITY_BOUNDARIES.md#4-sandbox-requireme
     `GET` route with zero or one path parameter.
   - `bounds` and `role` change state. They stay refused over `http`
     (`side_effect_class` gate), as today.
-- **Firestore rules.** These are new reviewed templates, category `authorization`, side
-  effect `emulator_only`. They are run by one platform-owned harness
+- **Firestore rules.** These are new reviewed templates in the existing scope categories
+  (`access_control.ownership` / `.authentication`), with side effect `ephemeral_target_only`
+  (the per-run emulator is the ephemeral target). They are run by one platform-owned harness
   (`checks/firestore_harness.mjs`) on `@firebase/rules-unit-testing` against the run's
   emulator. The harness receives JSON parameters. The checks emit no generated code.
   - `firestore.owner_isolation`: the owner can `get` their doc at `path_template`.
@@ -144,8 +145,12 @@ run, no host credentials ([§4](../15_SECURITY_BOUNDARIES.md#4-sandbox-requireme
     must fail.
   - `firestore.collection_enumeration`: `list` on the collection by a non-owner must fail.
 
-  The verdict is deterministic, from `assertSucceeds`/`assertFails` outcomes. A mismatch
-  is a confirmed finding with the emulator's denial or allow as evidence.
+  The verdict is deterministic, from the emulator's allow/deny outcomes. Only a
+  `permission-denied` counts as denied; any other error is no verdict. The owner's `get` is
+  a positive control: if it is denied (a server-only collection), the check is inconclusive,
+  never a finding. A leak is a confirmed finding with the emulator's outcomes as evidence.
+  `checks.list_templates` hides Firestore templates when the recipe has no
+  `firestore_paths`, and HTTP templates when it has no `routes`.
 - Firestore paths are not `EntryPoint`s. Scout sees them as the `firestore_paths`
   parameter values of `checks.list_templates`. The orchestrator stops skipping the agents
   when the index has HTTP entry points **or** the recipe declares `firestore_paths`.
@@ -157,7 +162,7 @@ run, no host credentials ([§4](../15_SECURITY_BOUNDARIES.md#4-sandbox-requireme
 
 - `docs/15_SECURITY_BOUNDARIES.md` §4 gains three rules: the dependency-layer rule
   (lockfile-only builder, `--ignore-scripts`, registry-only resolved URLs), the
-  generated-service-account rule, and `emulator_only` as an allowed side-effect class.
+  generated-service-account rule, and the emulator counting as the ephemeral target.
   Emulator state is per-run and destroyed with the box.
 - Live Firebase projects are never contacted. Every Firebase call goes to loopback
   emulators. A recipe cannot name a real project credential.

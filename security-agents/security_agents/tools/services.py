@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .. import node_recipe
 from ..checks.library import CheckLibrary
 from ..contracts import ErrorCode, PlatformError
 from ..intel import CodeIntel
@@ -48,6 +49,8 @@ from ..sandbox.workspace import (
     unified_diff,
 )
 from .registry import ToolContext
+
+CHECKS_DIR = Path(__file__).parent.parent / "checks"
 
 PYTEST_SUMMARY = re.compile(
     r"(?:(?P<passed>\d+) passed)?(?:, )?(?:(?P<failed>\d+) failed)?(?:, )?(?:(?P<errors>\d+) error)?"
@@ -820,7 +823,11 @@ class CheckRunner:
                 "detail": f"{template_ref} has no reviewed implementation installed",
                 "matches_expectation": None,
             }
-        if self.transport == "http" and getattr(self.driver, "name", "") != "docker":
+        if (
+            self.transport == "http"
+            and not meta.support_files
+            and getattr(self.driver, "name", "") != "docker"
+        ):
             return {
                 "error": "HTTP_TRANSPORT_REQUIRES_DOCKER",
                 "detail": "the http check transport needs the Docker driver's internal target network",
@@ -850,13 +857,18 @@ class CheckRunner:
                 "template": meta.template_id,
             },
             limits=self.limits,
-            extra_files={check_file: rendered},
+            extra_files={
+                check_file: rendered,
+                **{f: (CHECKS_DIR / f).read_text(encoding="utf-8") for f in meta.support_files},
+            },
             target_id=target_id,
             scope_decision=decision,
             target_workspace=workspace_path(self.workspace_provider(ctx))
-            if self.transport == "http"
+            if self.transport == "http" and not meta.support_files
             else None,
-            target_app=str(recipe.get("app_factory") or "") or None if self.transport == "http" else None,
+            target_app=str(recipe.get("app_factory") or "") or None
+            if self.transport == "http" and not meta.support_files
+            else None,
             **setup,
         )
         res = self.driver.run(spec)
@@ -1893,6 +1905,7 @@ def recipe_from_snapshot(intel: CodeIntel) -> Any:
         path = intel.snapshot.root / "build_recipe.json"
         if not path.is_file():
             raise PlatformError(ErrorCode.SCHEMA_INVALID, "target has no build_recipe.json")
-        return json.loads(path.read_text(encoding="utf-8"))
+        recipe = json.loads(path.read_text(encoding="utf-8"))
+        return node_recipe.resolved(recipe) if node_recipe.is_node(recipe) else recipe
 
     return provider

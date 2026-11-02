@@ -46,7 +46,15 @@ def probe_ctx(intel, scope=None):
 
 def test_library_lists_runnable_templates(library):
     refs = {t["ref"] for t in library.list_public()}
-    assert refs == {OWNERSHIP.ref, BOUNDS.ref, AUTHENTICATION.ref, ROLE.ref}
+    assert refs == {
+        OWNERSHIP.ref,
+        BOUNDS.ref,
+        AUTHENTICATION.ref,
+        ROLE.ref,
+        "firestore.owner_isolation@1",
+        "firestore.unauthenticated_denied@1",
+        "firestore.collection_enumeration@1",
+    }
     assert all(t["runnable"] for t in library.list_public())
     assert library.categories() == {
         "access_control.ownership",

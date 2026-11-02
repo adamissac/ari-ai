@@ -17,6 +17,7 @@ def test_packet_hashes_are_stable_and_change_with_the_renderer(monkeypatch):
     first = {e["ref"]: e["renderer_sha256"] for e in packet()}
     assert first == {e["ref"]: e["renderer_sha256"] for e in packet()}
     monkeypatch.setattr(lib, "_PREAMBLE", lib._PREAMBLE + "\n# changed\n")
+    monkeypatch.setattr(lib, "_FIRESTORE_PREAMBLE", lib._FIRESTORE_PREAMBLE + "\n# changed\n")
     changed = {e["ref"]: e["renderer_sha256"] for e in packet()}
     assert all(changed[ref] != first[ref] for ref in first)
 

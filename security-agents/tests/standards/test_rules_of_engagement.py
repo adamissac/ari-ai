@@ -41,6 +41,9 @@ def test_roe_is_built_from_the_active_scope():
         "access_control.authentication@1",
         "access_control.ownership@1",
         "access_control.role@1",
+        "firestore.collection_enumeration@1",
+        "firestore.owner_isolation@1",
+        "firestore.unauthenticated_denied@1",
         "input_validation.bounds@1",
     ]
     assert set(roe.permitted_agents) == {AgentName.PROBE, AgentName.VERIFY}
@@ -56,7 +59,11 @@ def test_roe_build_is_pure_and_deterministic():
 
 def test_roe_lists_only_runnable_templates_in_scope_categories():
     narrow = make_scope(categories=["access_control.ownership"])
-    assert roe_for(narrow).permitted_check_templates == [OWNERSHIP]
+    assert roe_for(narrow).permitted_check_templates == [
+        OWNERSHIP,
+        "firestore.collection_enumeration@1",
+        "firestore.owner_isolation@1",
+    ]
     assert build_roe(make_scope(), empty_library().list_public()).permitted_check_templates == []
 
 

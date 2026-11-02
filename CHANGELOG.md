@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Firestore-rules checks (ADR-0023): three reviewed templates (`firestore.owner_isolation`, `firestore.unauthenticated_denied`, `firestore.collection_enumeration`) run a platform-owned `@firebase/rules-unit-testing` harness against the run's Firestore emulator with the workspace's own rules. Only a rules denial counts as denied, and a denied owner positive control is inconclusive, never a finding. The `node_http` build recipe kind is validated (closed serve adapters and test runners, no secret literals, computed unsigned emulator ID tokens for identities). Serving a Node target in the sandbox lands in the next PR.
 - JavaScript/TypeScript HTTP routes are indexed as entry points (ADR-0023): Next.js App Router and Pages API, Vercel functions, Express, and Cloud Functions `onRequest`. Assessments of repositories whose only routes are JS/TS still skip the security agents, now with a label naming the routes found, until a Node build recipe can serve them.
 - Failed assessments now record an error code and a readable reason.
 - Assessments interrupted by a lost worker can restart once, retaining usage and conservatively estimating unsettled sandbox time.
