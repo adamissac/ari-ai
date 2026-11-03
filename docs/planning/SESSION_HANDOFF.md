@@ -11,6 +11,27 @@ adds an entry before ending.
 - Assumptions / open questions (RQ links): No team-invite API exists (only the personal org at first login); confirmed in `api/auth.py`.
 - Next steps: G1 production redeploy (operator), G2 merge order per #744, G3 one live hosted assessment, then G4 invites (Devin).
 - Warnings for the next session: PR #740 (`feat/alan/first-customer-ux`) is separate and still open.
+### 2026-10-31 — Claude Code (agent, Alan) — first-customer frontend integration (#696 + #740 + #746)
+- Did: Merged #746, #740 and #696 onto `main` `40df6984` (only conflict: this file). Fixed the semantic conflict between #746's outage mapping and #696's GitHub App recovery text (proxy marks its own envelopes `details.origin=proxy`; UI says "Ari is unavailable"). Expired sessions show Sign in again. Assessment and finding pages share one live/scripted rule (`hasNonLiveModelTurns`); the finding page labels scripted runs.
+- State of the code: Branch `feat/alan/first-customer-frontend-integration`; frontend and docs only; no backend, contract or migration changes.
+- Commands run and results: see PR body (lint, typecheck, vitest, transport tests, build, `stack.py` Playwright).
+- Assumptions / open questions: Hosted backend still returned Railway 404 "Application not found" at 2026-10-31 (read-only probe), so no hosted live run exists; the YC demo uses the documented scripted-model fallback.
+- Next steps: Codex review (`coordination/messages/20261031T213000Z-claude-to-codex-frontend-integration.md`); backend deploy before frontend (#696 adds `/delivery-authority`).
+
+### 2026-10-31 — Claude Code (agent, Alan) — first-customer audit, assessment outcome and recovery, YC demo docs
+- Did: Audited the journey on the manual real stack (`docs/reviews/2026-10-31-first-customer-audit/README.md`). Assessment page: outcome panel (found / fix approval / proposed / verified / delivered), "did not finish" recovery with a prefilled restart link, honest no-findings coverage (limited vs not-proof), live phase-log refresh, elapsed-time note. Connect: what connecting does (incl. build-recipe PR), install dead end, error placement. Start assessment: `?commit=` prefill and readable scope name. Demo docs in `docs/demo/yc-w27/`.
+- State of the code: Branch `feat/alan/first-customer-ux` off `main` `9437e217`; frontend and docs only; avoids every file PR #696 touches.
+- Commands run and results: `npm run lint`, `npm run typecheck`, `npx vitest run` (all passing); targeted `stack.py` e2e (see PR); manual browser walkthrough of happy path and a cancelled run.
+- Assumptions / open questions: Proposed-fix detection uses step keys `remediation:<id>:patch` and `repair:<id>` plus finding status; a backend coverage record would be more precise.
+- Next steps: Devin verifies one live hosted assessment (P0-1); terminology pass after #696 merges.
+### 2026-10-27 — Devin (agent, Alan) — first-customer UX audit
+- Did: Audited the first-customer journey on the real manual stack and fixed five frontend UX problems: actionable `ErrorState` recovery (`describeError().recovery`, Back to projects on 403/404), inline first-assessment failure recovery in Setup, plain-language approvals with a visible two-person note and a delivery-mode-aware note (Codex NO-GO follow-up: the inbox no longer promises a human decision when `pull_request`/`auto` delivery pre-approves remediation on the owner's behalf; auto-approved rows are labelled automatic), a "no review has run" Findings state (duplicate Analytics CTA removed), and a four-step connect stepper. Audit and walkthrough: `docs/reviews/2026-10-27-first-customer-ux/README.md`.
+- State of the code: Branch `devin/1793142972-first-customer-ux` off upstream main `c03a5501`; frontend only (no backend, authz, migration or shared-contract changes).
+- Commands run and results: `npm run lint`, `npm run typecheck`, `npx vitest run` (480 passed); `stack.py tests/e2e/first-customer.spec.ts tests/e2e/journey.spec.ts tests/e2e/pages.spec.ts` — 15 passed.
+- Decisions made (ADR links): Recovery copy lives in `describeError` so every `ErrorState` gets it; screenshots stay out of the repo.
+- Assumptions / open questions (RQ links): The manual stack cannot start a real assessment (fake GitHub returns 503), so finding/repair screens were not re-audited visually.
+- Next steps: Review the PR.
+- Warnings for the next session: `pages.spec.ts` :102/:265/:335 need `journey.spec.ts` data in the same run.
 
 ### 2026-10-27 — Devin (agent, Adam) — wildcard per-commit assessment routing
 - Did: Routed non-empty author configuration, including `*`, through per-commit scheduling; added wildcard push and unlisted-author regressions.
@@ -2802,3 +2823,4 @@ Exact b6d5108b6f0678a6af9546f60d28508716cc4982: 194 pass/0 fail/0 skip, exit0, s
 
 ## 2026-10-31 independent release audit
 Canonical main 9437e217d65aa1be22fa7b4f54f723200cd428c8; external pilot NO-GO. See YC_RELEASE_MATRIX.md, YC_RELEASE_VERDICT.md, YC_BLOCKERS.md and hashed evidence under docs/reviews/2026-10-31-independent-release. 276 selected tests passed across distinct trees; no complete union or staging certification. Main redaction/checker gaps reproduced, #693/#694 source conflict requires owner reconciliation. No production changes, canonical merges or deployments.
+- #696 Codex round 2 (2026-10-29): approvals copy claimed automatic approval whenever the saved mode was PR/auto, even with `delivery_authorized_by` null. It now reads the new read-only `GET /projects/{id}/delivery-authority`, which reuses `delivery.authority()` and the `auto_delivery_allowed` gate. Tests: `backend/tests/test_delivery_authority_view.py`; `frontend/tests/unit/first-customer-ux.test.tsx` covers the inactive, revoked, active, deployment-gated, loading and error states.

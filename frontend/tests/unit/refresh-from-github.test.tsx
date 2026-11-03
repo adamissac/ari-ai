@@ -27,3 +27,9 @@ it.each([
     '/api/v1/auth/github/login',
   );
 });
+
+it('explains what connecting does and gives a path forward when no install link is configured', () => {
+  render(<ConnectOrgsPage />);
+  expect(screen.getByTestId('connect-next-steps').textContent).toContain('No tests run and nothing is pushed to your default branch.');
+  expect(screen.getByTestId('connect-no-install-link').textContent).toContain('Refresh from GitHub');
+});
