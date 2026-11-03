@@ -310,3 +310,22 @@ trace. Docker execution is CI evidence; no local Docker engine is claimed.
 
 
 Scope guard policy follows ADR-0016: an owner-approved sandbox-only scope may have the same requester and approver, including in multi-member organizations. Empty or mixed/non-sandbox target sets do not receive the self-approval exception.
+
+## JavaScript/TypeScript targets (ADR-0023)
+
+A `node_http` build recipe (`security_agents/node_recipe.py`) describes a Node app: a fixed
+serve adapter (`vercel_functions` today), Firebase emulators, fixture identities (the
+platform computes unsigned emulator ID tokens for them), seed documents, HTTP `routes` and
+`firestore_paths`. The launcher `security_agents/sandbox/node_stack.mjs` runs inside the
+sandbox. Firestore-rules checks run the reviewed `checks/firestore_harness.mjs`. Both use
+the platform packages in `sandbox/node/`, never the target's.
+
+```
+npm ci --ignore-scripts --prefix sandbox/node
+.venv/bin/python -m pytest -q tests/test_firestore_checks.py tests/test_node_target.py
+```
+
+The emulator tests need `java`, `node` and a cached Firestore emulator JAR
+(`npx firebase setup:emulators:firestore`). Without them they skip and print the reason.
+`examples/notes-firebase-lite` is the owned fixture, with planted defects.
+

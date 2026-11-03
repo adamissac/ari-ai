@@ -249,6 +249,7 @@ def h_list_templates(ctx: ToolContext, args: ListTemplatesArgs) -> dict[str, Any
     recipe = None if withheld else _scope_recipe(ctx)
     index: dict[str, Any] = {}
     if recipe is not None:
+        items = [t for t in items if library.applicable(t["ref"], recipe)]
         permitted = set(getattr(ctx.roe, "permitted_check_templates", []) or [])
         items = [
             {**t, "parameter_values": library.parameter_values(t["ref"], recipe)}

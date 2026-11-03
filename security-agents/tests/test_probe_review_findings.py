@@ -137,7 +137,11 @@ def test_f4_list_templates_accepts_a_legacy_category_alias(intel):
         .invoke(ctx, wire_name("checks.list_templates"), {"category": "authorization.ownership"})
         .payload
     )
-    assert [t["ref"] for t in listing["templates"]] == [OWNERSHIP]
+    assert [t["ref"] for t in listing["templates"]] == [
+        OWNERSHIP,
+        "firestore.owner_isolation@1",
+        "firestore.collection_enumeration@1",
+    ]
 
 
 def test_f4_scout_is_told_the_canonical_categories_of_an_aliased_scope(intel, driver, library, tmp_path):
