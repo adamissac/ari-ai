@@ -42,6 +42,8 @@ def test_roe_is_built_from_the_active_scope():
         "access_control.ownership@1",
         "access_control.role@1",
         "input_validation.bounds@1",
+        "input_validation.concurrent_bound@1",
+        "input_validation.destination@1",
     ]
     assert set(roe.permitted_agents) == {AgentName.PROBE, AgentName.VERIFY}
     assert roe.prohibited_actions and roe.stop_conditions and roe.data_handling

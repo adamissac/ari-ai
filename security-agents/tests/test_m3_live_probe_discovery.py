@@ -152,7 +152,12 @@ def test_rules_of_engagement_honour_check_category_aliases_without_widening_scop
     aliased = build_roe(make_scope(categories=["authorization.ownership"]), templates)
     assert aliased.permitted_check_templates == ["access_control.ownership@1"]
     both = build_roe(make_scope(categories=["authorization.ownership", "input.bounds"]), templates)
-    assert both.permitted_check_templates == ["access_control.ownership@1", "input_validation.bounds@1"]
+    assert both.permitted_check_templates == [
+        "access_control.ownership@1",
+        "input_validation.bounds@1",
+        "input_validation.concurrent_bound@1",
+        "input_validation.destination@1",
+    ]
 
 
 def test_aliased_scope_lets_probe_reach_the_runner_only_through_issued_roe(intel):
