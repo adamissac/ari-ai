@@ -112,13 +112,25 @@ def _railway_project(token: str, query: str) -> dict[str, Any]:
     return project
 
 
-def evaluate(health_problem: str | None, services: Sequence[Mapping[str, Any]]) -> UptimeReport:
+def evaluate(
+    health_problem: str | None,
+    services: Sequence[Mapping[str, Any]],
+    railway_checked: bool = True,
+) -> UptimeReport:
     lines = ["| Service | Latest deployment |", "|---|---|"]
     problems: list[str] = []
     keys: list[str] = []
     if health_problem:
         problems.append(f"Backend health check failed: {health_problem}")
-        keys.append("health")
+        # The problem text names the failure class (HTTP code, failed components,
+        # capabilities), so an escalation on an open alert updates the issue.
+        keys.append(f"health:{health_problem}")
+    if not railway_checked:
+        problems.append(
+            "Railway deployment check skipped: RAILWAY_TOKEN is not set, so removed "
+            "deployments cannot be detected. Add the project token as an Actions secret."
+        )
+        keys.append("railway:unchecked")
     for service in services:
         name = str(service.get("name"))
         deployment = service.get("deployment") or {}
@@ -178,7 +190,7 @@ def main() -> int:
         except Exception as error:
             message = str(error).replace(token, "[REDACTED]")
             services = [{"name": "railway-api", "deployment": {"status": f"unknown ({message})"}}]
-    report = evaluate(health_problem, services)
+    report = evaluate(health_problem, services, railway_checked=bool(token))
     markdown = render_markdown(report)
     print(markdown)
     summary_path = os.getenv("GITHUB_STEP_SUMMARY")
