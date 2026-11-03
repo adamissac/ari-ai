@@ -81,9 +81,8 @@ export function Executions({
   if (!projectId) return <Empty>Choose a project to inspect first-responder executions.</Empty>;
   return (
     <div className="flex flex-col gap-4" data-testid="live-defense-executions">
-      <p data-testid="live-defense-executions-copy" className="rounded-xl border border-line bg-panel-2 px-4 py-3 text-sm text-ink">
-        Persisted first-responder records only. Investigative execution is not a confirmed compromise and not executed
-        enforcement. Values the backend has not persisted render as unavailable — never estimated.
+      <p data-testid="live-defense-executions-copy" className="text-xs text-muted">
+        Recorded first-responder runs. An investigation is not a confirmed compromise and not executed enforcement.
       </p>
       <DiagnosticsPanel diagnostics={diagnostics} />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
