@@ -6,7 +6,7 @@ A human security owner signs off by replacing `reviewed_by` in
 
 Checklist for each template:
 
-- [ ] The rendered module imports only json, decimal, datetime, fastapi and the package named by the recipe's app_factory (validated as package.module:callable).
+- [ ] The rendered module imports only json, decimal, datetime, fastapi, pytest (to report a setup problem as skipped, never as a finding), threading and concurrent.futures (the race template) and the package named by the recipe's app_factory (validated as package.module:callable).
 - [ ] It uses only fixture identities and resource ids declared in the build recipe.
 - [ ] It opens no sockets, spawns no processes and reads no environment or files outside the workspace.
 - [ ] Its assertions state the expectation, so a failure means the expectation did not hold.
@@ -239,5 +239,145 @@ def test_permitted_identity_retains_access():
     RESULT["permitted_status"] = resp.status_code
     assert resp.status_code < 400, (
         f"permitted identity lost legitimate access: {resp.status_code}"
+    )
+```
+
+## input_validation.concurrent_bound@1
+
+- category: `input_validation.bounds`; side effects: `ephemeral_target_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: route_id, read_route_id, owner_identity, parallel
+- renderer_sha256: `9a3f425f549940429aefb72ea395885b6d6dca762ca94e46ec851c35f3239a06`
+- sample parameters: `{"owner_identity": "alice", "parallel": 8, "read_route_id": "payment_detail", "route_id": "create_refund"}`
+- rendered_sha256 (sample): `7be1a03f1e2890bf2575350d052fed6a9c3927dec198a80f77ba15d31e90b6c0`
+- imports: concurrent, decimal, fastapi, json, payments_lite, pytest, threading (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: input_validation.concurrent_bound@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Target is driven in-process through its own app factory; no sockets are opened.
+"""
+
+import json
+from decimal import Decimal
+
+from fastapi.testclient import TestClient
+
+from payments_lite.app import create_app
+
+RESULT = {}
+
+
+def _client():
+    return TestClient(create_app())
+
+import threading
+
+import pytest
+from concurrent.futures import ThreadPoolExecutor
+
+CREATE_PATH = '/refunds'
+READ_PATH = '/payments/pay_a1'
+HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
+BODY = {'payment_id': 'pay_a1', 'amount': '72.00'}
+BOUND = Decimal('120.00')
+AMOUNT = Decimal('72.00')
+PARALLEL = 8
+FIELD_KIND = 'accumulated_field'
+FIELD = 'refunded'
+
+
+def _read_value(client):
+    resp = client.get(READ_PATH, headers=HEADERS)
+    if resp.status_code != 200 or FIELD not in resp.json():
+        # The owner cannot read its own resource: a setup problem, not evidence.
+        pytest.skip(f"read-back failed: {resp.status_code}")
+    return Decimal(str(resp.json()[FIELD]))
+
+
+def test_bound_holds_under_concurrent_requests():
+    client = _client()
+    barrier = threading.Barrier(PARALLEL)
+
+    def one(_):
+        barrier.wait(timeout=30)
+        return client.post(CREATE_PATH, json=BODY, headers=HEADERS).status_code
+
+    with ThreadPoolExecutor(PARALLEL) as pool:
+        statuses = list(pool.map(one, range(PARALLEL)))
+    accepted = sum(1 for s in statuses if s < 400)
+    value = _read_value(client)
+    moved = accepted * AMOUNT
+    expected = BOUND - moved if FIELD_KIND == "balance_field" else moved
+    RESULT.update(statuses=statuses, accepted=accepted, moved=str(moved), value=str(value))
+    if accepted == 0:
+        # Not evidence either way: the request itself is rejected (wrong body, auth, amount).
+        pytest.skip(f"no concurrent request was accepted: {statuses}")
+    assert moved <= BOUND, (
+        f"{accepted} concurrent requests of {AMOUNT} accepted against a bound of {BOUND}"
+    )
+    assert value == expected, (
+        f"lost update: {accepted} accepted requests should leave {FIELD}={expected}, "
+        f"observed {value}"
+    )
+```
+
+## input_validation.destination@1
+
+- category: `input_validation.bounds`; side effects: `ephemeral_target_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: route_id, read_route_id, owner_identity, destination_identity
+- renderer_sha256: `1754a23332fbb085b7a31d013179f75d82d843831b4f800fba8149e21bd924ac`
+- sample parameters: `{"owner_identity": "alice", "read_route_id": "payment_detail", "route_id": "sample_payout"}`
+- rendered_sha256 (sample): `c599f9a0c4f16f8cd3b32481b34a49840e5c318a98ccaa5aff7b3cdad10a0fd5`
+- imports: decimal, fastapi, json, payments_lite, pytest (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: input_validation.destination@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Target is driven in-process through its own app factory; no sockets are opened.
+"""
+
+import json
+from decimal import Decimal
+
+from fastapi.testclient import TestClient
+
+from payments_lite.app import create_app
+
+RESULT = {}
+
+
+def _client():
+    return TestClient(create_app())
+
+import pytest
+
+CREATE_PATH = '/payouts'
+READ_PATH = '/payments/pay_a1'
+HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
+BODY = {'payment_id': 'pay_a1', 'to': 'ari-probe-nonexistent-destination', 'amount': '1.00'}
+FIELD = 'refunded'
+
+
+def _read_value(client):
+    resp = client.get(READ_PATH, headers=HEADERS)
+    if resp.status_code != 200 or FIELD not in resp.json():
+        # The owner cannot read its own resource: a setup problem, not evidence.
+        pytest.skip(f"read-back failed: {resp.status_code}")
+    return Decimal(str(resp.json()[FIELD]))
+
+
+def test_invalid_destination_is_rejected_and_moves_nothing():
+    client = _client()
+    before = _read_value(client)
+    resp = client.post(CREATE_PATH, json=BODY, headers=HEADERS)
+    after = _read_value(client)
+    RESULT.update(status=resp.status_code, before=str(before), after=str(after))
+    assert after == before, f"{FIELD} changed from {before} to {after} for an invalid destination"
+    assert 400 <= resp.status_code < 500, (
+        f"expected 4xx for an invalid destination, observed {resp.status_code}"
     )
 ```
