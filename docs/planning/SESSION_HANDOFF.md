@@ -3,6 +3,15 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-11-03 — Devin (agent, Alan) — pilot backend reliability
+- Did: Took the R1 restart-harness update (S2 now asserts #725's one automatic restart, then honest `FAILED/CONFLICT_STATE` on a second kill); pointed `uptime-watch` at `/readyz` so a database/queue/worker outage behind a live container alerts (W1).
+- State of the code: Branch `fix/alan/pilot-backend-reliability`; no backend contract or schema change.
+- Commands run and results: `deploy/evidence/restart_recovery.py` on `079f7777` (main) — S1 PASS, S2 timed out at `AWAITING_APPROVAL` (stale harness); on this branch — S1, S2a, S2b, S3, S4, S5, S6, S7 PASS (scripted model, local). `python -m unittest tests/ops/test_uptime_watch.py` — 12 OK (4 new). Recovery-related pytest selection — 137 passed, 1 skipped (live smoke opt-in).
+- Decisions made (ADR links): None.
+- Assumptions / open questions (RQ links): R2 (lost-segment sandbox estimate capped at `worker_lease_s`) and W2 (no `RAILWAY_TOKEN` silently skips the deployment check) remain open.
+- Next steps: Owner review and merge; the workflow picks up `/readyz` on the next scheduled run.
+- Warnings for the next session: `/readyz` returns 503 when workers are required and none are alive, so a long worker-only outage now also alerts.
+
 ### 2026-10-27 — Devin (agent, Adam) — wildcard per-commit assessment routing
 - Did: Routed non-empty author configuration, including `*`, through per-commit scheduling; added wildcard push and unlisted-author regressions.
 - State of the code: Branch `fix/adam/per-commit-wildcard`; ready to commit and push.
