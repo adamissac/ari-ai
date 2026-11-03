@@ -3,6 +3,37 @@
 Read [DEMO_PREREQUISITES.md](DEMO_PREREQUISITES.md) first. Words to say are in
 [DEMO_SCRIPT.md](DEMO_SCRIPT.md). This page is only the clicks.
 
+## Pick the path before anything else
+
+There are two paths, and the recording must say which one it is.
+
+| | **Path A — live hosted** | **Path B — local real stack, scripted model** |
+|---|---|---|
+| Where | `https://ari-ai-lake.vercel.app` + Railway backend | Your laptop: real API, PostgreSQL, worker, sandbox, Next |
+| Model replies | Live Claude calls | Scripted (TEST-ONLY transport), labelled **Not a live-provider run** |
+| Real | Everything | Everything except the model's words: tests, sandbox checks, approvals, Patch, Verify, persistence |
+| Use when | **Every** gate below is true, checked by someone other than the presenter | Any gate is false |
+
+**Path A gates (all required; record who checked and when):**
+
+1. `curl -s https://ari-ai-lake.vercel.app/api/frontend-version` shows `"backendReachable":true` and `"sameCommit":true`.
+2. Signing in with GitHub reaches **Organizations** without an error.
+3. A bookmarked assessment on the company-owned staging repository shows **Completed**, **Live provider run**, at least one confirmed finding with executed evidence, and a fix accepted by the independent re-test (DEMO_PREREQUISITES item 5).
+4. Codex's release gate (#739 or its successor) does not list an open blocker for the pages shown.
+
+**Status on 2026-10-31 (18:58Z): Path A is not available.** The Railway backend returned
+`404 Application not found` (`x-railway-fallback: true`), `/api/frontend-version` reported
+`backendReachable:false`, and no live hosted assessment has been recorded. Use Path B until
+Devin/the Railway operator restore production and gate 3 is met.
+
+**Update 2026-11-01T00:21Z: gate 1 met.** `/readyz` 200 (database, queue, 12 workers, LLM mode
+`live` with `claude-haiku-5-5`, GitHub App and Vercel sandbox configured), and
+`/api/frontend-version` reported `sameCommit:true` on `d2de9ddd`. Gates 2–4 were not checked; gate 3
+(a completed live hosted assessment) still requires an approved spend cap and a run. Path A is
+still not available until all four hold.
+
+# Path A — live hosted
+
 ## Before you press record (5 minutes)
 
 1. Sign in at `https://ari-ai-lake.vercel.app` with GitHub.
@@ -35,11 +66,11 @@ Read [DEMO_PREREQUISITES.md](DEMO_PREREQUISITES.md) first. Words to say are in
 
 | Symptom | Do this |
 |---|---|
-| Any page shows **Ari is unavailable**, **Backend unreachable** or another red error | Stop. Reload the tab. If it persists, the hosted API is down (check `/api/frontend-version` → `backendReachable`); record with the fallback below. |
+| Any page shows **Ari is unavailable**, **Backend unreachable**, **The Ari service is not running right now**, or another red error | Stop. Reload the tab. If it persists, the hosted API is down (check `/api/frontend-version` → `backendReachable`); switch to Path B. Do not record the hosted path with an error on screen. |
 | The assessment page shows **Not a live-provider run** | It is not a live run. Either use a different bookmarked run or say "scripted model replies" on screen. |
 | Sign-in loops back to the sign-in page | Sign out, clear cookies for the site, sign in again before recording. |
 
-## Fallback: local real stack
+# Path B — local real stack, scripted model replies
 
 One terminal, from the repository root:
 
@@ -57,8 +88,11 @@ development login `e2e-alice`. Then:
    `commit:` SHA printed by the script, click **Start assessment**.
 3. On the assessment page click **Approve remediation → Confirm approval** for each fix request.
    The run completes in about 30 seconds.
-4. Now follow the click path above using this stack's pages. The yellow **Not a live-provider run**
-   banner stays visible on the assessment page, and **Not from a live-provider run** on the finding
-   page: say "model replies are scripted for this recording".
+4. Now follow the Path A click path using this stack's pages (skip Tab 1's hosted URL; use the
+   stack's own `/`). The yellow **Not a live-provider run** banner stays visible on the assessment
+   page, and **Not from a live-provider run** on the finding page: say "model replies are scripted
+   for this recording" when the assessment page first appears, and keep the banner in frame.
+5. The repository here is `examples/payments-lite`, a company-owned demo service seeded with
+   known bugs. Say so. It is not a customer repository.
 
 Stop the stack with Ctrl-C when done; it deletes its temporary database.
