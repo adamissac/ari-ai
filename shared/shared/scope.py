@@ -36,6 +36,7 @@ class CheckCategory(StrEnum):
     access_control_mutation = "access_control.mutation"
     rbac = "access_control.rbac"
     input_bounds = "input.bounds"
+    input_validation_injection = "input_validation.injection"
 
 
 _CHECK_CATEGORY_CANONICAL: dict[CheckCategory, CheckCategory] = {
@@ -48,6 +49,7 @@ _CHECK_CATEGORY_CANONICAL: dict[CheckCategory, CheckCategory] = {
     CheckCategory.rbac: CheckCategory.access_control_role,
     CheckCategory.input_validation_bounds: CheckCategory.input_validation_bounds,
     CheckCategory.input_bounds: CheckCategory.input_validation_bounds,
+    CheckCategory.input_validation_injection: CheckCategory.input_validation_injection,
 }
 
 
