@@ -58,16 +58,16 @@ come from records.
 
 ## Interface finish
 
-`app/interface.css` supplies the shared editorial finish: workspace title hierarchy, numbered organization cards, precise repository rows, restrained charcoal panels, ember selection edges and a compact replay frame. It retains the hero and scroll timelines in `globals.css`. The Projects header link stays current across `/connect` and its descendants. The desktop/mobile browser test uses explicit GitHub metadata fixtures and the real session/router.
+`app/interface.css` supplies the shared editorial finish: workspace title hierarchy, numbered organization cards, precise repository rows, restrained charcoal panels, ember selection edges and a compact replay frame. It retains the hero and scroll timelines in `globals.css`. The project header and tab band use opaque, blur-free sticky surfaces. The Projects header link stays current across `/connect` and its descendants. The desktop/mobile browser test uses explicit GitHub metadata fixtures and the real session/router.
 
 ## Landing, header and motion
 
 - `components/hero.tsx`, `intro-loader.tsx`, `story.tsx`: the landing's hero, once-per-sign-in
   intro and scroll-told chapters. Chapters pin and scrub only at `lg` with motion allowed;
   otherwise they render their final, readable state.
-- `components/smooth-scroll.tsx` (root layout): Lenis-style momentum for mouse wheels and
-  trackpads, frame-rate independent, no dependency. Native for touch, keyboard, scrollbar,
-  zoom, horizontal gestures, nested scroll areas and `prefers-reduced-motion`.
+- `components/anchor-scroll.tsx` (root layout): same-page hash links scroll smoothly when
+  reduced motion is not requested. Wheel, trackpad, touch, keyboard and scrollbar scrolling
+  remain native.
 - Header: `components/account-link.tsx` sits top right and is always visible: **Sign in**
   when signed out (or the backend is unreachable), otherwise the GitHub login. On the
   landing, the other tabs fade in on scroll over the hero.
@@ -85,11 +85,11 @@ carry the hero's look at lower intensity. Everything is in the "Night surface" s
   Use `--color-night` (never flips) for a surface that must stay dark, and `--color-ember`
   for brand-coloured text. Night contrast is asserted in `tests/unit/contrast.test.ts`.
 - **Ambient light**: `components/ambient.tsx` (root layout) is a fixed layer of drifting
-  ember orbs, a faint grid and grain, with a slow scroll parallax (`--sy`). It also sets
-  `--gx/--gy` on the panel under the mouse for its glow.
+  ember orbs, a faint grid and grain. It sets `--gx/--gy` on the panel under the mouse for
+  its glow.
 - **Motion**: page titles (`PageTitle` → `.page-title`), ink bands (`.hero-ink`) and the
-  project header rise in with the hero's blur; `Panel` rises once when first scrolled into
-  view (`useRevealOnScroll` in `components/reveal.tsx`); primary buttons, project tabs and
+  project header rise in with opacity and translation; `Panel` rises once when first scrolled
+  into view (`useRevealOnScroll` in `components/reveal.tsx`); primary buttons, project tabs and
   bordered link cards glow on hover; `Loading` shows an ember pulse. All of it stops under
   `prefers-reduced-motion`.
 
@@ -194,13 +194,7 @@ Sign-in screens share a centered form over subtle decorative orbits; reduced mot
 User-facing lab copy describes controlled evaluation runs and isolated test networks. Synthetic drills and illustrative walkthroughs retain explicit provenance.
 
 
-Homepage wheel scrolling stops once at the expanded walkthrough video. The arriving gesture is absorbed until a new gesture (180ms idle) or a 1.2-second maximum. A new wheel gesture, upward scrolling, keyboard navigation or Continue exploring can leave immediately. Touch and reduced-motion scrolling remain native.
-
-
-The walkthrough zoom uses smoothstep scroll progress and a 1.5-second CSS transition so hard wheel gestures do not snap it to full size. Reduced motion disables the transition.
-
-
-Landing: the original centered hero, scroll-driven problem timeline, expanding process cards and finding walkthrough are restored. Wheel scrolling uses the original momentum behavior without the redesign's reading-distance cap. `LandingFooter` retains Ari’s charcoal/burnt-orange/cream horizon design.
+Landing: the centered hero, scroll-driven problem timeline, expanding process cards and finding walkthrough use native browser scrolling. Same-page hash links scroll smoothly unless reduced motion is requested. `LandingFooter` retains Ari’s charcoal/burnt-orange/cream horizon design.
 
 Footer correction: use a conventional aligned footer with Ari branding/tagline on the left, two navigation columns on the right, and a separated copyright/back-to-top row. Stack branding above the link columns on mobile. Preserve Ari colors and restored hero/scroll animations. Validation recorded in PR.
 
