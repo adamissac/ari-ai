@@ -407,6 +407,8 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
   .story-track-3 { height: 220vh; }
   .story-track-4 { height: 200vh; }
+  /* About 45vh of scroll per process card, plus a half-step hold on the last (chapterStep). */
+  .story-track-how { height: 300vh; }
   .story-track > .story-stage { position: sticky; top: 0; min-height: 100svh; }
 }
 

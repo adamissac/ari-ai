@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Landing "How it works": each process card now gets about 45vh of native scroll (about four mouse-wheel notches) and the last card holds an extra half step, so a wheel gesture no longer skips from card 3 straight out of the chapter.
 - Restored native scrolling, shortened the landing story chapters, and made console chrome calmer and more opaque.
 - Failed assessments now record an error code and a readable reason.
 - Assessments interrupted by a lost worker can restart once, retaining usage and conservatively estimating unsettled sandbox time.

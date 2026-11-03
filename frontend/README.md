@@ -64,6 +64,8 @@ every RL metric and provenance) is kept, one click away. All counts come from re
 - `components/hero.tsx`, `intro-loader.tsx`, `story.tsx`: the landing's hero, once-per-sign-in
   intro and scroll-told chapters. Chapters pin and scrub only at `lg` with motion allowed;
   otherwise they render their final, readable state.
+  `chapterStep()` maps a pinned chapter's scroll progress to its step and gives the last step
+  a half-step hold; the How it works track (`.story-track-how`, 300vh) budgets about 45vh per card.
 - `components/anchor-scroll.tsx` (root layout): same-page hash links scroll smoothly when
   reduced motion is not requested. Wheel, trackpad, touch, keyboard and scrollbar scrolling
   remain native.

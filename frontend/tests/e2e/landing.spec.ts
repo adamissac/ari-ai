@@ -228,13 +228,42 @@ test('process cards traverse with scrolling again', async ({ page }) => {
   await page.goto('/');
   const chapter = page.locator('#how');
   const cards = chapter.locator('.story-card');
-  for (const [progress, index] of [[0.08, 0], [0.4, 1], [0.68, 2], [0.94, 3]] as const) {
+  for (const [progress, index] of [[0.08, 0], [0.33, 1], [0.55, 2], [0.94, 3]] as const) {
     await chapter.evaluate((el, p) => {
       const top = el.getBoundingClientRect().top + window.scrollY;
       window.scrollTo(0, top + (el.clientHeight - innerHeight) * p);
     }, progress);
     await expect(cards.nth(index)).toHaveAttribute('data-active', 'true');
   }
+});
+
+test('every process card holds for several wheel notches before the chapter moves on', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  const chapter = page.locator('#how');
+  await chapter.evaluate(el => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - innerHeight / 2));
+  await page.mouse.move(720, 450);
+  const pinnedNotches = [0, 0, 0, 0];
+  const order: number[] = [];
+  for (let notch = 0; notch < 60; notch++) {
+    await page.mouse.wheel(0, 100);
+    await page.waitForTimeout(150);
+    const state = await chapter.evaluate(el => {
+      const r = el.getBoundingClientRect();
+      return {
+        active: [...el.querySelectorAll('.story-card')].findIndex(card => card.hasAttribute('data-active')),
+        pinned: r.top <= 0.5 && r.bottom >= innerHeight - 0.5,
+        past: r.bottom < innerHeight - 0.5,
+      };
+    });
+    if (state.past) break;
+    if (!state.pinned) continue;
+    pinnedNotches[state.active] = (pinnedNotches[state.active] ?? 0) + 1;
+    if (order.at(-1) !== state.active) order.push(state.active);
+  }
+  expect(order).toEqual([0, 1, 2, 3]);
+  for (const notches of pinnedNotches) expect(notches).toBeGreaterThanOrEqual(3);
+  expect(pinnedNotches[3]).toBeGreaterThan(pinnedNotches[1]!);
 });
 
 test('motion accents respond to hover and respect reduced motion', async ({ page }) => {
