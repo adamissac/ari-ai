@@ -572,10 +572,22 @@ def main() -> int:
         apprs = alice.get(f"/projects/{pid}/approvals").raise_for_status().json()
         items = apprs["items"] if isinstance(apprs, dict) and "items" in apprs else apprs
         (out / "approvals.json").write_text(json.dumps(items, indent=1))
+        # Approve only S1's remediations: S2a's assessment also waits for approval, and
+        # resuming it would consume the shared scripted repair replies S1's repair needs.
+        from backend.db import approvals as approvals_t
+
+        with transaction() as conn:
+            aid1_approvals = set(
+                conn.execute(
+                    sa.select(approvals_t.c.id).where(approvals_t.c.assessment_id == aid1)
+                ).scalars()
+            )
         pend = [
             a
             for a in items
-            if a.get("status") == "pending" and a.get("subject_type") == "remediation"
+            if a.get("status") == "pending"
+            and a.get("subject_type") == "remediation"
+            and a.get("id") in aid1_approvals
         ]
         decided = None
         for a in pend:
@@ -594,12 +606,30 @@ def main() -> int:
         n_artifacts = len(list(artifacts.rglob("*"))) - len(
             [p for p in artifacts.rglob("*") if p.is_dir()]
         )
+        with transaction() as conn:
+            repair_msgs = [
+                str((d or {}).get("message", ""))
+                for d in conn.execute(
+                    sa.select(assessment_events.c.doc)
+                    .where(assessment_events.c.assessment_id == aid1)
+                    .order_by(assessment_events.c.seq)
+                ).scalars()
+                if "functional repair" in str((d or {}).get("message", ""))
+                or "functional patch" in str((d or {}).get("message", ""))
+            ]
         results.record(
             "S3_checkpoint_resume",
-            bool(asm_state(aid1) == "COMPLETED" and found),
+            bool(
+                asm_state(aid1) == "COMPLETED"
+                and found
+                and pend
+                and any(m.startswith("functional patch recorded") for m in repair_msgs)
+                and not any(m.startswith("functional repair failed") for m in repair_msgs)
+            ),
             {
                 "assessment_state": asm_state(aid1),
                 "approvals_decided": len(pend),
+                "repair_events": repair_msgs,
                 "checkpoint_artifact_still_on_disk": bool(found),
                 "artifact_store_objects": n_artifacts,
             },
