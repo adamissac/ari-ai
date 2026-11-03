@@ -16,6 +16,16 @@ RECIPE = PACKAGE_ROOT.parent / "examples" / "payments-lite" / "build_recipe.json
 ALLOWED_IMPORTS = frozenset(
     {"json", "decimal", "fastapi", "datetime", "pytest", "threading", "concurrent"}
 )  # + the recipe's app_factory package
+# Harness templates (ADR-0023) start exactly one reviewed support file and read its output.
+HARNESS_IMPORTS = frozenset({"json", "os", "pathlib", "subprocess", "tempfile", "pytest"})
+HARNESS_FORBIDDEN = ("socket", "os.system", "eval(", "exec(", "shell=True")
+NODE_RECIPE: dict[str, Any] = {
+    "recipe_version": 1,
+    "kind": "node_http",
+    "firebase": {"project_id": "demo-ari-sample", "rules": "firestore.rules"},
+    "identities": {"alice": {"uid": "sbx-alice"}, "bob": {"uid": "sbx-bob"}},
+    "firestore_paths": [{"id": "user_doc", "path_template": "users/{uid}"}],
+}
 FORBIDDEN_TOKENS = ("subprocess", "socket", "http://", "https://", "requests.", "os.system", "eval(", "exec(")
 SAMPLES: dict[str, dict[str, Any]] = {
     "access_control.ownership@1": {
@@ -31,6 +41,17 @@ SAMPLES: dict[str, dict[str, Any]] = {
         "route_id": "create_refund",
         "restricted_identity": "bob",
         "permitted_identity": "alice",
+    },
+    "firestore.owner_isolation@1": {
+        "path_id": "user_doc",
+        "owner_identity": "alice",
+        "other_identity": "bob",
+    },
+    "firestore.unauthenticated_denied@1": {"path_id": "user_doc", "owner_identity": "alice"},
+    "firestore.collection_enumeration@1": {
+        "path_id": "user_doc",
+        "owner_identity": "alice",
+        "other_identity": "bob",
     },
     "input_validation.bounds@1": {
         "route_id": "create_refund",
@@ -68,6 +89,7 @@ CHECKLIST = (
     "It opens no sockets, spawns no processes and reads no environment or files outside the workspace.",
     "Its assertions state the expectation, so a failure means the expectation did not hold.",
     "Its side effects match the declared side_effect_class.",
+    "Harness templates only: the module starts the listed support file with `node` (no shell) and reads its JSON output; the support file reaches only the loopback Firestore emulator.",
     "The renderer rejects unknown or missing parameters and identical owner and other identities.",
 )
 
@@ -92,6 +114,12 @@ def _code_only(source: str) -> str:
     return "\n".join(ast.unparse(node) for node in body)
 
 
+def lib_node_recipe() -> dict[str, Any]:
+    from .. import node_recipe
+
+    return node_recipe.resolved({**NODE_RECIPE, "routes": []})
+
+
 def packet(recipe_path: Path = RECIPE) -> list[dict[str, Any]]:
     recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
     recipe["routes"] = [*recipe.get("routes", []), *SAMPLE_ROUTES]
@@ -100,9 +128,12 @@ def packet(recipe_path: Path = RECIPE) -> list[dict[str, Any]]:
     for meta in library.templates.values():
         renderer = lib._RENDERERS[meta.ref]
         renderer_source = inspect.getsource(renderer)
-        rendered = library.render(meta.ref, recipe, SAMPLES[meta.ref])
+        harness = bool(meta.support_files)
+        sample_recipe = lib_node_recipe() if harness else recipe
+        rendered = library.render(meta.ref, sample_recipe, SAMPLES[meta.ref])
         code = _code_only(rendered)
         imports = _imports(rendered)
+        support = {f: (Path(lib.__file__).parent / f).read_text(encoding="utf-8") for f in meta.support_files}
         entries.append(
             {
                 "ref": meta.ref,
@@ -111,19 +142,34 @@ def packet(recipe_path: Path = RECIPE) -> list[dict[str, Any]]:
                 "reviewed_by": meta.reviewed_by,
                 "parameters": list(meta.parameters),
                 "renderer_sha256": _sha(
-                    lib._PREAMBLE
-                    + lib._PREAMBLE_HTTP
-                    + inspect.getsource(lib.app_factory)
-                    + inspect.getsource(lib._inprocess_preamble)
+                    (
+                        lib._FIRESTORE_PREAMBLE
+                        + inspect.getsource(lib._firestore_params)
+                        + inspect.getsource(lib._firestore_path)
+                        + inspect.getsource(lib._firestore_identity)
+                        + "".join(support.values())
+                        if harness
+                        else lib._PREAMBLE
+                        + lib._PREAMBLE_HTTP
+                        + inspect.getsource(lib.app_factory)
+                        + inspect.getsource(lib._inprocess_preamble)
+                    )
                     + renderer_source
                 ),
                 "sample_parameters": SAMPLES[meta.ref],
                 "rendered_sha256": _sha(rendered),
                 "imports": imports,
                 "imports_within_allowlist": set(imports)
-                <= ALLOWED_IMPORTS | {lib.app_factory(recipe)[0].split(".")[0]},
-                "forbidden_tokens_found": [t for t in FORBIDDEN_TOKENS if t in code],
+                <= (
+                    HARNESS_IMPORTS
+                    if harness
+                    else ALLOWED_IMPORTS | {lib.app_factory(recipe)[0].split(".")[0]}
+                ),
+                "forbidden_tokens_found": [
+                    t for t in (HARNESS_FORBIDDEN if harness else FORBIDDEN_TOKENS) if t in code
+                ],
                 "rendered": rendered,
+                "support_files": support,
             }
         )
     return entries
@@ -159,6 +205,15 @@ def render_markdown(entries: list[dict[str, Any]]) -> str:
             entry["rendered"].rstrip(),
             "```",
         ]
+        for name, source in entry["support_files"].items():
+            lines += [
+                "",
+                f"Support file `{name}` (reviewed with this template):",
+                "",
+                "```js",
+                source.rstrip(),
+                "```",
+            ]
     return "\n".join(lines) + "\n"
 
 

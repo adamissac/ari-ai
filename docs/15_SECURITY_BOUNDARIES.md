@@ -53,6 +53,7 @@ Untrusted data may influence *what is analyzed*, never *what is permitted*.
 | Lifetime | Ephemeral; removed after results are collected; reaper deletes orphans older than 2× timeout |
 | Secrets | No platform secrets or credentials in env or files; target test credentials are synthetic fixtures |
 | Images | Pinned base images by digest; built from `scripts/`-maintained Dockerfiles (later task) |
+| Node targets ([ADR-0023](decisions/0023-js-ts-security-agent-testing.md)) | The target's dependencies come from its `package-lock.json` only: `npm ci --ignore-scripts` in a builder holding only `package.json` and the lockfile, and any `resolved` URL outside `https://registry.npmjs.org/` is refused. No repository code runs while the registry is reachable. Firebase runs only as loopback emulators inside the run. Credentials the app needs are throwaway per-run service accounts (`$sandbox_service_account`); a recipe can never name a real one, and secret-like env names refuse literals. Fixture identities are unsigned emulator ID tokens, worthless against a real project. The launcher and the rules harness are platform-owned and reviewed. |
 | Hardening roadmap | gVisor (`runsc`) or Firecracker before handling third-party repos at scale ([ADR-0006](decisions/0006-docker-sandbox-no-network-default.md)) |
 
 ## 5. Prompt-injection defenses

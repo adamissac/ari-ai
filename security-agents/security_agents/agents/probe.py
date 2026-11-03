@@ -221,6 +221,8 @@ def same_route(a: str, b: str) -> bool:
     if ma.upper() != mb.upper():
         return False
     sa_, sb = (_PARAM.sub("{}", p).strip("/").split("/") for p in (pa, pb))
+    if sa_ == sb:
+        return True  # a one-segment route (`POST /transfers`) is still itself
     short, long_ = sorted((sa_, sb), key=len)
     return len(short) > 1 and long_[len(long_) - len(short) :] == short
 

@@ -37,6 +37,7 @@ class CheckTemplateMeta:
     expectation_kinds: tuple[str, ...]
     parameters: tuple[str, ...]
     reviewed_by: str | None = None  # security-owner sign-off; None => not runnable
+    support_files: tuple[str, ...] = ()  # reviewed files beside this module, copied into .sandbox/
 
     @property
     def ref(self) -> str:
@@ -521,6 +522,206 @@ ROLE = CheckTemplateMeta(
     reviewed_by="security-owner:pending-human-signoff",
 )
 
+# --------------------------------------------------------------------------- Firestore rules (ADR-0023)
+
+_FIRESTORE_PREAMBLE = '''"""Generated check: {ref}
+Rendered by security_agents.checks.library from reviewed template parameters.
+Runs the reviewed .sandbox/firestore_harness.mjs against the run's Firestore emulator,
+which loads this workspace's own rules file. Only rules denials count as "denied".
+"""
+
+import json
+import os
+import pathlib
+import subprocess
+import tempfile
+
+import pytest
+
+PARAMS = {params}
+RESULT = {{}}
+
+
+@pytest.fixture(scope="module")
+def outcomes():
+    here, work = pathlib.Path(__file__).parent, pathlib.Path(tempfile.mkdtemp())
+    params, out = work / "firestore_params.json", work / "firestore_out.json"
+    params.write_text(json.dumps({{**PARAMS, "out": str(out)}}))
+    subprocess.run(
+        ["node", str(here / "firestore_harness.mjs"), str(params)],
+        check=True, timeout=120, cwd=os.getcwd(),
+    )
+    rows = {{o["name"]: o for o in json.loads(out.read_text())["outcomes"]}}
+    RESULT["outcomes"] = rows
+    broken = [r for r in rows.values() if r["allowed"] is None]
+    if broken:  # an error is not evidence either way: fail the fixture, not the assertion
+        raise RuntimeError(f"emulator errors, no verdict: {{broken}}")
+    if rows["owner_get"]["allowed"] is not True:
+        # Positive control: if the owner cannot read either, the path is server-only or does
+        # not fit this template. Inconclusive, never a finding.
+        raise RuntimeError("positive control failed: the owner cannot read this document; no verdict")
+    return rows
+'''
+
+
+def _firestore_path(recipe: dict[str, Any], path_id: str, uid: str) -> str:
+    for fp in recipe.get("firestore_paths") or []:
+        if isinstance(fp, dict) and fp.get("id") == path_id:
+            filled = str(fp["path_template"]).replace("{uid}", uid)
+            return _PATH_PARAM.sub("sbx-doc", filled)
+    raise PlatformError(ErrorCode.SCHEMA_INVALID, f"unknown firestore path {path_id!r}")
+
+
+def _firestore_identity(recipe: dict[str, Any], name: str) -> tuple[str, dict[str, Any]]:
+    spec = (recipe.get("identities") or {}).get(name)
+    if not isinstance(spec, dict) or not spec.get("uid"):
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, f"unknown fixture identity {name!r}")
+    claims = dict(spec.get("claims") or {})
+    if spec.get("email"):
+        claims.update(email=spec["email"], email_verified=bool(spec.get("email_verified", False)))
+    return str(spec["uid"]), claims
+
+
+def _firestore_params(recipe: dict[str, Any], doc: str, ops: list[dict[str, Any]]) -> dict[str, Any]:
+    firebase = recipe.get("firebase") or {}
+    seeded = next(
+        (s["data"] for s in recipe.get("seed") or [] if isinstance(s, dict) and s.get("path") == doc),
+        {"sbx_seed": True},
+    )
+    return {
+        "project_id": str(firebase.get("project_id", "demo-ari-sandbox")),
+        "rules_path": str(firebase.get("rules", "firestore.rules")),
+        "seed": [{"path": doc, "data": seeded}],
+        "ops": ops,
+    }
+
+
+def _render_firestore_owner(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    owner, other = str(params["owner_identity"]), str(params["other_identity"])
+    if owner == other:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "owner_identity and other_identity must differ")
+    owner_uid, owner_claims = _firestore_identity(recipe, owner)
+    other_uid, other_claims = _firestore_identity(recipe, other)
+    doc = _firestore_path(recipe, str(params["path_id"]), owner_uid)
+    ops = [
+        {"name": "owner_get", "op": "get", "path": doc, "as": owner_uid, "claims": owner_claims},
+        {"name": "other_get", "op": "get", "path": doc, "as": other_uid, "claims": other_claims},
+        {
+            "name": "other_set",
+            "op": "set",
+            "path": doc,
+            "as": other_uid,
+            "claims": other_claims,
+            "data": {"sbx_probe": True},
+        },
+    ]
+    return (
+        _FIRESTORE_PREAMBLE.format(ref=params["_ref"], params=repr(_firestore_params(recipe, doc, ops)))
+        + """
+
+def test_other_identity_is_denied(outcomes):
+    leaked = [n for n in ("other_get", "other_set") if outcomes[n]["allowed"]]
+    RESULT["other_leaked"] = leaked
+    assert not leaked, f"rules allowed a different identity to {leaked} the owner's document"
+"""
+    )
+
+
+def _render_firestore_unauthenticated(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    owner_uid, owner_claims = _firestore_identity(recipe, str(params["owner_identity"]))
+    doc = _firestore_path(recipe, str(params["path_id"]), owner_uid)
+    ops = [
+        {"name": "owner_get", "op": "get", "path": doc, "as": owner_uid, "claims": owner_claims},
+        {"name": "anon_get", "op": "get", "path": doc, "as": None},
+        {"name": "anon_list", "op": "list", "path": doc.rsplit("/", 1)[0], "as": None},
+    ]
+    return (
+        _FIRESTORE_PREAMBLE.format(ref=params["_ref"], params=repr(_firestore_params(recipe, doc, ops)))
+        + """
+
+def test_unauthenticated_request_is_denied(outcomes):
+    leaked = [n for n in ("anon_get", "anon_list") if outcomes[n]["allowed"]]
+    RESULT["anon_leaked"] = leaked
+    assert not leaked, f"rules allowed an unauthenticated client to {leaked}"
+"""
+    )
+
+
+def _render_firestore_enumeration(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    owner, other = str(params["owner_identity"]), str(params["other_identity"])
+    if owner == other:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "owner_identity and other_identity must differ")
+    owner_uid, owner_claims = _firestore_identity(recipe, owner)
+    other_uid, other_claims = _firestore_identity(recipe, other)
+    doc = _firestore_path(recipe, str(params["path_id"]), owner_uid)
+    ops = [
+        {"name": "owner_get", "op": "get", "path": doc, "as": owner_uid, "claims": owner_claims},
+        {
+            "name": "other_list",
+            "op": "list",
+            "path": doc.rsplit("/", 1)[0],
+            "as": other_uid,
+            "claims": other_claims,
+        },
+    ]
+    return (
+        _FIRESTORE_PREAMBLE.format(ref=params["_ref"], params=repr(_firestore_params(recipe, doc, ops)))
+        + """
+
+def test_collection_cannot_be_enumerated(outcomes):
+    RESULT["other_listed"] = outcomes["other_list"]["allowed"]
+    assert outcomes["other_list"]["allowed"] is False, "rules let another identity list the collection"
+"""
+    )
+
+
+_FIRESTORE_PARAMS = ("path_id", "owner_identity", "other_identity")
+
+FIRESTORE_OWNER = CheckTemplateMeta(
+    template_id="firestore.owner_isolation",
+    version="1",
+    category="access_control.ownership",
+    description=(
+        "Firestore rules: the owner can read their document at a firestore_paths entry; a "
+        "different fixture identity can neither read nor write it. Runs against the run's "
+        "emulator with the workspace's rules. Parameters: path_id, owner_identity, other_identity."
+    ),
+    side_effect_class="ephemeral_target_only",
+    expectation_kinds=("access_control", "authorization", "ownership"),
+    parameters=_FIRESTORE_PARAMS,
+    reviewed_by="security-owner:pending-human-signoff",
+    support_files=("firestore_harness.mjs",),
+)
+FIRESTORE_UNAUTHENTICATED = CheckTemplateMeta(
+    template_id="firestore.unauthenticated_denied",
+    version="1",
+    category="access_control.authentication",
+    description=(
+        "Firestore rules: an unauthenticated client can neither get a document at a "
+        "firestore_paths entry nor list its collection; the owner keeps read access. "
+        "Parameters: path_id, owner_identity."
+    ),
+    side_effect_class="ephemeral_target_only",
+    expectation_kinds=("access_control", "authentication"),
+    parameters=("path_id", "owner_identity"),
+    reviewed_by="security-owner:pending-human-signoff",
+    support_files=("firestore_harness.mjs",),
+)
+FIRESTORE_ENUMERATION = CheckTemplateMeta(
+    template_id="firestore.collection_enumeration",
+    version="1",
+    category="access_control.ownership",
+    description=(
+        "Firestore rules: a different fixture identity cannot list the collection that holds "
+        "the owner's document. Parameters: path_id, owner_identity, other_identity."
+    ),
+    side_effect_class="ephemeral_target_only",
+    expectation_kinds=("access_control", "authorization", "ownership"),
+    parameters=_FIRESTORE_PARAMS,
+    reviewed_by="security-owner:pending-human-signoff",
+    support_files=("firestore_harness.mjs",),
+)
+
 
 def _value_field(route: dict[str, Any]) -> tuple[str, str]:
     """(kind, field) of the value a create route moves: the source's remaining
@@ -729,11 +930,15 @@ DESTINATION = CheckTemplateMeta(
     reviewed_by="security-owner:pending-human-signoff",
 )
 
+
 _RENDERERS = {
     OWNERSHIP.ref: _render_ownership,
     BOUNDS.ref: _render_bounds,
     AUTHENTICATION.ref: _render_authentication,
     ROLE.ref: _render_role,
+    FIRESTORE_OWNER.ref: _render_firestore_owner,
+    FIRESTORE_UNAUTHENTICATED.ref: _render_firestore_unauthenticated,
+    FIRESTORE_ENUMERATION.ref: _render_firestore_enumeration,
     CONCURRENT_BOUND.ref: _render_concurrent_bound,
     DESTINATION.ref: _render_destination,
 }
@@ -779,6 +984,8 @@ class CheckLibrary:
         missing = [p for p in meta.parameters if p not in params and p not in optional]
         if missing:
             raise PlatformError(ErrorCode.SCHEMA_INVALID, f"missing parameters {missing}")
+        if meta.support_files:  # self-contained harness checks: no HTTP target involved
+            transport = "inprocess"
         if transport == "http" and meta.side_effect_class != "read_only":
             raise PlatformError(
                 ErrorCode.SANDBOX_POLICY_VIOLATION,
@@ -787,12 +994,19 @@ class CheckLibrary:
         enriched = dict(params)
         enriched["_ref"] = ref
         rendered = _RENDERERS[ref](recipe, enriched)
-        if transport == "http":
+        if transport == "http" and not meta.support_files:
             inprocess = _inprocess_preamble(ref, recipe)
             if not rendered.startswith(inprocess):
                 raise PlatformError(ErrorCode.SANDBOX_POLICY_VIOLATION, f"{ref} cannot be rendered for http")
             rendered = _PREAMBLE_HTTP.format(ref=ref) + rendered[len(inprocess) :]
         return rendered
+
+    def applicable(self, ref: str, recipe: dict[str, Any]) -> bool:
+        """Harness (Firestore) templates need firestore_paths; HTTP templates need routes."""
+        meta = self.get(ref)
+        if meta is None:
+            return False
+        return bool(recipe.get("firestore_paths" if meta.support_files else "routes"))
 
     def parameter_values(self, ref: str, recipe: dict[str, Any]) -> dict[str, Any]:
         meta = self.get(ref)
@@ -845,6 +1059,12 @@ class CheckLibrary:
                     for r in routes
                     if str(r.get("method", "")).upper() == "POST" and isinstance(r.get("body_template"), dict)
                 ]
+            elif name == "path_id":
+                values[name] = [
+                    {"id": fp.get("id"), "path_template": fp.get("path_template")}
+                    for fp in recipe.get("firestore_paths") or []
+                    if isinstance(fp, dict)
+                ]
             elif name == "destination_identity":
                 values[name] = ["omit for a nonexistent destination", *identities]
             elif name == "parallel":
@@ -866,6 +1086,9 @@ def default_library() -> CheckLibrary:
     lib.register(BOUNDS)
     lib.register(AUTHENTICATION)
     lib.register(ROLE)
+    lib.register(FIRESTORE_OWNER)
+    lib.register(FIRESTORE_UNAUTHENTICATED)
+    lib.register(FIRESTORE_ENUMERATION)
     lib.register(CONCURRENT_BOUND)
     lib.register(DESTINATION)
     return lib

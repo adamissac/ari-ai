@@ -1,0 +1,86 @@
+{
+  "_comment": "Owned fixture recipe (ADR-0023). Identities are Auth-emulator users; auth headers are computed by the platform.",
+  "recipe_version": 1,
+  "kind": "node_http",
+  "node": "22",
+  "serve": {
+    "adapter": "vercel_functions",
+    "dir": "api"
+  },
+  "env": {
+    "NOTES_SERVICE_ACCOUNT": "$sandbox_service_account"
+  },
+  "firebase": {
+    "project_id": "demo-notes-lite",
+    "rules": "firestore.rules",
+    "emulators": [
+      "auth",
+      "firestore"
+    ]
+  },
+  "identities": {
+    "alice": {
+      "uid": "sbx-alice",
+      "email": "alice@sbx.test",
+      "email_verified": true
+    },
+    "bob": {
+      "uid": "sbx-bob",
+      "email": "bob@sbx.test",
+      "email_verified": true
+    }
+  },
+  "seed": [
+    {
+      "path": "notes/note-alice",
+      "data": {
+        "owner": "sbx-alice",
+        "body": "alice private note"
+      }
+    },
+    {
+      "path": "notes/note-bob",
+      "data": {
+        "owner": "sbx-bob",
+        "body": "bob private note"
+      }
+    },
+    {
+      "path": "profiles/sbx-alice",
+      "data": {
+        "displayName": "Alice"
+      }
+    }
+  ],
+  "resources": {
+    "note": {
+      "alice": {
+        "id": "note-alice"
+      },
+      "bob": {
+        "id": "note-bob"
+      }
+    }
+  },
+  "routes": [
+    {
+      "id": "note_detail",
+      "method": "GET",
+      "path_template": "/api/notes/{id}",
+      "resource": "note"
+    }
+  ],
+  "firestore_paths": [
+    {
+      "id": "profile_doc",
+      "path_template": "profiles/{uid}"
+    }
+  ],
+  "test_command": {
+    "runner": "vitest",
+    "args": [
+      "run",
+      "tests"
+    ]
+  }
+}
