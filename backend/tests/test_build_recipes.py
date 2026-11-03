@@ -258,14 +258,14 @@ def test_connecting_a_repo_opens_a_recipe_pr_never_on_main(client_factory, githu
     main_before = _git("rev-parse", "main", cwd=bare)
     _connect(client_factory("alice"))
     worker.drain(kinds=["propose_build_recipe"])
-    assert [(p["head"], p["base"]) for p in FakeApp.prs] == [("ari/build-recipe", "main")]
+    [(head, base)] = [(p["head"], p["base"]) for p in FakeApp.prs]
+    assert head.startswith("ari/build-recipe-") and base == "main"
     assert "build_recipe.json" in FakeApp.prs[0]["body"]
     assert _git("rev-parse", "main", cwd=bare) == main_before
-    shown = json.loads(_git("show", "ari/build-recipe:build_recipe.json", cwd=bare))
+    shown = json.loads(_git("show", f"{head}:build_recipe.json", cwd=bare))
     assert shown["app_factory"] == "deploy.sandbox_target:create_app"
-    assert "from shop.main import app" in _git(
-        "show", "ari/build-recipe:deploy/sandbox_target.py", cwd=bare
-    )
+    assert "from shop.main import app" in _git("show", f"{head}:deploy/sandbox_target.py", cwd=bare)
+    assert _audit("recipe.pr_opened")[0]["branch"] == head
     assert _audit("recipe.pr_opened")[0]["url"] == "https://github.com/acme/shop/pull/1"
 
 
@@ -365,3 +365,14 @@ def test_a_git_failure_on_the_last_attempt_records_recipe_failed(
         )
     worker.drain(kinds=["propose_build_recipe"])
     assert _audit("recipe.failed") and FakeApp.prs == []
+
+
+def test_a_retried_proposal_never_reuses_an_earlier_attempts_branch(client_factory, github) -> None:
+    github(SHOP)
+    alice = client_factory("alice")
+    rid = _connect(alice)
+    worker.drain(kinds=["propose_build_recipe"])
+    assert alice.post(f"/api/v1/repositories/{rid}/recipe/retry").status_code == 202
+    worker.drain(kinds=["propose_build_recipe"])
+    heads = [p["head"] for p in FakeApp.prs]
+    assert len(heads) == 2 and heads[0] != heads[1], heads

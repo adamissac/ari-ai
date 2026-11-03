@@ -160,6 +160,10 @@ export class ApiClient {
   connectRepository(projectId: string, body: C.RepositoryConnect, options?: RequestOptions): Promise<C.Repository> {
     return this.request(`/projects/${segment(projectId)}/repositories`, 'Repository', options, body) as Promise<C.Repository>;
   }
+  /** Take over a repository another Ari project has live; the server requires live GitHub admin access. */
+  claimRepository(projectId: string, body: C.RepositoryConnect, options?: RequestOptions): Promise<C.Repository> {
+    return this.request(`/projects/${segment(projectId)}/repositories/claim`, 'Repository', options, body) as Promise<C.Repository>;
+  }
   repository(repoId: string, options?: RequestOptions): Promise<C.Repository> {
     return this.request(`/repositories/${segment(repoId)}`, 'Repository', options) as Promise<C.Repository>;
   }

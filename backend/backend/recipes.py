@@ -848,13 +848,16 @@ def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
         message = (
             "chore: add Ari sandbox build recipe\n\nDrafted by Ari from the repository's code."
         )
+        # One branch per job: retries of this job reuse it (idempotent), while a new attempt
+        # (an owner retry, a new commit) never inherits an earlier attempt's stale branch or PR.
+        head = f"{BRANCH}-{ctx.job.id.removeprefix('job_').lower()}"
         with _locked(repo_dir):
             push_patch(
-                repo_dir, full_name, sha, new_file_diff(d.files()), write, message, BRANCH,
+                repo_dir, full_name, sha, new_file_diff(d.files()), write, message, head,
                 github_web_url=s.github_web_url,
             )  # fmt: skip
         url = app.open_pull_request(
-            iid, full_name, head=BRANCH, base=branch,
+            iid, full_name, head=head, base=branch,
             title="Add Ari sandbox build recipe", body=pr_body(d, facts),
         )  # fmt: skip
     except (CheckoutError, IntelligenceError, httpx.HTTPError) as exc:  # too big, refused, gone
@@ -869,7 +872,7 @@ def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
             raise
         return finish("recipe.failed", reason=str(exc)[:300])
     return finish(
-        "recipe.pr_opened", url=url, branch=BRANCH, commit_sha=sha, author=d.author,
+        "recipe.pr_opened", url=url, branch=head, commit_sha=sha, author=d.author,
         routes=[r["id"] for r in d.recipe["routes"]],
     )  # fmt: skip
 

@@ -289,6 +289,70 @@ def process_github_delivery(ctx: JobContext) -> dict[str, Any]:
     return result
 
 
+def start_coalesced_followup(conn: Any, repo_id: str) -> str | None:
+    """A monitoring assessment just ended: start the newest push that was coalesced behind it.
+
+    Coalescing only defers a push while a monitoring run is in flight; without this the
+    deferred push was never assessed. Older coalesced requests are superseded by the newest
+    (it contains them). Scope and quota are checked again; returns the new assessment id.
+    """
+    rows = (
+        conn.execute(
+            sa.select(reassessment_requests.c.id, reassessment_requests.c.doc)
+            .where(
+                reassessment_requests.c.repo_id == repo_id,
+                reassessment_requests.c.status == ReassessmentStatus.coalesced.value,
+            )
+            .order_by(reassessment_requests.c.doc["created_at"].astext.desc())
+            .with_for_update()
+        )
+        .mappings()
+        .all()
+    )
+    if not rows:
+        return None
+    newest = ReassessmentRequest.model_validate(rows[0]["doc"])
+    project_id = newest.project_id
+    scope = active_scope_for_repo(conn, project_id, repo_id)
+    quota = check_project_quota(conn, project_id, utcnow()) if scope is not None else None
+    asm_id = None
+    if scope is None:
+        status, reason = (
+            ReassessmentStatus.blocked_no_scope,
+            "waiting for repository scope approval",
+        )
+    elif quota is not None:
+        status, reason = ReassessmentStatus.skipped, skipped_reason(quota)
+    else:
+        asm, _ = create_assessment(
+            conn, project_id=project_id, repo_id=repo_id, scope_id=scope.id,
+            commit_sha=newest.head_sha, trigger=AssessmentTrigger.monitoring, budget=None,
+            created_by=None, reassessment_request_id=newest.id,
+        )  # fmt: skip
+        status, reason, asm_id = (
+            ReassessmentStatus.started,
+            "started after the running assessment ended",
+            asm.id,
+        )
+    updated = newest.model_copy(
+        update={"status": status, "reason": reason, "assessment_id": asm_id}
+    )
+    conn.execute(
+        sa.update(reassessment_requests)
+        .where(reassessment_requests.c.id == newest.id)
+        .values(status=status.value, doc=updated.model_dump(mode="json"))
+    )
+    for row in rows[1:]:  # superseded: the newest head contains these commits
+        doc = {**row["doc"], "status": ReassessmentStatus.skipped.value,
+               "reason": f"superseded by {newest.head_sha[:12]}"}  # fmt: skip
+        conn.execute(
+            sa.update(reassessment_requests)
+            .where(reassessment_requests.c.id == row["id"])
+            .values(status=ReassessmentStatus.skipped.value, doc=doc)
+        )
+    return asm_id
+
+
 # ------------------------------------------------------------------ assessments
 
 

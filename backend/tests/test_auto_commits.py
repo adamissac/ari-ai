@@ -1571,3 +1571,20 @@ def test_commit_event_records_its_parent_so_the_reviewer_sees_the_diff(automatic
     with transaction() as conn:
         doc = conn.execute(sa.select(monitoring_events.c.doc)).scalars().all()[-1]
     assert doc["commit_range"] == {"base_sha": parent, "head_sha": HEAD}
+
+
+def test_a_push_during_a_running_assessment_is_still_assessed(automatic):
+    alice, bob, ids, _ = automatic
+    assert bob.post(f"/api/v1/scopes/{ids['scope']}/approve").status_code == 200
+    push(alice, "a" * 40)
+    with transaction() as conn:  # the first run is mid-flight, not finished
+        assert (
+            conn.execute(
+                sa.select(sa.func.count())
+                .select_from(assessments)
+                .where(assessments.c.state.notin_(["COMPLETED", "FAILED", "CANCELLED"]))
+            ).scalar_one()
+            >= 1
+        )
+    push(alice, "b" * 40)
+    assert sorted(records()) == ["a" * 40, "b" * 40]

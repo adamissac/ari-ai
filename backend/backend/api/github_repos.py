@@ -68,6 +68,7 @@ _CAN_GRANT = frozenset({"admin", "write"})  # base permissions (maintain reports
 
 
 _CAN_READ = frozenset({"admin", "write", "read"})
+_ACCESS_WORDS = {_CAN_GRANT: "write access", frozenset({"admin"}): "admin access"}
 
 
 def verify_user_access(
@@ -108,8 +109,7 @@ def verify_user_access(
     if permission not in minimum:
         raise ApiError(
             ErrorCode.FORBIDDEN,
-            "GitHub no longer gives you "
-            f"{'write access' if minimum == _CAN_GRANT else 'access'} to this repository",
+            f"GitHub no longer gives you {_ACCESS_WORDS.get(minimum, 'access')} to this repository",
             403,
         )
 

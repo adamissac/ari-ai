@@ -301,7 +301,15 @@ class GitHubApp:
             installation_id, f"/repos/{full_name}/compare/{base}...{head}", per_page=100
         )
         files = data.get("files") or []
-        paths = sorted({f["filename"] for f in files if isinstance(f.get("filename"), str)})
+        # A rename counts for both ends: moving app/x.py into docs/ removes code.
+        paths = sorted(
+            {
+                name
+                for f in files
+                for name in (f.get("filename"), f.get("previous_filename"))
+                if isinstance(name, str)
+            }
+        )
         return paths, len(files) < 300
 
     def commit(self, installation_id: int, full_name: str, sha: str) -> dict[str, Any]:
