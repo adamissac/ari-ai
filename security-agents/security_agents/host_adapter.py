@@ -943,7 +943,7 @@ class HostOrchestrator:
             step_runner=HostStepRunner(host=host, tool_factory=build_tools, run_ids=sink.run_ids),
             approve_remediation=_approver(host),
             cancelled=lambda: _cancelled(host),
-            external_pending=lambda: _pending_remediation(host) or _has_approved_functional(host),
+            external_pending=lambda: _external_pending(sink, host),
         )
         usage = getattr(_val(host, "assessment"), "usage", None)
         if usage is not None:
@@ -1236,6 +1236,14 @@ def _functional_review(host: Any) -> None:
 
 def _enum_value(value: Any) -> str:
     return str(getattr(value, "value", value) or "").lower()
+
+
+def _external_pending(sink: HostSink, host: AssessmentHostLike) -> bool:
+    """True when a functional remediation decision is owed or approved. Joins the reviewer
+    first: it runs beside Scout/Probe, and asking before it finished let a run with a
+    validated functional finding report and complete with its approval never decided."""
+    sink.join_review()
+    return _pending_remediation(host) or _has_approved_functional(host)
 
 
 def _pending_remediation(host: AssessmentHostLike) -> bool:
