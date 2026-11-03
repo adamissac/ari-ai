@@ -197,3 +197,53 @@ def test_overlong_model_text_is_clipped_not_rejected() -> None:
 
     report = ReviewerReport.model_validate({"summary": "x" * 530, "claims": [], "findings": []})
     assert report.summary == "x" * 500
+
+
+def test_quotes_wrapped_across_comment_lines_are_found() -> None:
+    """Live gtB3 js-batch-obo: the quoted sentence spans `//` and ` * ` comment lines."""
+    from code_review.intent import locate_quote
+
+    lines = [
+        "  for (const row of roster) {",
+        "    // The roster row goes last, so a failure above leaves the student still",
+        "    // reachable to try again rather than orphaning their records.",
+        "/**",
+        " * The rules let a teacher clear an archived class's records once they are",
+        " * past the stated year, and nothing wider than that. */",
+    ]
+    q1 = "The roster row goes last, so a failure above leaves the student still reachable"
+    assert locate_quote(q1, lines, 2, 3) == (2, 3)
+    q2 = "The rules let a teacher clear an archived class's records once they are past"
+    assert locate_quote(q2, lines, 5, 6) == (5, 6)
+    assert locate_quote("The roster row goes first", lines, 2, 3) is None
+
+
+def test_a_js_test_title_in_the_quote_resolves_to_its_it_block(tmp_path: Path) -> None:
+    """Live gtB3 js-foreach-async: 'skips assignments that were archived in the source
+    class: if (a.archived) continue' named a vitest `it(...)` title."""
+    sc = _js_repo(tmp_path)
+    _write(
+        sc.repo,
+        {
+            "tests/roll.test.js": "describe('roll', () => {\n"
+            "  it('skips assignments that were archived in the source class', () => {\n"
+            "    expect(1).toBe(1);\n  });\n});\n"
+        },
+    )
+    head = _commit(sc.repo, "add test")
+    ws = Workspace.export(RepoSource(sc.repo), head)
+    try:
+        checker = CitationChecker(ws, make_request(InMemoryHost(fake([])), sc).change_intent, {})
+        ev, kind, note = checker.check(
+            CitationIn(
+                source_kind=SourceKind.test,
+                path="tests/roll.test.js",
+                start_line=1,
+                end_line=1,
+                quote="skips assignments that were archived in the source class: if (a.archived)",
+            )
+        )
+        assert ev is not None and kind is SourceKind.test, note
+        assert ev.span is not None and ev.span.start_line == 2
+    finally:
+        ws.close()
