@@ -6,6 +6,12 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Connecting a JavaScript/TypeScript repository now proposes a `node_http` build recipe (ADR-0023) when there is something testable. The draft is deterministic; no Claude call drafts it. It contains:
+  - Firestore paths whose rules tie a document to `request.auth.uid`, directly or through a helper such as `isOwner(uid)`.
+  - Vercel `api/` routes with an explicit GET and no path parameter.
+  - The vitest/jest suite.
+  - A throwaway service account for env vars that name one.
+  Repositories with nothing testable stay `recipe.unsupported`. Dry run: `uv run python -m backend.recipes <checkout>`.
 - Node targets on the Vercel Sandbox microVM (ADR-0023), opt-in with `SECURITY_AGENTS_NODE_ON_VERCEL=1` until a live smoke passes. The base snapshot adds Node 22 (sha256-pinned tarball), a headless JRE, the platform Node packages and the Firestore emulator JAR, all built without repository code. A per-lockfile dependency snapshot installs the target's packages with `--ignore-scripts`, with egress to the npm registry only. Run boxes keep deny-all egress, start the same launcher, and return its request log as evidence.
 - Node targets in the sandbox (ADR-0023): a platform-owned launcher starts the Firebase Auth and Firestore emulators, seeds the recipe's identities and documents, and serves Vercel-style `api/` functions on loopback. HTTP checks reach the app's real code, and Firestore-rules checks get a per-run emulator. The target's own vitest/jest suite runs for Verify with a test-id audit. The target's dependencies install from its lockfile with `--ignore-scripts`, registry URLs only. Local driver only in this change; the Vercel microVM follows. Adds the owned `examples/notes-firebase-lite` fixture, which has planted defects.
 - Firestore-rules checks (ADR-0023): three reviewed templates (`firestore.owner_isolation`, `firestore.unauthenticated_denied`, `firestore.collection_enumeration`) run a platform-owned `@firebase/rules-unit-testing` harness against the run's Firestore emulator with the workspace's own rules. Only a rules denial counts as denied, and a denied owner positive control is inconclusive, never a finding. The `node_http` build recipe kind is validated (closed serve adapters and test runners, no secret literals, computed unsigned emulator ID tokens for identities). Serving a Node target in the sandbox lands in the next PR.

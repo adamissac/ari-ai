@@ -97,8 +97,11 @@ validated. Nothing in it reaches a shell. The platform chooses every command.
   entry runs it with a JSON reporter and reports in pytest's shape, plus a test-id audit,
   so Verify's "protected tests not collected" check applies to JS suites too. The hook
   audit is pytest-only.
-- `backend/recipes.py` drafts this kind on connect when the repository has
-  `package.json` and either detected routes or `firebase.json`. The draft is opened as
+- `backend/recipes.py` drafts this kind on connect (`backend/node_recipes.py`)
+  when the repository has `package.json`, `package-lock.json`, and either explicit-GET
+  parameterless `api/` routes or owner-scoped Firestore rules. The draft is deterministic,
+  with no model call. Routes marked `ANY`, and routes with path parameters (which need
+  fixture `resources`), are left out and listed in the PR notes. The draft is opened as
   the same setup PR. The owner merging it is the approval, as for Python.
 
 ### 3. Node sandbox runner
