@@ -958,3 +958,34 @@ def test_generated_test_paths_are_repo_relative_contract(tmp_path: Path) -> None
     inp = functional_verification_inputs(host, rep.patch)
     assert [t.path for t in inp.generated_tests] == [gt.path]
     assert "a/target/payments_lite/app.py" in inp.diff_text
+
+
+def test_finding_citing_text_absent_at_head_is_anchored_to_its_hunk(tmp_path: Path) -> None:
+    """Production gt2/py-null-dest: the model cited the guard the change removed, every span
+    was rejected, and a finding with a failing test was dropped."""
+    script = _discount_script()
+    submit = script[-1]
+
+    def cite_removed_text(req):  # type: ignore[no-untyped-def]
+        out = submit(req)
+        for block in out["content"]:
+            if block.get("type") == "tool_use":
+                span = block["input"]["findings"][0]["suspected_spans"][0]
+                span["quote"] = "return discounted.quantize(CENT, rounding=ROUND_HALF_UP)"
+        return out
+
+    script[-1] = cite_removed_text
+    sc = discount_rounding(tmp_path)
+    host = InMemoryHost(fake(script))
+    outcome = ReviewerAgentRunner(host, RepoSource(sc.repo)).review(make_request(host, sc))
+    (f,) = outcome.result.findings
+    assert f.status is FindingStatus.validated
+    assert any("anchored to its changed hunk" in r for r in outcome.rejected)
+    (span,) = [
+        e
+        for e in f.evidence
+        if e.kind is EvidenceKind.source_span and e.path == "billing/invoice.py"
+    ]
+    bug_line = line_of(INVOICE_HEAD, "return discounted.quantize(CENT)")
+    assert span.span is not None
+    assert span.span.start_line <= bug_line <= span.span.end_line
