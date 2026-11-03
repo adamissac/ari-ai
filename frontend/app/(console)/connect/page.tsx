@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Avatar, GitHubMark } from '@/components/demo/ui';
 import { BRAND_NAME } from '@/components/brand';
-import { ErrorState, Loading, PageTitle, Panel } from '@/components/ui';
+import { Details, ErrorState, Loading, PageTitle, Panel } from '@/components/ui';
 import { RefreshFromGitHub } from '@/components/refresh-from-github';
 import { SetupLayout } from '@/components/onboarding/stepper';
 import { api } from '@/lib/api';
@@ -18,22 +18,10 @@ export default function ConnectOrgsPage() {
     <SetupLayout current={1}>
       <div className="min-w-0" data-testid="connect-orgs">
         <PageTitle eyebrow="Your workspace / 01" title="Organizations" subtitle="Choose an organization to see its repositories." actions={<RefreshFromGitHub />} />
-        <section aria-label="GitHub App permissions" className="mb-6 border-y border-line">
-          <dl className="grid grid-cols-1 divide-y divide-line text-sm sm:grid-cols-2 xl:grid-cols-4 xl:divide-x xl:divide-y-0">
-            <div className="py-4 sm:px-4 xl:pl-0"><dt className="font-medium text-ink">Contents: read &amp; write</dt><dd className="mt-1 text-muted">Read code to review; write only to open the build-recipe PR and fix PRs you approve.</dd></div>
-            <div className="py-4 sm:px-4"><dt className="font-medium text-ink">Pull requests: read &amp; write</dt><dd className="mt-1 text-muted">Open those PRs and leave review comments if you turn comments on.</dd></div>
-            <div className="py-4 sm:px-4"><dt className="font-medium text-ink">Metadata: read-only</dt><dd className="mt-1 text-muted">Read repository names and default branches.</dd></div>
-            <div className="py-4 sm:px-4 xl:pr-0"><dt className="font-medium text-ink">Events: push, pull request, repository</dt><dd className="mt-1 text-muted">Used only for reviews you enable; automatic reviews are off by default.</dd></div>
-          </dl>
-          <p className="border-t border-line py-3 text-sm text-muted"><strong className="font-medium text-ink">Revoke or limit access</strong> · GitHub → Settings → Applications → Installed GitHub Apps → Ari → Configure → Uninstall, or limit to selected repositories.</p>
-        </section>
-        <section aria-label="What happens next" className="mb-6" data-testid="connect-next-steps">
-          <h2 className="label-mono mb-2 text-muted">What happens when you connect a repository</h2>
-          <ol className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-            <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">1 · No check runs yet</p><p className="mt-1 text-muted">Connecting records the repository. If it has no build recipe, Ari proposes one as a pull request on <code className="font-mono text-xs">ari/build-recipe</code> for you to merge or close. No tests run and nothing is pushed to your default branch.</p></li>
-            <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">2 · You answer eight setup questions</p><p className="mt-1 text-muted">Including whether to approve sandbox testing for 30 days and how verified fixes reach you. Automatic reviews stay off unless you turn them on.</p></li>
-            <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">3 · You start the first check</p><p className="mt-1 text-muted">The agents review one commit in an isolated copy and record findings with evidence. You approve any fix before it is built.</p></li>
-          </ol>
+        <section aria-label="GitHub App permissions" className="mb-6 flex flex-wrap items-center gap-2 text-xs text-muted">
+          <span className="label-mono text-faint">GitHub App</span>
+          {['Contents: read & write', 'Pull requests: read & write', 'Metadata: read-only', 'Events: push, pull request, repository'].map(p => <span key={p} className="rounded-md border border-line bg-panel px-2 py-1 text-ink">{p}</span>)}
+          <span className="basis-full sm:basis-auto"><strong className="font-medium text-ink">Revoke or limit access</strong> in GitHub → Settings → Installed GitHub Apps → Ari</span>
         </section>
         {list.status === 'loading' && <Loading label="Loading your GitHub organizations" />}
         {list.status === 'error' && <ErrorState error={list.error} onRetry={list.reload} context="Could not list your GitHub repositories" />}
@@ -73,6 +61,21 @@ export default function ConnectOrgsPage() {
             </>
           );
         })()}
+        <Details summary="Permissions and what happens next">
+          <ul className="flex flex-col gap-1">
+            <li><strong className="font-medium text-ink">Contents</strong>: read code to review; write only to open the build-recipe PR and fix PRs you approve.</li>
+            <li><strong className="font-medium text-ink">Pull requests</strong>: open those PRs and leave review comments if you turn comments on.</li>
+            <li><strong className="font-medium text-ink">Events</strong>: used only for reviews you enable; automatic reviews are off by default.</li>
+          </ul>
+          <section aria-label="What happens next" data-testid="connect-next-steps">
+            <h2 className="label-mono mb-2 text-muted">What happens when you connect a repository</h2>
+            <ol className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+              <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">1 · No check runs yet</p><p className="mt-1 text-muted">Connecting records the repository. If it has no build recipe, Ari proposes one as a pull request on <code className="font-mono text-xs">ari/build-recipe</code> for you to merge or close. No tests run and nothing is pushed to your default branch.</p></li>
+              <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">2 · You answer eight setup questions</p><p className="mt-1 text-muted">Including whether to approve sandbox testing for 30 days and how verified fixes reach you. Automatic reviews stay off unless you turn them on.</p></li>
+              <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">3 · You start the first check</p><p className="mt-1 text-muted">The agents review one commit in an isolated copy and record findings with evidence. You approve any fix before it is built.</p></li>
+            </ol>
+          </section>
+        </Details>
       </div>
     </SetupLayout>
   );
