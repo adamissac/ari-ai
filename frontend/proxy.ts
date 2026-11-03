@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { cookieGrantsAccess, DEMO_COOKIE, DEMO_HOME } from '@/lib/demo/access';
+import { DEMO_ONLY } from '@/lib/deployment';
 
 /**
  * The demo account (/demo) is only reachable with a valid access-code cookie. With that
@@ -12,16 +13,31 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const url = request.nextUrl.clone();
   if (pathname === '/demo' || pathname.startsWith('/demo/')) {
-    if (access) return NextResponse.next();
+    if (access) {
+      url.pathname = DEMO_HOME;
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
     url.pathname = '/access';
     url.search = '';
-    url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
   }
-  if (!access) return NextResponse.next();
-  url.pathname = DEMO_HOME;
-  url.search = '';
-  return NextResponse.redirect(url);
+  if (pathname === '/access' && access) {
+    url.pathname = DEMO_HOME;
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+  if (pathname.startsWith('/connect') && access) {
+    url.pathname = DEMO_HOME;
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+  if (DEMO_ONLY && pathname.startsWith('/projects') && !access) {
+    url.pathname = '/access';
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+  return NextResponse.next();
 }
 
 export const config = {

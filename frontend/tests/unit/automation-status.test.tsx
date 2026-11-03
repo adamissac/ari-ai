@@ -22,3 +22,11 @@ it('says when it could not check instead of guessing', () => {
   render(<AutomationStatus repoId="rep_1" />);
   expect(screen.getByText(/unknown \(could not check\)/)).toBeTruthy();
 });
+
+it('hides the real off state in demo view', () => {
+  document.cookie = 'ari_demo_view=1; Path=/';
+  const { container } = render(<AutomationStatus repoId="rep_1" />);
+  expect(container.textContent).toBe('');
+  expect(mocks.useResource).toHaveBeenCalledWith(null, expect.any(Function), 30000);
+  document.cookie = 'ari_demo_view=; Max-Age=0; Path=/';
+});

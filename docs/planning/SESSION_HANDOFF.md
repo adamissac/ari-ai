@@ -3,6 +3,19 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-11-03 — Adam (demo real-console rebuild: verification)
+- Did: Completed the access-code demo migration to the real console, with a network-free, read-only recorded-fixture transport. The pending-approval snapshot remains a real second assessment; the completed snapshot has verified functional and hardened security findings. No clean outcome or early-ended/skipped run was captured.
+- Verification: `npm run lint`, `npm run typecheck`, and `npx vitest run` passed (113 files, 517 tests). Production builds passed with `NEXT_PUBLIC_DEMO_ONLY=0` for journey E2E and `=1` for the demo production review. `tests/e2e/demo.spec.ts` passed 2/2 and `tests/e2e/journey.spec.ts` passed 3/3. The assessment page keeps live polling for real awaiting-approval sessions and suppresses captured pending-snapshot polling only in demo view.
+- Captured real artifact non-200 responses are retained and replayed as 404s for `/artifacts/art_ver01M6FV5CZK8HJGVNVBT8068MQBdiffscopeok`, `/artifacts/art_ver01M6FV5CZK8HJGVNVBT8068MQBnotesttampering`, `/artifacts/art_sbx01M6FV5A5PC9X3C9KX6F22MC3C`, `/artifacts/art_sbx01M6FV5B1HBZREVT81CN6G2EJJ`, and `/artifacts/art_sbx01M6FV5C2FC24JP9H387GGB3GB`.
+- Production screenshots are under `~/ari-tools/demo-new/`: access, Analytics, Commits, Findings, finding detail, Approvals, Settings, completed and awaiting-approval assessment, full-page Review pipeline, and 390×844 Analytics/assessment. The capture script verified no browser request reached `/api/v1`.
+- The fresh manual stack is running at Next `http://127.0.0.1:58859` and API `http://127.0.0.1:56895`. Ready for Adam-authored commit and push; CI was not watched.
+
+### 2026-11-03 — Adam (demo real-console rebuild)
+- Replaced the access-code demo's separate walkthrough with the real console and a read-only, in-browser transport for captured, renamed Lumen Pay fixtures. Known non-200 responses, including captured artifact 404 envelopes, are replayed as recorded.
+- Kept the existing access-code check, added a readable view cookie, persistent sample-data banner, demo exit, and redirects from legacy `/demo/**` routes. Added ADR-0024 and updated the demo runbook, frontend route table, and changelog.
+- Captured two real assessment states: one completed with verified/hardened findings and one awaiting human approval. No clean commit was captured.
+- Verification, screenshots, and push are pending.
+
 ### 2026-10-31 — Claude (agent, Alan) — YC customer-readiness assessment and pilot health report
 - Did: Audited `main` @ `4271503e` against #739 (Codex release gate) and #744 (Devin backend readiness); wrote `docs/yc/YC_PRODUCT_READINESS.md`, `SAAS_ARCHITECTURE.md`, `LAUNCH_BLOCKERS.md`, `ENGINEERING_EXECUTION_PLAN.md`; rewrote `docs/planning/MVP_SCOPE.md` as the commercial MVP; updated `docs/pilot/CUSTOMER_ONBOARDING.md`; implemented `scripts/pilot/health_report.py` (the weekly report METRICS.md specifies).
 - State of the code: Branch `feat/alan/yc-product-readiness`. No backend or frontend product code changed.
