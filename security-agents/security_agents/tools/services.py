@@ -62,13 +62,20 @@ def node_drivers() -> frozenset[str]:
 PYTEST_SUMMARY = re.compile(
     r"(?:(?P<passed>\d+) passed)?(?:, )?(?:(?P<failed>\d+) failed)?(?:, )?(?:(?P<errors>\d+) error)?"
 )
+_COUNT = r"\d+ (?:passed|failed|errors?|skipped|deselected|xfailed|xpassed|warnings?|rerun)"
+_SUMMARY_LINE = re.compile(rf"^=*\s*((?:{_COUNT})(?:, {_COUNT})*)(?: in [\d.]+s\b.*)?\s*=*\s*$", re.MULTILINE)
 NODEID = re.compile(r"^(?P<file>[\w./-]+\.py)(?:::(?P<rest>[\w:\[\]-]+))?$")
 
 
 def parse_pytest(stdout: str) -> dict[str, Any]:
     """Structured outcome from pytest output: counts plus failing test ids."""
     passed = failed = errors = skipped = 0
-    for m in re.finditer(r"(\d+) (passed|failed|error|errors|skipped)", stdout):
+    # Counts come from the final summary line only: captured target logs can hold text such as
+    # Firebase's "stream 0x16c59956 error", which must not read as 59956 errors.
+    summaries = _SUMMARY_LINE.findall(stdout)
+    for m in re.finditer(
+        r"(\d+) (passed|failed|error|errors|skipped)", summaries[-1] if summaries else stdout
+    ):
         n, what = int(m.group(1)), m.group(2)
         if what == "passed":
             passed = n
@@ -747,14 +754,13 @@ class TestRunner:
             if node_ids:
                 return {"error": "BAD_NODE_ID", "detail": "node test runs take files, not pytest node ids"}
             mode, files = "nodetest", [a for a in args[1:] if selection.startswith("added_tests")]
-            runner = self.node_test[0]
-            args = (
-                [runner, "run", *files]
-                if files and runner == "vitest"
-                else [runner, *files]
-                if files
-                else list(self.node_test)
-            )
+            # Selected files keep the recipe's own args (e.g. `--config vitest.rules.config.js`), or
+            # a test the default config excludes is never found.
+            # shortcut: a positional filter in the recipe args widens the selection, never narrows it.
+            base = list(self.node_test)
+            if base[0] == "vitest" and "run" not in base[1:]:
+                base.insert(1, "run")
+            args = [*base, *files] if files else list(self.node_test)
         spec = SandboxSpec(
             profile=SandboxProfile.TEST_RUNNER,
             network="none",
@@ -1492,7 +1498,10 @@ class PatchApplier:
                     unreadable_config("build_recipe.json")
 
         command = recipe.get("test_command")
-        if isinstance(command, str):
+        if node_recipe.is_node(recipe) and isinstance(command, dict) and not node_recipe.problems(recipe):
+            # A node_http recipe names a closed-set runner (vitest/jest), not a pytest command line.
+            command, command_tokens = None, []
+        elif isinstance(command, str):
             try:
                 command_tokens = shlex.split(command)
             except ValueError:

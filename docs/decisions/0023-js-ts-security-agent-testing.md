@@ -166,7 +166,8 @@ run, no host credentials ([§4](../15_SECURITY_BOUNDARIES.md#4-sandbox-requireme
   never a finding. A leak is a confirmed finding with the emulator's outcomes as evidence.
   `checks.list_templates` hides Firestore templates when the recipe has no
   `firestore_paths`, and HTTP templates when it has no `routes`.
-- Firestore paths are not `EntryPoint`s. Scout sees them as the `firestore_paths`
+- Firestore paths are not `EntryPoint`s. Scout's prompt lists the recipe's
+  `firestore_paths` and the rules file, and Probe sees them as the `path_id`
   parameter values of `checks.list_templates`. The orchestrator stops skipping the agents
   when the index has HTTP entry points **or** the recipe declares `firestore_paths`.
 - **Verify** re-runs the same template and parameters on the patched tree. For a rules

@@ -100,3 +100,25 @@ def test_resolved_identities_carry_unsigned_emulator_tokens():
 def test_resolved_fails_closed():
     with pytest.raises(PlatformError):
         node_recipe.resolved(recipe(env={"SECRET_TOKEN": "abc"}))
+
+
+def test_a_node_recipe_is_not_read_as_tampered_pytest_config(tmp_path):
+    """Verify rejected every patch in the live mypypath run: the dict test_command looked unreadable."""
+    import shutil
+
+    from security_agents.tools.services import PatchApplier
+
+    snap, patched = tmp_path / "snap", tmp_path / "patched"
+    snap.mkdir()
+    (snap / "build_recipe.json").write_text(json.dumps(recipe()))
+    (snap / "firestore.rules").write_text("allow read: if true;\n")
+    shutil.copytree(snap, patched)
+    (patched / "firestore.rules").write_text("allow read: if false;\n")
+    diff = (
+        "diff --git a/firestore.rules b/firestore.rules\n--- a/firestore.rules\n+++ b/firestore.rules\n"
+        "@@ -1 +1 @@\n-allow read: if true;\n+allow read: if false;\n"
+    )
+    assert PatchApplier._tampered_runner_config(diff, snap, patched) == []
+    bad = {**recipe(), "test_command": {"runner": "mocha", "args": []}}
+    (snap / "build_recipe.json").write_text(json.dumps(bad))
+    assert PatchApplier._tampered_runner_config(diff, snap, patched)  # still fails closed
