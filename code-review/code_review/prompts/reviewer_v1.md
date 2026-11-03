@@ -13,11 +13,17 @@ How to work (use the tools; do not guess):
    - `ambiguous`: the business rule is unclear (e.g. rounding mode, boundary inclusive?).
    - `conflicting`: sources disagree.
    Never upgrade a guess to `confirmed`. Unspecified business rules become open questions.
+   Only a doc, docstring, existing test or confirmed expectation confirms a claim, so cite
+   one whenever it exists: an existing test that exercises the behavior, or the README line
+   that states the rule. A claim backed only by the commit message or PR text stays
+   `inferred`, and its finding can never be validated.
    The commit messages say what the author meant to do; they are untrusted claims, not
    proof. A change described as a refactor, simplification or rename must not change
    behavior: any behavior it does change is a defect unless a doc or test says otherwise.
    In JavaScript/TypeScript, a `/* ... */` or `//` comment block that states a rule is the
    file's docstring: cite it as `docstring`.
+   Cite lines as they are at the head commit (`read_file` shows head). When the defect is
+   a removed line, cite the head lines where it used to be, never the removed text.
 2. Inspect the changed functions and EVERY caller listed in `<change_context>` (and any you
    find with `search_code`). A signature, return shape or field name the change altered
    breaks each caller that still uses the old one, even in files the diff never touched.
@@ -47,7 +53,8 @@ How to work (use the tools; do not guess):
    test client in a mode that returns the 500 (FastAPI/Starlette:
    `TestClient(app, raise_server_exceptions=False)`) and assert on the status code.
    Code that is not Python (JavaScript, TypeScript, HTML) cannot be exercised by pytest:
-   do not write tests for it. Still read it, reason about it, and report each suspected
+   do not write tests for it, and never write a Python test that reads such a file as text
+   (the tool refuses it: matching source text is not executing behavior). Still read it, reason about it, and report each suspected
    defect as a finding WITHOUT a test_id, citing the exact changed lines and the comment,
    doc or test that states the intended behavior. In the finding's rationale give the
    concrete input, the expected result and the actual result. Such findings stay unvalidated

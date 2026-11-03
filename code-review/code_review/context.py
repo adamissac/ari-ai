@@ -13,6 +13,7 @@ from __future__ import annotations
 import re
 from pathlib import PurePosixPath
 
+from code_review.models import CitationIn, SourceKind
 from code_review.workspace import Workspace, WorkspaceError, is_denied_read, is_test_path
 
 _IDENT = r"[A-Za-z_$][\w$]*"
@@ -22,6 +23,7 @@ _DEF = re.compile(
     rf"(?:function\b|\([^)]*\)\s*=>|{_IDENT}\s*=>)"
 )
 _HUNK = re.compile(r"^@@ [^@]* @@\s?(.*)$")
+_HUNK_RANGE = re.compile(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@")
 _NEW_START = re.compile(r"\+(\d+)")
 _WORD = re.compile(_IDENT)
 _COMMENT = re.compile(r"^\s*(#|//|/?\*)")
@@ -155,3 +157,25 @@ def change_context(head: Workspace, diff: str, changed: list[str]) -> str:
     if len(text) > MAX_CHARS:
         text = text[:MAX_CHARS] + "\n... (truncated)"
     return text + "\n</change_context>"
+
+
+def hunk_citations(diff: str, cited: list[CitationIn]) -> list[CitationIn]:
+    """Quote-free code citations of the head-side changed lines, one per hunk, of each file
+    the model cited. Used only when none of its quotes verify at head."""
+    paths = {c.path for c in cited if c.path}
+    out: list[CitationIn] = []
+    path = ""
+    for line in diff.splitlines():
+        if line.startswith("+++ "):
+            path = line[4:].removeprefix("b/")
+        elif path in paths and (m := _HUNK_RANGE.match(line)):
+            start, count = int(m.group(1)), int(m.group(2) or 1)
+            out.append(
+                CitationIn(
+                    source_kind=SourceKind.code,
+                    path=path,
+                    start_line=max(start, 1),
+                    end_line=max(start + count - 1, start, 1),
+                )
+            )
+    return out

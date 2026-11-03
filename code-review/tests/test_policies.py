@@ -128,6 +128,12 @@ def test_sandbox_refuses_option_injection(target: str) -> None:
         ("def helper():\n    pass\n", False),
         ("def test_x(:\n", False),
         ("def test_x():\n    items = [1]\n    items.remove(1)\n", True),
+        # reading JavaScript source as text is not a behavioral test (gt4 js-wrong-cond)
+        (
+            "from pathlib import Path\n\ndef test_x():\n    assert 'x' in Path('a/read-counter.js').read_text()\n",
+            False,
+        ),
+        ("def test_x():\n    assert 'index.html'\n", False),
     ],
 )
 @pytest.mark.owasp_llm("LLM06:2025")
