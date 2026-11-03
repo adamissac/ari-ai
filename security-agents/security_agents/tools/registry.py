@@ -379,8 +379,11 @@ class ToolRegistry:
         if tool.category_from:
             raw = data.get(tool.category_from)
             if isinstance(raw, str) and raw:
-                # `template_ref` carries `category@version`; the category is the id part.
-                category = raw.split("@", 1)[0]
+                # A reviewed template declares its category (several templates can share
+                # one); an unknown ref falls back to its id part and is refused later.
+                library = ctx.services.get("checks")
+                meta = library.get(raw) if library is not None else None
+                category = meta.category if meta is not None else raw.split("@", 1)[0]
         return scope_check(
             ctx.scope,
             ActionRequest(
