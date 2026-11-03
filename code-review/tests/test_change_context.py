@@ -130,3 +130,28 @@ def test_commit_message_quotes_are_accepted_but_never_confirm(tmp_path: Path) ->
     assert not any("c_rename" in r for r in outcome.rejected), outcome.rejected
     (c,) = outcome.result.intent_evidence.claims
     assert c.status.value == "inferred"
+
+
+def test_a_test_cited_by_name_without_a_line_resolves_to_its_def(tmp_path: Path) -> None:
+    """Production gt3/py-contract: the model cited tests/test_api.py and the failing test's name
+    but no line, so the only confirming citation was rejected."""
+    from cr_scenarios import INVOICE_TESTS_HEAD, discount_rounding
+
+    sc = discount_rounding(tmp_path)
+    ws = Workspace.export(RepoSource(sc.repo), sc.head_sha)
+    try:
+        checker = CitationChecker(ws, make_request(InMemoryHost(fake([])), sc).change_intent, {})
+        ev, kind, note = checker.check(
+            CitationIn(
+                source_kind=SourceKind.test,
+                path="tests/test_invoice.py",
+                quote="test_line_total_rounds_half_up expects 0.13",
+            )
+        )
+        assert ev is not None and kind is SourceKind.test, note
+        line = line_of(INVOICE_TESTS_HEAD, "def test_line_total_rounds_half_up")
+        assert ev.span is not None and ev.span.start_line == line
+        missing = CitationIn(source_kind=SourceKind.test, path="tests/test_invoice.py", quote="x")
+        assert checker.check(missing)[0] is None
+    finally:
+        ws.close()
