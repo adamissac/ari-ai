@@ -29,7 +29,7 @@ export function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, n
     const smooth = () => {
       smoothFrame = 0;
       const delta = target - progress;
-      progress = Math.abs(delta) < 0.001 ? target : progress + delta * 0.14;
+      progress = Math.abs(delta) < 0.001 ? target : progress + delta * 0.3;
       el.style.setProperty('--p', progress.toFixed(4));
       setP(progress);
       if (progress !== target) smoothFrame = requestAnimationFrame(smooth);
@@ -74,6 +74,14 @@ export function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, n
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
+/** Extra track, in steps, the last step keeps after it opens, so it is read before the chapter scrolls away. */
+const LAST_STEP_HOLD = 0.5;
+
+/** Which of `count` equal scroll steps progress `p` (0..1) is in; the last step also gets the hold. */
+export function chapterStep(p: number, count: number): number {
+  return Math.min(count - 1, Math.floor(clamp01(p) * (count + LAST_STEP_HOLD)));
+}
+
 function LandingVignette({ kind }: { kind: 'agents' | 'shield' | 'clock' | 'patrol' }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 100 100" className={`landing-vignette landing-vignette-${kind}`}>
@@ -116,7 +124,7 @@ const SNAPSHOT_CAUGHT = new Set([1, 6, 7]); // a PR review and a periodic scan e
 const PROBLEM_LINES = [
   { title: 'Code changes every day.', body: 'Developers and AI agents ship new behaviour with every merge, and each one can change what the software does.' },
   { title: 'Reviews see a diff. Scans see a snapshot.', body: 'A reviewer reads the lines that changed. A scanner checks a moment in time. Intent and real exploitability go unchecked.' },
-  { title: 'EVERY CHANGE. CHECKED.', body: 'Every change is tested against what the software is supposed to do and probed like an attacker would, then re-checked as code moves.' },
+  { title: 'CHANGES. CHECKED.', body: 'A commit is tested against what the software is supposed to do and probed like an attacker would, inside a sandbox you approve. Turn on automatic reviews and each push is re-checked.' },
 ];
 
 export function ProblemScene() {
@@ -154,7 +162,7 @@ export function ProblemScene() {
             <span className="story-pill" data-on={phase === 1 || undefined} style={{ left: '7%' }}>PR review</span>
             <span className="story-pill" data-on={phase === 1 || undefined} style={{ left: '43%' }}>Scanner</span>
             <span className="story-lens" data-testid="story-timeline-capsule" style={{ width: `${Math.max(phase === 2 ? 8 : 0, lens * 96)}%`, opacity: phase === 2 ? 1 : 0 }}>
-              <span className="label-mono truncate">{BRAND_NAME} · every change, against intent</span>
+              <span className="label-mono truncate">{BRAND_NAME} · each push, against intent</span>
             </span>
           </div>
           <div className="label-mono mt-3 flex justify-between text-faint">
@@ -189,10 +197,10 @@ const HOW = [
     lines: [['del', 'if amount > 0:', ''], ['add', 'if 0 < amount <= remaining:', ''], ['ok', 'fresh checkout · replay', 'passed']],
   },
   {
-    label: 'Monitor and retest', title: 'Keep it secure',
-    body: 'Signed GitHub events re-run the assessment as code changes, and every finding feeds the next test.',
+    label: 'Retest on push', title: 'Re-check new commits',
+    body: 'With automatic reviews on (off until you enable them per repository), signed GitHub push events queue a rate-limited re-assessment of the new commit.',
     file: 'events',
-    lines: [['ok', 'push · main · signature verified', ''], ['run', 're-assessment queued', ''], ['q', 'policy advice (test-environment-trained)', 'not auto-applied']],
+    lines: [['ok', 'push · main · signature verified', ''], ['run', 're-assessment queued', ''], ['q', 'rate-limited', 'per project']],
   },
 ] as const;
 
@@ -200,19 +208,19 @@ const MARK: Record<string, string> = { ok: '✓', q: '?', bad: '✕', run: '›'
 
 export function HowItWorks() {
   const [ref, p] = useTrack<HTMLDivElement>();
-  const active = Math.min(HOW.length - 1, Math.floor(p * HOW.length * 0.999));
+  const active = chapterStep(p, HOW.length);
 
   return (
-    <div ref={ref} className="story-track story-track-4 bleed bleed-ink text-white" id="how">
+    <div ref={ref} className="story-track story-track-how bleed bleed-ink text-white" id="how">
       <section aria-labelledby="how-title" className="story-stage story-rain relative flex flex-col justify-center py-16">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-end">
           <div>
             <p className="kicker kicker-ghost">How it works</p>
-            <h2 id="how-title" className="display mt-3 text-3xl font-semibold md:text-5xl">Assurance that runs<br /><span className="text-white/60">on every change.</span></h2>
+            <h2 id="how-title" className="display mt-3 text-3xl font-semibold md:text-5xl">From finding<br /><span className="text-white/60">to verified fix.</span></h2>
           </div>
           <p className="max-w-md text-sm text-white/70">
             {BRAND_NAME} learns how the software is meant to behave, tests that behaviour safely, repairs only with approval,
-            and keeps checking as the code moves.
+            and can re-check each push once you turn on automatic reviews.
           </p>
         </div>
         <ol className="story-cards mt-10">

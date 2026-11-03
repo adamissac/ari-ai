@@ -59,6 +59,7 @@ _FORBIDDEN_IMPORTS = {
 }
 _FORBIDDEN_CALLS = {"system", "popen", "exec", "eval", "fork", "unlink", "rmtree", "__import__"}
 
+_NON_PYTHON_SOURCE = (".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx", ".vue", ".svelte", ".html")
 _BUDGET_LOCK = threading.Lock()
 SEARCH_MAX_FILE_BYTES = 512_000
 
@@ -602,6 +603,14 @@ def check_test_source(content: str) -> str | None:
         if isinstance(node, ast.ImportFrom) and node.module:
             if node.module.split(".")[0] in _FORBIDDEN_IMPORTS:
                 return f"generated tests may not import from {node.module}"
+        if (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and node.value.lower().endswith(_NON_PYTHON_SOURCE)
+        ):
+            # A Python test cannot execute JavaScript; matching its source text proves only
+            # that the text is there, and once let a JS finding "validate" (gt4 js-wrong-cond).
+            return f"generated tests must execute code, not read {node.value} as text"
         if isinstance(node, ast.Call):
             fn = node.func
             name = (

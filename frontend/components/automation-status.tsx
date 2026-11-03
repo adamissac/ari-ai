@@ -4,6 +4,7 @@ import type { AutomationStatus as Status } from '@hackatl/frontend-transport';
 import { useEffect } from 'react';
 import { api } from '@/lib/api';
 import { useResource } from '@/lib/use-resource';
+import { useDemoView } from '@/lib/demo/use-view';
 
 const LABEL: Record<Status['state'], string> = { ready: 'Ready', off: 'Off', blocked: 'Blocked' };
 const DOT: Record<Status['state'], string> = { ready: 'bg-ok', off: 'bg-faint', blocked: 'bg-warn' };
@@ -13,12 +14,14 @@ const DOT: Record<Status['state'], string> = { ready: 'bg-ok', off: 'bg-faint', 
  * (repository switch, project monitoring, change types, scope, quota, GitHub access).
  */
 export function AutomationStatus({ repoId, manageHref }: { repoId: string; manageHref?: string }) {
-  const status = useResource(`automation-status:${repoId}`, signal => api().automationStatus(repoId, { signal }), 30000);
+  const demoView = useDemoView();
+  const status = useResource(demoView ? null : `automation-status:${repoId}`, signal => api().automationStatus(repoId, { signal }), 30000);
   const reload = status.reload;
   useEffect(() => {
     window.addEventListener('ari:automation-changed', reload);
     return () => window.removeEventListener('ari:automation-changed', reload);
   }, [reload]);
+  if (demoView) return null;
   if (status.status === 'loading') return <span className="text-xs text-muted">Automatic reviews…</span>;
   if (status.status === 'error') return <span className="text-xs text-warn" data-testid="automation-status">Automatic reviews: unknown (could not check)</span>;
   const { state, reasons } = status.data;

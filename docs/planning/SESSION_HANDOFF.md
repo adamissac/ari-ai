@@ -3,6 +3,124 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-11-03 — Adam (demo real-console rebuild: verification)
+- Did: Completed the access-code demo migration to the real console, with a network-free, read-only recorded-fixture transport. The pending-approval snapshot remains a real second assessment; the completed snapshot has verified functional and hardened security findings. No clean outcome or early-ended/skipped run was captured.
+- Verification: `npm run lint`, `npm run typecheck`, and `npx vitest run` passed (113 files, 517 tests). Production builds passed with `NEXT_PUBLIC_DEMO_ONLY=0` for journey E2E and `=1` for the demo production review. `tests/e2e/demo.spec.ts` passed 2/2 and `tests/e2e/journey.spec.ts` passed 3/3. The assessment page keeps live polling for real awaiting-approval sessions and suppresses captured pending-snapshot polling only in demo view.
+- Captured real artifact non-200 responses are retained and replayed as 404s for `/artifacts/art_ver01M6FV5CZK8HJGVNVBT8068MQBdiffscopeok`, `/artifacts/art_ver01M6FV5CZK8HJGVNVBT8068MQBnotesttampering`, `/artifacts/art_sbx01M6FV5A5PC9X3C9KX6F22MC3C`, `/artifacts/art_sbx01M6FV5B1HBZREVT81CN6G2EJJ`, and `/artifacts/art_sbx01M6FV5C2FC24JP9H387GGB3GB`.
+- Production screenshots are under `~/ari-tools/demo-new/`: access, Analytics, Commits, Findings, finding detail, Approvals, Settings, completed and awaiting-approval assessment, full-page Review pipeline, and 390×844 Analytics/assessment. The capture script verified no browser request reached `/api/v1`.
+- The fresh manual stack is running at Next `http://127.0.0.1:58859` and API `http://127.0.0.1:56895`. Ready for Adam-authored commit and push; CI was not watched.
+
+### 2026-11-03 — Adam (demo real-console rebuild)
+- Replaced the access-code demo's separate walkthrough with the real console and a read-only, in-browser transport for captured, renamed Lumen Pay fixtures. Known non-200 responses, including captured artifact 404 envelopes, are replayed as recorded.
+- Kept the existing access-code check, added a readable view cookie, persistent sample-data banner, demo exit, and redirects from legacy `/demo/**` routes. Added ADR-0024 and updated the demo runbook, frontend route table, and changelog.
+- Captured two real assessment states: one completed with verified/hardened findings and one awaiting human approval. No clean commit was captured.
+- Verification, screenshots, and push are pending.
+
+### 2026-10-31 — Claude (agent, Alan) — YC customer-readiness assessment and pilot health report
+- Did: Audited `main` @ `4271503e` against #739 (Codex release gate) and #744 (Devin backend readiness); wrote `docs/yc/YC_PRODUCT_READINESS.md`, `SAAS_ARCHITECTURE.md`, `LAUNCH_BLOCKERS.md`, `ENGINEERING_EXECUTION_PLAN.md`; rewrote `docs/planning/MVP_SCOPE.md` as the commercial MVP; updated `docs/pilot/CUSTOMER_ONBOARDING.md`; implemented `scripts/pilot/health_report.py` (the weekly report METRICS.md specifies).
+- State of the code: Branch `feat/alan/yc-product-readiness`. No backend or frontend product code changed.
+- Commands run and results: `uv run pytest -q backend/tests/test_pilot_health_report.py` — 3 passed; `ruff check`/`ruff format --check` clean; `mypy --strict` on the script clean; `scripts/check_links.py` — 0 problems. Read-only GETs at 2026-10-31T17:09Z: Railway `/healthz` and `/readyz` 404 "Application not found"; Vercel `/api/frontend-version` `backendReachable:false`, frontend `c03a5501`.
+- Decisions made (ADR links): None; pricing, paid pilot, ICP language, analytics vendor listed as founder decisions F1–F6.
+- Assumptions / open questions (RQ links): No team-invite API exists (only the personal org at first login); confirmed in `api/auth.py`.
+- Next steps: G1 production redeploy (operator), G2 merge order per #744, G3 one live hosted assessment, then G4 invites (Devin).
+- Warnings for the next session: PR #740 (`feat/alan/first-customer-ux`) is separate and still open.
+### 2026-10-31 — Claude Code (agent, Alan) — first-customer frontend integration (#696 + #740 + #746)
+- Did: Merged #746, #740 and #696 onto `main` `40df6984` (only conflict: this file). Fixed the semantic conflict between #746's outage mapping and #696's GitHub App recovery text (proxy marks its own envelopes `details.origin=proxy`; UI says "Ari is unavailable"). Expired sessions show Sign in again. Assessment and finding pages share one live/scripted rule (`hasNonLiveModelTurns`); the finding page labels scripted runs.
+- State of the code: Branch `feat/alan/first-customer-frontend-integration`; frontend and docs only; no backend, contract or migration changes.
+- Commands run and results: see PR body (lint, typecheck, vitest, transport tests, build, `stack.py` Playwright).
+- Assumptions / open questions: Hosted backend still returned Railway 404 "Application not found" at 2026-10-31 (read-only probe), so no hosted live run exists; the YC demo uses the documented scripted-model fallback.
+- Next steps: Codex review (`coordination/messages/20261031T213000Z-claude-to-codex-frontend-integration.md`); backend deploy before frontend (#696 adds `/delivery-authority`).
+
+### 2026-10-31 — Claude Code (agent, Alan) — first-customer audit, assessment outcome and recovery, YC demo docs
+- Did: Audited the journey on the manual real stack (`docs/reviews/2026-10-31-first-customer-audit/README.md`). Assessment page: outcome panel (found / fix approval / proposed / verified / delivered), "did not finish" recovery with a prefilled restart link, honest no-findings coverage (limited vs not-proof), live phase-log refresh, elapsed-time note. Connect: what connecting does (incl. build-recipe PR), install dead end, error placement. Start assessment: `?commit=` prefill and readable scope name. Demo docs in `docs/demo/yc-w27/`.
+- State of the code: Branch `feat/alan/first-customer-ux` off `main` `9437e217`; frontend and docs only; avoids every file PR #696 touches.
+- Commands run and results: `npm run lint`, `npm run typecheck`, `npx vitest run` (all passing); targeted `stack.py` e2e (see PR); manual browser walkthrough of happy path and a cancelled run.
+- Assumptions / open questions: Proposed-fix detection uses step keys `remediation:<id>:patch` and `repair:<id>` plus finding status; a backend coverage record would be more precise.
+- Next steps: Devin verifies one live hosted assessment (P0-1); terminology pass after #696 merges.
+### 2026-10-27 — Devin (agent, Alan) — first-customer UX audit
+- Did: Audited the first-customer journey on the real manual stack and fixed five frontend UX problems: actionable `ErrorState` recovery (`describeError().recovery`, Back to projects on 403/404), inline first-assessment failure recovery in Setup, plain-language approvals with a visible two-person note and a delivery-mode-aware note (Codex NO-GO follow-up: the inbox no longer promises a human decision when `pull_request`/`auto` delivery pre-approves remediation on the owner's behalf; auto-approved rows are labelled automatic), a "no review has run" Findings state (duplicate Analytics CTA removed), and a four-step connect stepper. Audit and walkthrough: `docs/reviews/2026-10-27-first-customer-ux/README.md`.
+- State of the code: Branch `devin/1793142972-first-customer-ux` off upstream main `c03a5501`; frontend only (no backend, authz, migration or shared-contract changes).
+- Commands run and results: `npm run lint`, `npm run typecheck`, `npx vitest run` (480 passed); `stack.py tests/e2e/first-customer.spec.ts tests/e2e/journey.spec.ts tests/e2e/pages.spec.ts` — 15 passed.
+- Decisions made (ADR links): Recovery copy lives in `describeError` so every `ErrorState` gets it; screenshots stay out of the repo.
+- Assumptions / open questions (RQ links): The manual stack cannot start a real assessment (fake GitHub returns 503), so finding/repair screens were not re-audited visually.
+- Next steps: Review the PR.
+- Warnings for the next session: `pages.spec.ts` :102/:265/:335 need `journey.spec.ts` data in the same run.
+### 2026-10-30 — Devin (agent, Adam) — project-band CI assertion
+- Did: Updated the sticky-band E2E assertion to verify the border-image paint source rather than the intentionally transparent CSS background.
+- State of code: `fix/adam/project-band-full-bleed`, PR #722.
+- Commands run and results: Targeted `console-scroll-layout.spec.ts` passed (1 test); ESLint passed for the spec.
+- Next steps: Push the test adjustment and resume the PR CI loop.
+
+### 2026-10-29 — Devin (agent, Adam) — full-bleed project band
+- Did: Converted the project header and sticky tabs to viewport-wide border-image paint while preserving the content column and tab-bar height.
+- State of code: `fix/adam/project-band-full-bleed`, based on current `origin/main`.
+- Commands run and results: Frontend lint, typecheck, and production build passed. Playwright captures at 2560×1300, 1920×1080, and 1440×900 verified equal scroll/client widths and aligned content; the 600px scrolled Analytics capture verified the sticky tab bar.
+- Screenshots: `/home/ubuntu/shots/band/` (Setup, Analytics, and scrolled Analytics).
+- Next steps: Commit and push; CI follow-up is handled separately.
+### 2026-10-29 — Devin (agent, Alan) — Codex review fixes on #694 (disconnect boundary + redaction)
+- Did: Moved the `installation_token(write=True)` mint in `delivery.py` and `recipes.py` inside `connection_guard.github_write`; extended `redact_code` (r/b/f prefixes, single-line triple quotes, YAML/dotenv values by diff file header).
+- State of the code: Branch `devin/1793142933-security-audit` (PR #694), not merged. Merge order #694 → #693 → #696 → #695.
+- Commands run and results: see PR #694 description (exact SHA, counts).
+- Decisions made (ADR links): Write-token minting counts as a GitHub write and takes the lease; the lease is never nested (separate blocks for mint, push, PR).
+- Assumptions / open questions (RQ links): None.
+- Next steps: Independent Codex re-review.
+- Warnings for the next session: `github_write` is not re-entrant (second lease on another connection would wait for itself); never nest it.
+
+### 2026-10-27 — Devin (agent, Alan) — security audit of main @ c03a5501
+- Did: Audited trust boundaries; fixed disconnect not stopping queued/in-flight `deliver_verified_patch` and `post_pr_review`; after Codex's NO-GO on #694 added `backend/connection_guard.py` (re-check `disconnected_at` + `installation_id` right before every GitHub write, incl. `propose_build_recipe`); report in `docs/reviews/2026-10-27-security-audit/REPORT.md`.
+- State of the code: Branch `devin/*-security-audit`; PR open, not merged.
+- Commands run and results: targeted pytest (delivery, auto-commits, PR review, build recipes, installation lifecycle, redaction, 11 security tests) — 179 + 2 suites passed (see PR); ruff, format, mypy clean.
+- Decisions made (ADR links): `repositories.disconnected_at` gates every GitHub write, not only job cancellation.
+- Assumptions / open questions (RQ links): None.
+- Next steps: P2 broader `redact_code` literal forms (see report).
+- Warnings for the next session: Jobs whose payload lacks `repo_id` are not cancelled by disconnect; any handler that writes to GitHub must wrap the write in `connection_guard.github_write(repo_id, installation_id)` (write lease + re-check); disconnect takes the same lease via `hold_github_writes`. #693 also edits `post_pr_review`; the 3-line guard insert there sits directly above `post_pull_request_review(...)`.
+### 2026-10-27 — Devin (agent, Alan) — staging pilot readiness (recommendation-only)
+- Did: Added `PILOT_RECOMMENDATION_ONLY` (default on in staging) enforced in `delivery.authority`, `push_patch` and `propose_build_recipe`; staging preflight isolation (production hosts, posture, `OPS_TOKEN`); `ops/status` `stuck` / `failed_jobs_24h` / `pilot`; `execution.stuck_assessments`; `release_check.py --strict` + monitoring gate; smoke checks; `docs/deploy/STAGING_PILOT_RUNBOOK.md`; GO/NO-GO report in `docs/reviews/2026-10-27-staging-pilot/`. Codex release-review fix: `release_check.py` CI gate FAILs on an empty check list and no longer counts SKIPPED/no-conclusion checks as green (`--allow-skipped-check NAME` for opt-in jobs), with regression tests in `test_staging_pilot.py`. Second pass: commit-status rollup rows are normalised, and strict sign-off FAILs any `REQUIRED_GATES` gate without a row (`release_check.finalize`).
+- State of the code: Branch `devin/*-staging-pilot-readiness` on upstream main `c03a5501`.
+- Commands run and results: see the GO/NO-GO report (full pytest, `make check`, mypy, local `release_readiness.py`).
+- Decisions made (ADR links): Recommendation-only is a deployment setting, not a project setting, so an owner cannot switch it on in the UI during the pilot. No migration, no `SCHEMA_VERSION` change.
+- Assumptions / open questions (RQ links): `PRODUCTION_HOSTS` default lists the known Railway/Vercel production hosts; confirm before the pilot.
+- Next steps: Staging deploy + remote gates by an operator with staging access (report lists the NO-GO items).
+- Warnings for the next session: Production defaults are unchanged (`recommendation_only` false outside staging).
+### 2026-11-03 — Devin (agent, Alan) — How it works scroll steps
+- Did: Fixed the landing "How it works" cards skipping on wheel scroll. After #761 its 200vh track left 25vh (about two 100px wheel notches) per card and the last card opened only when 25% of the pin remained, so a gesture went 3 → out of the chapter. Added `chapterStep()` (equal steps plus a half-step hold on the last) and a dedicated `.story-track-how` at 300vh. Scrolling stays browser-native.
+- State of the code: Branch `fix/alan/how-it-works-scroll-steps`; frontend only.
+- Commands run and results: new Playwright wheel test (`landing.spec.ts`, 100px notches at 1440x900) failed on main (a card held < 3 notches) and passes on the branch; `tests/unit/story-steps.test.ts` added; tsc and eslint clean.
+- Decisions made (ADR links): None. Lengthens only the How it works track (200vh → 300vh); the problem chapter and walkthrough keep #761's heights.
+- Assumptions / open questions (RQ links): The walkthrough (`story-track-4`, 200vh, four steps) has the same 25vh-per-step budget; left unchanged pending owner review.
+- Next steps: Owner review.
+- Warnings for the next session: `next dev` writes an untracked `frontend/AGENTS.md`; do not commit it.
+
+### 2026-11-03 — Devin (agent, Alan) — pilot backend reliability
+- Did: Took the R1 restart-harness update (S2 now asserts #725's one automatic restart, then honest `FAILED/CONFLICT_STATE` on a second kill); pointed `uptime-watch` at `/readyz` so a database/queue/worker outage behind a live container alerts (W1).
+- State of the code: Branch `fix/alan/pilot-backend-reliability`; no backend contract or schema change.
+- Commands run and results: `deploy/evidence/restart_recovery.py` on `079f7777` (main) — S1 PASS, S2 timed out at `AWAITING_APPROVAL` (stale harness); on this branch — S1, S2a, S2b, S3, S4, S5, S6, S7 PASS (scripted model, local). `python -m unittest tests/ops/test_uptime_watch.py` — 12 OK (4 new). Recovery-related pytest selection — 137 passed, 1 skipped (live smoke opt-in).
+- Decisions made (ADR links): None.
+- Assumptions / open questions (RQ links): R2 (lost-segment sandbox estimate capped at `worker_lease_s`) and W2 (no `RAILWAY_TOKEN` silently skips the deployment check) remain open.
+- Next steps: Owner review and merge; the workflow picks up `/readyz` on the next scheduled run.
+- Warnings for the next session: `/readyz` returns 503 when workers are required and none are alive, so a long worker-only outage now also alerts.
+- Follow-up (Codex P2 on #776): S2b's second SIGKILL could land on an idle worker after the restarted attempt already reached `AWAITING_APPROVAL`. `scripted_worker.py` now blocks model calls while `EVIDENCE_HOLD_FILE` exists, so S2b kills `w3b` mid-attempt, and S2b asserts the state at the kill is non-terminal. The race was reproduced with a delayed controller (S2b FAIL, killed at `AWAITING_APPROVAL`); with the barrier the full harness passes S1–S7.
+- Follow-up (second Codex P2 on #776): S3 resumes both S1's and S2a's approval pauses, but every per-assessment gateway shared one scripted repair `FakeTransport`; the second functional repair hit `FakeTransport script exhausted`, which `_repair_functional` reports as progress while the assessment still reaches `COMPLETED`, so S3 passed falsely. S3 now waits for every resumed assessment and fails on any `functional repair failed` event (reproduced: S3 FAIL), and `scripted_worker.py` gives each assessment a fresh repair fake.
+
+### 2026-11-03 — Devin (agent, Adam) — assessment review-pipeline dashboard
+- Did: Replaced the nested assessment agent tiles with a grouped review pipeline, four findings totals, an approval row, and a single early-end note while preserving `agentRelay` output.
+- State of the code: Branch `fix/adam/review-pipeline-dashboard`; implementation is ready for review.
+- Commands run and results: frontend lint and typecheck passed; Vitest passed (110 files, 478 tests); Next production build passed; `XDG_RUNTIME_DIR=/run/user/1000 ../.venv/bin/python tests/e2e/stack.py tests/e2e/journey.spec.ts` passed (3 tests). Journey logs included `SNAPSHOT_NOT_READY` worker messages for regression registration; they did not fail the E2E tests.
+- Visual evidence: `/home/ubuntu/ari-tools/pipeline/assessment-desktop-pipeline.png` (1440×900; the full pipeline fits), `/home/ubuntu/ari-tools/pipeline/assessment-desktop-full-page.png`, and `/home/ubuntu/ari-tools/pipeline/assessment-mobile-pipeline.png` (390×844). The seeded project had one assessment and no additional assessment with a relay skip note, so there was no early-end screenshot.
+- Decisions made (ADR links): Kept existing agent handoff and status derivation unchanged; summary counts are derived from the current relay items and persisted findings.
+- Assumptions / open questions (RQ links): None.
+- Next steps: Owner review and a separately briefed CI loop.
+- Warnings for the next session: CI was not monitored. The manual stack remains running at Next `http://127.0.0.1:3100` (shell `967b89`) and API `http://127.0.0.1:45103`.
+
+### 2026-11-02 — Devin (agent, Adam) — native scrolling and console UI polish
+- Did: Replaced global wheel easing with reduced-motion-aware same-page hash scrolling, removed scroll-linked ambient parallax and blur-based reveals, shortened landing chapters, and refined console buttons, empty states, panel headers, and sticky bars.
+- State of the code: `fix/adam/native-scroll-ui-polish` contains the implementation and tests, ready for review.
+- Commands run and results: frontend lint and typecheck passed; Vitest passed (109 files, 467 tests); production build passed; the requested landing E2E passed (10/10). The first E2E attempt found the Playwright Chromium binary missing; installing Chromium resolved it.
+- Decisions made (ADR links): Wheel/trackpad scrolling stays browser-native; only eligible same-page hash links use smooth scrolling, with reduced-motion users left to native anchor behavior.
+- Assumptions / open questions (RQ links): None. No visual review was requested or performed.
+- Next steps: The user will re-brief the CI loop; do not monitor CI after push.
+- Warnings for the next session: E2E emitted `XDG_RUNTIME_DIR is not set, falling back to /run/user/1000`; `/run/user/1000` is owned by uid 1000 with mode 700. Set `XDG_RUNTIME_DIR=/run/user/1000` for future E2E commands.
+
 ### 2026-10-27 — Devin (agent, Adam) — wildcard per-commit assessment routing
 - Did: Routed non-empty author configuration, including `*`, through per-commit scheduling; added wildcard push and unlisted-author regressions.
 - State of the code: Branch `fix/adam/per-commit-wildcard`; ready to commit and push.
@@ -2789,3 +2907,23 @@ Exact b6d5108b6f0678a6af9546f60d28508716cc4982: 194 pass/0 fail/0 skip, exit0, s
 - Lint passed (zero errors; one existing unused-variable warning at `first-responder.tsx:173`), typecheck passed, and unit tests passed (99 files / 418 tests). The E2E stack's production build passed. Targeted pages/tab-band E2E passed 2/2, covering every project route at 1440/1024/390/320 plus the scroll captures and Live Defense 320px width.
 - The broader `pages.spec.ts` attempt without a preceding journey run passed 4/9 tests. After fixing the in-scope sticky-position override, the two header/tab-band tests passed. The other failures were: a missing seeded commit row, an unavailable `hardened` finding option, and a missing `findings-mobile-list` test id. These were not validated against the base branch and are not claimed as pre-existing.
 - Baseline scroll screenshots and metrics: `/home/ubuntu/shots/console-polish/scroll-fix-before/`; after screenshots: `/home/ubuntu/shots/console-polish/scroll-fix-after/`. The baseline 1440px scroll-50 image was clamped to scrollY 0; the 1440px scroll-300 and both 390px scroll captures reached their requested offsets.
+
+
+## 2026-10-31 independent release audit
+Canonical main 9437e217d65aa1be22fa7b4f54f723200cd428c8; external pilot NO-GO. See YC_RELEASE_MATRIX.md, YC_RELEASE_VERDICT.md, YC_BLOCKERS.md and hashed evidence under docs/reviews/2026-10-31-independent-release. 276 selected tests passed across distinct trees; no complete union or staging certification. Main redaction/checker gaps reproduced, #693/#694 source conflict requires owner reconciliation. No production changes, canonical merges or deployments.
+- #696 Codex round 2 (2026-10-29): approvals copy claimed automatic approval whenever the saved mode was PR/auto, even with `delivery_authorized_by` null. It now reads the new read-only `GET /projects/{id}/delivery-authority`, which reuses `delivery.authority()` and the `auto_delivery_allowed` gate. Tests: `backend/tests/test_delivery_authority_view.py`; `frontend/tests/unit/first-customer-ux.test.tsx` covers the inactive, revoked, active, deployment-gated, loading and error states.
+### Release journey validation — 2026-10-27
+
+- Tests and review only; no product code changed. New: `backend/tests/test_release_journey.py`, `frontend/tests/e2e/release-journey.spec.ts`, `docs/reviews/2026-10-27-release-journey/REPORT.md`.
+- P1 (review-pipeline lane, fix on m-alan08/ari-ai#12): default `exclude_authors=["*[bot]"]` is a `fnmatch` character class, so pushes by logins ending in b/o/t are skipped. The strict xfail is conditional on the fix being absent (probe: `_matches` has no `literal_brackets`), so it is XFAIL on `main` and a hard PASS once #693 lands; no merge-order action.
+- P2 (UX + backend): after connecting an additional repository, the landing page is unpredictable because the shell selects the first row of the unordered repositories list (no ORDER BY) and an unfinished pick redirects Settings to Setup; the spec pins `?repo=` to stay deterministic.
+- Verified on this VM: backend 879 passed / 9 skipped (base); new backend tests 4 passed / 3 strict xfail; full real-stack E2E 56 passed; `release-journey.spec.ts` 1 passed; contract freshness, ruff, mypy, frontend lint/typecheck/unit/build clean.
+- Not executed: live GitHub OAuth/App installation, live model, Docker sandbox.
+### GitHub review pipeline reliability — 2026-10-27
+
+- Branch `devin/1793142966-review-pipeline-reliability` off upstream main `c03a5501`. Fixed seven confirmed defects (D1–D7) in `backend/backend/auto_commits.py` and `backend/backend/api/webhooks.py`. Each was reproduced first by a failing test in `backend/tests/test_review_pipeline_reliability.py`. No migration or SCHEMA_VERSION change.
+- Scorecard with verified and unverified paths: `docs/reviews/2026-10-27-review-pipeline-reliability/SCORECARD.md`.
+- D7 (`*[bot]` fnmatch) came from the release-journey session (devin-42c24a90). Its strict xfail `test_default_bot_exclusion_does_not_skip_human_logins` in `test_release_journey.py` should flip when this lands.
+- Codex independent review (NO-GO round) added D8–D10: review jobs carry `repo_id` and re-check revocation under the repository lock right before the POST; the POST runs in `JobContext.effect` so a lost response ends `recovery_required`; several PRs sharing a commit each get a review (`prreview:{assessment}:pr:{n}`); D11 a legacy `prreview:{assessment}` job and the per-PR job never both post (locked already-posted / in-flight check before the POST); D12 concurrent identical deliveries ack the winner's job; self-audit D13 (uncertain sibling review → skip, not defer forever; superseded by the round-2 atomic reservation below) and D14 (dead legacy review job no longer blocks the per-PR job; ordered PR fallback). Tests in `test_review_pipeline_reliability.py`; scorecard has a Self-audit section.
+- Codex round 2 (2026-10-29): (a) the lower-job-id tie-break let a due legacy retry preempt a newer in-flight per-PR job. Ownership is now reserved in the same transaction as the arbitration (`JobContext.effect(key, reserve=...)`), and any in-flight sibling wins. (b) Every `HTTPStatusError` was treated as `EffectNotApplied`. A 5xx is now reconciled through a hidden review marker (`GitHubApp.pull_request_review_has_marker`): found = posted, absent = retry, unknown = `recovery_required`. Regressions are in `backend/tests/test_pr_review_effect_ownership.py`; 5 of its 6 tests fail on the previous head 184b8c62. **Depends on #694**: the disconnect window around the POST is closed only by #694's `connection_guard.github_write` lease.
+- Open gaps: a disconnect committing while the review POST is on the wire (lock is released before the network call, per the revocation protocol); the stale global spend cap; the `redeliver.recover` sweep ignores dead GUIDs; GitHub was not exercised live.

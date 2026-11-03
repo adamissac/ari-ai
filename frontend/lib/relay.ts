@@ -24,7 +24,7 @@ export type RelayItem = RelayTile | RelayGate;
 interface RunFacts { agent: AgentName; status: string; tool_calls: readonly unknown[] }
 /** A persisted approval record for this assessment. */
 export interface ApprovalFacts { subject_type: string; status: string }
-interface FindingFacts { kind: string; status: string }
+export interface FindingFacts { kind: string; status: string }
 
 const ORDER: readonly { agent: AgentName; stage: string; job: string }[] = [
   { agent: 'reviewer', stage: 'Check the change', job: 'Reads the change and checks it does what was intended.' },
@@ -70,6 +70,31 @@ export function earlyEndNote(events: readonly { type: string; state?: string | n
 const CONFIRMED_STATUSES: ReadonlySet<string> = new Set(['validated', 'diagnosed', 'patch_proposed', 'verified', 'patch_rejected', 'unresolved', 'hardened']);
 
 const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
+
+export function relaySummary(
+  items: readonly RelayItem[],
+  findings: readonly FindingFacts[],
+): {
+  behaviour: number;
+  suspicions: number;
+  confirmed: number;
+  fixesVerified: number;
+  finished: number;
+  skipped: number;
+  total: number;
+} {
+  const agents = items.filter((item): item is RelayTile => item.kind === 'agent');
+  const securityFindings = findings.filter(finding => finding.kind === 'security');
+  return {
+    behaviour: findings.filter(finding => finding.kind === 'functional').length,
+    suspicions: securityFindings.length,
+    confirmed: securityFindings.filter(finding => CONFIRMED_STATUSES.has(finding.status)).length,
+    fixesVerified: findings.filter(finding => finding.status === 'verified' || finding.status === 'hardened').length,
+    finished: agents.filter(item => item.status === 'done').length,
+    skipped: agents.filter(item => item.status === 'not_needed' || item.status === 'not_reached').length,
+    total: agents.length,
+  };
+}
 
 function statusOf(runs: readonly RunFacts[], state: AssessmentState): RelayStatus {
   const latest = runs[runs.length - 1];

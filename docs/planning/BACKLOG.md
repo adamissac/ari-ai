@@ -28,6 +28,8 @@ pulled into MVP only if MVP tasks they would compete with are `DONE`.
 
 - DONE (2026-10-17): Pricing navigation uses the same color, hover, and contrast handling as sibling links.
 
+Completed 2026-11-02 on `fix/adam/native-scroll-ui-polish`: restore native scrolling, shorten landing story chapters, remove scroll parallax and blur-based reveals, and calm console chrome. Local lint, typecheck, 467 unit tests, production build, and landing E2E (10/10) passed; CI follow-up remains separate.
+
 Completed 2026-10-26 on `feat/adam/console-polish`: keep the console site header opaque above project content and the project tab band sticky directly beneath it. The reported 349px Live Defense document width did not reproduce in the 320px E2E run.
 
 Completed: homepage invitation and evaluation selector alignment (feat/adam/home-next-step).
@@ -258,3 +260,7 @@ No prompt relay is needed after activation. See
 Installation PRs: canonical #614; fork #9 (main), #10 (ci/upstream-main). Fork #9
 controller Docker unit/layout/actionlint checks passed at abd61416; paid activation
 remains OFF pending manual installation and protected credential/session setup.
+
+
+## AUDIT-20261031 — Independent first-customer release gate
+Owner: Alan (independent auditor), requested by repository owner. Snapshot audit COMPLETE; release certification BLOCKED on #693/#694 union and authorized exact-SHA staging evidence. Branch feat/alan/independent-release-audit-20261031. See root YC release documents.

@@ -161,6 +161,8 @@ def test_rules_of_engagement_honour_check_category_aliases_without_widening_scop
         "firestore.collection_enumeration@1",
         "firestore.owner_isolation@1",
         "input_validation.bounds@1",
+        "input_validation.concurrent_bound@1",
+        "input_validation.destination@1",
     ]
 
 

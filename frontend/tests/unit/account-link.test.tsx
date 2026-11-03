@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 
 const session = vi.fn();
 const logout = vi.fn();
-vi.mock('next/navigation', () => ({ usePathname: () => '/projects' }));
+vi.mock('next/navigation', () => ({ usePathname: () => '/projects', useRouter: () => ({ push: () => undefined }) }));
 vi.mock('@/lib/api', () => ({ api: () => ({ session, logout }) }));
 import { notifySessionChanged } from '@/lib/session-events';
 import { AccountLink } from '@/components/account-link';

@@ -153,3 +153,25 @@ def test_pytest_counts_come_from_the_summary_line_not_captured_logs():
     assert (parsed["passed"], parsed["failed"], parsed["errors"]) == (0, 1, 0)
     assert parse_pytest("==== 3 passed, 1 error, 2 warnings in 0.5s ====")["errors"] == 1
     assert parse_pytest("FAILED a.test.js::x\n2 passed, 1 failed")["failed"] == 1  # nodetest shape
+
+
+def test_external_pending_waits_for_the_running_reviewer():
+    """Probe can finish before the reviewer; the run must not decide to complete until the
+    reviewer has recorded its remediation approval (production run b7b10663, 2026-11-03)."""
+    import threading
+    import time
+
+    from security_agents.host_adapter import HostSink, _external_pending
+
+    approvals: list = []
+    host = SimpleNamespace(approvals=lambda: list(approvals), findings=lambda: [])
+    sink = HostSink(host=host, commit_sha="0" * 40)
+
+    def review():
+        time.sleep(0.2)
+        approvals.append(SimpleNamespace(subject_type="remediation", status="pending"))
+
+    sink._review = threading.Thread(target=review)
+    sink._review.start()
+    assert _external_pending(sink, host)
+    assert sink._review is None

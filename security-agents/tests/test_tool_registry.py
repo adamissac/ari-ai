@@ -366,6 +366,52 @@ def test_scope_gate_uses_the_template_category_not_its_id(registry, intel, libra
     assert "CATEGORY_NOT_ALLOWED" in refusal("firestore.unauthenticated_denied@1")  # authentication
 
 
+class _RecordingRunner:
+    def __init__(self) -> None:
+        self.refs: list[str] = []
+
+    def run(self, ctx, template_ref, target_id, parameters):
+        self.refs.append(template_ref)
+        return {"matches_expectation": None}
+
+
+@pytest.mark.boundary
+def test_scope_is_checked_against_the_template_category_not_its_id(registry, intel, library):
+    """Live regression: `input_validation.concurrent_bound@1` belongs to the approved
+    `input_validation.bounds` category but was refused because its id was used as the
+    category. The id must neither widen nor narrow what the scope allows."""
+    from security_agents.standards.roe import build_roe
+
+    runner = _RecordingRunner()
+    scope = make_scope(categories=["input_validation.bounds"])
+    allowed = make_ctx(
+        AgentName.PROBE,
+        intel=intel,
+        scope=scope,
+        services={"check_runner": runner, "checks": library},
+    )
+    allowed.roe = build_roe(scope, library.list_public())
+    registry.invoke(
+        allowed,
+        wire_name("checks.run_template"),
+        {"template_ref": "input_validation.concurrent_bound@1", "target_id": TARGET_ID, "parameters": {}},
+    )
+    assert runner.refs == ["input_validation.concurrent_bound@1"]
+    denied = make_ctx(
+        AgentName.PROBE,
+        intel=intel,
+        scope=make_scope(categories=["access_control.ownership"]),
+        services={"check_runner": runner, "checks": library},
+    )
+    with pytest.raises(PlatformError) as exc:
+        registry.invoke(
+            denied,
+            wire_name("checks.run_template"),
+            {"template_ref": "input_validation.destination@1", "target_id": TARGET_ID, "parameters": {}},
+        )
+    assert ErrorCode.SCOPE_DENIED.value in str(exc.value)
+
+
 def test_no_scope_at_all_denies_check_run(registry, intel, library):
     ctx = make_ctx(
         AgentName.PROBE, intel=intel, scope=None, services={"check_runner": object(), "checks": library}

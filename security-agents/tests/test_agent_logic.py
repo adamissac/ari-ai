@@ -951,6 +951,12 @@ def test_same_route_matching():
     assert not same("POST /repositories/{repo_id}", "GET /api/v1/repositories/{id}")
     assert not same("GET /{id}", "GET /api/v1/repositories/{id}")  # a bare parameter matches nothing
     assert not same("GET /tories/{id}", "GET /api/v1/repositories/{id}")  # segment boundary
+    # Live regression: a confirmed race on `POST /transfers` was recorded inconclusive
+    # because a one-segment route never matched itself.
+    assert same("POST /transfers", "POST /transfers")
+    assert same("POST /transfers/", "post /transfers")
+    assert not same("POST /transfers", "GET /transfers")
+    assert not same("POST /transfers", "POST /api/transfers")  # one segment: no suffix match
 
 
 def test_scout_surveys_only_recipe_included_code(tmp_path):

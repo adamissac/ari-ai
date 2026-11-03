@@ -1,8 +1,10 @@
 import importlib.util
 import io
+import os
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 from urllib.error import HTTPError, URLError
 
 SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "ops" / "uptime_watch.py"
@@ -76,6 +78,28 @@ class HealthTests(unittest.TestCase):
             "non-JSON", uptime_watch.check_health("https://x/healthz", opener_returning(b"<html>"))
         )
 
+    def test_default_probe_is_readiness_gate(self):
+        # /healthz is static; only /readyz checks the database, queue and workers.
+        self.assertTrue(uptime_watch.DEFAULT_HEALTH_URL.endswith("/readyz"))
+
+    def test_ready(self):
+        body = b'{"status":"ready","database":true,"queue":true,"capabilities_ready":true}'
+        self.assertIsNone(uptime_watch.check_health("https://x/readyz", opener_returning(body)))
+
+    def test_database_down_behind_live_container(self):
+        body = b'{"status":"not_ready","database":false,"queue":false,"capabilities_ready":false}'
+        err = HTTPError("u", 503, "Service Unavailable", {}, io.BytesIO(body))
+        problem = uptime_watch.check_health("https://x/readyz", opener_raising(err))
+        self.assertIn("not_ready", problem)
+        self.assertIn("database", problem)
+
+    def test_ready_but_assessments_cannot_run(self):
+        body = b'{"status":"ready","database":true,"queue":true,"capabilities_ready":false}'
+        self.assertIn(
+            "capabilities",
+            uptime_watch.check_health("https://x/readyz", opener_returning(body)),
+        )
+
 
 class EvaluateTests(unittest.TestCase):
     def test_all_live_is_healthy(self):
@@ -93,6 +117,23 @@ class EvaluateTests(unittest.TestCase):
         self.assertIn("service:Postgres:none", report.alert_keys)
 
 
+class UncheckedRailwayTests(unittest.TestCase):
+    def test_missing_railway_token_is_a_problem(self):
+        report = uptime_watch.evaluate(None, [], railway_checked=False)
+        self.assertEqual(len(report.problems), 1)
+        self.assertIn("RAILWAY_TOKEN", report.problems[0])
+        self.assertIn("railway:unchecked", report.alert_keys)
+
+    def test_main_fails_without_token(self):
+        env = {"UPTIME_HEALTH_URL": "https://x/readyz"}
+        with (
+            mock.patch.dict(os.environ, env, clear=True),
+            mock.patch.object(uptime_watch, "check_health", return_value=None),
+            mock.patch("builtins.print"),
+        ):
+            self.assertEqual(uptime_watch.main(), 1)
+
+
 class SyncIssueTests(unittest.TestCase):
     def test_creates_then_closes(self):
         down = uptime_watch.evaluate("HTTP 404", LIVE)
@@ -105,6 +146,36 @@ class SyncIssueTests(unittest.TestCase):
         healthy = uptime_watch.evaluate(None, LIVE)
         self.assertEqual(uptime_watch.sync_issue(closing, "o/r", healthy), "closed")
         self.assertEqual(closing.calls[-1], ("PATCH", "/repos/o/r/issues/7", {"state": "closed"}))
+
+    def test_readiness_escalation_updates_open_alert(self):
+        degraded = uptime_watch.check_health(
+            "https://x/readyz",
+            opener_returning(b'{"status":"ready","database":true,"capabilities_ready":false}'),
+        )
+        db_down = uptime_watch.check_health(
+            "https://x/readyz",
+            opener_raising(
+                HTTPError(
+                    "u",
+                    503,
+                    "Service Unavailable",
+                    {},
+                    io.BytesIO(b'{"status":"not_ready","database":false}'),
+                )
+            ),
+        )
+        first = uptime_watch.evaluate(degraded, LIVE)
+        client = FakeClient()
+        self.assertEqual(uptime_watch.sync_issue(client, "o/r", first), "created")
+        issue = {
+            "number": 7,
+            "title": uptime_watch.ALERT_TITLE,
+            "body": client.calls[-1][2]["body"],
+        }
+        self.assertEqual(uptime_watch.sync_issue(FakeClient([issue]), "o/r", first), "unchanged")
+        second = uptime_watch.evaluate(db_down, LIVE)
+        self.assertNotEqual(first.alert_keys, second.alert_keys)
+        self.assertEqual(uptime_watch.sync_issue(FakeClient([issue]), "o/r", second), "updated")
 
     def test_no_issue_when_healthy(self):
         healthy = uptime_watch.evaluate(None, LIVE)

@@ -35,7 +35,7 @@ Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 | `/projects/[id]/incidents` open (record-only note; simulated by default, labelled), NIST lifecycle rail, triage, assign owner, transitions, two-person approval gates (requester cannot decide), timeline with CSF refs; closure panel: link findings and accepted verifications, closure criteria satisfied with hash-pinned patch/regression artifacts, lessons learned (Fortify regression evidence), communications (RS.CO-02/03, RC.CO-03), closure readiness list | `/projects/{id}/incidents`, `/incidents/{id}`, `/incidents/{id}/actions` |
 | `/projects/[id]/settings` project name, languages, default + monitoring budgets, trigger policy (enabled, coalescing interval, record-only globs); validated client-side, owner-only on the backend; trigger policy is labelled 24/7 defense | `PATCH /projects/{id}` |
 | `/lab` Defense Lab: signed-in users can toggle 24/7 defense for their projects when the backend is available (hidden in demo-only mode); plain-language header and a one-line explainer with the controlled-test-environment caveat; **headline held-out scores first** (three key numbers for the trained defender versus baselines, then one compact score card per headline metric with 95% CI and a computed trade-off note); then the recorded-episode replay (status bar labelled SIMULATION · RECORDED EVALUATION, stable network map with service icons, signal states and action badges, story panel — what's happening / what the AI did / why (reasoning shown as not recorded) / effect — service inspector, key moments, playback with speed and an observed-signal timeline). Provenance stays one click away in a collapsed footer. Hidden attacker stage only as an opt-in, labelled overlay | `rl-defense/results/protocol-*/defense_lab.json`, validated server-side against `rl-defense/fixtures/defense_lab.schema.json`; optional project list via `/projects` |
-| `/demo` **demo account** ([ADR-0013](../docs/decisions/0013-labelled-simulated-demo.md)), not linked publicly: sign in on `/access` with the access code (`DEMO_ACCESS_CODE`, server-only env; unset = closed). `proxy.ts` keeps `/demo` closed without the signed httpOnly cookie. Opens the Lumen Pay sample account: organization → repository → recent commits; per commit an animated replay with Overview, Code review, Seven agents and Defense Lab. A small "Demo account · sample data" tag and footer on every page | Nothing: sample data in `lib/demo/` (no backend, GitHub or model calls) |
+| `/access` **demo account** ([ADR-0024](../docs/decisions/0024-real-console-recorded-demo.md)), not linked publicly: sign in with the access code (`DEMO_ACCESS_CODE`, server-only env; unset = closed). Opens the real console at Lumen Pay Analytics; `/demo/**` redirects there. A persistent illustrative-sample banner appears on console pages; mutations are disabled | Recorded JSON fixtures from `lib/demo/console/fixtures.json`, replayed in-browser with no backend calls |
 
 Same-origin API: `app/api/v1/[...path]` proxies to `BACKEND_ORIGIN` at request time
 (no CORS; the backend's `SameSite=Lax` cookie and CSRF header work as designed;
@@ -44,29 +44,34 @@ SSE streams unbuffered). Types and runtime validation come only from
 
 Honesty rules enforced in code: backend offline → "Backend unreachable"; a response
 that fails the shared JSON Schema → "Backend response rejected" (never rendered);
-non-`live` `provider_mode` runs are labelled "Not a live-provider run"; fixture mode
-exists only behind `NEXT_PUBLIC_DEMO_FIXTURES=1` and shows a permanent DEMO DATA banner.
+non-`live` `provider_mode` runs are labelled "Not a live-provider run"; the gated
+demo uses recorded in-browser fixtures, a persistent sample-data banner and disabled
+actions.
+Every `ErrorState` adds a "What to do" line derived from the HTTP status and error code (`describeError().recovery` in `lib/api.ts`), and 403/404 errors link back to `/connect`; the request ID stays visible for support.
 
 ## Plain-language layer (UX clarity)
 
 For readers with no programming, security or RL background, see
 [UX_CLARITY_CHECKLIST.md](UX_CLARITY_CHECKLIST.md): the overview's pillar loop, the eight-agent
-relay with its human approval gate, before/after fix evidence, inline glossary terms, and a
-Defense Lab that explains itself. Technical detail (orchestrator states, usage, event log,
-every RL metric and provenance) is kept, one click away. All counts come from records.
+review pipeline with findings totals and its human approval gate, before/after fix evidence,
+inline glossary terms, and a Defense Lab that explains itself. Technical detail (orchestrator
+states, usage, event log, every RL metric and provenance) is kept, one click away. All counts
+come from records.
 
 ## Interface finish
 
-`app/interface.css` supplies the shared editorial finish: workspace title hierarchy, numbered organization cards, precise repository rows, restrained charcoal panels, ember selection edges and a compact replay frame. It retains the hero and scroll timelines in `globals.css`. The Projects header link stays current across `/connect` and its descendants. The desktop/mobile browser test uses explicit GitHub metadata fixtures and the real session/router.
+`app/interface.css` supplies the shared editorial finish: workspace title hierarchy, numbered organization cards, precise repository rows, restrained charcoal panels, ember selection edges and a compact replay frame. It retains the hero and scroll timelines in `globals.css`. The project header and tab band use opaque, blur-free sticky surfaces. The Projects header link stays current across `/connect` and its descendants. The desktop/mobile browser test uses explicit GitHub metadata fixtures and the real session/router.
 
 ## Landing, header and motion
 
 - `components/hero.tsx`, `intro-loader.tsx`, `story.tsx`: the landing's hero, once-per-sign-in
   intro and scroll-told chapters. Chapters pin and scrub only at `lg` with motion allowed;
   otherwise they render their final, readable state.
-- `components/smooth-scroll.tsx` (root layout): Lenis-style momentum for mouse wheels and
-  trackpads, frame-rate independent, no dependency. Native for touch, keyboard, scrollbar,
-  zoom, horizontal gestures, nested scroll areas and `prefers-reduced-motion`.
+  `chapterStep()` maps a pinned chapter's scroll progress to its step and gives the last step
+  a half-step hold; the How it works track (`.story-track-how`, 300vh) budgets about 45vh per card.
+- `components/anchor-scroll.tsx` (root layout): same-page hash links scroll smoothly when
+  reduced motion is not requested. Wheel, trackpad, touch, keyboard and scrollbar scrolling
+  remain native.
 - Header: `components/account-link.tsx` sits top right and is always visible: **Sign in**
   when signed out (or the backend is unreachable), otherwise the GitHub login. On the
   landing, the other tabs fade in on scroll over the hero.
@@ -84,11 +89,11 @@ carry the hero's look at lower intensity. Everything is in the "Night surface" s
   Use `--color-night` (never flips) for a surface that must stay dark, and `--color-ember`
   for brand-coloured text. Night contrast is asserted in `tests/unit/contrast.test.ts`.
 - **Ambient light**: `components/ambient.tsx` (root layout) is a fixed layer of drifting
-  ember orbs, a faint grid and grain, with a slow scroll parallax (`--sy`). It also sets
-  `--gx/--gy` on the panel under the mouse for its glow.
+  ember orbs, a faint grid and grain. It sets `--gx/--gy` on the panel under the mouse for
+  its glow.
 - **Motion**: page titles (`PageTitle` → `.page-title`), ink bands (`.hero-ink`) and the
-  project header rise in with the hero's blur; `Panel` rises once when first scrolled into
-  view (`useRevealOnScroll` in `components/reveal.tsx`); primary buttons, project tabs and
+  project header rise in with opacity and translation; `Panel` rises once when first scrolled
+  into view (`useRevealOnScroll` in `components/reveal.tsx`); primary buttons, project tabs and
   bordered link cards glow on hover; `Loading` shows an ember pulse. All of it stops under
   `prefers-reduced-motion`.
 
@@ -193,13 +198,7 @@ Sign-in screens share a centered form over subtle decorative orbits; reduced mot
 User-facing lab copy describes controlled evaluation runs and isolated test networks. Synthetic drills and illustrative walkthroughs retain explicit provenance.
 
 
-Homepage wheel scrolling stops once at the expanded walkthrough video. The arriving gesture is absorbed until a new gesture (180ms idle) or a 1.2-second maximum. A new wheel gesture, upward scrolling, keyboard navigation or Continue exploring can leave immediately. Touch and reduced-motion scrolling remain native.
-
-
-The walkthrough zoom uses smoothstep scroll progress and a 1.5-second CSS transition so hard wheel gestures do not snap it to full size. Reduced motion disables the transition.
-
-
-Landing: the original centered hero, scroll-driven problem timeline, expanding process cards and finding walkthrough are restored. Wheel scrolling uses the original momentum behavior without the redesign's reading-distance cap. `LandingFooter` retains Ari’s charcoal/burnt-orange/cream horizon design.
+Landing: the centered hero, scroll-driven problem timeline, expanding process cards and finding walkthrough use native browser scrolling. Same-page hash links scroll smoothly unless reduced motion is requested. `LandingFooter` retains Ari’s charcoal/burnt-orange/cream horizon design.
 
 Footer correction: use a conventional aligned footer with Ari branding/tagline on the left, two navigation columns on the right, and a separated copyright/back-to-top row. Stack branding above the link columns on mobile. Preserve Ari colors and restored hero/scroll animations. Validation recorded in PR.
 
@@ -213,3 +212,5 @@ Keep organization/repository/commit navigation scoped to the selected repository
 
 
 Connected repo/commit pages expose a per-repository Automatic runs switch. ON shows background-run status; OFF exposes manual Run. The backend schedules independently of browser visits. Quick reads use Haiku 5.5 only. See backend README and issue #380 for prerequisites and quotas.
+
+- Approvals: the fix-delivery note reads `GET /projects/{id}/delivery-authority` (`state`: manual / inactive / active / revoked, plus `effective_mode`) and shows nothing about automatic approval until it has loaded.

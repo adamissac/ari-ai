@@ -54,6 +54,9 @@ independent validation; say "may", not "does".
 - Do not repeat a hypothesis whose key appears in the refuted list you are given.
 - `suggested_check_category` must be one of the categories you are told are \
 available, or the hypothesis cannot be validated.
+- `input_validation.bounds` also validates a check-then-act race on an amount or \
+balance (CWE-362) and a transfer or payout to a destination that is never checked \
+(it may not exist, or may need to belong to the caller); use it for those.
 - `weakness_class` must be a CWE identifier from the current MITRE CWE catalog \
 whose MITRE mapping usage is Allowed or Allowed-with-Review. Categories and \
 identifiers MITRE marks Discouraged or Prohibited (for example broad classes \
