@@ -1797,8 +1797,8 @@ body:has(.project-shell) { --project-site-header-height: 77px; }
 body:has(.project-shell) .site-header { position: sticky; top: 0; z-index: 60; background: rgb(18 12 11 / 62%); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
 body:has(.project-shell) .site-header-inner,
 body:has(.setup-layout) .site-header-inner { max-width: 100rem; padding-inline: 1rem; }
-.project-head { margin-inline: -1rem; padding-inline: 1rem; background: rgb(18 12 11 / 62%); }
-.project-tabbar { position: sticky; top: var(--project-site-header-height); z-index: 50; display: flex; min-width: 0; align-items: stretch; margin-inline: -1rem; padding-inline: 1rem; border-bottom: 1px solid var(--color-line); background: rgb(18 12 11 / 62%); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.project-head { margin-inline: -1rem; padding-inline: 1rem; background: none; border-image: linear-gradient(rgb(18 12 11 / 62%), rgb(18 12 11 / 62%)) fill 0 / 0 / 0 100vw; }
+.project-tabbar { position: sticky; top: var(--project-site-header-height); z-index: 50; display: flex; min-width: 0; align-items: stretch; margin-inline: -1rem; padding: 0 1rem 1px; border-bottom: 0; background: none; border-image: linear-gradient(to top, var(--color-line) 1px, rgb(18 12 11 / 62%) 1px) fill 0 / 0 / 0 100vw; -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
 .project-tab-scroll { display: flex; min-width: 0; flex: 1; align-items: stretch; overflow-x: auto; scrollbar-width: none; }
 .project-tab-scroll::-webkit-scrollbar { display: none; }
 .project-tab { display: inline-flex; min-height: 44px; min-width: 44px; flex: none; align-items: center; gap: 8px; padding: 13px 15px 11px; font-size: 15px; font-weight: 500; white-space: nowrap; text-decoration: none; }

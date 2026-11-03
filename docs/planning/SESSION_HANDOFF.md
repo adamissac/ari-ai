@@ -32,6 +32,18 @@ adds an entry before ending.
 - Assumptions / open questions (RQ links): The manual stack cannot start a real assessment (fake GitHub returns 503), so finding/repair screens were not re-audited visually.
 - Next steps: Review the PR.
 - Warnings for the next session: `pages.spec.ts` :102/:265/:335 need `journey.spec.ts` data in the same run.
+### 2026-10-30 — Devin (agent, Adam) — project-band CI assertion
+- Did: Updated the sticky-band E2E assertion to verify the border-image paint source rather than the intentionally transparent CSS background.
+- State of code: `fix/adam/project-band-full-bleed`, PR #722.
+- Commands run and results: Targeted `console-scroll-layout.spec.ts` passed (1 test); ESLint passed for the spec.
+- Next steps: Push the test adjustment and resume the PR CI loop.
+
+### 2026-10-29 — Devin (agent, Adam) — full-bleed project band
+- Did: Converted the project header and sticky tabs to viewport-wide border-image paint while preserving the content column and tab-bar height.
+- State of code: `fix/adam/project-band-full-bleed`, based on current `origin/main`.
+- Commands run and results: Frontend lint, typecheck, and production build passed. Playwright captures at 2560×1300, 1920×1080, and 1440×900 verified equal scroll/client widths and aligned content; the 600px scrolled Analytics capture verified the sticky tab bar.
+- Screenshots: `/home/ubuntu/shots/band/` (Setup, Analytics, and scrolled Analytics).
+- Next steps: Commit and push; CI follow-up is handled separately.
 
 ### 2026-10-27 — Devin (agent, Adam) — wildcard per-commit assessment routing
 - Did: Routed non-empty author configuration, including `*`, through per-commit scheduling; added wildcard push and unlisted-author regressions.
