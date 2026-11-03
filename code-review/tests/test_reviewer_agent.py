@@ -1043,3 +1043,27 @@ def test_crash_findings_are_not_access_widening(text: str, crash: bool) -> None:
     from code_review.agent import is_crash
 
     assert is_crash(text) is crash
+
+
+def test_finding_for_a_claim_never_submitted_stays_a_hypothesis(tmp_path: Path) -> None:
+    """Live gtB5 js-purge-order: the finding named claim c1 but the report had no claims, so
+    a correct finding on the changed lines was dropped as an unknown claim."""
+    script = _discount_script()
+    submit = script[-1]
+
+    def no_claims(req):  # type: ignore[no-untyped-def]
+        out = submit(req)
+        for block in out["content"]:
+            if block.get("type") == "tool_use":
+                block["input"]["claims"] = []
+        return out
+
+    script[-1] = no_claims
+    sc = discount_rounding(tmp_path)
+    host = InMemoryHost(fake(script))
+    outcome = ReviewerAgentRunner(host, RepoSource(sc.repo)).review(make_request(host, sc))
+    (f,) = outcome.result.findings
+    assert f.status is FindingStatus.hypothesis
+    (claim,) = outcome.result.intent_evidence.claims
+    assert claim.status is IntentClaimStatus.inferred
+    assert claim.statement == "apply_discount rounds half-even instead of half-up"

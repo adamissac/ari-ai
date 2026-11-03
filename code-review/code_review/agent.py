@@ -476,9 +476,6 @@ class ReviewerAgentRunner:
         proposed = {c.key: c for c in report.claims}
         for f in report.findings:
             decision = intent.by_key.get(f.claim_key)
-            if decision is None and f.claim_key not in proposed:
-                rejected.append(f"finding '{f.title[:80]}': unknown claim {f.claim_key}")
-                continue
             evidence = spans(f.suspected_spans)
             if not evidence:
                 # A removed guard is cited where it used to be, so its quote is not at head;
@@ -494,7 +491,11 @@ class ReviewerAgentRunner:
                 rejected.append(f"finding '{f.title[:80]}': rejected claim {f.claim_key}")
                 continue
             if decision is None:
-                decision = inferred_fallback(proposed[f.claim_key], evidence)
+                # the model's claim (citations unverifiable) or, when it submitted none
+                # (live gtB5 js-purge-order), the finding's own statement
+                known = proposed.get(f.claim_key)
+                statement = known.statement if known is not None else f.title
+                decision = inferred_fallback(f.claim_key, statement, evidence)
                 intent.by_key[f.claim_key] = decision
                 intent.evidence.claims.append(decision.claim)
                 rejected.append(f"claim {f.claim_key}: re-based on finding spans as inferred")
