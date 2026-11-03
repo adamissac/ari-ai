@@ -3,6 +3,15 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-11-02 — Devin (agent, Adam) — native scrolling and console UI polish
+- Did: Replaced global wheel easing with reduced-motion-aware same-page hash scrolling, removed scroll-linked ambient parallax and blur-based reveals, shortened landing chapters, and refined console buttons, empty states, panel headers, and sticky bars.
+- State of the code: `fix/adam/native-scroll-ui-polish` contains the implementation and tests, ready for review.
+- Commands run and results: frontend lint and typecheck passed; Vitest passed (109 files, 467 tests); production build passed; the requested landing E2E passed (10/10). The first E2E attempt found the Playwright Chromium binary missing; installing Chromium resolved it.
+- Decisions made (ADR links): Wheel/trackpad scrolling stays browser-native; only eligible same-page hash links use smooth scrolling, with reduced-motion users left to native anchor behavior.
+- Assumptions / open questions (RQ links): None. No visual review was requested or performed.
+- Next steps: The user will re-brief the CI loop; do not monitor CI after push.
+- Warnings for the next session: E2E emitted `XDG_RUNTIME_DIR is not set, falling back to /run/user/1000`; `/run/user/1000` is owned by uid 1000 with mode 700. Set `XDG_RUNTIME_DIR=/run/user/1000` for future E2E commands.
+
 ### 2026-10-27 — Devin (agent, Adam) — wildcard per-commit assessment routing
 - Did: Routed non-empty author configuration, including `*`, through per-commit scheduling; added wildcard push and unlisted-author regressions.
 - State of the code: Branch `fix/adam/per-commit-wildcard`; ready to commit and push.
