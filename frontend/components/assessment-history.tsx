@@ -37,7 +37,7 @@ export function AssessmentList({ projectId, repoId, page }: { projectId: string;
       });
     } catch (err) { setError(err); } finally { setBusy(false); }
   };
-  if (items.length === 0 && nextCursor === null) return <Empty>No assessments for this repository yet. Approve a scope, then start a check above.</Empty>;
+  if (items.length === 0 && nextCursor === null) return <Empty>No assessments for this repository yet. Start one above; it needs approved sandbox testing (Setup question 6, or More → Authorized scopes).</Empty>;
   return (
     <div className="min-w-0">
       {items.length === 0 ? <Empty>No assessments for this repository on the latest page.</Empty> : (
