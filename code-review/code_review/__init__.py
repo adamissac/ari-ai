@@ -4,5 +4,5 @@ Public entry points live in :mod:`code_review.api`. Everything here runs through
 backend ``AssessmentHost`` and LLM gateway; repository content is untrusted data.
 """
 
-PROMPT_VERSION = "reviewer@1"
+PROMPT_VERSION = "reviewer@3"
 REPAIR_PROMPT_VERSION = "reviewer-repair@1"
