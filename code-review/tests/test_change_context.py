@@ -155,3 +155,45 @@ def test_a_test_cited_by_name_without_a_line_resolves_to_its_def(tmp_path: Path)
         assert checker.check(missing)[0] is None
     finally:
         ws.close()
+
+
+def test_a_paraphrased_test_quote_resolves_to_the_test_it_names(tmp_path: Path) -> None:
+    """Live gtB2 py-float/py-rename: the citation had lines and a paraphrase naming the test
+    ("test_x asserts 201"); the quote check rejected it, so the rule was never confirmed."""
+    from cr_scenarios import INVOICE_TESTS_HEAD, discount_rounding
+
+    sc = discount_rounding(tmp_path)
+    ws = Workspace.export(RepoSource(sc.repo), sc.head_sha)
+    try:
+        checker = CitationChecker(ws, make_request(InMemoryHost(fake([])), sc).change_intent, {})
+        line = line_of(INVOICE_TESTS_HEAD, "def test_line_total_rounds_half_up")
+        ev, kind, note = checker.check(
+            CitationIn(
+                source_kind=SourceKind.test,
+                path="tests/test_invoice.py",
+                start_line=line,
+                end_line=line + 1,
+                quote="test_line_total_rounds_half_up asserts 0.13",
+            )
+        )
+        assert ev is not None and kind is SourceKind.test, note
+        assert ev.span is not None and ev.span.start_line == line
+        # a paraphrase in a code citation is still rejected
+        bad = CitationIn(
+            source_kind=SourceKind.code,
+            path="tests/test_invoice.py",
+            start_line=line,
+            quote="test_line_total_rounds_half_up asserts 0.13",
+        )
+        assert checker.check(bad)[0] is None
+    finally:
+        ws.close()
+
+
+def test_overlong_model_text_is_clipped_not_rejected() -> None:
+    """Live gtB2 js-lessonkey: a 530-character summary failed validation three times and
+    the whole review was lost."""
+    from code_review.models import ReviewerReport
+
+    report = ReviewerReport.model_validate({"summary": "x" * 530, "claims": [], "findings": []})
+    assert report.summary == "x" * 500
