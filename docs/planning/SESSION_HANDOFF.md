@@ -77,6 +77,9 @@ adds an entry before ending.
 - Assumptions / open questions (RQ links): R2 (lost-segment sandbox estimate capped at `worker_lease_s`) and W2 (no `RAILWAY_TOKEN` silently skips the deployment check) remain open.
 - Next steps: Owner review and merge; the workflow picks up `/readyz` on the next scheduled run.
 - Warnings for the next session: `/readyz` returns 503 when workers are required and none are alive, so a long worker-only outage now also alerts.
+- Follow-up (Codex P2 on #776): S2b's second SIGKILL could land on an idle worker after the restarted attempt already reached `AWAITING_APPROVAL`. `scripted_worker.py` now blocks model calls while `EVIDENCE_HOLD_FILE` exists, so S2b kills `w3b` mid-attempt, and S2b asserts the state at the kill is non-terminal. The race was reproduced with a delayed controller (S2b FAIL, killed at `AWAITING_APPROVAL`); with the barrier the full harness passes S1–S7.
+- Follow-up (second Codex P2 on #776): S3 resumes both S1's and S2a's approval pauses, but every per-assessment gateway shared one scripted repair `FakeTransport`; the second functional repair hit `FakeTransport script exhausted`, which `_repair_functional` reports as progress while the assessment still reaches `COMPLETED`, so S3 passed falsely. S3 now waits for every resumed assessment and fails on any `functional repair failed` event (reproduced: S3 FAIL), and `scripted_worker.py` gives each assessment a fresh repair fake.
+
 ### 2026-11-02 — Devin (agent, Adam) — native scrolling and console UI polish
 - Did: Replaced global wheel easing with reduced-motion-aware same-page hash scrolling, removed scroll-linked ambient parallax and blur-based reveals, shortened landing chapters, and refined console buttons, empty states, panel headers, and sticky bars.
 - State of the code: `fix/adam/native-scroll-ui-polish` contains the implementation and tests, ready for review.

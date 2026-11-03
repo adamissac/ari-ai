@@ -478,13 +478,20 @@ def main() -> int:
         # (CONFLICT_STATE, visible error), never a second restart or fabricated success.
         aid2b, jid2b = start_assessment()
         hard_kill_mid_run(jid2b, aid2b, "w2b")
-        w3b = Proc(worker_env, "w3b")
+        # Barrier: w3b blocks in its first model call of the restarted attempt, so the
+        # second SIGKILL interrupts in-flight work however slow this controller is.
+        hold = tmp / "s2b.hold"
+        reached = Path(f"{hold}.reached")
+        hold.touch()
+        w3b = Proc({**worker_env, "EVIDENCE_HOLD_FILE": str(hold)}, "w3b")
         w3b.start()
         procs.append(w3b)
         _poll(lambda: restart_events(aid2b), bool, timeout=180)
+        _poll(reached.exists, bool, timeout=180)
+        state_at_second_kill = asm_state(aid2b)
         w3b.p.send_signal(signal.SIGKILL)
         w3b.p.wait(timeout=15)
-        state_at_second_kill = asm_state(aid2b)
+        hold.unlink()
         w3c = Proc(worker_env, "w3c")
         w3c.start()
         procs.append(w3c)
@@ -494,7 +501,8 @@ def main() -> int:
         results.record(
             "S2b_second_hard_kill_honest_failure",
             bool(
-                asm_state(aid2b) == "FAILED"
+                state_at_second_kill not in ("AWAITING_APPROVAL", "FAILED", "COMPLETED")
+                and asm_state(aid2b) == "FAILED"
                 and err2.get("code") == "CONFLICT_STATE"
                 and [a.get("to") for a in au2b] == ["SCOPE_CHECK", "FAILED"]
                 and len(restart_events(aid2b)) == 2
@@ -532,15 +540,41 @@ def main() -> int:
         w4 = Proc(worker_env, "w4")
         w4.start()
         procs.append(w4)
-        _poll(lambda: asm_state(aid1), lambda s: s == "COMPLETED", timeout=args.timeout / 3)
+        # Every approved pause resumes here (S1's aid1 and S2a's aid2); each must finish
+        # its functional repair, not swallow a failed replay and still report COMPLETED.
+        resumed = [aid1, aid2]
+        for aid in resumed:
+            _poll(lambda a=aid: asm_state(a), lambda s: s == "COMPLETED", timeout=args.timeout / 3)
+
+        def repair_failures(aid: str) -> list[str]:
+            with transaction() as conn:
+                return [
+                    m
+                    for d in conn.execute(
+                        sa.select(assessment_events.c.doc)
+                        .where(assessment_events.c.assessment_id == aid)
+                        .order_by(assessment_events.c.seq)
+                    ).scalars()
+                    if (m := str((d or {}).get("message", ""))).startswith(
+                        "functional repair failed"
+                    )
+                ]
+
+        failures = {aid: repair_failures(aid) for aid in resumed}
         n_artifacts = len(list(artifacts.rglob("*"))) - len(
             [p for p in artifacts.rglob("*") if p.is_dir()]
         )
         results.record(
             "S3_checkpoint_resume",
-            bool(asm_state(aid1) == "COMPLETED" and found),
+            bool(
+                all(asm_state(a) == "COMPLETED" for a in resumed)
+                and not any(failures.values())
+                and found
+            ),
             {
                 "assessment_state": asm_state(aid1),
+                "resumed_states": {a: asm_state(a) for a in resumed},
+                "functional_repair_failures": failures,
                 "approvals_decided": len(pend),
                 "checkpoint_artifact_still_on_disk": bool(found),
                 "artifact_store_objects": n_artifacts,
