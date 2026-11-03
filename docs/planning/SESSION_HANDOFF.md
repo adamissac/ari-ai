@@ -3,6 +3,12 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-11-03 — Adam (demo real-console rebuild)
+- Replaced the access-code demo's separate walkthrough with the real console and a read-only, in-browser transport for captured, renamed Lumen Pay fixtures. Known non-200 responses, including captured artifact 404 envelopes, are replayed as recorded.
+- Kept the existing access-code check, added a readable view cookie, persistent sample-data banner, demo exit, and redirects from legacy `/demo/**` routes. Added ADR-0024 and updated the demo runbook, frontend route table, and changelog.
+- Captured two real assessment states: one completed with verified/hardened findings and one awaiting human approval. No clean commit was captured.
+- Verification, screenshots, and push are pending.
+
 ### 2026-10-31 — Claude (agent, Alan) — YC customer-readiness assessment and pilot health report
 - Did: Audited `main` @ `4271503e` against #739 (Codex release gate) and #744 (Devin backend readiness); wrote `docs/yc/YC_PRODUCT_READINESS.md`, `SAAS_ARCHITECTURE.md`, `LAUNCH_BLOCKERS.md`, `ENGINEERING_EXECUTION_PLAN.md`; rewrote `docs/planning/MVP_SCOPE.md` as the commercial MVP; updated `docs/pilot/CUSTOMER_ONBOARDING.md`; implemented `scripts/pilot/health_report.py` (the weekly report METRICS.md specifies).
 - State of the code: Branch `feat/alan/yc-product-readiness`. No backend or frontend product code changed.

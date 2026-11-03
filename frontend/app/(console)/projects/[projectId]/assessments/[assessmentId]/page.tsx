@@ -82,6 +82,7 @@ export default function AssessmentPage() {
   }, [loadDetail]);
 
   useEffect(() => {
+    if (!detail || detail.assessment.state === 'AWAITING_APPROVAL') return;
     const controller = new AbortController();
     let cursor = 0;
     (async () => {
@@ -95,12 +96,12 @@ export default function AssessmentPage() {
       if (!controller.signal.aborted) setStreamError(err);
     });
     return () => controller.abort();
-  }, [id, streamNonce, scheduleRefresh]);
+  }, [detail?.assessment.state, id, streamNonce, scheduleRefresh]);
 
   useEffect(() => () => { if (refreshTimer.current) clearTimeout(refreshTimer.current); }, []);
 
   // Polling fallback: persisted records stay current even if an intermediary buffers SSE.
-  const running = detail !== null && !TERMINAL_STATES.has(detail.assessment.state);
+  const running = detail !== null && detail.assessment.state !== 'AWAITING_APPROVAL' && !TERMINAL_STATES.has(detail.assessment.state);
   const phaseLog = useResource(
     `phase-log:${id}`,
     signal => fullEventLog(after => api().eventsLog(id, after, { signal })),

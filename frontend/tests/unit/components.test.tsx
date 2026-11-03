@@ -4,6 +4,8 @@ import { DiffView } from '@/components/diff-view';
 import { Badge, ErrorState } from '@/components/ui';
 import { ASSESSMENT_STATE, FINDING_STATUS } from '@/lib/status';
 
+vi.mock('next/navigation', () => ({ usePathname: () => '/projects', useRouter: () => ({ push: () => undefined }) }));
+
 afterEach(cleanup);
 
 describe('components', () => {
@@ -29,18 +31,14 @@ describe('components', () => {
     render(<ErrorState error={new TypeError('Failed to fetch')} context="Load" />);
     expect(screen.getByTestId('error-state').textContent).toContain('Backend unreachable');
   });
-  it('fixture mode banner appears only when explicitly enabled', async () => {
-    vi.resetModules();
-    vi.stubEnv('NEXT_PUBLIC_DEMO_FIXTURES', '');
-    const off = await import('@/components/demo-banner');
-    const { container } = render(<off.DemoBanner />);
+  it('demo banner appears only with the demo-view cookie', async () => {
+    const { DemoBanner } = await import('@/components/demo-banner');
+    const { container } = render(<DemoBanner />);
     expect(container.textContent).toBe('');
     cleanup();
-    vi.resetModules();
-    vi.stubEnv('NEXT_PUBLIC_DEMO_FIXTURES', '1');
-    const on = await import('@/components/demo-banner');
-    render(<on.DemoBanner />);
-    expect(screen.getByRole('status').textContent).toContain('DEMO DATA');
-    vi.unstubAllEnvs();
+    document.cookie = 'ari_demo_view=1; Path=/';
+    render(<DemoBanner />);
+    expect(screen.getByText('Demo account · Lumen Pay sample data — every repository, commit and result here is illustrative.')).toBeTruthy();
+    document.cookie = 'ari_demo_view=; Max-Age=0; Path=/';
   });
 });

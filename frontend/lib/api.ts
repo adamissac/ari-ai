@@ -1,17 +1,27 @@
 import { ApiClient, ApiError, ProtocolError } from '@hackatl/frontend-transport';
+import { demoFetch } from '@/lib/demo/console/fetch';
 
 let client: ApiClient | undefined;
+let clientDemoMode: boolean | null | undefined;
 
 /** One browser client per tab: the CSRF token lives only in its memory. */
 export function api(): ApiClient {
   if (typeof window === 'undefined') throw new Error('The API client is browser-only');
-  client ??= new ApiClient({ baseUrl: `${window.location.origin}/api/v1` });
+  const isDemo = document.cookie.split(';').some(cookie => cookie.trim() === 'ari_demo_view=1');
+  if (!client || (clientDemoMode !== null && clientDemoMode !== isDemo)) {
+    client = new ApiClient({
+      baseUrl: `${window.location.origin}/api/v1`,
+      ...(isDemo ? { fetch: demoFetch } : {}),
+    });
+    clientDemoMode = isDemo;
+  }
   return client;
 }
 
 /** Test seam: replace the singleton (unit tests inject a fetch double). */
 export function setApiClient(next: ApiClient | undefined): void {
   client = next;
+  clientDemoMode = next ? null : undefined;
 }
 
 export interface DescribedError {

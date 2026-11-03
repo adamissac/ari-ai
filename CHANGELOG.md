@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Replace the separate demo UI with the real Ari console backed by renamed, captured sample fixtures; keep demo reads offline and mutations disabled.
+
 - Automatic GitHub review reliability:
   - A pull request whose head commit was already queued or reviewed from its push now gets the review comment, still from a single assessment of that commit.
   - PR review comments are no longer posted to a repository disconnected after the assessment finished; the skip is audited as `monitoring.pr_review_skipped`.
