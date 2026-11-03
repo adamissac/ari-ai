@@ -9,7 +9,8 @@ and proposes minimal repairs in isolated workspaces. Spec: [docs/06](../docs/06_
 | Module | What it does |
 |---|---|
 | `code_review/agent.py` | `ReviewerAgentRunner`: two bounded multi-turn Claude tool loops through the backend gateway (`host.llm().run_tool_loop`). **review** submits a `ReviewerReport`; **repair** (approval-gated) submits a `RepairReport`. Statuses are decided by code, not by the model. |
-| `code_review/intent.py` | `IntentEvidence`: every citation is checked against the pinned files (path, line range, quoted text). `confirmed` needs a doc, docstring, existing test or confirmed index expectation; PR text or code alone gives `inferred`. Instruction-like PR text is flagged and treated as data. |
+| `code_review/context.py` | Deterministic first-turn context: references to the changed symbols across the pinned head tree (callers the diff never touched), identifiers the change removed that other code still uses, and the tests/docs that mention the changed code. The commit messages of base..head are passed as untrusted intent. |
+| `code_review/intent.py` | `IntentEvidence`: every citation is checked against the pinned files (path, line range, quoted text). `confirmed` needs a doc, docstring, existing test or confirmed index expectation; PR text or code alone gives `inferred`. In JS/TS a citation wholly inside a `/* */` or `//` comment block counts as a docstring. Instruction-like PR text is flagged and treated as data. |
 | `code_review/tools.py` | Permission-enforced tools: `list_files`, `read_file`, `search_code`, `get_change_diff`, `list_expectations`, `get_context_pack`, `write_test` (only new files under `tests/generated/`, AST policy: no subprocess/network/fs abuse, no new credential-shaped values), `run_tests`; repair mode adds `edit_file`, `apply_patch`, `show_diff`, `revert_file`. Tests, conftest, pytest/tox/setup config, `pyproject.toml` and lockfiles are never writable. Budgets cap tests written, runs and edits. |
 | `code_review/workspace.py` | SHA-pinned exports via `git archive` into temp dirs: no `.git`, no link back to the customer repo. Unified diffs, `git apply` inside the workspace, docstring ranges. |
 | `code_review/sandbox.py` | `LocalProcessSandbox` (`SandboxPort`): fixed pytest command, scrubbed env (no keys), rlimits, timeout, process-group kill, output cap; a pytest plugin records each test's exception type. Classifies runs as `passed`, `failed` (AssertionError / pytest.fail) or `error` (tooling, which is inconclusive). **No network isolation**, so it is used only in development/test (refused elsewhere, see below). |
@@ -53,6 +54,10 @@ Repositories must be registered by the operator:
 
 ## Evidence status
 
+* **Live ground truth (2026-11-03):** 9 planted functional bugs + 4 clean commits pushed to the connected
+  repos, five rounds through production. Final: 9/9 flagged, 3/4 Python bugs fixed and Verify-accepted,
+  0 false positives, ~21 s and ~$0.006 per review (Haiku). JS findings stay hypotheses (no JS runner).
+  See [docs/REVIEWER_LIVE_EVAL_2026-11-03.md](../docs/REVIEWER_LIVE_EVAL_2026-11-03.md).
 * **Precision / recall:** the independent corpus exists and its 10 labels are proven by execution
   (`test_eval_corpus.py`), and the scorer is tested. **No live corpus run yet** on the 10-case
   corpus: real precision/recall needs an approved paid run of `test_live_corpus.py`.

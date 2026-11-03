@@ -592,10 +592,11 @@ class Orchestrator:
         # ---- ANALYSIS (Trace). Diagnose's step needs only the validated finding, so it runs
         # alongside; its plan applies only to a finding Trace could analyse.
         self._goto(AssessmentState.ANALYSIS)
-        with ThreadPoolExecutor(max_workers=len(confirmed)) as pool:
+        with ThreadPoolExecutor(max_workers=2 * len(confirmed)) as pool:
             plans = {f.finding_id: pool.submit(self._diagnose_step, f) for f in confirmed}
+            traces = {f.finding_id: pool.submit(self._trace_step, f) for f in confirmed}
             for finding in confirmed:
-                self._run_trace(finding)
+                self._apply_trace(finding, *traces[finding.finding_id].result())
             traced = [f for f in confirmed if f.attack_path is not None]
             if not traced:
                 return self._report_or_wait("impact analysis failed for all findings")
@@ -979,54 +980,69 @@ class Orchestrator:
     def _finding_for(self, hypothesis_id: str) -> FindingRecord:
         return next(f for f in self.result.findings if f.hypothesis.id == hypothesis_id)
 
-    def _run_validation(self, hypotheses: list[Hypothesis]) -> list[FindingRecord]:
-        confirmed: list[FindingRecord] = []
-        for index, hypothesis in enumerate(hypotheses[: self.config.max_hypotheses_to_validate]):
-            finding = self._finding_for(hypothesis.id)
-            data = probe_agent.input_from_hypothesis(
-                hypothesis,
-                assessment_id=self.config.assessment_id,
-                scope_id=self.config.scope.id,
-                target_id=self.config.target_id,
-                intel=self.intel,
+    def _probe_step(
+        self, index: int, hypothesis: Hypothesis
+    ) -> tuple[FindingRecord, Any, ToolContext | None, StepOutcome | None]:
+        """One Probe model step and its check runs. Runs on a worker thread: everything that
+        records results (sink, history, classification) happens afterwards on the caller."""
+        finding = self._finding_for(hypothesis.id)
+        data = probe_agent.input_from_hypothesis(
+            hypothesis,
+            assessment_id=self.config.assessment_id,
+            scope_id=self.config.scope.id,
+            target_id=self.config.target_id,
+            intel=self.intel,
+        )
+        services = {
+            **self._read_services(),
+            "check_runner": CheckRunner(
+                driver=self.driver,
+                library=self.library,
+                workspace_provider=lambda _ctx: self.intel.snapshot.root,
+                recipe_provider=recipe_from_snapshot(self.intel),
+                transport=self.config.probe_check_transport,
+            ),
+        }
+        ctx = self._context(AgentName.PROBE, f"validation:{index}", services=services)
+        try:
+            advice = (
+                self._advise(
+                    "finding",
+                    finding.finding_id,
+                    specialist_bridge.probe_advice(self.specialists, hypothesis),
+                )
+                if self.specialists is not None
+                else None
             )
-            services = {
-                **self._read_services(),
-                "check_runner": CheckRunner(
-                    driver=self.driver,
-                    library=self.library,
-                    workspace_provider=lambda _ctx: self.intel.snapshot.root,
-                    recipe_provider=recipe_from_snapshot(self.intel),
-                    transport=self.config.probe_check_transport,
+            outcome = self._run_step(
+                probe_agent.SPEC,
+                ctx,
+                probe_agent.build_prompt(data, self.intel)
+                + specialist_bridge.block(
+                    advice,
+                    "Ranked OWASP WSTG validation strategies from a trained model. Choose a reviewed check "
+                    "template yourself; the executed template's result decides the outcome, not this ranking.",
                 ),
-            }
-            ctx = self._context(AgentName.PROBE, f"validation:{index}", services=services)
-            try:
-                advice = (
-                    self._advise(
-                        "finding",
-                        finding.finding_id,
-                        specialist_bridge.probe_advice(self.specialists, hypothesis),
-                    )
-                    if self.specialists is not None
-                    else None
-                )
-                outcome = self._run_step(
-                    probe_agent.SPEC,
-                    ctx,
-                    probe_agent.build_prompt(data, self.intel)
-                    + specialist_bridge.block(
-                        advice,
-                        "Ranked OWASP WSTG validation strategies from a trained model. Choose a reviewed check "
-                        "template yourself; the executed template's result decides the outcome, not this ranking.",
-                    ),
-                    input_ref=f"probe:{hypothesis.id}",
-                )
-            except PlatformError as exc:
-                if exc.code is ErrorCode.BUDGET_EXHAUSTED:
-                    raise
-                finding.status = "inconclusive"
-                finding.notes.append(f"probe step failed: {exc.code.value}")
+                input_ref=f"probe:{hypothesis.id}",
+            )
+        except PlatformError as exc:
+            if exc.code is ErrorCode.BUDGET_EXHAUSTED:
+                raise
+            finding.status = "inconclusive"
+            finding.notes.append(f"probe step failed: {exc.code.value}")
+            return finding, data, None, None
+        return finding, data, ctx, outcome
+
+    def _run_validation(self, hypotheses: list[Hypothesis]) -> list[FindingRecord]:
+        """Probe validates each hypothesis independently, so the steps run concurrently
+        (each in its own sandbox); results are recorded in hypothesis order."""
+        confirmed: list[FindingRecord] = []
+        selected = hypotheses[: self.config.max_hypotheses_to_validate]
+        with ThreadPoolExecutor(max_workers=max(1, len(selected))) as pool:
+            futures = [pool.submit(self._probe_step, i, h) for i, h in enumerate(selected)]
+            steps = [f.result() for f in futures]
+        for hypothesis, (finding, data, ctx, outcome) in zip(selected, steps, strict=True):
+            if ctx is None or outcome is None:
                 continue
             check_runs = list(ctx.artifacts.get("check_runs") or [])
             for run in check_runs:
@@ -1069,7 +1085,8 @@ class Orchestrator:
                 confirmed.append(finding)
         return confirmed
 
-    def _run_trace(self, finding: FindingRecord) -> None:
+    def _trace_step(self, finding: FindingRecord) -> tuple[trace_agent.TraceInput, StepOutcome]:
+        """Trace's model step; thread-safe. `_apply_trace` records its result."""
         assert finding.validation is not None
         paths = [s.path for s in finding.hypothesis.cited_spans if s.path]
         symbol = self._handler_symbol(finding)
@@ -1105,6 +1122,11 @@ class Orchestrator:
             ),
             input_ref=f"trace:{finding.finding_id}",
         )
+        return data, outcome
+
+    def _apply_trace(
+        self, finding: FindingRecord, data: trace_agent.TraceInput, outcome: StepOutcome
+    ) -> None:
         if not isinstance(outcome.output, trace_agent.TraceOutput):
             finding.notes.append(f"trace failed: {outcome.run.error_code}")
             return

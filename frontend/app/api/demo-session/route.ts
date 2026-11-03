@@ -4,6 +4,7 @@ import {
   cookieGrantsAccess,
   DEMO_COOKIE,
   DEMO_COOKIE_MAX_AGE_S,
+  DEMO_VIEW_COOKIE,
   demoAccessConfigured,
   demoAccessToken,
 } from '@/lib/demo/access';
@@ -56,11 +57,19 @@ export async function POST(request: NextRequest) {
     path: '/',
     maxAge: DEMO_COOKIE_MAX_AGE_S,
   });
+  response.cookies.set(DEMO_VIEW_COOKIE, '1', {
+    httpOnly: false,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production' && request.nextUrl.protocol === 'https:',
+    path: '/',
+    maxAge: DEMO_COOKIE_MAX_AGE_S,
+  });
   return response;
 }
 
 export function DELETE() {
   const response = NextResponse.json({ signedIn: false });
   response.cookies.set(DEMO_COOKIE, '', { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 0 });
+  response.cookies.set(DEMO_VIEW_COOKIE, '', { httpOnly: false, sameSite: 'lax', path: '/', maxAge: 0 });
   return response;
 }

@@ -12,6 +12,8 @@ import pytest
 from security_agents.checks.library import (
     AUTHENTICATION,
     BOUNDS,
+    CONCURRENT_BOUND,
+    DESTINATION,
     OWNERSHIP,
     ROLE,
     default_library,
@@ -54,6 +56,8 @@ def test_library_lists_runnable_templates(library):
         "firestore.owner_isolation@1",
         "firestore.unauthenticated_denied@1",
         "firestore.collection_enumeration@1",
+        CONCURRENT_BOUND.ref,
+        DESTINATION.ref,
     }
     assert all(t["runnable"] for t in library.list_public())
     assert library.categories() == {
