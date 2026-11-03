@@ -29,8 +29,7 @@ sys.modules.setdefault(_SPEC.name, storage_watch)
 _SPEC.loader.exec_module(storage_watch)
 
 ALERT_TITLE = "[ops-alert] Production is down"
-DEFAULT_HEALTH_URL = "https://ari-ai-production-76d4.up.railway.app/readyz"
-HEALTHY_STATUSES = frozenset({"ok", "ready"})
+DEFAULT_HEALTH_URL = "https://ari-ai-production-76d4.up.railway.app/healthz"
 LIVE_STATUSES = {"SUCCESS", "SLEEPING"}
 
 
@@ -47,37 +46,54 @@ def check_health(url: str, opener: Any = urlopen) -> str | None:
         with opener(request, timeout=20) as response:
             body = response.read()
     except HTTPError as error:
-        return f"{url} returned HTTP {error.code}{_readiness_detail(error)}"
+        return f"{url} returned HTTP {error.code}"
     except (URLError, TimeoutError, OSError):
         return f"{url} is unreachable"
     try:
-        doc = json.loads(body)
-        status = doc.get("status")
+        status = json.loads(body).get("status")
     except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
         return f"{url} returned a non-JSON body"
-    if status not in HEALTHY_STATUSES:
+    if status != "ok":
         return f"{url} reported status {status!r}"
-    if doc.get("capabilities_ready") is False:
-        return f"{url} is up but capabilities_ready is false (assessments cannot run)"
     return None
 
 
-def _readiness_detail(error: HTTPError) -> str:
-    """Name the failed components from a /readyz 503 body, if it has one."""
+def ready_url_for(health_url: str) -> str:
+    base = health_url[: -len("/healthz")] if health_url.endswith("/healthz") else health_url
+    return f"{base.rstrip('/')}/readyz"
+
+
+def check_ready(url: str, opener: Any = urlopen) -> str | None:
+    """/healthz is static; /readyz is the DB/queue/worker gate (503 unless ready) and
+    reports whether a real assessment can run (capabilities_ready)."""
+    request = Request(url, headers={"User-Agent": "curl/8.7.1"})
+    code = 200
     try:
-        doc = json.loads(error.read())
-    except Exception:
-        return ""
-    if not isinstance(doc, dict):
-        return ""
-    down = [name for name in ("database", "queue") if doc.get(name) is False]
-    workers = doc.get("workers")
-    if isinstance(workers, dict) and workers.get("required") and not workers.get("alive"):
-        down.append("workers")
-    parts = [str(doc.get("status", "unknown"))]
-    if down:
-        parts.append("down: " + ", ".join(down))
-    return f" ({'; '.join(parts)})"
+        with opener(request, timeout=20) as response:
+            body = response.read()
+    except HTTPError as error:
+        code = error.code
+        try:
+            body = error.read() if error.fp is not None else b""
+        except OSError:
+            body = b""
+    except (URLError, TimeoutError, OSError):
+        return f"{url} is unreachable"
+    try:
+        payload = json.loads(body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        payload = None
+    if not isinstance(payload, dict):
+        payload = {}
+    status = payload.get("status")
+    if code != 200:
+        detail = f" (status {status!r})" if status else ""
+        return f"{url} returned HTTP {code}{detail}"
+    if status != "ready":
+        return f"{url} reported status {status!r}"
+    if payload.get("capabilities_ready") is not True:
+        return f"{url} reports capabilities_ready=false: a real assessment cannot run"
+    return None
 
 
 def fetch_services(token: str) -> list[dict[str, Any]]:
@@ -112,13 +128,27 @@ def _railway_project(token: str, query: str) -> dict[str, Any]:
     return project
 
 
-def evaluate(health_problem: str | None, services: Sequence[Mapping[str, Any]]) -> UptimeReport:
+def evaluate(
+    health_problem: str | None,
+    services: Sequence[Mapping[str, Any]],
+    ready_problem: str | None = None,
+    railway_checked: bool = True,
+) -> UptimeReport:
     lines = ["| Service | Latest deployment |", "|---|---|"]
     problems: list[str] = []
     keys: list[str] = []
     if health_problem:
         problems.append(f"Backend health check failed: {health_problem}")
         keys.append("health")
+    if ready_problem:
+        problems.append(f"Backend readiness check failed: {ready_problem}")
+        keys.append("ready")
+    if not railway_checked:
+        problems.append(
+            "Railway deployment check skipped: RAILWAY_TOKEN is not set, so removed "
+            "deployments cannot be detected. Add the project token as an Actions secret."
+        )
+        keys.append("railway:unchecked")
     for service in services:
         name = str(service.get("name"))
         deployment = service.get("deployment") or {}
@@ -170,7 +200,9 @@ def sync_issue(client: Any, repo: str, report: UptimeReport) -> str:
 
 def main() -> int:
     token = os.environ.get("RAILWAY_TOKEN", "")
-    health_problem = check_health(os.getenv("UPTIME_HEALTH_URL", DEFAULT_HEALTH_URL))
+    health_url = os.getenv("UPTIME_HEALTH_URL", DEFAULT_HEALTH_URL)
+    health_problem = check_health(health_url)
+    ready_problem = check_ready(os.getenv("UPTIME_READY_URL") or ready_url_for(health_url))
     services: list[dict[str, Any]] = []
     if token:
         try:
@@ -178,7 +210,7 @@ def main() -> int:
         except Exception as error:
             message = str(error).replace(token, "[REDACTED]")
             services = [{"name": "railway-api", "deployment": {"status": f"unknown ({message})"}}]
-    report = evaluate(health_problem, services)
+    report = evaluate(health_problem, services, ready_problem, railway_checked=bool(token))
     markdown = render_markdown(report)
     print(markdown)
     summary_path = os.getenv("GITHUB_STEP_SUMMARY")
