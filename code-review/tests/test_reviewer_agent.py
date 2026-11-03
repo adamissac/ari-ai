@@ -138,6 +138,9 @@ def test_discount_rounding_defect_validated_with_multi_turn_trace(tmp_path: Path
     assert "edit_file" not in names and "apply_patch" not in names and "write_test" in names
     assert "<untrusted_change_intent>" in first["messages"][0]["content"]
     assert "Ignore previous instructions" in first["messages"][0]["content"]
+    # the author's commit message and the callers/tests of the changed code arrive up front
+    assert "commit_messages:\nAdd percentage promo discount" in first["messages"][0]["content"]
+    assert "<change_context" in first["messages"][0]["content"]
 
     # tool outputs the model saw are the real executions
     seen = all_tool_results(transport.requests[-1])
