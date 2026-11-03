@@ -1,0 +1,84 @@
+[
+  {
+    "left": "canonical/main",
+    "right": "audit/693",
+    "exit": 0,
+    "tree": "d81fd73128aaab1e7b2604efd307984974114d09",
+    "conflicts": []
+  },
+  {
+    "left": "canonical/main",
+    "right": "audit/694",
+    "exit": 0,
+    "tree": "0bf182d63796aefac53ed16b15befc8476ad8ecf",
+    "conflicts": []
+  },
+  {
+    "left": "canonical/main",
+    "right": "audit/695",
+    "exit": 0,
+    "tree": "f131216fe1b3e7fdb129a45d686019740e149f29",
+    "conflicts": []
+  },
+  {
+    "left": "canonical/main",
+    "right": "audit/696",
+    "exit": 0,
+    "tree": "c4abfd20eb824d062729f11029c2109da605fc79",
+    "conflicts": []
+  },
+  {
+    "left": "canonical/main",
+    "right": "audit/723",
+    "exit": 0,
+    "tree": "be0e2e4aebe1f895480ca9311e62ec3157ca1c48",
+    "conflicts": []
+  },
+  {
+    "left": "canonical/main",
+    "right": "audit/725",
+    "exit": 0,
+    "tree": "64426d0cb9325ab5b957cf8a7d951061941e997a",
+    "conflicts": []
+  },
+  {
+    "left": "audit/693",
+    "right": "audit/694",
+    "exit": 1,
+    "tree": "509877db086a6c0caae1b71a48605a1318563771",
+    "conflicts": [
+      "CONFLICT (content): Merge conflict in CHANGELOG.md",
+      "CONFLICT (content): Merge conflict in backend/README.md",
+      "CONFLICT (content): Merge conflict in backend/backend/auto_commits.py"
+    ]
+  },
+  {
+    "left": "audit/694",
+    "right": "audit/695",
+    "exit": 1,
+    "tree": "92e9b0941f40f03c910ec15062be25d214e9212f",
+    "conflicts": [
+      "CONFLICT (content): Merge conflict in CHANGELOG.md",
+      "CONFLICT (content): Merge conflict in docs/planning/SESSION_HANDOFF.md"
+    ]
+  },
+  {
+    "left": "audit/695",
+    "right": "audit/696",
+    "exit": 1,
+    "tree": "af0014804aa3b8caa5a15e5bc269215eb623c211",
+    "conflicts": [
+      "CONFLICT (content): Merge conflict in CHANGELOG.md",
+      "CONFLICT (content): Merge conflict in docs/planning/SESSION_HANDOFF.md"
+    ]
+  },
+  {
+    "left": "audit/693",
+    "right": "audit/725",
+    "exit": 1,
+    "tree": "65518fa5cc45f3b124b06564d75b4b6d953f1e8c",
+    "conflicts": [
+      "CONFLICT (content): Merge conflict in CHANGELOG.md"
+    ]
+  }
+]

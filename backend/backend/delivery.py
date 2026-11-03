@@ -10,6 +10,9 @@
   arrives as a PR for the team.
 * ``manual``: nothing here acts; a human approves each remediation and nothing is pushed.
 
+``PILOT_RECOMMENDATION_ONLY`` (on by default in staging) overrides every mode: no
+approval is granted on an owner's behalf and ``push_patch`` refuses to write.
+
 Nothing is ever force-pushed, and a rejected, inconclusive or unverified patch never leaves
 the sandbox. Before delivery, the default-branch tip is checked so an already-applied fix is
 not delivered twice. A project that predates delivery modes has no recorded authorizer, so it
@@ -32,6 +35,7 @@ from sqlalchemy.engine import Connection
 from backend import audit, jobs
 from backend.artifacts import ArtifactStore
 from backend.checkouts import FULL_NAME_RE, CheckoutError, _git, _locked, auth_env, fetch_commit
+from backend.connection_guard import RepositoryDetached, github_write
 from backend.db import (
     approvals,
     assessments,
@@ -70,6 +74,8 @@ def authority(conn: Connection, project_id: str) -> tuple[DeliveryMode, str] | N
     demoted owner's standing authorization ends with their access."""
     from backend.api.deps import org_role
 
+    if get_settings().recommendation_only:
+        return None
     s = project_settings(conn, project_id)
     if s.delivery_mode is DeliveryMode.manual or not s.delivery_authorized_by:
         return None
@@ -174,6 +180,10 @@ def push_patch(
 
     ``require_tip``: the branch must still point at ``base_sha`` (a direct push to the default
     branch ships exactly the tested tree). Returns the new commit SHA."""
+    if get_settings().recommendation_only:
+        raise PermanentJobError(
+            ErrorCode.FORBIDDEN, "recommendation-only pilot: repository writes are disabled"
+        )
     if not FULL_NAME_RE.match(full_name):
         raise CheckoutError(f"invalid repository name {full_name!r}")
     if not BRANCH_RE.match(branch) or ".." in branch:
@@ -471,6 +481,9 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
     if granted is None:  # switched to manual (or authorizer lost ownership) since queueing
         finish("delivery.skipped")
         return {"status": "skipped", "reason": "delivery is manual"}
+    if repo is not None and repo["disconnected_at"] is not None:
+        finish("delivery.skipped", reason="repository is disconnected")
+        return {"status": "skipped", "reason": "repository is disconnected"}
     if not connected or repo is None or s.security_workdir is None:
         finish("delivery.failed", reason="repository is not connected through the GitHub App")
         raise PermanentJobError(
@@ -500,9 +513,13 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
     fallback: str | None = None
     tip: str | None = None
     tip_state = "unknown"
+
     try:
         app = GitHubApp(settings=s)
-        token = app.installation_token(iid, write=True, repository=full_name.split("/", 1)[1])
+        # Minting the write token is itself a provider write-access request: hold the write
+        # lease so a disconnect that has returned 200 can never be followed by a new token.
+        with github_write(str(repo["id"]), iid):
+            token = app.installation_token(iid, write=True, repository=full_name.split("/", 1)[1])
         with _locked(repo_dir):
             fetch_commit(repo_dir, full_name, base, token, github_web_url=web)
             try:
@@ -524,18 +541,20 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
                 return {"status": "skipped", "reason": reason}
             if mode is DeliveryMode.auto:
                 try:
-                    sha = push_patch(
-                        repo_dir, full_name, base, diff, token, message, base_branch,
-                        require_tip=True, github_web_url=web,
-                    )  # fmt: skip
+                    with github_write(str(repo["id"]), iid):
+                        sha = push_patch(
+                            repo_dir, full_name, base, diff, token, message, base_branch,
+                            require_tip=True, github_web_url=web,
+                        )  # fmt: skip
                     finish("delivery.pushed", commit_sha=sha, branch=base_branch)
                     return {"status": "pushed", "commit_sha": sha, "branch": base_branch}
                 except CheckoutError as exc:  # branch moved, or push refused (protection)
                     fallback = _reason(exc)
             branch = f"ari/fix-{patch.id}"
-            sha = push_patch(
-                repo_dir, full_name, base, diff, token, message, branch, github_web_url=web
-            )
+            with github_write(str(repo["id"]), iid):
+                sha = push_patch(
+                    repo_dir, full_name, base, diff, token, message, branch, github_web_url=web
+                )
         pr_body = (
             f"Verified fix from Ari for finding `{patch.finding_id}` (patch `{patch.id}`, "
             f"verification `{verification.id}`). Review and merge to apply."
@@ -551,14 +570,18 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
                 f"moved to `{tip[:12]}` and this change no longer applies cleanly. Rebase it or "
                 "re-run the review on the latest commit."
             )
-        url = app.open_pull_request(
-            iid,
-            full_name,
-            head=branch,
-            base=base_branch,
-            title=f"fix: {patch.rationale}"[:120],
-            body=pr_body,
-        )
+        with github_write(str(repo["id"]), iid):
+            url = app.open_pull_request(
+                iid,
+                full_name,
+                head=branch,
+                base=base_branch,
+                title=f"fix: {patch.rationale}"[:120],
+                body=pr_body,
+            )
+    except RepositoryDetached as exc:
+        finish("delivery.skipped", reason=exc.reason, fallback_from=fallback)
+        return {"status": "skipped", "reason": exc.reason}
     except (CheckoutError, httpx.HTTPError) as exc:
         if isinstance(exc, httpx.HTTPError) and _transient(exc):
             raise  # the queue retries with backoff; the branch and PR steps are idempotent
