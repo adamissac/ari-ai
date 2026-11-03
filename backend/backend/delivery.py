@@ -35,7 +35,9 @@ from backend.checkouts import FULL_NAME_RE, CheckoutError, _git, _locked, auth_e
 from backend.db import (
     approvals,
     assessments,
+    monitoring_events,
     patch_candidates,
+    reassessment_requests,
     repositories,
     transaction,
     verification_results,
@@ -384,6 +386,31 @@ def _reason(exc: Exception) -> str:
     return str(exc)[:300]
 
 
+def pushed_branch(conn: Connection, reassessment_request_id: str | None) -> str | None:
+    """Branch a push-triggered assessment's commit was pushed to, if any.
+
+    A fix belongs on the branch that carries the assessed commit: a PR from a fix cut on a
+    feature branch into the default branch would also merge every unreviewed commit of
+    that feature branch."""
+    if not reassessment_request_id:
+        return None
+    doc = conn.execute(
+        sa.select(reassessment_requests.c.doc).where(
+            reassessment_requests.c.id == reassessment_request_id
+        )
+    ).scalar()
+    for event_id in (doc or {}).get("event_ids") or []:
+        event = conn.execute(
+            sa.select(monitoring_events.c.doc).where(monitoring_events.c.id == event_id)
+        ).scalar()
+        ref = str((event or {}).get("ref") or "")
+        if (event or {}).get("type") == "push" and ref.startswith("refs/heads/"):
+            branch = ref.removeprefix("refs/heads/")
+            if BRANCH_RE.match(branch) and ".." not in branch:
+                return branch
+    return None
+
+
 @handler("deliver_verified_patch")
 def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
     ctx.check_cancelled()
@@ -409,9 +436,11 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
         )
         asm = (
             conn.execute(
-                sa.select(assessments.c.project_id, assessments.c.repo_id).where(
-                    assessments.c.id == ctx.job.payload["assessment_id"]
-                )
+                sa.select(
+                    assessments.c.project_id,
+                    assessments.c.repo_id,
+                    assessments.c.reassessment_request_id,
+                ).where(assessments.c.id == ctx.job.payload["assessment_id"])
             )
             .mappings()
             .one()
@@ -430,6 +459,7 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
             .first()
         )
         connected = repo is not None and repo["installation_id"] is not None
+        target_branch = pushed_branch(conn, asm["reassessment_request_id"])
         diff, mismatch = None, None
         if granted and connected:
             diff, mismatch = _verified_diff_bytes(conn, verification, patch)
@@ -456,7 +486,8 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
     mode = granted[0]
     if mode is DeliveryMode.auto and not s.auto_delivery_allowed:
         mode = DeliveryMode.pull_request  # settings saved before the gate; never push direct
-    full_name, default_branch = str(repo["full_name"]), str(repo["default_branch"])
+    full_name = str(repo["full_name"])
+    base_branch = target_branch or str(repo["default_branch"])
     iid = int(repo["installation_id"])
     repo_dir = s.security_workdir / "repos" / f"{repo['id']}.git"
     base = patch.base_commit_sha
@@ -478,7 +509,7 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
                 tip, tip_state = default_tip_state(
                     repo_dir,
                     full_name,
-                    default_branch,
+                    base_branch,
                     diff,
                     token,
                     base_sha=base,
@@ -488,17 +519,17 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
                 log.warning("could not inspect %s default-branch tip: %s", full_name, exc)
                 tip_state = "unknown"
             if tip is not None and tip_state == "already_applied":
-                reason = f"{default_branch} already contains this fix (at {tip[:12]})"
+                reason = f"{base_branch} already contains this fix (at {tip[:12]})"
                 finish("delivery.skipped", reason=reason, tip_sha=tip)
                 return {"status": "skipped", "reason": reason}
             if mode is DeliveryMode.auto:
                 try:
                     sha = push_patch(
-                        repo_dir, full_name, base, diff, token, message, default_branch,
+                        repo_dir, full_name, base, diff, token, message, base_branch,
                         require_tip=True, github_web_url=web,
                     )  # fmt: skip
-                    finish("delivery.pushed", commit_sha=sha, branch=default_branch)
-                    return {"status": "pushed", "commit_sha": sha, "branch": default_branch}
+                    finish("delivery.pushed", commit_sha=sha, branch=base_branch)
+                    return {"status": "pushed", "commit_sha": sha, "branch": base_branch}
                 except CheckoutError as exc:  # branch moved, or push refused (protection)
                     fallback = _reason(exc)
             branch = f"ari/fix-{patch.id}"
@@ -511,12 +542,12 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
         )
         if tip is not None and tip_state == "applies":
             pr_body += (
-                f"\n\nBased on the assessed commit `{base[:12]}`; `{default_branch}` has since "
+                f"\n\nBased on the assessed commit `{base[:12]}`; `{base_branch}` has since "
                 f"moved to `{tip[:12]}` and this change still applies cleanly."
             )
         elif tip is not None and tip_state == "conflicts":
             pr_body += (
-                f"\n\nBased on the assessed commit `{base[:12]}`; `{default_branch}` has since "
+                f"\n\nBased on the assessed commit `{base[:12]}`; `{base_branch}` has since "
                 f"moved to `{tip[:12]}` and this change no longer applies cleanly. Rebase it or "
                 "re-run the review on the latest commit."
             )
@@ -524,7 +555,7 @@ def deliver_verified_patch(ctx: JobContext) -> dict[str, Any]:
             iid,
             full_name,
             head=branch,
-            base=default_branch,
+            base=base_branch,
             title=f"fix: {patch.rationale}"[:120],
             body=pr_body,
         )

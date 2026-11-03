@@ -49,8 +49,9 @@ def _actions() -> list[str]:
         return [d["action"] for d in conn.execute(sa.select(audit_events.c.doc)).scalars()]
 
 
-def _run_push(client, pid: str) -> str:
-    assert post_webhook(client, push_payload(["app/invoices.py"])).status_code == 202
+def _run_push(client, pid: str, ref: str = "refs/heads/main") -> str:
+    payload = push_payload(["app/invoices.py"]) | {"ref": ref}
+    assert post_webhook(client, payload).status_code == 202
     worker.drain(kinds=["process_github_delivery"])
     worker.drain(kinds=["run_assessment"])
     return client.get(f"/api/v1/projects/{pid}/reassessments").json()["items"][0]["assessment_id"]
@@ -210,12 +211,13 @@ def wired(client_factory, reference, settings_override, tmp_path, monkeypatch):
         *,
         connected: bool = True,
         delivery_mode: str | None = "manual",
+        ref: str = "refs/heads/main",
     ):
         alice, bob = client_factory("alice"), client_factory("bob")
         ids = setup_project(alice, bob, delivery_mode=delivery_mode)
         if mode is not None:
             _set_mode(alice, ids["project"], mode)
-        assessment_id = _run_push(alice, ids["project"])
+        assessment_id = _run_push(alice, ids["project"], ref)
         if connected:
             with transaction() as conn:
                 conn.execute(
@@ -313,6 +315,20 @@ def test_pull_request_mode_never_touches_the_default_branch(wired) -> None:
     pushes = [c for c in FakeApp.calls if c[0] == "push"]
     assert len(pushes) == 1 and pushes[0][1].startswith("ari/fix-") and not pushes[0][2]
     assert ("pr", pushes[0][1], "main") in FakeApp.calls
+
+
+def test_fix_for_a_feature_branch_push_targets_that_branch(wired) -> None:
+    """A PR into main from a fix cut on a feature branch would merge the whole branch."""
+    wired("pull_request", ref="refs/heads/feature/payments")
+    worker.drain(kinds=["deliver_verified_patch"])
+    pr = next(c for c in FakeApp.calls if c[0] == "pr")
+    assert pr[2] == "feature/payments"
+
+
+def test_auto_mode_pushes_a_feature_branch_fix_onto_that_branch(wired) -> None:
+    wired("auto", ref="refs/heads/feature/payments")
+    worker.drain(kinds=["deliver_verified_patch"])
+    assert FakeApp.calls == [("push", "feature/payments", True)]
 
 
 def test_pull_request_mode_skips_a_fix_already_on_the_default_branch(wired, monkeypatch) -> None:
