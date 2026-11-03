@@ -29,7 +29,8 @@ sys.modules.setdefault(_SPEC.name, storage_watch)
 _SPEC.loader.exec_module(storage_watch)
 
 ALERT_TITLE = "[ops-alert] Production is down"
-DEFAULT_HEALTH_URL = "https://ari-ai-production-76d4.up.railway.app/healthz"
+DEFAULT_HEALTH_URL = "https://ari-ai-production-76d4.up.railway.app/readyz"
+HEALTHY_STATUSES = frozenset({"ok", "ready"})
 LIVE_STATUSES = {"SUCCESS", "SLEEPING"}
 
 
@@ -46,16 +47,37 @@ def check_health(url: str, opener: Any = urlopen) -> str | None:
         with opener(request, timeout=20) as response:
             body = response.read()
     except HTTPError as error:
-        return f"{url} returned HTTP {error.code}"
+        return f"{url} returned HTTP {error.code}{_readiness_detail(error)}"
     except (URLError, TimeoutError, OSError):
         return f"{url} is unreachable"
     try:
-        status = json.loads(body).get("status")
+        doc = json.loads(body)
+        status = doc.get("status")
     except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
         return f"{url} returned a non-JSON body"
-    if status != "ok":
+    if status not in HEALTHY_STATUSES:
         return f"{url} reported status {status!r}"
+    if doc.get("capabilities_ready") is False:
+        return f"{url} is up but capabilities_ready is false (assessments cannot run)"
     return None
+
+
+def _readiness_detail(error: HTTPError) -> str:
+    """Name the failed components from a /readyz 503 body, if it has one."""
+    try:
+        doc = json.loads(error.read())
+    except Exception:
+        return ""
+    if not isinstance(doc, dict):
+        return ""
+    down = [name for name in ("database", "queue") if doc.get(name) is False]
+    workers = doc.get("workers")
+    if isinstance(workers, dict) and workers.get("required") and not workers.get("alive"):
+        down.append("workers")
+    parts = [str(doc.get("status", "unknown"))]
+    if down:
+        parts.append("down: " + ", ".join(down))
+    return f" ({'; '.join(parts)})"
 
 
 def fetch_services(token: str) -> list[dict[str, Any]]:
