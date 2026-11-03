@@ -1499,7 +1499,10 @@ class PatchApplier:
                     unreadable_config("build_recipe.json")
 
         command = recipe.get("test_command")
-        if isinstance(command, str):
+        if node_recipe.is_node(recipe) and isinstance(command, dict) and not node_recipe.problems(recipe):
+            # A node_http recipe names a closed-set runner (vitest/jest), not a pytest command line.
+            command, command_tokens = None, []
+        elif isinstance(command, str):
             try:
                 command_tokens = shlex.split(command)
             except ValueError:
