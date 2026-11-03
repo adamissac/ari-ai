@@ -1,64 +1,120 @@
 'use client';
 
 import type { AgentName } from '@hackatl/frontend-transport';
-import type { RelayItem, RelayStatus } from '@/lib/relay';
+import type { FindingFacts, RelayItem, RelayStatus, RelayTile } from '@/lib/relay';
+import { relaySummary } from '@/lib/relay';
 import { Term } from '@/components/term';
 
-/** Status reads as a small mark and a word; the tile itself stays calm (globals.css `.relay-tile`). */
+/** Status reads as a small mark and a word; the row itself stays calm. */
 const STATUS_MARK: Record<RelayStatus, string> = { done: 'done', running: 'running', queued: 'queued', failed: 'failed', cancelled: 'queued', not_run: 'idle', not_needed: 'idle', not_reached: 'idle' };
+const IDLE_STATUSES: ReadonlySet<RelayStatus> = new Set(['not_run', 'not_needed', 'not_reached']);
+const GROUPS: readonly { key: string; label: string; question: string; agents: readonly AgentName[] }[] = [
+  { key: 'review', label: 'Review', question: 'Does the change work?', agents: ['reviewer'] },
+  { key: 'security', label: 'Security', question: 'Can someone break it?', agents: ['scout', 'probe', 'trace', 'diagnose'] },
+  { key: 'proof', label: 'Fix & proof', question: 'Did the fix hold up?', agents: ['patch', 'verify', 'fortify'] },
+];
 
 /**
- * The eight agents as a relay, in the order the orchestrator runs them, with the
- * human approval gate between planning and fixing. Selecting a tile opens that
+ * The eight agents as a pipeline, in the order the orchestrator runs them, with
+ * the human approval gate between planning and fixing. Selecting a row opens that
  * agent's recorded runs below.
  */
-export function AgentRelay({ items, selected, onSelect }: { items: RelayItem[]; selected: AgentName; onSelect: (a: AgentName) => void }) {
-  const numbers = new Map(items.filter(i => i.kind === 'agent').map((item, i) => [item.kind === 'agent' ? item.agent : '', i + 1]));
-  return (
-    <section className="agent-journey" aria-labelledby="relay-title" data-testid="agent-relay">
-      <h2 id="relay-title" className="text-lg font-semibold tracking-tight">One code reviewer. Seven security agents.</h2>
-      <p className="mt-1 max-w-3xl text-sm text-muted">
-        Each <Term t="agent">agent</Term> is a separate AI worker with one job. It passes its result to the next one.
-        A person must give <Term t="approval">approval</Term> before any fix is built. Select an agent to see exactly what it did.
-      </p>
-      <div className="journey-lanes" aria-hidden="true"><span><b>01 / REVIEW</b> Does the change work?</span><span><b>02 / SECURITY</b> Can someone break it?</span><span><b>03 / PROOF</b> Did the fix hold up?</span></div>
-      <ol className="mt-3 flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-stretch">
-        {items.map((item, i) => {
-          if (item.kind === 'gate') {
+export function AgentRelay({
+  items,
+  selected,
+  onSelect,
+  findings,
+  skipNote,
+}: {
+  items: RelayItem[];
+  selected: AgentName;
+  onSelect: (a: AgentName) => void;
+  findings: FindingFacts[];
+  skipNote?: string | null;
+}) {
+  const agents = items.filter((item): item is RelayTile => item.kind === 'agent');
+  const numbers = new Map(agents.map((item, i) => [item.agent, i + 1]));
+  const summary = relaySummary(items, findings);
+  const gate = items.find(item => item.kind === 'gate');
+  const hasSkippedStep = agents.some(item => item.status === 'not_needed');
+  const renderGroup = (group: (typeof GROUPS)[number]) => {
+    const groupItems = agents.filter(item => group.agents.includes(item.agent));
+    return (
+      <section className="pipeline-group" key={group.key} aria-labelledby={`pipeline-group-${group.key}`}>
+        <header className="pipeline-group-heading">
+          <h3 id={`pipeline-group-${group.key}`} className="label-mono">{group.label}</h3>
+          <p>{group.question}</p>
+        </header>
+        <ol className="pipeline-list" aria-label={`${group.label} steps`}>
+          {groupItems.map(item => {
+            const n = numbers.get(item.agent) ?? 0;
+            const idle = IDLE_STATUSES.has(item.status);
+            const pressed = item.agent === selected;
             return (
-              <li key="gate" className="relay-gate flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs lg:w-40" data-testid="relay-gate" data-status={item.status}>
-                <span aria-hidden="true" className="relay-dot" />
-                <span><span className="block font-semibold">Human approval</span>{item.text}</span>
+              <li key={item.agent}>
+                <button
+                  type="button"
+                  aria-pressed={pressed}
+                  onClick={() => onSelect(item.agent)}
+                  data-testid={`relay-${item.agent}`}
+                  data-status={item.status}
+                  className="pipeline-row"
+                  title={item.job}
+                >
+                  <span className="pipeline-number" aria-hidden="true">{String(n).padStart(2, '0')}</span>
+                  <span className="pipeline-agent">
+                    <span className="pipeline-agent-name">{item.label}</span>
+                    <span className="pipeline-job">{item.job}</span>
+                  </span>
+                  <span className="pipeline-result">{idle ? item.statusText : item.handoff}</span>
+                  <span className="pipeline-status" data-mark={STATUS_MARK[item.status]}><span aria-hidden="true" className="relay-dot" />{item.statusText}</span>
+                  <span className="pipeline-chevron" aria-hidden="true">›</span>
+                </button>
               </li>
             );
-          }
-          const n = numbers.get(item.agent) ?? 0;
-          const pressed = item.agent === selected;
-          const prev = items[i - 1];
-          const newStage = !prev || prev.kind === 'gate' || prev.stage !== item.stage;
-          return (
-            <li key={item.agent} className="flex lg:w-[calc(25%-0.5rem)] xl:w-[calc(20%-0.5rem)]">
-              <button
-                type="button"
-                aria-pressed={pressed}
-                onClick={() => onSelect(item.agent)}
-                data-testid={`relay-${item.agent}`}
-                data-status={item.status}
-                data-team={item.agent === 'reviewer' ? 'review' : ['scout', 'probe', 'trace'].includes(item.agent) ? 'challenge' : item.agent === 'verify' ? 'proof' : 'defend'}
-                className="relay-tile flex w-full flex-col rounded-xl p-3 text-left"
-              >
-                <span className="label-mono text-faint">{newStage ? item.stage : ' '}</span>
-                <span className="mt-1 flex items-center justify-between gap-2">
-                  <span className="font-semibold"><span className="text-faint">{n}.</span> {item.label}</span>
-                  <span className="relay-status flex items-center gap-1.5 text-xs" data-mark={STATUS_MARK[item.status]}><span aria-hidden="true" className="relay-dot" />{item.statusText}</span>
-                </span>
-                <span className="mt-1 text-xs text-muted">{item.job}</span>
-                <span className="mt-2 border-t border-line/70 pt-1.5 text-xs"><span className="text-faint">Handed on: </span>{item.handoff}</span>
-              </button>
+          })}
+        </ol>
+      </section>
+    );
+  };
+
+  return (
+    <section className="pipeline" aria-labelledby="relay-title" data-testid="agent-relay">
+      <header className="pipeline-header">
+        <div className="pipeline-header-copy">
+          <h2 id="relay-title">Review pipeline</h2>
+          <p>One code reviewer and seven security agents run in order. A person must give <Term t="approval">approval</Term> before any fix is built.</p>
+        </div>
+        <p className="pipeline-progress">
+          <strong>{summary.finished} of {summary.total} steps finished</strong>
+          {summary.skipped > 0 && <span> · {summary.skipped} skipped</span>}
+        </p>
+      </header>
+      <div className="pipeline-summary" data-testid="relay-summary">
+        <div className="pipeline-stat"><strong>{summary.behaviour}</strong><span>Behaviour issues</span></div>
+        <div className="pipeline-stat"><strong>{summary.suspicions}</strong><span>Security suspicions</span></div>
+        <div className="pipeline-stat"><strong>{summary.confirmed}</strong><span>Confirmed by a test</span></div>
+        <div className="pipeline-stat"><strong>{summary.fixesVerified}</strong><span>Fixes verified</span></div>
+      </div>
+      {skipNote && hasSkippedStep && (
+        <p className="pipeline-skip-note" data-testid="relay-skip-note">
+          <span aria-hidden="true" className="pipeline-skip-dot" />
+          Run ended early: {skipNote}.
+        </p>
+      )}
+      <div className="pipeline-groups">
+        {renderGroup(GROUPS[0]!)}
+        {renderGroup(GROUPS[1]!)}
+        {gate?.kind === 'gate' && (
+          <ol className="pipeline-gate-list" aria-label="Approval gate">
+            <li className="pipeline-gate" data-testid="relay-gate" data-status={gate.status} title="Human approval">
+              <span aria-hidden="true" className="relay-dot" />
+              <span className="pipeline-gate-copy"><strong>Human approval</strong><span>{gate.text}</span></span>
             </li>
-          );
-        })}
-      </ol>
+          </ol>
+        )}
+        {renderGroup(GROUPS[2]!)}
+      </div>
     </section>
   );
 }

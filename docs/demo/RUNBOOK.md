@@ -5,7 +5,7 @@ screen rather than presenting sample data or saved evidence as a new live run.
 
 | Kind | What it is | How it is labelled |
 |---|---|---|
-| Demo account | `/demo`: illustrative organizations, repositories, commits and analysis, behind the `/access` code gate. | “Demo account · sample data” tag. |
+| Demo account | `/access` opens the real console on a recorded, renamed Lumen Pay sample account. The browser replays captured API fixtures without calling the backend. | “Demo account · Lumen Pay sample data — every repository, commit and result here is illustrative.” |
 | Recorded live evidence | One saved seven-agent run on `claude-opus-5-5` (M3, 2026-10-17, $1.39), displayed separately from the sample account's results. | “Recorded live run · not simulated” and “Replay of recorded run”. |
 | Real stack, scripted model | Real API, PostgreSQL, worker, sandbox checks, Patch, Verify and artifacts; model replies are test-only scripted responses. | Persisted `provider_mode=fake`, labelled as not live in the UI. |
 
@@ -34,16 +34,17 @@ Tracks A and B need no live-provider key or GitHub App. Track A needs
 `DEMO_ACCESS_CODE` configured in the frontend server environment; keep its value
 private and out of Git. An unset code leaves the demo account closed.
 
-## Track A: demo account and recorded evidence
+## Track A: real console with recorded sample data
 
 ```sh
 (cd frontend && npm run dev)
 ```
 
-Open `http://localhost:3000/access`, enter the configured access code, and open the
-Lumen Pay demo account. The code gate is real; the account's customer data and
-analysis are illustrative. To show the separate **Recorded live run** panel, open
-`/demo` after signing in. Do not describe its saved run as this customer's activity.
+Open `http://localhost:3000/access`, enter the configured access code, and use the
+real console pages for Analytics, Commits, Findings, Approvals, Settings, and an
+assessment. `/demo` and legacy `/demo/**` links redirect to Analytics after the
+gate. The account is recorded, renamed sample data; its results are illustrative.
+Actions are disabled and the demo transport makes no backend calls.
 
 ## Track B: real stack with scripted model replies
 
@@ -81,25 +82,21 @@ owner's authorization and budget. This runbook does not authorize such a call.
 ## Walkthrough
 
 1. **Problem:** every push can break intended behavior or authorization.
-2. **Sample account:** open a repository and commit, then show the review and agent
-   map. Say “This account and its analysis are sample data.”
-3. **Recorded evidence:** show the separately labelled M3 panel. Seven agents ran
-   on one owned fixture; Probe confirmed the payment-detail IDOR, Patch proposed a
-   fix and Verify accepted it in that run. Say “This is saved evidence, not a new
-   run; this recording did not establish the added test failed before the patch.”
-4. **Executed backend evidence:** optionally show Track B records, diffs and
-   verification artifacts with the scripted-model label visible.
-5. **Defense Lab:** describe recorded simulation evaluations and recommendations.
-6. **Limits:** one historical live run, a local-process sandbox, CLI auto-approval,
-   and no red-to-green proof from that recording.
+2. **Sample account:** sign in at `/access` and point out the persistent banner. Say
+   “This is recorded, renamed sample data; it is not customer activity.”
+3. **Review workflow:** open Commits, a completed assessment, and its Review pipeline;
+   then show Findings and a finding detail in the real console.
+4. **Human control:** open Approvals and show the pending item. The account is
+   read-only, and no action is sent to the backend.
+5. **Limits:** the browser replays captured records, including captured non-200
+   responses. No clean assessment outcome was captured.
 
 ## Evidence and release gate
 
 - The historical report artifact is
   `security-agents/tests/artifacts/live/20261017T205333Z-seven_roles_end_to_end.json`.
   It is gitignored and retained by Alan, as recorded in `coordination/MILESTONES.md`;
-  request that artifact for an independent audit. The displayed
-  `frontend/lib/demo/recorded-live-run.ts` is a curated summary, not a fresh run.
+  request that artifact for an independent audit.
 - Current code requires stricter clean reproduction on unpatched code. That does
   not retroactively prove the historical run satisfied the newer check.
 - Keep recorded, scripted and illustrative evidence distinct; do not claim broad

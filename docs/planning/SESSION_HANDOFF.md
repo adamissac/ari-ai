@@ -12,6 +12,19 @@ adds an entry before ending.
 - Next steps: Owner review.
 - Warnings for the next session: `next dev` writes an untracked `frontend/AGENTS.md`; do not commit it.
 
+### 2026-11-03 — Adam (demo real-console rebuild: verification)
+- Did: Completed the access-code demo migration to the real console, with a network-free, read-only recorded-fixture transport. The pending-approval snapshot remains a real second assessment; the completed snapshot has verified functional and hardened security findings. No clean outcome or early-ended/skipped run was captured.
+- Verification: `npm run lint`, `npm run typecheck`, and `npx vitest run` passed (113 files, 517 tests). Production builds passed with `NEXT_PUBLIC_DEMO_ONLY=0` for journey E2E and `=1` for the demo production review. `tests/e2e/demo.spec.ts` passed 2/2 and `tests/e2e/journey.spec.ts` passed 3/3. The assessment page keeps live polling for real awaiting-approval sessions and suppresses captured pending-snapshot polling only in demo view.
+- Captured real artifact non-200 responses are retained and replayed as 404s for `/artifacts/art_ver01M6FV5CZK8HJGVNVBT8068MQBdiffscopeok`, `/artifacts/art_ver01M6FV5CZK8HJGVNVBT8068MQBnotesttampering`, `/artifacts/art_sbx01M6FV5A5PC9X3C9KX6F22MC3C`, `/artifacts/art_sbx01M6FV5B1HBZREVT81CN6G2EJJ`, and `/artifacts/art_sbx01M6FV5C2FC24JP9H387GGB3GB`.
+- Production screenshots are under `~/ari-tools/demo-new/`: access, Analytics, Commits, Findings, finding detail, Approvals, Settings, completed and awaiting-approval assessment, full-page Review pipeline, and 390×844 Analytics/assessment. The capture script verified no browser request reached `/api/v1`.
+- The fresh manual stack is running at Next `http://127.0.0.1:58859` and API `http://127.0.0.1:56895`. Ready for Adam-authored commit and push; CI was not watched.
+
+### 2026-11-03 — Adam (demo real-console rebuild)
+- Replaced the access-code demo's separate walkthrough with the real console and a read-only, in-browser transport for captured, renamed Lumen Pay fixtures. Known non-200 responses, including captured artifact 404 envelopes, are replayed as recorded.
+- Kept the existing access-code check, added a readable view cookie, persistent sample-data banner, demo exit, and redirects from legacy `/demo/**` routes. Added ADR-0024 and updated the demo runbook, frontend route table, and changelog.
+- Captured two real assessment states: one completed with verified/hardened findings and one awaiting human approval. No clean commit was captured.
+- Verification, screenshots, and push are pending.
+
 ### 2026-10-31 — Claude (agent, Alan) — YC customer-readiness assessment and pilot health report
 - Did: Audited `main` @ `4271503e` against #739 (Codex release gate) and #744 (Devin backend readiness); wrote `docs/yc/YC_PRODUCT_READINESS.md`, `SAAS_ARCHITECTURE.md`, `LAUNCH_BLOCKERS.md`, `ENGINEERING_EXECUTION_PLAN.md`; rewrote `docs/planning/MVP_SCOPE.md` as the commercial MVP; updated `docs/pilot/CUSTOMER_ONBOARDING.md`; implemented `scripts/pilot/health_report.py` (the weekly report METRICS.md specifies).
 - State of the code: Branch `feat/alan/yc-product-readiness`. No backend or frontend product code changed.
@@ -88,6 +101,16 @@ adds an entry before ending.
 - Warnings for the next session: `/readyz` returns 503 when workers are required and none are alive, so a long worker-only outage now also alerts.
 - Follow-up (Codex P2 on #776): S2b's second SIGKILL could land on an idle worker after the restarted attempt already reached `AWAITING_APPROVAL`. `scripted_worker.py` now blocks model calls while `EVIDENCE_HOLD_FILE` exists, so S2b kills `w3b` mid-attempt, and S2b asserts the state at the kill is non-terminal. The race was reproduced with a delayed controller (S2b FAIL, killed at `AWAITING_APPROVAL`); with the barrier the full harness passes S1–S7.
 - Follow-up (second Codex P2 on #776): S3 resumes both S1's and S2a's approval pauses, but every per-assessment gateway shared one scripted repair `FakeTransport`; the second functional repair hit `FakeTransport script exhausted`, which `_repair_functional` reports as progress while the assessment still reaches `COMPLETED`, so S3 passed falsely. S3 now waits for every resumed assessment and fails on any `functional repair failed` event (reproduced: S3 FAIL), and `scripted_worker.py` gives each assessment a fresh repair fake.
+
+### 2026-11-03 — Devin (agent, Adam) — assessment review-pipeline dashboard
+- Did: Replaced the nested assessment agent tiles with a grouped review pipeline, four findings totals, an approval row, and a single early-end note while preserving `agentRelay` output.
+- State of the code: Branch `fix/adam/review-pipeline-dashboard`; implementation is ready for review.
+- Commands run and results: frontend lint and typecheck passed; Vitest passed (110 files, 478 tests); Next production build passed; `XDG_RUNTIME_DIR=/run/user/1000 ../.venv/bin/python tests/e2e/stack.py tests/e2e/journey.spec.ts` passed (3 tests). Journey logs included `SNAPSHOT_NOT_READY` worker messages for regression registration; they did not fail the E2E tests.
+- Visual evidence: `/home/ubuntu/ari-tools/pipeline/assessment-desktop-pipeline.png` (1440×900; the full pipeline fits), `/home/ubuntu/ari-tools/pipeline/assessment-desktop-full-page.png`, and `/home/ubuntu/ari-tools/pipeline/assessment-mobile-pipeline.png` (390×844). The seeded project had one assessment and no additional assessment with a relay skip note, so there was no early-end screenshot.
+- Decisions made (ADR links): Kept existing agent handoff and status derivation unchanged; summary counts are derived from the current relay items and persisted findings.
+- Assumptions / open questions (RQ links): None.
+- Next steps: Owner review and a separately briefed CI loop.
+- Warnings for the next session: CI was not monitored. The manual stack remains running at Next `http://127.0.0.1:3100` (shell `967b89`) and API `http://127.0.0.1:45103`.
 
 ### 2026-11-02 — Devin (agent, Adam) — native scrolling and console UI polish
 - Did: Replaced global wheel easing with reduced-motion-aware same-page hash scrolling, removed scroll-linked ambient parallax and blur-based reveals, shortened landing chapters, and refined console buttons, empty states, panel headers, and sticky bars.
