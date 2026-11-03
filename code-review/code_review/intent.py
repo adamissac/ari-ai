@@ -125,6 +125,9 @@ class IntentAdjudication:
     rejected: list[str]
 
 
+_TEST_NAME = re.compile(r"\btest_\w+")
+
+
 class CitationChecker:
     def __init__(
         self,
@@ -168,6 +171,14 @@ class CitationChecker:
             if exp.status is ExpectationStatus.conflicting:
                 return ev, kind, CONFLICT_NOTE
             return ev, kind, "" if kind is SourceKind.expectation else "expectation not confirmed"
+        if c.path and c.start_line is None and c.source_kind is SourceKind.test:
+            # "tests/test_api.py::test_x" style: resolve the test by name to its def line
+            test_def = self._test_def(c.path, (c.quote or "") + " " + c.path)
+            if test_def is not None:
+                line, text = test_def
+                return self.check(
+                    c.model_copy(update={"start_line": line, "end_line": line, "quote": text})
+                )
         if not c.path or c.start_line is None:
             return None, c.source_kind, "file citation needs path and start_line"
         try:
@@ -207,6 +218,18 @@ class CitationChecker:
             if n
         ]
         return ev, kind, "; ".join(notes)
+
+    def _test_def(self, path: str, text: str) -> tuple[int, str] | None:
+        """(line, source) of the first ``def test_*`` named in ``text`` that ``path`` defines."""
+        try:
+            lines = self.ws.read(path).splitlines()
+        except WorkspaceError:
+            return None
+        for name in dict.fromkeys(_TEST_NAME.findall(text)):
+            for n, line in enumerate(lines, 1):
+                if re.match(rf"\s*(async\s+)?def\s+{name}\s*\(", line):
+                    return n, line.strip()
+        return None
 
     @staticmethod
     def _effective_kind(kind: SourceKind, path: str, text: str, start: int, end: int) -> SourceKind:

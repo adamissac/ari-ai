@@ -30,6 +30,7 @@ from backend.api.deps import (
 )
 from backend.api.execution import job_project
 from backend.artifacts import ArtifactStore
+from backend.connection_guard import WriteInProgress, hold_github_writes
 from backend.db import (
     agent_runs,
     approvals,
@@ -270,6 +271,38 @@ def get_project(project_id: str, request: Request) -> Project:
         return _project(
             conn.execute(sa.select(projects).where(projects.c.id == project_id)).mappings().one()
         )
+
+
+@router.get("/projects/{project_id}/delivery-authority")
+def get_delivery_authority(project_id: str, request: Request) -> dict[str, Any]:
+    """What fix delivery does right now, decided as the delivery job decides it. A configured
+    mode takes effect only while the owner who authorized it is still an owner, and this
+    deployment may turn direct commits into pull requests. Read-only; changes nothing."""
+    from backend.delivery import authority
+
+    with transaction() as conn:
+        require_project(conn, _user(conn, request), project_id)
+        s = project_settings(conn, project_id)
+        granted = authority(conn, project_id)
+    direct_allowed = get_settings().auto_delivery_allowed
+    if s.delivery_mode is DeliveryMode.manual:
+        state = "manual"
+    elif not s.delivery_authorized_by:
+        state = "inactive"
+    elif granted is None:
+        state = "revoked"
+    else:
+        state = "active"
+    effective = granted[0] if granted else DeliveryMode.manual
+    if effective is DeliveryMode.auto and not direct_allowed:
+        effective = DeliveryMode.pull_request
+    return {
+        "configured_mode": s.delivery_mode.value,
+        "effective_mode": effective.value,
+        "state": state,
+        "authorized_by": s.delivery_authorized_by,
+        "direct_commits_allowed": direct_allowed,
+    }
 
 
 def _check_budgets(settings: ProjectSettings, before: ProjectSettings) -> None:
@@ -700,6 +733,16 @@ def _park_repository(
 ) -> None:
     """Disconnect one repository row: stop every read and job, keep its history, audit."""
     repo_id = repo["id"]
+    # Wait for any GitHub write that already started (push, PR, review) and keep new
+    # ones out; once we commit, writers re-check and see the disconnect.
+    try:
+        hold_github_writes(conn, repo_id)
+    except WriteInProgress:
+        raise ApiError(
+            ErrorCode.CONFLICT_STATE,
+            "a GitHub write for this repository is still finishing; retry in a moment",
+            409,
+        ) from None
     # Canonical revocation-protocol lock order: repositories first, then
     # deploy_commit_mappings — finalizing callers lock in the same order via
     # services.repository_revocation_locked, so disconnect and a mid-flight

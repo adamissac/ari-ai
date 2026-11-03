@@ -1,0 +1,8 @@
+{"sha": "9437e217d65aa1be22fa7b4f54f723200cd428c8", "path": "app/settings.py", "credential_exposed": true}
+{"sha": "9437e217d65aa1be22fa7b4f54f723200cd428c8", "path": "app/settings.py", "credential_exposed": true}
+{"sha": "9437e217d65aa1be22fa7b4f54f723200cd428c8", "path": "deploy/values.yaml", "credential_exposed": true}
+{"sha": "72753087abef39a84103fe9fbcf43248430a7ebb", "path": "app/settings.py", "credential_exposed": false}
+{"sha": "72753087abef39a84103fe9fbcf43248430a7ebb", "path": "app/settings.py", "credential_exposed": false}
+{"sha": "72753087abef39a84103fe9fbcf43248430a7ebb", "path": "deploy/values.yaml", "credential_exposed": false}
+[PASS] CI success: all 0 checks green
+[PASS] CI success: all 1 checks green
