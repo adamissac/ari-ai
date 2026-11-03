@@ -106,13 +106,17 @@ _AUTHZ_STRONG = re.compile(
     re.IGNORECASE,
 )
 _AUTHZ_WEAK = re.compile(
-    r"\bowner(ship)?\b|\bown(s)? (their|the)\b|\btheir own\b|authori[sz]|authenticat"
+    r"\bowner(ship)?\b|\bown(s|ed)?\b|authori[sz]|authenticat"
     r"|permission|\brole\b|\badmins?\b",
     re.IGNORECASE,
 )
+# A restriction on who may act, not any "must not": "a refactor must not change behavior"
+# beside "their own account" once routed a crash for owners to Scout (live gtB2 py-rename).
+_ACT = r"(read|access|see|view|list|modify|update|delete|write|refund|transfer|act)"
 _RESTRICT = re.compile(
-    r"\bonly\b|must not|may not|cannot|can't|\bnever\b|\bdenied\b|\bforbid|\brefuse"
-    r"|\breject|\bunauthori[sz]",
+    rf"\bonly\b.{{0,40}}\b(own|owners?|their|admins?|members?)\b"
+    rf"|\b(must|may|should) not\b.{{0,25}}\b{_ACT}\b|\b(cannot|can't)\b.{{0,25}}\b{_ACT}\b"
+    r"|\bdenied\b|\bforbid|\bunauthori[sz]|\brefuse|\breject",
     re.IGNORECASE,
 )
 

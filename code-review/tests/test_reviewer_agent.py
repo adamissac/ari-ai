@@ -673,6 +673,12 @@ def test_authorization_finding_is_handed_to_scout_with_test_evidence(tmp_path: P
             "Customer.id renamed but app.py still reads customer.id for authenticated requests",
             False,
         ),
+        (  # live gtB2 py-rename claim
+            "An authenticated customer can read their own account and list their own accounts;"
+            " a refactor must not change that behavior.",
+            False,
+        ),
+        ("Customers must not read accounts they do not own", True),
     ],
 )
 def test_authorization_rule_routing(text: str, authz: bool) -> None:
