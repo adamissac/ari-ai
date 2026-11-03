@@ -86,6 +86,16 @@ adds an entry before ending.
 - Follow-up (Codex P2 on #776): S2b's second SIGKILL could land on an idle worker after the restarted attempt already reached `AWAITING_APPROVAL`. `scripted_worker.py` now blocks model calls while `EVIDENCE_HOLD_FILE` exists, so S2b kills `w3b` mid-attempt, and S2b asserts the state at the kill is non-terminal. The race was reproduced with a delayed controller (S2b FAIL, killed at `AWAITING_APPROVAL`); with the barrier the full harness passes S1–S7.
 - Follow-up (second Codex P2 on #776): S3 resumes both S1's and S2a's approval pauses, but every per-assessment gateway shared one scripted repair `FakeTransport`; the second functional repair hit `FakeTransport script exhausted`, which `_repair_functional` reports as progress while the assessment still reaches `COMPLETED`, so S3 passed falsely. S3 now waits for every resumed assessment and fails on any `functional repair failed` event (reproduced: S3 FAIL), and `scripted_worker.py` gives each assessment a fresh repair fake.
 
+### 2026-11-03 — Devin (agent, Adam) — assessment review-pipeline dashboard
+- Did: Replaced the nested assessment agent tiles with a grouped review pipeline, four findings totals, an approval row, and a single early-end note while preserving `agentRelay` output.
+- State of the code: Branch `fix/adam/review-pipeline-dashboard`; implementation is ready for review.
+- Commands run and results: frontend lint and typecheck passed; Vitest passed (110 files, 478 tests); Next production build passed; `XDG_RUNTIME_DIR=/run/user/1000 ../.venv/bin/python tests/e2e/stack.py tests/e2e/journey.spec.ts` passed (3 tests). Journey logs included `SNAPSHOT_NOT_READY` worker messages for regression registration; they did not fail the E2E tests.
+- Visual evidence: `/home/ubuntu/ari-tools/pipeline/assessment-desktop-pipeline.png` (1440×900; the full pipeline fits), `/home/ubuntu/ari-tools/pipeline/assessment-desktop-full-page.png`, and `/home/ubuntu/ari-tools/pipeline/assessment-mobile-pipeline.png` (390×844). The seeded project had one assessment and no additional assessment with a relay skip note, so there was no early-end screenshot.
+- Decisions made (ADR links): Kept existing agent handoff and status derivation unchanged; summary counts are derived from the current relay items and persisted findings.
+- Assumptions / open questions (RQ links): None.
+- Next steps: Owner review and a separately briefed CI loop.
+- Warnings for the next session: CI was not monitored. The manual stack remains running at Next `http://127.0.0.1:3100` (shell `967b89`) and API `http://127.0.0.1:45103`.
+
 ### 2026-11-02 — Devin (agent, Adam) — native scrolling and console UI polish
 - Did: Replaced global wheel easing with reduced-motion-aware same-page hash scrolling, removed scroll-linked ambient parallax and blur-based reveals, shortened landing chapters, and refined console buttons, empty states, panel headers, and sticky bars.
 - State of the code: `fix/adam/native-scroll-ui-polish` contains the implementation and tests, ready for review.
