@@ -17,6 +17,8 @@ import { useAccessibleRepo } from '@/lib/real-repo';
 import { useResource } from '@/lib/use-resource';
 import { api } from '@/lib/api';
 import { commitFreshness } from '@/lib/commit-freshness';
+import { demoQuickRead } from '@/lib/demo/console/quick-read';
+import { useDemoView } from '@/lib/demo/use-view';
 
 type QuickRead = { key: string; data?: LiveResult; error?: string };
 
@@ -43,8 +45,21 @@ function SelectedCommit({ org, name, sha, repo, onConnected }: {
   const [request, setRequest] = useState(1);
   const [quick, setQuick] = useState<QuickRead | null>(null);
   const identity = `${repo.full_name}:${fullSha}:${request}`;
+  const demo = useDemoView();
+  const listed = selectedCommit ? { message: selectedCommit.message, author: selectedCommit.author, committed_at: selectedCommit.committed_at } : undefined;
+  const listedKey = listed ? `${listed.message}|${listed.author}` : '';
   useEffect(() => {
     if (!request) return;
+    if (demo) {
+      // Demo account: a sample quick read from this bundle; nothing reads GitHub or calls a model.
+      const sample = demoQuickRead(repo.full_name, fullSha, listed);
+      // Wait for the commit list when the commit is not in the sample data.
+      if (!sample && !listed && metadata.status === 'loading') return;
+      const timer = setTimeout(() => {
+        setQuick(sample ? { key: identity, data: sample } : { key: identity, error: 'No sample quick read for this commit.' });
+      }, 700);
+      return () => clearTimeout(timer);
+    }
     const ctrl = new AbortController();
     fetch('/api/analyze', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ repo: repo.full_name, sha: fullSha }), signal: ctrl.signal })
       .then(async res => {
@@ -55,7 +70,9 @@ function SelectedCommit({ org, name, sha, repo, onConnected }: {
         if (!ctrl.signal.aborted) setQuick({ key: identity, data: body as LiveResult });
       }).catch((err: unknown) => { if (!ctrl.signal.aborted) setQuick({ key: identity, error: err instanceof Error ? err.message : 'Quick read failed.' }); });
     return () => ctrl.abort();
-  }, [request, repo.full_name, fullSha, identity]);
+    // listed is read through listedKey: a new object each render must not restart the read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request, repo.full_name, fullSha, identity, demo, listedKey, metadata.status]);
   const live = quick?.key === identity ? quick : null;
   const view = useMemo<LiveCommitView | null>(() => {
     if (!live?.data) return null;

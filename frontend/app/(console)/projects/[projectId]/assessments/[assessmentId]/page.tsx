@@ -215,7 +215,7 @@ export default function AssessmentPage() {
           </div>
           <BudgetMeter used={a.usage.usd} cap={a.budget.max_usd} />
           <div className="mt-4">
-            <Panel title={`Event log (${events.length})`} actions={<a className="text-xs text-accent hover:underline" href={`/api/v1/assessments/${a.id}/report`} target="_blank" rel="noreferrer">JSON report</a>}>
+            <Panel title={`Event log (${events.length})`} actions={demoView ? undefined : <a className="text-xs text-accent hover:underline" href={`/api/v1/assessments/${a.id}/report`} target="_blank" rel="noreferrer">JSON report</a>}>
               <EventLog events={events} />
             </Panel>
           </div>
