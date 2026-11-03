@@ -379,8 +379,12 @@ class ToolRegistry:
         if tool.category_from:
             raw = data.get(tool.category_from)
             if isinstance(raw, str) and raw:
-                # `template_ref` carries `category@version`; the category is the id part.
-                category = raw.split("@", 1)[0]
+                from ..checks.library import default_library
+
+                # A template's category is its metadata, not its id: `firestore.owner_isolation@1`
+                # is an `access_control.ownership` check. Unknown refs fall back to the id part.
+                meta = default_library().get(raw)
+                category = meta.category if meta else raw.split("@", 1)[0]
         return scope_check(
             ctx.scope,
             ActionRequest(

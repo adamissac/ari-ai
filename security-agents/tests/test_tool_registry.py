@@ -342,6 +342,30 @@ def test_check_run_with_category_outside_scope_denied(registry, intel, library):
     assert ErrorCode.SCOPE_DENIED.value in str(exc.value)
 
 
+def test_scope_gate_uses_the_template_category_not_its_id(registry, intel, library):
+    """`firestore.owner_isolation@1` is an access_control.ownership check (live mypypath run)."""
+
+    def refusal(ref: str) -> str:
+        ctx = make_ctx(
+            AgentName.PROBE,
+            intel=intel,
+            scope=make_scope(categories=["access_control.ownership"]),
+            services={"check_runner": object(), "checks": library},
+        )
+        try:
+            registry.invoke(
+                ctx,
+                wire_name("checks.run_template"),
+                {"template_ref": ref, "target_id": TARGET_ID, "parameters": {}},
+            )
+        except Exception as exc:  # past the scope gate, the stub runner fails; only the reason matters
+            return str(exc)
+        return ""
+
+    assert "CATEGORY_NOT_ALLOWED" not in refusal("firestore.owner_isolation@1")
+    assert "CATEGORY_NOT_ALLOWED" in refusal("firestore.unauthenticated_denied@1")  # authentication
+
+
 def test_no_scope_at_all_denies_check_run(registry, intel, library):
     ctx = make_ctx(
         AgentName.PROBE, intel=intel, scope=None, services={"check_runner": object(), "checks": library}
