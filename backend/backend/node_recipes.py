@@ -205,7 +205,16 @@ def draft_node(
     deps = {**(pkg.get("dependencies") or {}), **(pkg.get("devDependencies") or {})}
     runner = "vitest" if "vitest" in deps else "jest" if "jest" in deps else None
     if runner:
-        recipe["test_command"] = {"runner": runner, "args": ["run"] if runner == "vitest" else []}
+        args = ["run"] if runner == "vitest" else []
+        # A separate rules config is the suite that exercises firestore.rules under the emulator.
+        rules_cfg = next(
+            (f"vitest.rules.config.{x}" for x in ("js", "mjs", "ts", "mts")
+             if runner == "vitest" and blob(f"vitest.rules.config.{x}") is not None),
+            None,
+        )  # fmt: skip
+        if rules_cfg:
+            args += ["--config", rules_cfg]
+        recipe["test_command"] = {"runner": runner, "args": args}
     if not recipe.get("routes") and not recipe.get("firestore_paths"):
         return None
     return NodeDraft(recipe=recipe, notes=notes)

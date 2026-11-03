@@ -81,6 +81,17 @@ def test_draft_is_valid_and_only_includes_what_code_settles() -> None:
     )
 
 
+def test_a_vitest_rules_config_is_the_test_command() -> None:
+    app = {**APP, "vitest.rules.config.js": "export default {}\n"}
+    files = {p: c for p, c in app.items() if p.startswith("api/")}
+    r = draft_node(app.get, files, js_routes(files)).recipe
+    assert r["test_command"] == {
+        "runner": "vitest",
+        "args": ["run", "--config", "vitest.rules.config.js"],
+    }
+    assert node_recipe.problems(r) == []
+
+
 def test_no_lockfile_or_nothing_testable_means_no_draft() -> None:
     no_lock = {k: v for k, v in APP.items() if k != "package-lock.json"}
     assert draft_node(no_lock.get, {}, []) is None
