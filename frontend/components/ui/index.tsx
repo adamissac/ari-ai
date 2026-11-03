@@ -163,6 +163,30 @@ export function Stat({ label, value, hint }: { label: string; value: ReactNode; 
   );
 }
 
+/** Analytics-style stat row: one bordered panel, cells split by hairlines. */
+export function StatGrid({ items, testId }: { items: Array<{ label: string; value: ReactNode }>; testId?: string }) {
+  return (
+    <div data-testid={testId} className="grid grid-cols-2 rounded-lg border border-line bg-panel sm:grid-flow-col sm:auto-cols-fr sm:grid-cols-none">
+      {items.map((it, i) => (
+        <div key={it.label} className={`min-w-0 px-4 py-3 ${i % 2 ? 'border-l border-line' : ''} ${i > 1 ? 'border-t border-line sm:border-t-0' : ''} ${i > 0 ? 'sm:border-l' : ''}`}>
+          <p className="font-mono text-2xl font-semibold text-ink">{typeof it.value === 'number' ? it.value.toLocaleString() : it.value}</p>
+          <p className="mt-1 text-xs text-muted">{it.label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Explanations stay available but collapsed, so the page reads like a dashboard. */
+export function Details({ summary = 'How this works', children, testId }: { summary?: string; children: ReactNode; testId?: string }) {
+  return (
+    <details className="project-detail rounded-lg border border-line bg-panel px-4 py-3 text-sm text-muted" data-testid={testId}>
+      <summary className="label-mono text-muted">{summary}</summary>
+      <div className="flex flex-col gap-3">{children}</div>
+    </details>
+  );
+}
+
 export function Crumbs({ items }: { items: Array<{ href?: string; label: string }> }) {
   return (
     <nav aria-label="Breadcrumb" className="label-mono mb-3 text-muted">

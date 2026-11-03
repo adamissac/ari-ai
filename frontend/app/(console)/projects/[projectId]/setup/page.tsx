@@ -299,7 +299,7 @@ function Walkthrough({
             <div className="mt-5">
               {currentQuestion === 1 && (
                 <>
-                  <p className="mb-4 text-sm text-muted">Read-only repository readiness. Review the connected repository, branch, GitHub App installation, and saved build-recipe status.</p>
+                  <p className="mb-4 text-sm text-muted">Repository readiness at a glance.</p>
                   <dl className="grid gap-4 sm:grid-cols-2">
                     <div><dt className="label-mono text-muted">Repository</dt><dd className="mt-1 break-all font-mono text-sm text-ink">{repo.full_name}</dd></div>
                     <div><dt className="label-mono text-muted">Default branch</dt><dd className="mt-1 font-mono text-sm text-ink">{repo.default_branch}</dd></div>
