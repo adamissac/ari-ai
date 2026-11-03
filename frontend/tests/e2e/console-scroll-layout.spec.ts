@@ -36,6 +36,7 @@ test('console header and tab band stay stacked while scrolling Analytics', async
             position: style.position,
             zIndex: style.zIndex,
             background: style.backgroundColor,
+            borderImageSource: style.borderImageSource,
             backgroundAlpha: alpha,
             backdropFilter: style.backdropFilter,
           };
@@ -55,6 +56,7 @@ test('console header and tab band stay stacked while scrolling Analytics', async
       expect(Number(layout.siteHeader?.zIndex)).toBeGreaterThan(Number(layout.tabBand?.zIndex));
       expect(layout.tabBand?.position).toBe('sticky');
       expect(layout.tabBand!.top).toBeGreaterThanOrEqual(layout.siteHeader!.bottom);
+      expect(layout.tabBand?.borderImageSource).not.toBe('none');
       expect(layout.tabBand?.backgroundAlpha).toBeGreaterThanOrEqual(0.95);
       expect(layout.tabBand?.backdropFilter).toBe('none');
       if (scrollY === 300) {

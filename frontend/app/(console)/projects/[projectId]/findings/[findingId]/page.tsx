@@ -7,6 +7,7 @@ import { BeforeAfter } from '@/components/before-after';
 import { ExpectationLinks } from '@/components/expectation-links';
 import { ArtifactPeek, EvidenceList } from '@/components/evidence';
 import { PatchDeliveryStatus } from '@/components/patch-delivery-status';
+import { RunProvenance } from '@/components/run-provenance';
 import { useParam, useProject } from '@/components/project';
 import { useSession } from '@/components/session';
 import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, PageTitle, Panel, Tag, Time } from '@/components/ui';
@@ -59,6 +60,7 @@ export default function FindingPage() {
               {' '}· confidence {(d.finding.confidence * 100).toFixed(0)}%
             </>}
           />
+          <RunProvenance assessmentId={d.finding.assessment_id} />
           <Panel title="What happened">
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2" data-testid="finding-story">
               {story.map(line => (

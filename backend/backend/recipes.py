@@ -39,6 +39,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from backend import audit, jobs
 from backend.checkouts import CheckoutError, _git, _locked, auth_env, fetch_commit
+from backend.connection_guard import RepositoryDetached, github_write
 from backend.db import repositories, transaction
 from backend.services import project_org
 from backend.settings import get_settings
@@ -787,6 +788,8 @@ def gateway_or_none() -> Any | None:
 def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
     ctx.check_cancelled()
     s = get_settings()
+    if s.recommendation_only:  # proposing a recipe opens a PR on the customer repository
+        return {"status": "skipped", "reason": "recommendation-only pilot"}
     with transaction() as conn:
         repo = (
             conn.execute(
@@ -844,7 +847,11 @@ def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
             return finish("recipe.invalid", reasons=errors[:10], commit_sha=sha)
         from backend.delivery import push_patch
 
-        write = app.installation_token(iid, write=True, repository=full_name.split("/", 1)[1])
+        # Drafting can take a minute; the owner may have disconnected, or GitHub detached the
+        # installation, since the check at the top. The write lease re-checks before the
+        # write token is minted and before every write that uses it.
+        with github_write(str(repo["id"]), iid):
+            write = app.installation_token(iid, write=True, repository=full_name.split("/", 1)[1])
         message = (
             "chore: add Ari sandbox build recipe\n\nDrafted by Ari from the repository's code."
         )
@@ -852,14 +859,18 @@ def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
         # (an owner retry, a new commit) never inherits an earlier attempt's stale branch or PR.
         head = f"{BRANCH}-{ctx.job.id.removeprefix('job_').lower()}"
         with _locked(repo_dir):
-            push_patch(
-                repo_dir, full_name, sha, new_file_diff(d.files()), write, message, head,
-                github_web_url=s.github_web_url,
+            with github_write(str(repo["id"]), iid):
+                push_patch(
+                    repo_dir, full_name, sha, new_file_diff(d.files()), write, message, head,
+                    github_web_url=s.github_web_url,
+                )  # fmt: skip
+        with github_write(str(repo["id"]), iid):
+            url = app.open_pull_request(
+                iid, full_name, head=head, base=branch,
+                title="Add Ari sandbox build recipe", body=pr_body(d, facts),
             )  # fmt: skip
-        url = app.open_pull_request(
-            iid, full_name, head=head, base=branch,
-            title="Add Ari sandbox build recipe", body=pr_body(d, facts),
-        )  # fmt: skip
+    except RepositoryDetached as exc:
+        return finish("recipe.skipped", reason=exc.reason, commit_sha=sha)
     except (CheckoutError, IntelligenceError, httpx.HTTPError) as exc:  # too big, refused, gone
         from backend.delivery import _transient
 
