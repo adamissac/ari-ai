@@ -665,6 +665,14 @@ def test_authorization_finding_is_handed_to_scout_with_test_evidence(tmp_path: P
         ("Discounted totals are rounded half-up to cents", False),
         ("Total refunds never exceed the payment amount", False),
         ("Payroll rounding uses cents", False),
+        ("Unauthorized callers are rejected with 401", True),
+        ("Bob must not read another customer's account", True),
+        # live gtB1 py-rename: owners locked out by a crash is a functional bug
+        ("Authenticated customers can list their accounts", False),
+        (
+            "Customer.id renamed but app.py still reads customer.id for authenticated requests",
+            False,
+        ),
     ],
 )
 def test_authorization_rule_routing(text: str, authz: bool) -> None:
