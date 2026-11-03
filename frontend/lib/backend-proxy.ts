@@ -34,6 +34,14 @@ const envelope = (code: string, message: string, status: number, details: Record
 const outage = (message: string, status: number): Response =>
   envelope('SUBSYSTEM_UNAVAILABLE', message, status, { origin: 'proxy' });
 
+/** Delays before each retry of a read; exported for tests. */
+export const RETRY_DELAYS_MS = [1000, 3000];
+
+const sleep = (ms: number, signal: AbortSignal): Promise<void> => new Promise(resolve => {
+  const timer = setTimeout(resolve, ms);
+  signal.addEventListener('abort', () => { clearTimeout(timer); resolve(); }, { once: true });
+});
+
 export async function proxy(request: Request): Promise<Response> {
   const url = new URL(request.url);
   if (!url.pathname.startsWith('/api/v1/') || url.pathname.includes('..')) {
@@ -50,27 +58,43 @@ export async function proxy(request: Request): Promise<Response> {
   // A bad configuration is the frontend's fault, not an outage: report it as such.
   let origin: string;
   try { origin = backendOrigin(); } catch { return envelope('INTERNAL', 'frontend misconfigured: BACKEND_ORIGIN', 500); }
-  let upstream: Response;
-  try {
-    upstream = await fetch(`${origin}${url.pathname}${url.search}`, {
-      method: request.method,
-      headers,
-      redirect: 'manual',
-      signal: request.signal,
-      cache: 'no-store',
-      ...(hasBody ? { body: request.body, duplex: 'half' } : {}),
-    } as RequestInit);
-  } catch (error) {
-    if (request.signal.aborted) throw error;
-    return outage(NO_ANSWER, 502);
+  // Reads are retried through a deploy rollover (the backend restarts in place, so Railway
+  // briefly cannot reach it); writes are never replayed.
+  const attempts = hasBody ? 1 : RETRY_DELAYS_MS.length + 1;
+  let upstream: Response | null = null;
+  let failure = 502; // no answer at all; a gateway page is 503
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (attempt > 0) {
+      await sleep(RETRY_DELAYS_MS[attempt - 1]!, request.signal);
+      if (request.signal.aborted) throw request.signal.reason;
+    }
+    try {
+      upstream = await fetch(`${origin}${url.pathname}${url.search}`, {
+        method: request.method,
+        headers,
+        redirect: 'manual',
+        signal: request.signal,
+        cache: 'no-store',
+        ...(hasBody ? { body: request.body, duplex: 'half' } : {}),
+      } as RequestInit);
+    } catch (error) {
+      if (request.signal.aborted) throw error;
+      upstream = null;
+      failure = 502;
+      continue;
+    }
+    // A 5xx that did not come from the API itself (Railway's "application failed to respond"
+    // while a deploy rolls over, an HTML gateway page) is reported in the API's own error shape,
+    // so the app shows "temporarily unavailable" instead of rejecting a malformed response.
+    if (upstream.status >= 500 && !(await isApiError(upstream.clone()))) {
+      await upstream.body?.cancel();
+      upstream = null;
+      failure = 503;
+      continue;
+    }
+    break;
   }
-  // A 5xx that did not come from the API itself (Railway's "application failed to respond"
-  // while a deploy rolls over, an HTML gateway page) is reported in the API's own error shape,
-  // so the app shows "temporarily unavailable" instead of rejecting a malformed response.
-  if (upstream.status >= 500 && !(await isApiError(upstream.clone()))) {
-    await upstream.body?.cancel();
-    return outage(NO_ANSWER, 503);
-  }
+  if (upstream === null) return outage(NO_ANSWER, failure);
   // Railway answers for a service with no running deployment itself ("Application not found",
   // 404, x-railway-fallback). That is an outage, not a missing resource or a contract break.
   if (upstream.headers.get('x-railway-fallback') === 'true') {
