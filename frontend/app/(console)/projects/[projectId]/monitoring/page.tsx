@@ -7,7 +7,7 @@ import { AttackDrill } from '@/components/attack-drill';
 import { DefenseSwitch } from '@/components/defense-switch';
 import { DeliverySwitch } from '@/components/delivery-switch';
 import { useProject } from '@/components/project';
-import { Async, Badge, Button, Empty, ErrorState, Loading, Mono, PageTitle, Panel, Tag, Time } from '@/components/ui';
+import { Async, Badge, Button, Details, Empty, ErrorState, Loading, Mono, PageTitle, Panel, StatGrid, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
 import { num, shortSha } from '@/lib/format';
 import { monitoringSummary } from '@/lib/monitoring';
@@ -42,21 +42,18 @@ export default function MonitoringPage() {
   });
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <PageTitle eyebrow="Defend" title="Monitoring" subtitle={selectedRepo
-        ? <>Saved monitoring records for <span className="font-mono text-ink">{selectedRepo.full_name}</span>. Events without a repository ID are not attributed to this repository.</>
-        : 'Select a connected repository to review its monitoring records.'}
+      <PageTitle eyebrow="Defend" title="Monitoring" subtitle={selectedRepo ? <span className="font-mono text-ink">{selectedRepo.full_name}</span> : 'Select a connected repository.'}
         actions={<div className="flex flex-wrap gap-3"><DefenseSwitch project={project} onChange={() => reloadProject()} /><DeliverySwitch project={project} onChange={() => reloadProject()} /></div>} />
-      <div className="grid grid-cols-1 divide-y divide-line border-y border-line text-sm sm:grid-cols-3 sm:divide-x sm:divide-y-0" aria-label="Monitoring activity">
-        <p className="py-3 sm:px-4 sm:pl-0"><span className="text-muted">Events</span> <strong className="ml-2 font-mono">{events.status === 'ready' ? repoEvents.length : '…'}</strong></p>
-        <p className="py-3 sm:px-4"><span className="text-muted">Synthetic events</span> <strong className="ml-2 font-mono">{events.status === 'ready' ? repoEvents.filter(event => event.simulated).length : '…'}</strong></p>
-        <p className="py-3 sm:px-4 sm:pr-0"><span className="text-muted">Re-checks</span> <strong className="ml-2 font-mono">{reassess.status === 'ready' ? repoReassessments.length : '…'}</strong></p>
-      </div>
-      <p className="text-sm text-muted" data-testid="monitoring-summary">{summary}</p>
-      {unassignedEventCount > 0 && <p className="text-xs text-muted">{unassignedEventCount} event{unassignedEventCount === 1 ? '' : 's'} without a repository ID are excluded from this repository&apos;s feed.</p>}
+      <StatGrid testId="monitoring-stats" items={[
+        { label: 'Events', value: events.status === 'ready' ? repoEvents.length : '…' },
+        { label: 'Synthetic events', value: events.status === 'ready' ? repoEvents.filter(event => event.simulated).length : '…' },
+        { label: 'Re-checks', value: reassess.status === 'ready' ? repoReassessments.length : '…' },
+        { label: 'Recommendations', value: recs.status === 'ready' ? recs.data.items.length : '…' },
+      ]} />
       <AttackDrill projectId={project.id} onEvents={events.reload} />
       <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[3fr_2fr]">
       <div className="flex flex-col gap-4">
-        <Panel title="Event feed" actions={<span className="text-xs text-muted">persisted webhook and runtime events · polled every 10 s</span>}>
+        <Panel title="Event feed">
           <Async resource={events} label="monitoring events">
             {page => <EventFeed items={selectedRepo ? page.items.filter(event => event.repo_id === selectedRepo.id) : []} />}
           </Async>
@@ -85,7 +82,7 @@ export default function MonitoringPage() {
         </Panel>
       </div>
       <div className="flex flex-col gap-4">
-        <Panel title="Project-wide defense recommendations (test-environment-derived)">
+        <Panel title="Defense recommendations">
           <p className="mb-3 text-xs text-warn" data-testid="rl-caveat">{RL_CAVEAT}</p>
           <Async resource={recs} label="recommendations">
             {page => (
@@ -98,7 +95,7 @@ export default function MonitoringPage() {
             )}
           </Async>
         </Panel>
-        <Panel title="Project-wide RL evaluations">
+        <Panel title="RL evaluations">
           <Async resource={evals} label="RL evaluations">
             {page => page.items.length === 0 ? <Empty>No evaluation imported into this project. The <Link className="text-accent hover:underline" href="/lab">Defense Lab</Link> reads the committed evaluation bundle directly.</Empty> : (
               <ul className="divide-y divide-line text-xs">
@@ -113,6 +110,11 @@ export default function MonitoringPage() {
         </Panel>
       </div>
     </div>
+      <Details summary="About this page">
+        <p data-testid="monitoring-summary">{summary}</p>
+        {unassignedEventCount > 0 && <p>{unassignedEventCount} event{unassignedEventCount === 1 ? '' : 's'} without a repository ID are excluded from this repository&apos;s feed.</p>}
+        <p>Events without a repository ID are not attributed to this repository. The feed shows persisted webhook and runtime events, polled every 10 s.</p>
+      </Details>
     </div>
   );
 }
@@ -120,7 +122,7 @@ export default function MonitoringPage() {
 function EventFeed({ items }: { items: MonitoringEvent[] }) {
   const { project } = useProject();
   if (items.length === 0) {
-    return <Empty>No events received. Monitoring shows only signed GitHub deliveries or authenticated runtime batches that actually reached the backend.</Empty>;
+    return <Empty>No events received yet.</Empty>;
   }
   const last = items[0];
   return (

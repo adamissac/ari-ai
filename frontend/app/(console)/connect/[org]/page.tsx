@@ -47,7 +47,7 @@ export default function ConnectReposPage() {
         <nav aria-label="Breadcrumb" className="mb-5 text-sm text-muted">
           <Link href="/connect" className="hover:text-ink">Organizations</Link><span aria-hidden="true" className="mx-2">/</span><span className="text-ink">{login}</span>
         </nav>
-        <PageTitle eyebrow="Repositories / 02" title={<span className="flex items-center gap-4"><Avatar login={login} size={40} /><span>{login}</span></span>} subtitle="Select a repository to review its changes. Connecting opens setup. No check runs until you approve sandbox testing and start one." />
+        <PageTitle eyebrow="Repositories / 02" title={<span className="flex items-center gap-4"><Avatar login={login} size={40} /><span>{login}</span></span>} subtitle="Select a repository. No check runs until you approve sandbox testing." />
         {error !== null && <div className="mb-4" data-testid="connect-repo-error"><ErrorState error={error} context="Could not connect the repository" /></div>}
         {failed && takenElsewhere(error) && (
           <div className="mb-4 rounded-xl border border-line bg-panel p-4 text-sm" data-testid="claim-repo">
