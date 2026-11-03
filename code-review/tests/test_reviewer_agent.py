@@ -1028,3 +1028,18 @@ def test_finding_whose_claim_citations_all_fail_stays_a_hypothesis(tmp_path: Pat
     assert f.status is FindingStatus.hypothesis
     assert any("re-based on finding spans" in r for r in outcome.rejected)
     assert outcome.result.status is ReviewStatus.needs_clarification
+
+
+@pytest.mark.parametrize(
+    "text,crash",
+    [
+        ("Customer.id rename breaks ownership checks in app.py (AttributeError -> HTTP 500)", True),
+        ("Valid transfers crash with 500 after amount typed as float", True),
+        ("GET /payments/{payment_id} returns other customers' payments", False),
+        ("no require_owner call unlike sibling routes", False),
+    ],
+)
+def test_crash_findings_are_not_access_widening(text: str, crash: bool) -> None:
+    from code_review.agent import is_crash
+
+    assert is_crash(text) is crash
