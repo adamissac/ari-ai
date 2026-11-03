@@ -1012,6 +1012,29 @@ def test_scout_prompt_starts_from_the_commit_change(intel):
     assert "reviews one commit" not in plain
 
 
+def test_scout_prompt_lists_firestore_paths_of_a_node_recipe(intel):
+    import json
+
+    from security_agents.agents import scout
+
+    data = scout.ScoutInput(assessment_id="asm", snapshot_id="snp", commit_sha="a" * 40)
+    assert "firestore_paths" not in scout.build_prompt(data, intel)  # Python recipe
+    recipe_file = intel.snapshot.root / "build_recipe.json"
+    recipe_file.chmod(0o644)  # snapshots are pinned read-only
+    recipe_file.write_text(
+        json.dumps(
+            {
+                "kind": "node_http",
+                "firebase": {"rules": "firestore.rules"},
+                "firestore_paths": [{"id": "profile_doc", "path_template": "profiles/{uid}"}],
+            }
+        )
+    )
+    prompt = scout.build_prompt(data, intel)
+    assert "<data label='firestore_paths'" in prompt and "profiles/{uid}" in prompt
+    assert "`firestore.rules`" in prompt and "access_control.ownership" in prompt
+
+
 def test_patch_prompt_carries_the_cause_code_and_recipe_test_roots(intel):
     data = patch_agent.PatchInput(
         assessment_id="asm_t",

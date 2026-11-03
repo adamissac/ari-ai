@@ -182,6 +182,38 @@ def _recipe_include(intel: CodeIntel) -> tuple[str, ...]:
         return ()
 
 
+def _firestore_block(intel: CodeIntel) -> str:
+    """Firestore paths a node_http recipe declares (ADR-0023). They are not entry points, and on
+    these apps the rules, not the HTTP routes, are the main authorization boundary."""
+    import json
+
+    try:
+        recipe = json.loads((intel.snapshot.root / "build_recipe.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    if not isinstance(recipe, dict) or recipe.get("kind") != "node_http":
+        return ""
+    rows = [
+        {"id": p.get("id"), "path_template": p.get("path_template")}
+        for p in recipe.get("firestore_paths") or []
+        if isinstance(p, dict)
+    ]
+    if not rows:
+        return ""
+    rules = str((recipe.get("firebase") or {}).get("rules") or "firestore.rules")
+    return (
+        f"Clients of this app read and write Firestore directly, so its security rules "
+        f"(`{rules}`) are its main authorization boundary. Ari can test these document paths "
+        f"against those rules in an emulator:\n"
+        f"{data_block('firestore_paths', rows, provenance='build_recipe')}\n"
+        "For each path, find its `match` block in the rules (code.search, then code.read_span) "
+        "and decide whether another signed-in user, or an unauthenticated client, may read, list "
+        "or write a document there. Cite the rules lines, leave entry_point_id empty, name the "
+        "path template in the title, and use access_control.ownership (another user) or "
+        "access_control.authentication (no sign-in) as the check category.\n\n"
+    )
+
+
 def _in_target(path: str, include: tuple[str, ...]) -> bool:
     return any(path == p or path.startswith(p.rstrip("/") + "/") for p in include)
 
@@ -242,6 +274,7 @@ def build_prompt(data: ScoutInput, intel: CodeIntel) -> str:
         f"{data_block('entry_points', entry_rows, provenance='code_intelligence')}\n\n"
         f"{data_block('expectations', expectation_rows, provenance='code_intelligence')}\n\n"
         f"{data_block('index_provenance', intel.provenance(), provenance='platform')}\n\n"
+        f"{_firestore_block(intel)}"
         f"Check categories available for later validation: "
         f"{', '.join(data.available_check_categories) or 'none'}.\n"
         f"Already refuted hypothesis keys (do not repeat): {data.refuted_keys or 'none'}.\n"
