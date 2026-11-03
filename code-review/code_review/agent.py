@@ -28,6 +28,7 @@ from code_review.intent import (
     CitationChecker,
     IntentAdjudication,
     adjudicate_claims,
+    inferred_fallback,
     scan_injection,
 )
 from code_review.models import (
@@ -119,6 +120,20 @@ _RESTRICT = re.compile(
     r"|\bdenied\b|\bforbid|\bunauthori[sz]|\brefuse|\breject",
     re.IGNORECASE,
 )
+
+
+def _in_hunks(evidence: list[EvidenceRef], diff: str) -> bool:
+    """Does any verified span overlap a changed hunk (head side) of its file?"""
+    hunks = hunk_citations(diff, [CitationIn(source_kind="code", path=e.path) for e in evidence])
+    return any(
+        e.span is not None
+        and h.start_line is not None
+        and e.path == h.path
+        and e.span.start_line <= (h.end_line or h.start_line)
+        and h.start_line <= e.span.end_line
+        for e in evidence
+        for h in hunks
+    )
 
 
 def is_authorization_rule(*texts: str) -> bool:
@@ -445,12 +460,11 @@ class ReviewerAgentRunner:
                     rejected.append(f"span rejected: {note}")
             return out
 
+        proposed = {c.key: c for c in report.claims}
         for f in report.findings:
             decision = intent.by_key.get(f.claim_key)
-            if decision is None:
-                rejected.append(
-                    f"finding '{f.title[:80]}': unknown or rejected claim {f.claim_key}"
-                )
+            if decision is None and f.claim_key not in proposed:
+                rejected.append(f"finding '{f.title[:80]}': unknown claim {f.claim_key}")
                 continue
             evidence = spans(f.suspected_spans)
             if not evidence:
@@ -462,6 +476,15 @@ class ReviewerAgentRunner:
             if not evidence:
                 rejected.append(f"finding '{f.title[:80]}': no verifiable source span")
                 continue
+            if decision is None and not _in_hunks(evidence, tb.change_diff):
+                # an unverifiable rule about code the change did not touch: likely invented
+                rejected.append(f"finding '{f.title[:80]}': rejected claim {f.claim_key}")
+                continue
+            if decision is None:
+                decision = inferred_fallback(proposed[f.claim_key], evidence)
+                intent.by_key[f.claim_key] = decision
+                intent.evidence.claims.append(decision.claim)
+                rejected.append(f"claim {f.claim_key}: re-based on finding spans as inferred")
             ex: TestExecution | None = tb.executions.get(f.test_id or "")
             reason: str
             if ex is None:
