@@ -12,6 +12,8 @@ import pytest
 from security_agents.checks.library import (
     AUTHENTICATION,
     BOUNDS,
+    CONCURRENT_BOUND,
+    DESTINATION,
     OWNERSHIP,
     ROLE,
     default_library,
@@ -46,7 +48,14 @@ def probe_ctx(intel, scope=None):
 
 def test_library_lists_runnable_templates(library):
     refs = {t["ref"] for t in library.list_public()}
-    assert refs == {OWNERSHIP.ref, BOUNDS.ref, AUTHENTICATION.ref, ROLE.ref}
+    assert refs == {
+        OWNERSHIP.ref,
+        BOUNDS.ref,
+        AUTHENTICATION.ref,
+        ROLE.ref,
+        CONCURRENT_BOUND.ref,
+        DESTINATION.ref,
+    }
     assert all(t["runnable"] for t in library.list_public())
     assert library.categories() == {
         "access_control.ownership",
