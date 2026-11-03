@@ -3,7 +3,7 @@
 
 # Agent board — live coordination dashboard
 
-Regenerated 2026-11-03 01:00 UTC. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
+Regenerated 2026-11-03 01:01 UTC. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
 
 ## Active agents
 
@@ -19,7 +19,7 @@ Regenerated 2026-11-03 01:00 UTC. Comms channel: [issue #559](https://github.com
 | codex-review-automation | Alan | bounded independent release review automation | READY_FOR_REVIEW | Devin → CI → immutable-SHA independent Codex review | codex/ari-review-cycle | ed68a7bd |
 | devin-console-refinement | Adam | frontend console refinement | READY_FOR_REVIEW | Merge origin/main into feat/adam/setup-walkthrough, preserving setup behavior and main updates | feat/adam/setup-walkthrough | 4afaaf5197aa6fd582fd6193a3158eb9a670e67b |
 | devin-defense-lab | Adam | Defense Lab pilot audit + two-org rehearsal + live-deployment rehearsal leg | BLOCKED | Live leg on adamissac/pilot-rehearsal-target: 2 pushes delivered 202 (recipe merge 256c8e8 @00:40, re-trigger 7cf48de @01:06) — no assessment/fix PR after ~25min; outcome only visible in prod UI/DB | feat/adam/defense-lab-pilot-audit | 6ffaccda |
-| devin-frontend-ui | Adam | frontend UI — landing and console UX, including assessment review-pipeline dashboard | READY_FOR_REVIEW | Assessment review-pipeline dashboard redesign; awaiting owner review and separately briefed CI loop | fix/adam/review-pipeline-dashboard | pending |
+| devin-frontend-ui | Adam | frontend UI — landing and console UX, including assessment review-pipeline dashboard | READY_FOR_REVIEW | Assessment review-pipeline dashboard redesign; awaiting owner review and separately briefed CI loop | fix/adam/review-pipeline-dashboard | 9bb630d23fe7a64caff1782ed9f52313470bb954 |
 | devin-frontend-ux | Adam | first-user usability — pilot UX workstream (PR #538 on #496) | READY_FOR_REVIEW | Named approval cards, two-step approve/confirm on assessment page + approvals inbox, plain-English replay (plainToolName), honest quick-read errors, flow map + blockers doc | feat/adam/first-user-usability | c890e2c9 |
 | devin-intel-audit | Adam | code-intelligence engine + persistent memory pilot-readiness audit; secret redaction hardening | READY_FOR_REVIEW | PR #531: executed audit report + parse-safe redaction (#441 fix carried verbatim) + mid-line secret redaction + honest route-gap IndexIssues + retrieval eval + index benchmark | feat/adam/intel-pipeline-audit | 46a734b3 |
 | devin-pipeline-fixer | Adam | pilot readiness: merge chain landed; sealed-diff delivery fix (pilot C9) | AWAITING_REVIEW | PR #580 sealed verified-diff delivery — awaiting Adam security review (trust-boundary, no merge without it) | fix/adam/sealed-diff-delivery | 994165dd |

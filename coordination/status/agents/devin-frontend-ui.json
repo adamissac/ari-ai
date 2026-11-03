@@ -5,7 +5,7 @@
   "state": "READY_FOR_REVIEW",
   "task": "Assessment review-pipeline dashboard redesign; awaiting owner review and separately briefed CI loop",
   "branch": "fix/adam/review-pipeline-dashboard",
-  "latest_sha": "pending",
+  "latest_sha": "9bb630d23fe7a64caff1782ed9f52313470bb954",
   "prs": [],
   "claims": [
     "frontend/components/agent-relay.tsx",
@@ -20,7 +20,7 @@
     "Owner review and separately briefed CI loop"
   ],
   "blockers": [],
-  "last_update_utc": "2026-11-03T00:59:45Z",
+  "last_update_utc": "2026-11-03T01:01:22Z",
   "tests": "Frontend lint, typecheck, 110 Vitest files / 478 tests, Next build, and journey E2E (3 tests) passed; screenshots saved under /home/ubuntu/ari-tools/pipeline/",
   "next_action": "Owner to review the pushed branch and re-brief the CI loop"
 }
