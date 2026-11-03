@@ -40,6 +40,7 @@ from ..contracts import (
 from ..llm import LLMGateway, LLMRequest, LLMUnavailable
 from ..redact import redact
 from ..tools import ToolContext, ToolRegistry
+from ..tools.strict_schema import tool_input_schema
 from .spec import AgentSpec
 
 DATA_BLOCK_NOTE = (
@@ -202,12 +203,16 @@ class BudgetTracker:
 def submit_schema(spec: AgentSpec) -> dict[str, Any]:
     schema = spec.output_model.model_json_schema()
     schema["additionalProperties"] = False
+    # Strict mode makes the API reject a submit missing a required field or adding one
+    # (Diagnose on Haiku did both live); the output model still validates every bound.
+    schema, strict = tool_input_schema(schema)
     return {
         "name": spec.submit_tool_name(),
         "description": (
             f"Submit the final structured {spec.name.value} result. Call this exactly once, last."
         ),
         "input_schema": schema,
+        "strict": strict,
     }
 
 

@@ -97,3 +97,15 @@ def test_api_accepts_every_agents_tool_set(spec) -> None:
         messages=[{"role": "user", "content": "ok"}],
         tools=[*_tools(spec), submit_schema(spec)],
     )
+
+
+@pytest.mark.parametrize("spec", SPECS, ids=lambda s: s.name.value)
+def test_submit_tool_is_strict_unless_its_output_has_a_free_form_map(spec) -> None:
+    tool = submit_schema(spec)
+    raw = spec.output_model.model_json_schema()
+    has_map = any(n.get("additionalProperties") not in (None, False) for n in _walk(raw))
+    assert tool["strict"] is (not has_map)
+    if tool["strict"]:
+        for node in _walk(tool["input_schema"]):
+            assert not (UNSUPPORTED_IN_STRICT & node.keys()), UNSUPPORTED_IN_STRICT & node.keys()
+        assert set(raw["required"]) == set(tool["input_schema"]["required"])
