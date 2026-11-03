@@ -51,7 +51,13 @@ from ..sandbox.workspace import (
 from .registry import ToolContext
 
 CHECKS_DIR = Path(__file__).parent.parent / "checks"
-NODE_DRIVERS = frozenset({"local-process"})  # vercel-sandbox: ADR-0023 step 3b
+
+
+def node_drivers() -> frozenset[str]:
+    """Drivers that can serve node_http targets. Vercel is opt-in until a live smoke passes."""
+    on_vercel = os.environ.get("SECURITY_AGENTS_NODE_ON_VERCEL") == "1"
+    return frozenset({"local-process", *(("vercel-sandbox",) if on_vercel else ())})
+
 
 PYTEST_SUMMARY = re.compile(
     r"(?:(?P<passed>\d+) passed)?(?:, )?(?:(?P<failed>\d+) failed)?(?:, )?(?:(?P<errors>\d+) error)?"
@@ -846,10 +852,10 @@ class CheckRunner:
         # A Node target is only ever reached over HTTP, inside the run boundary.
         transport = "http" if node else self.transport
         label = "firestore-emulator" if meta.support_files else transport
-        if node and getattr(self.driver, "name", "") not in NODE_DRIVERS:
+        if node and getattr(self.driver, "name", "") not in node_drivers():
             return {
                 "error": "NODE_TARGET_UNSUPPORTED_DRIVER",
-                "detail": f"node_http targets run on {sorted(NODE_DRIVERS)}",
+                "detail": f"node_http targets run on {sorted(node_drivers())}",
                 "matches_expectation": None,
             }
         if (

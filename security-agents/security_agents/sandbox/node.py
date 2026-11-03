@@ -26,6 +26,9 @@ LAUNCHER = Path(__file__).with_name("node_stack.mjs")
 NODE_DIR = Path(os.environ.get("ARI_NODE_DIR") or Path(__file__).resolve().parents[2] / "sandbox" / "node")
 REGISTRY = "https://registry.npmjs.org/"
 READY = "@@ARI_READY@@"
+EMULATORS_PATH = os.environ.get("FIREBASE_EMULATORS_PATH") or os.path.expanduser(
+    "~/.cache/firebase/emulators"
+)
 
 
 def lockfile_problems(workspace: Path) -> list[str]:
@@ -106,7 +109,12 @@ class LocalStack:
     def __init__(
         self, workspace: Path, config: dict[str, Any], scratch: Path, timeout_s: float = 120
     ) -> None:
-        self.config = {**config, "node_dir": str(NODE_DIR), "ports": ports()}
+        self.config = {
+            **config,
+            "node_dir": str(NODE_DIR),
+            "ports": ports(),
+            "emulators_path": EMULATORS_PATH,
+        }
         cfg = scratch / "node_stack.json"
         cfg.write_text(json.dumps(self.config), encoding="utf-8")
         self.log_path = scratch / "node_stack.log"
