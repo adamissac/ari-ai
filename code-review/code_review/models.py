@@ -113,8 +113,9 @@ class ReviewerReport(StrictModel):
 
 class RepairReport(StrictModel):
     summary: ShortText
-    rationale: ShortText
-    root_cause: ShortText
+    # Haiku once folded these into the summary; the run is decided by executed tests anyway.
+    rationale: ShortText = ""
+    root_cause: ShortText = ""
 
 
 # ----------------------------------------------------------------- outcomes

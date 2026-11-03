@@ -278,6 +278,13 @@ class ReviewerToolbox:
                 "generated tests may only use credential-shaped values that already exist in the "
                 "repository's own fixtures"
             )
+        if not self._imports_project(a.content):
+            # A copy of the logic transcribed into the test proves nothing about the code
+            # (live gtB3 js-lessonkey "validated" a Python re-implementation of a JS function).
+            raise ToolDenied(
+                "generated tests must import the code under test from this repository; "
+                "no module of the project is imported"
+            )
         rel = self.head.repo_rel(f"{GENERATED_TEST_DIR}/test_cr_{a.name}.py")
         if self.head.exists(rel):
             raise ToolDenied(f"{rel} already exists; choose another name")
@@ -293,6 +300,27 @@ class ReviewerToolbox:
         art = self.host.store_text(a.content, ArtifactKind.other, media_type="text/x-python")
         self.written[test_id] = WrittenTest(test_id, rel, a.content, a.claim_key, a.rationale, art)
         return f"wrote {rel} as test_id={test_id}. Run it with run_tests(target='generated', test_id='{test_id}')."
+
+    def _imports_project(self, content: str) -> bool:
+        """Does the test import a module or package that exists in the project?"""
+        names: set[str] = set()
+        for node in ast.walk(ast.parse(content)):
+            if isinstance(node, ast.Import):
+                names.update(alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                if node.level:
+                    return True
+                if node.module:
+                    names.add(node.module.split(".")[0])
+        prefixes = tuple(
+            self.head.repo_rel(f"{root}{name}{suffix}")
+            for name in names
+            for root in ("", "src/")
+            for suffix in (".py", "/")
+        )
+        return bool(prefixes) and any(
+            f.startswith(prefixes) and f.endswith(".py") for f in self.head.files()
+        )
 
     def _in_repo(self, value: str) -> bool:
         for rel in self.head.files():
