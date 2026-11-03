@@ -269,3 +269,86 @@ def test_recipe_cannot_repin_the_audit_toolchain() -> None:
     assert [r for r in merged if vd._req_name(r) == "pytest"] == ["pytest==8.4.2"]
     assert not any(vd._req_name(r) == "pluggy" for r in merged)
     assert "fastapi==0.110.0" in merged
+
+
+# --------------------------------------------------------------------------- node_http (ADR-0023)
+
+
+class NodeBox(FakeBox):
+    """The launcher reports ready on the first poll and leaves a request log."""
+
+    def run(self, argv, *, cwd, env, timeout):
+        if argv[:2] == ["grep", "-q"]:
+            self.ran.append((argv, cwd, env))
+            return 0, "", "", False
+        if argv[:1] == ["cat"]:
+            self.ran.append((argv, cwd, env))
+            return 0, '[node_stack] "GET /api/notes/note-alice HTTP/1.1" 200\n', "", False
+        return super().run(argv, cwd=cwd, env=env, timeout=timeout)
+
+
+def _node_spec(tmp_path: Path, *, lock: dict | None = None, serve: bool = True) -> SandboxSpec:
+    from .test_sandbox import ALLOWED
+
+    ws = _workspace(tmp_path)
+    (ws / "package.json").write_text('{"name": "x"}')
+    lockfile = lock or {
+        "packages": {"": {}, "node_modules/a": {"resolved": "https://registry.npmjs.org/a/-/a-1.0.0.tgz"}}
+    }
+    (ws / "package-lock.json").write_text(json.dumps(lockfile))
+    return SandboxSpec(
+        profile=SandboxProfile.CHECK_RUNNER,
+        network="target-only",
+        workspace=ws,
+        mode="pytest",
+        args=["-q"],
+        labels={"assessment_id": "asm", "step_key": "s"},
+        target_id="tgt",
+        scope_decision=ALLOWED,
+        node_stack={
+            "project_id": "demo-x",
+            "emulators": ["auth", "firestore"],
+            "identities": [],
+            "seed": [],
+            "env": {},
+            "serve": {"adapter": "vercel_functions", "dir": "api"} if serve else None,
+        },
+    )
+
+
+def test_node_stack_starts_the_launcher_inside_the_microvm(tmp_path: Path) -> None:
+    result = VercelSandboxDriver(factory=NodeBox).run(_node_spec(tmp_path))
+    box = FakeBox.instances[0]
+    names = _names(box.archives[WORKDIR])
+    assert {"./.sandbox/node_stack.mjs", "./.sandbox/node_stack.json"} <= names
+    with tarfile.open(fileobj=io.BytesIO(box.archives[WORKDIR])) as t:
+        config = json.loads(t.extractfile("./.sandbox/node_stack.json").read())
+    assert config["node_dir"] == "/opt/ari-node" and config["ports"]["app"] == 8000
+    assert config["emulators_path"] == "/opt/ari-node/emulators"
+    assert box.started and "node .sandbox/node_stack.mjs" in box.started[-1][-1]
+    assert ["ln", "-s", "/opt/ari-deps/node_modules", "node_modules"] in [r[0] for r in box.ran]
+    entry_env = next(
+        env for argv, _cwd, env in box.ran if argv[:1] == ["python"] and ".sandbox/entry.py" in argv
+    )
+    assert entry_env["SANDBOX_TARGET_URL"] == "http://127.0.0.1:8000"
+    assert entry_env["FIRESTORE_EMULATOR_HOST"] == "127.0.0.1:8080"
+    assert entry_env["FIREBASE_AUTH_EMULATOR_HOST"] == "127.0.0.1:9099"
+    assert "/api/notes/note-alice" in result.target_log  # fetched from the box, not invented
+    assert box.stopped
+
+
+def test_node_stack_refuses_non_registry_dependencies_before_any_box(tmp_path: Path) -> None:
+    lock = {"packages": {"": {}, "node_modules/evil": {"resolved": "git+https://example.com/evil.git"}}}
+    with pytest.raises(PlatformError) as error:
+        VercelSandboxDriver(factory=NodeBox).run(_node_spec(tmp_path, lock=lock))
+    assert error.value.code is ErrorCode.SANDBOX_POLICY_VIOLATION
+    assert FakeBox.instances == []
+
+
+def test_node_base_snapshot_key_changes_with_node_material(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    from security_agents.sandbox import vercel_driver
+
+    spec = _node_spec(tmp_path)
+    assert vercel_driver._base_key(spec) != vercel_driver._base_key(replace(spec, node_stack=None))

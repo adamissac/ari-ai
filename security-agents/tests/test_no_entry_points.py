@@ -99,3 +99,49 @@ def test_js_only_entry_points_skip_with_a_precise_label(tmp_path):
     assert result.runs == [] and result.findings == []
     notes = [note for *_, note in result.state_log.entries]
     assert any("JavaScript/TypeScript HTTP entry points" in n and "skipped" in n for n in notes)
+
+
+def test_node_recipe_on_a_driver_without_node_support_skips_with_a_label(tmp_path):
+    import json
+
+    from .test_node_recipe import recipe
+
+    staging = tmp_path / "staging"
+    copy_tree(PAYMENTS_LITE, staging)
+    (staging / "build_recipe.json").write_text(json.dumps(recipe()))
+    snapshot = SnapshotHandle.from_directory(
+        staging, tmp_path / "snapshot", snapshot_id="snp_nodedrv", repo_id="rep_nodedrv"
+    )
+
+    class OtherDriver(LocalProcessDriver):
+        name = "vercel-sandbox"
+
+    result = Orchestrator(
+        OrchestratorConfig(
+            assessment_id="asm_nodedrv",
+            project_id="prj_nodedrv",
+            org_id="org_nodedrv",
+            scope=live_scope(),
+            target_id=TARGET_ID,
+            requested_by="usr_requester",
+            budget=Budget(max_tokens=100_000, max_usd=1.0, max_wall_clock_s=300.0),
+        ),
+        intel=LocalIntel(snapshot),
+        gateway=ProviderGateway(FakeLLM({})),
+        driver=OtherDriver(allow=True),
+        library=default_library(),
+        workdir=tmp_path / "work",
+    ).run()
+    assert result.state is AssessmentState.COMPLETED, (result.error_code, result.error_detail)
+    assert result.runs == []
+    notes = [note for *_, note in result.state_log.entries]
+    assert any("not supported on the vercel-sandbox sandbox yet" in n for n in notes), notes
+
+
+def test_vercel_node_support_is_opt_in(monkeypatch):
+    from security_agents.tools.services import node_drivers
+
+    monkeypatch.delenv("SECURITY_AGENTS_NODE_ON_VERCEL", raising=False)
+    assert "vercel-sandbox" not in node_drivers()
+    monkeypatch.setenv("SECURITY_AGENTS_NODE_ON_VERCEL", "1")
+    assert "vercel-sandbox" in node_drivers()

@@ -1,0 +1,15 @@
+{
+  "name": "notes-firebase-lite",
+  "private": true,
+  "type": "module",
+  "description": "Owned JavaScript fixture for the security agents (ADR-0023). Contains planted defects.",
+  "dependencies": {
+    "firebase-admin": "13.10.0"
+  },
+  "devDependencies": {
+    "vitest": "2.1.9"
+  },
+  "scripts": {
+    "test": "vitest run"
+  }
+}

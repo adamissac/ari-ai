@@ -17,7 +17,7 @@ from .contracts import ErrorCode, PlatformError
 
 KIND = "node_http"
 ADAPTERS = ("vercel_functions", "next", "express_module")
-TEST_RUNNERS = ("vitest", "jest", "node-test")
+TEST_RUNNERS = ("vitest", "jest")
 PLACEHOLDERS = ("$sandbox_service_account",)
 EMULATORS = ("auth", "firestore")
 
@@ -101,6 +101,17 @@ def problems(recipe: dict[str, Any]) -> list[str]:
             out.append(f"seed path {item['path']!r} is not a document path")
         elif not isinstance(item.get("data"), dict) or len(json.dumps(item["data"])) > 10_000:
             out.append(f"seed {item['path']}: data must be an object under 10 kB")
+    resources = recipe.get("resources") or {}
+    if not isinstance(resources, dict):
+        out.append("resources must be an object")
+        resources = {}
+    for kind, owners in resources.items():
+        if not _NAME.match(str(kind)) or not isinstance(owners, dict):
+            out.append(f"resource {kind!r} is malformed")
+            continue
+        for owner, res in owners.items():
+            if owner not in identities or not isinstance(res, dict) or not _UID.match(str(res.get("id", ""))):
+                out.append(f"resource {kind}/{owner}: owner must be an identity and id [A-Za-z0-9_-]{{1,64}}")
     ids: set[str] = set()
     for fp in recipe.get("firestore_paths") or []:
         if not isinstance(fp, dict) or not _NAME.match(str(fp.get("id", ""))) or fp["id"] in ids:
@@ -165,3 +176,30 @@ def resolved(recipe: dict[str, Any]) -> dict[str, Any]:
     for spec in out["identities"].values():
         spec["auth_header"] = "Bearer " + emulator_id_token(project, spec["uid"], spec)
     return out
+
+
+def stack_config(recipe: dict[str, Any], *, serve: bool) -> dict[str, Any]:
+    """Launcher config for `sandbox/node_stack.mjs` from a resolved recipe. `serve=False`
+    starts only the Firestore emulator (rules checks); the driver adds ports and node_dir."""
+    firebase = recipe.get("firebase") or {}
+    emulators = list(firebase.get("emulators", list(EMULATORS))) if firebase else []
+    if not serve:
+        emulators = [e for e in emulators if e == "firestore"]
+    return {
+        "project_id": str(firebase.get("project_id", "demo-ari-sandbox")),
+        "emulators": emulators,
+        "identities": [
+            {k: spec.get(k) for k in ("uid", "email", "email_verified", "claims") if k in spec}
+            for spec in recipe["identities"].values()
+        ],
+        "seed": list(recipe.get("seed") or []) if serve else [],
+        "env": dict(recipe.get("env") or {}) if serve else {},
+        "serve": dict(recipe["serve"]) if serve and recipe.get("serve") else None,
+    }
+
+
+def test_command(recipe: dict[str, Any]) -> tuple[str, ...] | None:
+    test = recipe.get("test_command")
+    if not isinstance(test, dict):
+        return None
+    return (str(test["runner"]), *[str(a) for a in test.get("args", [])])

@@ -52,6 +52,13 @@ from .registry import ToolContext
 
 CHECKS_DIR = Path(__file__).parent.parent / "checks"
 
+
+def node_drivers() -> frozenset[str]:
+    """Drivers that can serve node_http targets. Vercel is opt-in until a live smoke passes."""
+    on_vercel = os.environ.get("SECURITY_AGENTS_NODE_ON_VERCEL") == "1"
+    return frozenset({"local-process", *(("vercel-sandbox",) if on_vercel else ())})
+
+
 PYTEST_SUMMARY = re.compile(
     r"(?:(?P<passed>\d+) passed)?(?:, )?(?:(?P<failed>\d+) failed)?(?:, )?(?:(?P<errors>\d+) error)?"
 )
@@ -682,6 +689,9 @@ class TestRunner:
     test_command_args: tuple[str, ...] = ("-q", "tests")
     limits: SandboxLimits = field(default_factory=SandboxLimits)
     setup: dict[str, tuple[str, ...]] = field(default_factory=dict)  # recipe `sandbox` block
+    # node_http recipes (ADR-0023): (runner, *args) and an emulator-only launcher config.
+    node_test: tuple[str, ...] | None = None
+    node_stack: dict[str, Any] | None = None
 
     def run(self, ctx: ToolContext, selection: str, node_ids: list[str]) -> dict[str, Any]:
         if selection == "project_suite" and self.suite_workspace_provider is not None:
@@ -732,14 +742,28 @@ class TestRunner:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(resolve_under(Path(ws_path), rel), target)
             ws_path = unpatched / "ws"
+        mode = "pytest"
+        if self.node_test is not None:
+            if node_ids:
+                return {"error": "BAD_NODE_ID", "detail": "node test runs take files, not pytest node ids"}
+            mode, files = "nodetest", [a for a in args[1:] if selection.startswith("added_tests")]
+            runner = self.node_test[0]
+            args = (
+                [runner, "run", *files]
+                if files and runner == "vitest"
+                else [runner, *files]
+                if files
+                else list(self.node_test)
+            )
         spec = SandboxSpec(
             profile=SandboxProfile.TEST_RUNNER,
             network="none",
             workspace=ws_path,
-            mode="pytest",
+            mode=mode,  # type: ignore[arg-type]
             args=args,
             labels={"assessment_id": ctx.assessment_id, "step_key": ctx.step_key, "agent": ctx.agent.value},
             limits=self.limits,
+            node_stack=self.node_stack,
             **self.setup,
         )
         try:
@@ -823,8 +847,20 @@ class CheckRunner:
                 "detail": f"{template_ref} has no reviewed implementation installed",
                 "matches_expectation": None,
             }
+        recipe = self.recipe_provider(ctx, target_id)
+        node = node_recipe.is_node(recipe)
+        # A Node target is only ever reached over HTTP, inside the run boundary.
+        transport = "http" if node else self.transport
+        label = "firestore-emulator" if meta.support_files else transport
+        if node and getattr(self.driver, "name", "") not in node_drivers():
+            return {
+                "error": "NODE_TARGET_UNSUPPORTED_DRIVER",
+                "detail": f"node_http targets run on {sorted(node_drivers())}",
+                "matches_expectation": None,
+            }
         if (
-            self.transport == "http"
+            transport == "http"
+            and not node
             and not meta.support_files
             and getattr(self.driver, "name", "") != "docker"
         ):
@@ -833,9 +869,8 @@ class CheckRunner:
                 "detail": "the http check transport needs the Docker driver's internal target network",
                 "matches_expectation": None,
             }
-        recipe = self.recipe_provider(ctx, target_id)
         try:
-            rendered = self.library.render(template_ref, recipe, parameters, transport=self.transport)
+            rendered = self.library.render(template_ref, recipe, parameters, transport=transport)
         except PlatformError as exc:
             return {"error": exc.code.value, "detail": exc.message, "matches_expectation": None}
 
@@ -864,11 +899,12 @@ class CheckRunner:
             target_id=target_id,
             scope_decision=decision,
             target_workspace=workspace_path(self.workspace_provider(ctx))
-            if self.transport == "http" and not meta.support_files
+            if transport == "http" and not node and not meta.support_files
             else None,
             target_app=str(recipe.get("app_factory") or "") or None
-            if self.transport == "http" and not meta.support_files
+            if transport == "http" and not node and not meta.support_files
             else None,
+            node_stack=node_recipe.stack_config(recipe, serve=not meta.support_files) if node else None,
             **setup,
         )
         res = self.driver.run(spec)
@@ -893,12 +929,13 @@ class CheckRunner:
             params_hash=self.library.params_hash(template_ref, parameters),
             scope_id=decision.scope_id,
             matches_expectation=matches,
-            transport=self.transport,
+            transport=label,
         )
+        served = spec.target_workspace or (workspace_path(self.workspace_provider(ctx)) if node else None)
         return {
             **_result_summary(res),
-            **target_contact(res.target_log, self.transport),
-            "target_tree_sha256": tree_digest(spec.target_workspace) if spec.target_workspace else None,
+            **target_contact(res.target_log, label),
+            "target_tree_sha256": tree_digest(served) if served else None,
             "template_ref": template_ref,
             "template_id": meta.template_id,
             "template_version": meta.version,
