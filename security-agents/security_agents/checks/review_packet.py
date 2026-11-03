@@ -13,7 +13,9 @@ from . import library as lib
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 RECIPE = PACKAGE_ROOT.parent / "examples" / "payments-lite" / "build_recipe.json"
-ALLOWED_IMPORTS = frozenset({"json", "decimal", "fastapi", "datetime"})  # + the recipe's app_factory package
+ALLOWED_IMPORTS = frozenset(
+    {"json", "decimal", "fastapi", "datetime", "pytest", "threading", "concurrent"}
+)  # + the recipe's app_factory package
 FORBIDDEN_TOKENS = ("subprocess", "socket", "http://", "https://", "requests.", "os.system", "eval(", "exec(")
 SAMPLES: dict[str, dict[str, Any]] = {
     "access_control.ownership@1": {
@@ -36,9 +38,32 @@ SAMPLES: dict[str, dict[str, Any]] = {
         "owner_identity": "alice",
         "over_by": "1.00",
     },
+    "input_validation.concurrent_bound@1": {
+        "route_id": "create_refund",
+        "read_route_id": "payment_detail",
+        "owner_identity": "alice",
+        "parallel": 8,
+    },
+    "input_validation.destination@1": {
+        "route_id": "sample_payout",
+        "read_route_id": "payment_detail",
+        "owner_identity": "alice",
+    },
 }
+# payments-lite has no route that names a destination; the packet renders the destination
+# template against this illustrative one, added to the recipe for the packet only.
+SAMPLE_ROUTES = [
+    {
+        "id": "sample_payout",
+        "method": "POST",
+        "path_template": "/payouts",
+        "resource": "payment",
+        "body_template": {"payment_id": "{resource_id}", "to": "{destination}", "amount": "{amount}"},
+        "accumulated_field": "refunded",
+    }
+]
 CHECKLIST = (
-    "The rendered module imports only json, decimal, datetime, fastapi and the package named by the recipe's app_factory (validated as package.module:callable).",
+    "The rendered module imports only json, decimal, datetime, fastapi, pytest (to report a setup problem as skipped, never as a finding), threading and concurrent.futures (the race template) and the package named by the recipe's app_factory (validated as package.module:callable).",
     "It uses only fixture identities and resource ids declared in the build recipe.",
     "It opens no sockets, spawns no processes and reads no environment or files outside the workspace.",
     "Its assertions state the expectation, so a failure means the expectation did not hold.",
@@ -69,6 +94,7 @@ def _code_only(source: str) -> str:
 
 def packet(recipe_path: Path = RECIPE) -> list[dict[str, Any]]:
     recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
+    recipe["routes"] = [*recipe.get("routes", []), *SAMPLE_ROUTES]
     library = lib.default_library()
     entries = []
     for meta in library.templates.values():
