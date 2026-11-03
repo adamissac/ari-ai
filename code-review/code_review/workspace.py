@@ -105,6 +105,12 @@ def git_diff(source: RepoSource, base_sha: str | None, head_sha: str) -> str:
     ).decode(errors="replace")
 
 
+def commit_messages(source: RepoSource, base_sha: str | None, head_sha: str) -> str:
+    """Messages of the commits in base..head (head alone without a base), newest first."""
+    rng = [f"{base_sha}..{head_sha}"] if base_sha else ["-1", head_sha]
+    return _git(source.local_path, "log", "-n", "20", "--format=%B", *rng).decode(errors="replace")
+
+
 def tree_digest(source: RepoSource) -> str:
     """Digest of the original repo state (HEAD, index and working tree) to prove no writes."""
     head = _git(source.local_path, "rev-parse", "HEAD").strip()
@@ -284,4 +290,32 @@ def docstring_ranges(source: str) -> list[tuple[int, int]]:
             ):
                 expr = body[0]
                 ranges.append((expr.lineno, expr.end_lineno or expr.lineno))
+    return ranges
+
+
+COMMENT_DOC_SUFFIXES = frozenset({".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx"})
+
+
+def comment_ranges(source: str) -> list[tuple[int, int]]:
+    """Line ranges that are wholly comment in a JS/TS file: ``/* ... */`` blocks and runs of
+    ``//`` lines. These are the language's docstrings, so a citation inside one documents
+    intent the way a Python docstring does. Lines mixing code and a comment do not count."""
+    flags: list[bool] = []
+    in_block = False
+    for raw in source.splitlines():
+        line = raw.strip()
+        if not in_block and line.startswith("/*"):
+            in_block, line = True, line[2:]
+        if in_block:
+            _, end, after = line.partition("*/")
+            in_block = not end
+            flags.append(not (end and after.strip()))
+            continue
+        flags.append(line.startswith("//"))
+    ranges: list[tuple[int, int]] = []
+    for n, is_comment in enumerate(flags, 1):
+        if is_comment and ranges and ranges[-1][1] == n - 1:
+            ranges[-1] = (ranges[-1][0], n)
+        elif is_comment:
+            ranges.append((n, n))
     return ranges
