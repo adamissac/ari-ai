@@ -478,13 +478,20 @@ def main() -> int:
         # (CONFLICT_STATE, visible error), never a second restart or fabricated success.
         aid2b, jid2b = start_assessment()
         hard_kill_mid_run(jid2b, aid2b, "w2b")
-        w3b = Proc(worker_env, "w3b")
+        # Barrier: w3b blocks in its first model call of the restarted attempt, so the
+        # second SIGKILL interrupts in-flight work however slow this controller is.
+        hold = tmp / "s2b.hold"
+        reached = Path(f"{hold}.reached")
+        hold.touch()
+        w3b = Proc({**worker_env, "EVIDENCE_HOLD_FILE": str(hold)}, "w3b")
         w3b.start()
         procs.append(w3b)
         _poll(lambda: restart_events(aid2b), bool, timeout=180)
+        _poll(reached.exists, bool, timeout=180)
+        state_at_second_kill = asm_state(aid2b)
         w3b.p.send_signal(signal.SIGKILL)
         w3b.p.wait(timeout=15)
-        state_at_second_kill = asm_state(aid2b)
+        hold.unlink()
         w3c = Proc(worker_env, "w3c")
         w3c.start()
         procs.append(w3c)
@@ -494,7 +501,8 @@ def main() -> int:
         results.record(
             "S2b_second_hard_kill_honest_failure",
             bool(
-                asm_state(aid2b) == "FAILED"
+                state_at_second_kill not in ("AWAITING_APPROVAL", "FAILED", "COMPLETED")
+                and asm_state(aid2b) == "FAILED"
                 and err2.get("code") == "CONFLICT_STATE"
                 and [a.get("to") for a in au2b] == ["SCOPE_CHECK", "FAILED"]
                 and len(restart_events(aid2b)) == 2
