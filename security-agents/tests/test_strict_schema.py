@@ -108,4 +108,15 @@ def test_submit_tool_is_strict_unless_its_output_has_a_free_form_map(spec) -> No
     if tool["strict"]:
         for node in _walk(tool["input_schema"]):
             assert not (UNSUPPORTED_IN_STRICT & node.keys()), UNSUPPORTED_IN_STRICT & node.keys()
-        assert set(raw["required"]) == set(tool["input_schema"]["required"])
+        assert set(raw["required"]) <= set(tool["input_schema"]["required"])
+
+
+def test_strict_submit_requires_every_property_so_optional_lists_are_not_dropped() -> None:
+    from security_agents.agents.scout import SPEC as SCOUT
+
+    tool = submit_schema(SCOUT)
+    assert tool["strict"] is True
+    assert "hypotheses" in tool["input_schema"]["required"]
+    for node in _walk(tool["input_schema"]):
+        if isinstance(node.get("properties"), dict):
+            assert set(node["required"]) == set(node["properties"])

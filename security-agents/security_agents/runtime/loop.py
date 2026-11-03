@@ -206,6 +206,10 @@ def submit_schema(spec: AgentSpec) -> dict[str, Any]:
     # Strict mode makes the API reject a submit missing a required field or adding one
     # (Diagnose on Haiku did both live); the output model still validates every bound.
     schema, strict = tool_input_schema(schema)
+    if strict:
+        # Under strict, Haiku dropped optional fields wholesale (Scout's `hypotheses` list);
+        # requiring every key keeps defaults reachable as explicit null / [] values.
+        _require_all(schema)
     return {
         "name": spec.submit_tool_name(),
         "description": (
@@ -214,6 +218,17 @@ def submit_schema(spec: AgentSpec) -> dict[str, Any]:
         "input_schema": schema,
         "strict": strict,
     }
+
+
+def _require_all(node: Any) -> None:
+    if isinstance(node, dict):
+        if isinstance(node.get("properties"), dict):
+            node["required"] = list(node["properties"])
+        for v in node.values():
+            _require_all(v)
+    elif isinstance(node, list):
+        for v in node:
+            _require_all(v)
 
 
 def data_block(label: str, payload: Any, *, provenance: str = "platform") -> str:
