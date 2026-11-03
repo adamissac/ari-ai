@@ -101,6 +101,8 @@ cd security-agents && .venv/bin/python -m pytest tests -q                 # scri
 .venv/bin/python -m security_agents.standards.report                      # offline standards table (pinned data)
 .venv/bin/python -m security_agents.standards.smoke                       # tagged finding, RoE, SP 800-115 coverage, SARIF
 RUN_LIVE_LLM_EVAL=1 LIVE_SEVEN_MAX_USD=8 .venv/bin/python -m pytest -q -m live tests/test_live_provider.py -s  # live; costs money
+npm ci --ignore-scripts --prefix sandbox/node          # platform Node packages for JS/TS targets (ADR-0023)
+.venv/bin/python -m pytest -q tests/test_firestore_checks.py tests/test_node_target.py   # real emulators; needs java + node
 ```
 
 If imports fail on macOS (hidden `.pth` files in the venv), set

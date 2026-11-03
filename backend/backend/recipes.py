@@ -15,6 +15,10 @@ code intelligence, and drafts one:
   `app_factory`, every route present in the index, identities owning every route's resource,
   the harness parsed (never executed here) and defining the factory.
 
+A repository with no FastAPI app gets a deterministic `node_http` draft instead
+(`backend.node_recipes`, ADR-0023) when it has a Node lockfile and testable routes or
+Firestore rules.
+
 The draft arrives as a pull request on `ari/build-recipe`; nothing is pushed to the default
 branch, and a repository that already has a recipe is left alone. Dry run:
 
@@ -833,15 +837,38 @@ def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
                     "recipe.skipped", reason="repository already has a build recipe", commit_sha=sha
                 )
             facts = inspect(repo_dir, sha)
+            node_draft = None
             if facts.app is None:
-                return finish("recipe.unsupported", reason="no FastAPI app found", commit_sha=sha)
-            if _blob(repo_dir, sha, HARNESS_PATH) is not None:
+                from backend.node_recipes import draft_node, js_routes
+
+                files = read_files(repo_dir, sha)
+                node_draft = draft_node(lambda p: _blob(repo_dir, sha, p), files, js_routes(files))
+                if node_draft is None:
+                    return finish(
+                        "recipe.unsupported",
+                        reason="no FastAPI app, and no Node app with testable routes or Firestore rules",
+                        commit_sha=sha,
+                    )
+            if node_draft is None and _blob(repo_dir, sha, HARNESS_PATH) is not None:
                 return finish(
                     "recipe.unsupported", reason=f"{HARNESS_PATH} already exists", commit_sha=sha
                 )
-        d = draft(facts, gateway_or_none())  # outside the lock: Claude may take a minute
-        if errors := problems(d.recipe, d.harness, facts):  # never propose an invalid recipe
-            return finish("recipe.invalid", reasons=errors[:10], commit_sha=sha)
+        if node_draft is not None:
+            from security_agents import node_recipe
+
+            if errors := node_recipe.problems(node_draft.recipe):  # never propose an invalid recipe
+                return finish("recipe.invalid", reasons=errors[:10], commit_sha=sha)
+            files_out = {RECIPE_PATH: json.dumps(node_draft.recipe, indent=2) + "\n"}
+            author, route_ids = "heuristic", [r["id"] for r in node_draft.recipe.get("routes", [])]
+        else:
+            d = draft(facts, gateway_or_none())  # outside the lock: Claude may take a minute
+            if errors := problems(d.recipe, d.harness, facts):  # never propose an invalid recipe
+                return finish("recipe.invalid", reasons=errors[:10], commit_sha=sha)
+            files_out, author, route_ids = (
+                d.files(),
+                d.author,
+                [r["id"] for r in d.recipe["routes"]],
+            )
         from backend.delivery import push_patch
 
         write = app.installation_token(iid, write=True, repository=full_name.split("/", 1)[1])
@@ -853,12 +880,15 @@ def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
         head = f"{BRANCH}-{ctx.job.id.removeprefix('job_').lower()}"
         with _locked(repo_dir):
             push_patch(
-                repo_dir, full_name, sha, new_file_diff(d.files()), write, message, head,
+                repo_dir, full_name, sha, new_file_diff(files_out), write, message, head,
                 github_web_url=s.github_web_url,
             )  # fmt: skip
+        from backend.node_recipes import node_pr_body
+
+        body = node_pr_body(node_draft) if node_draft is not None else pr_body(d, facts)
         url = app.open_pull_request(
             iid, full_name, head=head, base=branch,
-            title="Add Ari sandbox build recipe", body=pr_body(d, facts),
+            title="Add Ari sandbox build recipe", body=body,
         )  # fmt: skip
     except (CheckoutError, IntelligenceError, httpx.HTTPError) as exc:  # too big, refused, gone
         from backend.delivery import _transient
@@ -872,8 +902,8 @@ def propose_build_recipe(ctx: JobContext) -> dict[str, Any]:
             raise
         return finish("recipe.failed", reason=str(exc)[:300])
     return finish(
-        "recipe.pr_opened", url=url, branch=head, commit_sha=sha, author=d.author,
-        routes=[r["id"] for r in d.recipe["routes"]],
+        "recipe.pr_opened", url=url, branch=head, commit_sha=sha, author=author,
+        routes=route_ids, kind="node_http" if node_draft is not None else "python_asgi",
     )  # fmt: skip
 
 
@@ -927,8 +957,22 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     facts = inspect(args.repo, sha)
     if facts.app is None:
-        print("unsupported: no FastAPI app found")
-        return 1
+        from backend.node_recipes import draft_node, js_routes, node_pr_body
+        from security_agents import node_recipe
+
+        files = read_files(args.repo, sha)
+        nd = draft_node(lambda p: _blob(args.repo, sha, p), files, js_routes(files))
+        if nd is None:
+            print(
+                "unsupported: no FastAPI app, and no Node app with testable routes or Firestore rules"
+            )
+            return 1
+        print(
+            f"===== {RECIPE_PATH}\n{json.dumps(nd.recipe, indent=2)}\n===== PR body\n{node_pr_body(nd)}"
+        )
+        errors = node_recipe.problems(nd.recipe)
+        print("valid" if not errors else f"INVALID: {errors}")
+        return 0 if not errors else 1
     d = draft(facts, gateway_or_none() if args.live else None)
     errors = problems(d.recipe, d.harness, facts)
     for path, content in d.files().items():

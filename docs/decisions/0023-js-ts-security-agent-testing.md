@@ -71,9 +71,13 @@ validated. Nothing in it reaches a shell. The platform chooses every command.
   start command.
   - `vercel_functions`: a ~100-line platform Node server. It mounts each `api/*` default
     export with Vercel's `req`/`res` helpers (`res.status().json()`, parsed JSON body).
-  - `next`: `next build`, then `next start`.
+  - `next`: `next build`, then `next start` (not implemented yet).
   - `express_module`: `{"module": "server/app.js", "export": "app"}`, listened on by the
-    platform.
+    platform (not implemented yet).
+
+  The launcher (`security_agents/sandbox/node_stack.mjs`) starts the emulators, seeds the
+  identities and documents, and serves the adapter. It logs requests in uvicorn's
+  access-log shape, so the existing `target_contact` evidence works unchanged.
 - **`env`** values are literal strings, matched by `^[A-Za-z0-9 ._:/@-]{0,200}$`, or one
   platform placeholder.
   - `$sandbox_service_account` is a throwaway RSA service account generated per run. It
@@ -88,10 +92,16 @@ validated. Nothing in it reaches a shell. The platform chooses every command.
   `recipe.identities[name].auth_header`, so the existing templates work unchanged.
 - **`seed`** documents are written through the Firestore emulator's admin path
   (`Authorization: Bearer owner`), before the rules are evaluated for test identities.
-- **`test_command`** names a runner from a closed set (`vitest`, `jest`, `node-test`)
-  plus validated args. It runs with network `none`, except for loopback to the emulators.
-- `backend/recipes.py` drafts this kind on connect when the repository has
-  `package.json` and either detected routes or `firebase.json`. The draft is opened as
+- **`test_command`** names a runner from a closed set (`vitest`, `jest`) plus validated
+  args. It runs with network `none`, except for loopback to the emulators. The sandbox
+  entry runs it with a JSON reporter and reports in pytest's shape, plus a test-id audit,
+  so Verify's "protected tests not collected" check applies to JS suites too. The hook
+  audit is pytest-only.
+- `backend/recipes.py` drafts this kind on connect (`backend/node_recipes.py`)
+  when the repository has `package.json`, `package-lock.json`, and either explicit-GET
+  parameterless `api/` routes or owner-scoped Firestore rules. The draft is deterministic,
+  with no model call. Routes marked `ANY`, and routes with path parameters (which need
+  fixture `resources`), are left out and listed in the PR notes. The draft is opened as
   the same setup PR. The owner merging it is the approval, as for Python.
 
 ### 3. Node sandbox runner
@@ -122,6 +132,11 @@ run, no host credentials ([§4](../15_SECURITY_BOUNDARIES.md#4-sandbox-requireme
   4. Run the Python check runner against `SANDBOX_TARGET_URL`.
 - The `http` check transport is allowed on the Vercel driver as well as Docker. Both
   provide a target reachable only inside the run boundary.
+- **Rollout:** the Vercel path is opt-in (`SECURITY_AGENTS_NODE_ON_VERCEL=1`) until a live
+  smoke on Vercel passes. Without the flag, production skips `node_http` targets with a
+  label. Node is the official tarball, pinned by sha256 per architecture. firebase-tools
+  checks the emulator JAR it fetches. Emulator JARs are read from
+  `FIREBASE_EMULATORS_PATH`, so a run never downloads one.
 - For local development without Docker, `LocalProcessDriver` can run the same flow
   behind its existing opt-in flag. Tests use real emulators: a local Java and the cached
   JAR are enough.
@@ -134,8 +149,9 @@ run, no host credentials ([§4](../15_SECURITY_BOUNDARIES.md#4-sandbox-requireme
     `GET` route with zero or one path parameter.
   - `bounds` and `role` change state. They stay refused over `http`
     (`side_effect_class` gate), as today.
-- **Firestore rules.** These are new reviewed templates, category `authorization`, side
-  effect `emulator_only`. They are run by one platform-owned harness
+- **Firestore rules.** These are new reviewed templates in the existing scope categories
+  (`access_control.ownership` / `.authentication`), with side effect `ephemeral_target_only`
+  (the per-run emulator is the ephemeral target). They are run by one platform-owned harness
   (`checks/firestore_harness.mjs`) on `@firebase/rules-unit-testing` against the run's
   emulator. The harness receives JSON parameters. The checks emit no generated code.
   - `firestore.owner_isolation`: the owner can `get` their doc at `path_template`.
@@ -144,8 +160,12 @@ run, no host credentials ([§4](../15_SECURITY_BOUNDARIES.md#4-sandbox-requireme
     must fail.
   - `firestore.collection_enumeration`: `list` on the collection by a non-owner must fail.
 
-  The verdict is deterministic, from `assertSucceeds`/`assertFails` outcomes. A mismatch
-  is a confirmed finding with the emulator's denial or allow as evidence.
+  The verdict is deterministic, from the emulator's allow/deny outcomes. Only a
+  `permission-denied` counts as denied; any other error is no verdict. The owner's `get` is
+  a positive control: if it is denied (a server-only collection), the check is inconclusive,
+  never a finding. A leak is a confirmed finding with the emulator's outcomes as evidence.
+  `checks.list_templates` hides Firestore templates when the recipe has no
+  `firestore_paths`, and HTTP templates when it has no `routes`.
 - Firestore paths are not `EntryPoint`s. Scout sees them as the `firestore_paths`
   parameter values of `checks.list_templates`. The orchestrator stops skipping the agents
   when the index has HTTP entry points **or** the recipe declares `firestore_paths`.
@@ -157,7 +177,7 @@ run, no host credentials ([§4](../15_SECURITY_BOUNDARIES.md#4-sandbox-requireme
 
 - `docs/15_SECURITY_BOUNDARIES.md` §4 gains three rules: the dependency-layer rule
   (lockfile-only builder, `--ignore-scripts`, registry-only resolved URLs), the
-  generated-service-account rule, and `emulator_only` as an allowed side-effect class.
+  generated-service-account rule, and the emulator counting as the ephemeral target.
   Emulator state is per-run and destroyed with the box.
 - Live Firebase projects are never contacted. Every Firebase call goes to loopback
   emulators. A recipe cannot name a real project credential.
