@@ -1,5 +1,6 @@
 import type { Fetch } from '@hackatl/frontend-transport';
 import fixtures from './fixtures.json';
+import { simulate } from './sim';
 
 type FixtureResponse = {
   status: number;
@@ -69,8 +70,21 @@ export const demoFetch: Fetch = async (input, init) => {
   const method = (init?.method ?? request?.method ?? 'GET').toUpperCase();
   const path = url.pathname.replace(/^\/api\/v1(?=\/|$)/, '').replace(/\/$/, '') || '/';
 
+  if (method === 'POST' && path === '/auth/logout') return new Response(null, { status: 204 });
+  const delta = Date.now() - capturedAt;
+  const fixture = (key: string) => {
+    const recorded = responses[key];
+    return recorded ? shiftIsoDates(recorded.body, delta) : undefined;
+  };
+  let body: unknown = null;
   if (method !== 'GET') {
-    if (method === 'POST' && path === '/auth/logout') return new Response(null, { status: 204 });
+    const text = init?.body !== undefined && init.body !== null ? String(init.body) : request ? await request.clone().text() : '';
+    try { body = text ? JSON.parse(text) as unknown : null; } catch { body = null; }
+  }
+  const simulated = simulate(method, path, url.searchParams, body, fixture, init?.signal ?? request?.signal);
+  if (simulated) return simulated;
+
+  if (method !== 'GET') {
     return new Response(JSON.stringify(READ_ONLY), {
       status: 403,
       headers: { 'content-type': 'application/json' },
@@ -78,25 +92,24 @@ export const demoFetch: Fetch = async (input, init) => {
   }
 
   const key = fixtureKey(url.pathname, url.search);
-  const fixture = key ? responses[key] : undefined;
-  if (!fixture) {
+  const recorded = key ? responses[key] : undefined;
+  if (!recorded) {
     return new Response(JSON.stringify(NOT_FOUND), {
       status: 404,
       headers: { 'content-type': 'application/json' },
     });
   }
 
-  const delta = Date.now() - capturedAt;
-  const body = shiftIsoDates(fixture.body, delta);
-  const headers = new Headers(fixture.headers);
-  if (fixture.content_type) headers.set('content-type', fixture.content_type);
+  const shifted = shiftIsoDates(recorded.body, delta);
+  const headers = new Headers(recorded.headers);
+  if (recorded.content_type) headers.set('content-type', recorded.content_type);
 
-  if (key?.startsWith('GET /artifacts/') && fixture.status === 200 && typeof body === 'string') {
-    headers.set('x-artifact-sha256', await sha256(body));
+  if (key?.startsWith('GET /artifacts/') && recorded.status === 200 && typeof shifted === 'string') {
+    headers.set('x-artifact-sha256', await sha256(shifted));
   }
 
-  const payload = typeof body === 'string'
-    ? body
-    : body === null ? null : JSON.stringify(body);
-  return new Response(payload, { status: fixture.status, headers });
+  const payload = typeof shifted === 'string'
+    ? shifted
+    : shifted === null ? null : JSON.stringify(shifted);
+  return new Response(payload, { status: recorded.status, headers });
 };

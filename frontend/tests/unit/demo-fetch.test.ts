@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import fixtures from '@/lib/demo/console/fixtures.json';
 import { api, setApiClient } from '@/lib/api';
 import { demoFetch } from '@/lib/demo/console/fetch';
+import { HIDDEN_IDS } from '@/lib/demo/console/sim';
 
 const responses = fixtures.responses as Record<string, { status: number; body: unknown }>;
 const projectId = fixtures.project_id;
@@ -22,7 +23,7 @@ afterEach(() => {
 describe('demoFetch', () => {
   it('routes recorded requests and replays the captured artifact 404', async () => {
     const apiClient = client();
-    expect((await apiClient.project(projectId)).name).toBe('Lumen Pay · payments-api');
+    expect((await apiClient.project(projectId)).name).toBe('Lumen Pay');
     const missingArtifact = Object.entries(responses).find(([key, value]) =>
       key.startsWith('GET /artifacts/') && value.status === 404,
     );
@@ -42,7 +43,7 @@ describe('demoFetch', () => {
   });
 
   it('blocks mutations and permits a local logout response', async () => {
-    const mutation = await demoFetch(`${baseUrl}/projects/${projectId}`, { method: 'PATCH' });
+    const mutation = await demoFetch(`${baseUrl}/projects/${projectId}/incidents`, { method: 'POST' });
     expect(mutation.status).toBe(403);
     expect(await mutation.json()).toEqual({
       error: { code: 'FORBIDDEN', message: 'This is the demo account: actions are turned off.', details: {}, request_id: null },
@@ -95,12 +96,14 @@ describe('demoFetch', () => {
       else if (segments[0] === 'artifacts' && segments.length === 2) read = () => apiClient.artifactText(segments[1]!);
       else if (segments[0] === 'assessments' && segments[2] === 'events') {
         const response = await apiClient.fetch(`${baseUrl}${url.pathname}${url.search}`, { headers: { Accept: 'text/event-stream' } });
-        expect(response.status).toBe(fixture.status);
+        expect(response.status).toBe([...HIDDEN_IDS].some(id => key.includes(id)) ? 404 : fixture.status);
         if (response.status === 200) expect(response.headers.get('content-type')).toMatch(/^text\/event-stream/);
         continue;
       }
       expect(read, `No ApiClient decoder for ${key}`).toBeDefined();
-      if (fixture.status === 200) await expect(read!()).resolves.toBeDefined();
+      // The paused recording is replaced by the account's seeded replay and is never served.
+      if ([...HIDDEN_IDS].some(id => key.includes(id))) await expect(read!()).rejects.toMatchObject({ status: 404 });
+      else if (fixture.status === 200) await expect(read!()).resolves.toBeDefined();
       else await expect(read!()).rejects.toMatchObject({ status: fixture.status });
     }
   });

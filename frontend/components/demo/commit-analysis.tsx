@@ -76,7 +76,7 @@ export function CommitAnalysis({ repo, commit, analysis: given, live, realRun, r
               <span suppressHydrationWarning>pushed {relativeTime(commit.minutesAgo)}</span>
               <span className="rounded bg-white/10 px-1.5 py-0.5 font-mono">{commit.branch}</span>
               <span><span className="text-[#7fe0aa]">+{commit.additions}</span> <span className="text-[#ff9b88]">−{commit.deletions}</span></span>
-              {live ? <a href={live.htmlUrl} target="_blank" rel="noreferrer" className="underline decoration-white/30 underline-offset-2 hover:text-white">View on GitHub</a> : <CiBadge state={commit.ci} />}
+              {live?.htmlUrl ? <a href={live.htmlUrl} target="_blank" rel="noreferrer" className="underline decoration-white/30 underline-offset-2 hover:text-white">View on GitHub</a> : <CiBadge state={commit.ci} />}
             </p>
           </div>
           <div className="flex flex-col items-start gap-2 md:items-end">

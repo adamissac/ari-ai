@@ -15,6 +15,7 @@ import { ticks } from '@/lib/demo/agent-map';
 import type { DemoCommit, DemoRepo } from '@/lib/demo/data';
 import { useReplay } from '@/lib/demo/replay';
 import { AGENT_ORDER, type AgentId, type Analysis } from '@/lib/demo/scenarios';
+import { DEMO_QUICK_READ_MODEL } from '@/lib/demo/console/quick-read';
 import { fallbackSectors, recordedAnalysis, recordedStatuses, type SectorMapStatus } from '@/lib/recorded-analysis';
 import { providerLabel, ASSESSMENT_STATE, FINDING_STATUS, SEVERITY, TERMINAL_STATES } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
@@ -98,7 +99,9 @@ function ReviewPanel({ detail, liveView, liveState }: { detail: AssessmentDetail
     {liveView && (
       <div data-testid="commit-quick-read">
         <p className="label-mono mb-3 text-white/45" title="The diff comes from GitHub. One Claude pass over it — nothing executed.">
-          Quick read · one Claude pass over the real diff · nothing executed{liveView.live.truncated ? ' · diff too large, partly cut' : ''}
+          {liveView.live.model === DEMO_QUICK_READ_MODEL
+            ? 'Quick read · sample analysis for the demo account · nothing executed'
+            : <>Quick read · one Claude pass over the real diff · nothing executed{liveView.live.truncated ? ' · diff too large, partly cut' : ''}</>}
         </p>
         <CommitAnalysis repo={liveView.repo} commit={liveView.commit} analysis={liveView.analysis} live={liveView.live} reviewOnly />
       </div>

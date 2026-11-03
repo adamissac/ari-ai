@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { AuthStage, LockIcon } from '@/components/auth-stage';
 import { BRAND_NAME } from '@/components/brand';
+import { DEMO_GITHUB_STEP } from '@/lib/demo/access-paths';
+import { resetDemoSimulation } from '@/lib/demo/console/state';
 
 /** Sign in to the demo account with an access code (checked on the server). */
 export function AccessForm({ next }: { next: string }) {
@@ -24,7 +26,9 @@ export function AccessForm({ next }: { next: string }) {
         body: JSON.stringify({ code }),
       });
       if (res.ok) {
-        router.replace(next);
+        // A fresh sign-in starts the sample account from its recorded state.
+        resetDemoSimulation();
+        router.replace(`${DEMO_GITHUB_STEP}?next=${encodeURIComponent(next)}`);
         return;
       }
       const body = (await res.json().catch(() => ({}))) as { error?: string };

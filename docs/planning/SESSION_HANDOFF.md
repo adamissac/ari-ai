@@ -3,6 +3,11 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-11-03 — Claude (agent, for Adam) — demo account walks the real signed-in flow
+- Did: `/access` → simulated GitHub App step (`/access/github`) → real `/connect` picker with five fictional `lumen-pay` repositories → connect → setup → scope → start check; the account opens with a recorded run paused at approval, and approving it replays Patch/Fortify/Verify live. Simulation in `frontend/lib/demo/console/sim.ts` (sessionStorage), sample quick read in `quick-read.ts`. ADR-0024 amended.
+- Verification: frontend lint, typecheck, `npx vitest run` (116 files, 528 tests), `next build`; `tests/e2e/demo.spec.ts` 2/2 against a local `next dev` with `DEMO_ACCESS_CODE=test` (not through `stack.py`; CI runs it there).
+- Known gaps: a check on a non-payments repository is a clean, review-plus-Scout replay (labelled limited coverage); the quick read for those commits is the old scenario text, so it can name issues the clean run does not.
+
 ### 2026-11-03 — Adam (demo real-console rebuild: verification)
 - Did: Completed the access-code demo migration to the real console, with a network-free, read-only recorded-fixture transport. The pending-approval snapshot remains a real second assessment; the completed snapshot has verified functional and hardened security findings. No clean outcome or early-ended/skipped run was captured.
 - Verification: `npm run lint`, `npm run typecheck`, and `npx vitest run` passed (113 files, 517 tests). Production builds passed with `NEXT_PUBLIC_DEMO_ONLY=0` for journey E2E and `=1` for the demo production review. `tests/e2e/demo.spec.ts` passed 2/2 and `tests/e2e/journey.spec.ts` passed 3/3. The assessment page keeps live polling for real awaiting-approval sessions and suppresses captured pending-snapshot polling only in demo view.
