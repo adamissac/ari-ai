@@ -931,6 +931,75 @@ DESTINATION = CheckTemplateMeta(
 )
 
 
+_SQLI_PAYLOADS = ("' OR '1'='1' --", "' OR 1=1 --", '" OR "1"="1" --')
+
+
+def _render_sql_injection(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    """A search/filter route must parameterise its query: an injection payload sent by
+    one identity cannot widen the query to return a row owned only by another identity
+    (CWE-89). The owner sends classic tautology payloads; the other identity's resource
+    id is the canary that must never appear in the response."""
+    route = _route(recipe, str(params["route_id"]))
+    if str(route.get("method", "GET")).upper() != "GET":
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "sql_injection template covers GET search routes only")
+    owner, other = str(params["owner_identity"]), str(params["other_identity"])
+    if owner == other:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "owner_identity and other_identity must differ")
+    path = str(route["path_template"])
+    if _PATH_PARAM.findall(path):
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "search route must not take a path parameter")
+    query_param = str(route.get("query_param") or "q")
+    canary = _resource_id(recipe, str(route["resource"]), other)
+    return (
+        _inprocess_preamble(str(params["_ref"]), recipe)
+        + f"""
+import pytest
+
+PATH = {path!r}
+QUERY_PARAM = {query_param!r}
+HEADERS = {{"Authorization": {_identity(recipe, owner)!r}}}
+CANARY = {canary!r}
+PAYLOADS = {list(_SQLI_PAYLOADS)!r}
+
+
+def test_injection_cannot_leak_another_identitys_rows():
+    client = _client()
+    # Baseline: a benign owner query must not already surface the other identity's row;
+    # if it does, that is a data-isolation problem for another check, not a SQLi signal.
+    benign = client.get(PATH, params={{QUERY_PARAM: "ari-probe-no-such-term"}}, headers=HEADERS)
+    if benign.status_code != 200:
+        pytest.skip(f"search route did not answer a benign query: {{benign.status_code}}")
+    if CANARY in benign.text:
+        pytest.skip("another identity's row is visible without injection; not a SQLi signal")
+    for payload in PAYLOADS:
+        resp = client.get(PATH, params={{QUERY_PARAM: payload}}, headers=HEADERS)
+        RESULT.setdefault("statuses", []).append(resp.status_code)
+        assert CANARY not in resp.text, (
+            f"injection payload {{payload!r}} leaked another identity's row ({{CANARY}})"
+        )
+"""
+    )
+
+
+SQL_INJECTION = CheckTemplateMeta(
+    template_id="input_validation.sql_injection",
+    version="1",
+    category="input_validation.injection",
+    description=(
+        "SQL-injection check (CWE-89): a GET search/filter route must parameterise its query. "
+        "The owner sends classic tautology payloads (' OR '1'='1' --); none may return a row "
+        "owned only by another fixture identity. Skips when the benign query already surfaces "
+        "that row (a data-isolation problem for another check). Needs a GET route with a "
+        "resource kind and an optional query_param (default q). Parameters: route_id, "
+        "owner_identity, other_identity."
+    ),
+    side_effect_class="read_only",
+    expectation_kinds=("input_validation", "injection"),
+    parameters=("route_id", "owner_identity", "other_identity"),
+    reviewed_by="security-owner:pending-human-signoff",
+)
+
+
 _RENDERERS = {
     OWNERSHIP.ref: _render_ownership,
     BOUNDS.ref: _render_bounds,
@@ -941,6 +1010,7 @@ _RENDERERS = {
     FIRESTORE_ENUMERATION.ref: _render_firestore_enumeration,
     CONCURRENT_BOUND.ref: _render_concurrent_bound,
     DESTINATION.ref: _render_destination,
+    SQL_INJECTION.ref: _render_sql_injection,
 }
 
 
@@ -1091,6 +1161,7 @@ def default_library() -> CheckLibrary:
     lib.register(FIRESTORE_ENUMERATION)
     lib.register(CONCURRENT_BOUND)
     lib.register(DESTINATION)
+    lib.register(SQL_INJECTION)
     return lib
 
 

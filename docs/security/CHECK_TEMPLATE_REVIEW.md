@@ -726,3 +726,59 @@ def test_invalid_destination_is_rejected_and_moves_nothing():
         f"expected 4xx for an invalid destination, observed {resp.status_code}"
     )
 ```
+
+## input_validation.sql_injection@1
+
+- category: `input_validation.injection`; side effects: `read_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: route_id, owner_identity, other_identity
+- renderer_sha256: `7cbc8debff12ff9d1634a80fcc592b97b72270805e4c27206b343ead60c60287`
+- sample parameters: `{"other_identity": "bob", "owner_identity": "alice", "route_id": "sample_search"}`
+- rendered_sha256 (sample): `2faf119e6b023489d112954b12357f2d4be2516c6d23720a16aa5cc909187c2a`
+- imports: decimal, fastapi, json, payments_lite, pytest (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: input_validation.sql_injection@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Target is driven in-process through its own app factory; no sockets are opened.
+"""
+
+import json
+from decimal import Decimal
+
+from fastapi.testclient import TestClient
+
+from payments_lite.app import create_app
+
+RESULT = {}
+
+
+def _client():
+    return TestClient(create_app())
+
+import pytest
+
+PATH = '/payments/search'
+QUERY_PARAM = 'q'
+HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
+CANARY = 'pay_b1'
+PAYLOADS = ["' OR '1'='1' --", "' OR 1=1 --", '" OR "1"="1" --']
+
+
+def test_injection_cannot_leak_another_identitys_rows():
+    client = _client()
+    # Baseline: a benign owner query must not already surface the other identity's row;
+    # if it does, that is a data-isolation problem for another check, not a SQLi signal.
+    benign = client.get(PATH, params={QUERY_PARAM: "ari-probe-no-such-term"}, headers=HEADERS)
+    if benign.status_code != 200:
+        pytest.skip(f"search route did not answer a benign query: {benign.status_code}")
+    if CANARY in benign.text:
+        pytest.skip("another identity's row is visible without injection; not a SQLi signal")
+    for payload in PAYLOADS:
+        resp = client.get(PATH, params={QUERY_PARAM: payload}, headers=HEADERS)
+        RESULT.setdefault("statuses", []).append(resp.status_code)
+        assert CANARY not in resp.text, (
+            f"injection payload {payload!r} leaked another identity's row ({CANARY})"
+        )
+```

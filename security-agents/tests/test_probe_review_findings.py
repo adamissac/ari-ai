@@ -103,7 +103,7 @@ def _listing(intel, scope, roe=None):
 
 
 def test_f2_recipe_values_need_an_active_scope_and_issued_roe(intel):
-    scope = make_scope()
+    scope = make_scope(categories=sorted(default_library().categories()))
     roe = build_roe(scope, default_library().list_public())
     granted = _listing(intel, scope, roe)
     assert all("parameter_values" in t for t in granted["templates"])

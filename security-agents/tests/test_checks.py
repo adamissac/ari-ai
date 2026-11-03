@@ -16,6 +16,7 @@ from security_agents.checks.library import (
     DESTINATION,
     OWNERSHIP,
     ROLE,
+    SQL_INJECTION,
     default_library,
     empty_library,
 )
@@ -58,6 +59,7 @@ def test_library_lists_runnable_templates(library):
         "firestore.collection_enumeration@1",
         CONCURRENT_BOUND.ref,
         DESTINATION.ref,
+        SQL_INJECTION.ref,
     }
     assert all(t["runnable"] for t in library.list_public())
     assert library.categories() == {
@@ -65,6 +67,7 @@ def test_library_lists_runnable_templates(library):
         "access_control.authentication",
         "access_control.role",
         "input_validation.bounds",
+        "input_validation.injection",
     }
 
 

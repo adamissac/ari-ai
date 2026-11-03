@@ -70,6 +70,11 @@ SAMPLES: dict[str, dict[str, Any]] = {
         "read_route_id": "payment_detail",
         "owner_identity": "alice",
     },
+    "input_validation.sql_injection@1": {
+        "route_id": "sample_search",
+        "owner_identity": "alice",
+        "other_identity": "bob",
+    },
 }
 # payments-lite has no route that names a destination; the packet renders the destination
 # template against this illustrative one, added to the recipe for the packet only.
@@ -81,7 +86,14 @@ SAMPLE_ROUTES = [
         "resource": "payment",
         "body_template": {"payment_id": "{resource_id}", "to": "{destination}", "amount": "{amount}"},
         "accumulated_field": "refunded",
-    }
+    },
+    {
+        "id": "sample_search",
+        "method": "GET",
+        "path_template": "/payments/search",
+        "resource": "payment",
+        "query_param": "q",
+    },
 ]
 CHECKLIST = (
     "The rendered module imports only json, decimal, datetime, fastapi, pytest (to report a setup problem as skipped, never as a finding), threading and concurrent.futures (the race template) and the package named by the recipe's app_factory (validated as package.module:callable).",

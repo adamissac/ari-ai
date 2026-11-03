@@ -11,7 +11,8 @@
         "authorization.role",
         "access_control.mutation",
         "access_control.rbac",
-        "input.bounds"
+        "input.bounds",
+        "input_validation.injection"
       ],
       "title": "CheckCategory",
       "type": "string"
