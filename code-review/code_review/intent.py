@@ -194,6 +194,15 @@ class CitationChecker:
         if quote:
             located = locate_quote(quote, lines, start, end)
             if located is None:
+                # "test_x asserts 201": a paraphrase that names an existing test resolves to it
+                test_def = (
+                    self._test_def(c.path, quote) if c.source_kind is SourceKind.test else None
+                )
+                if test_def is not None and _norm(test_def[1]) != _norm(quote):
+                    line, text = test_def
+                    return self.check(
+                        c.model_copy(update={"start_line": line, "end_line": line, "quote": text})
+                    )
                 return (
                     None,
                     c.source_kind,

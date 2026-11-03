@@ -10,12 +10,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Annotated
 
-from pydantic import Field
+from pydantic import BeforeValidator, Field, StringConstraints
 
-from shared.base import ShortText, StrictModel
+from shared.base import StrictModel
 from shared.findings import Finding, PatchCandidate
 from shared.review import GeneratedTest, ReviewResult
+
+
+def _clip(value: object) -> object:
+    return value[:500] if isinstance(value, str) else value
+
+
+# Model-written text, clipped rather than rejected: a summary 30 characters over the limit
+# once failed validation three times and discarded a whole review (live gtB2 js-lessonkey).
+ShortText = Annotated[str, BeforeValidator(_clip), StringConstraints(max_length=500)]
 
 
 class SourceKind(StrEnum):
