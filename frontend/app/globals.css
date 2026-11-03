@@ -107,6 +107,16 @@ body { background: linear-gradient(180deg, var(--color-bg) 0%, color-mix(in srgb
   background: color-mix(in srgb, var(--color-panel-2) 80%, var(--color-bg));
   border-color: var(--color-muted);
 }
+:root:not(:has(.hero-full)) .panel .empty-state {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-block: 28px;
+}
+:root:not(:has(.hero-full)) .panel .empty-state:hover {
+  background: transparent;
+  border-color: transparent;
+}
 
 /* Enhanced badge with subtle shadow */
 .status-badge {
@@ -367,7 +377,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 @media (prefers-reduced-motion: reduce) { .hx-track > i, .hx-gate, .hx-head .hx-pill { animation: none !important; transition: none; } }
 @media (max-width: 639px) {
   .hero-headline { font-size: clamp(2rem, 12vw, 4.75rem); }
-  .site-header { background: rgb(28 18 16 / 94%); border-bottom: 1px solid rgb(255 247 242 / 12%); backdrop-filter: blur(14px); }
+  .site-header { background: rgb(28 18 16 / 94%); border-bottom: 1px solid rgb(255 247 242 / 12%); }
   body:has(.hero-full) .site-header { --nav-ink: #fff; --nav-hover: rgb(255 255 255 / 9%); }
   .site-header-inner { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; }
   .site-header .hdr-logo { grid-column: 1; grid-row: 1; }
@@ -395,8 +405,8 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .bleed { position: relative; isolation: isolate; background: var(--bleed-bg); }
 .bleed-night, .bleed-ink { --bleed-bg: var(--color-night); }
 @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
-  .story-track-3 { height: 300vh; }
-  .story-track-4 { height: 260vh; }
+  .story-track-3 { height: 220vh; }
+  .story-track-4 { height: 200vh; }
   .story-track > .story-stage { position: sticky; top: 0; min-height: 100svh; }
 }
 
@@ -1221,12 +1231,11 @@ body:has(.commit-stage) main { color: #fff; }
 }
 
 /* Ambient light (components/ambient.tsx): fixed behind the page, the hero's orbs at roughly
-   two-thirds intensity so content stays readable. Orbs drift on transform; `translate` adds a
-   slow scroll parallax from --sy (0..1, written once per frame). Nothing here repaints text. */
+   two-thirds intensity so content stays readable. Orbs drift on transform; nothing here repaints text. */
 .ambient { display: none; }
-:root:not(:has(.hero-full)) .ambient { display: block; position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; --sy: 0; }
-:root:has(.hero-full) .ambient { display: block; position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; --sy: 0; }
-.ambient-blobs { position: absolute; inset: -12%; translate: 0 calc(var(--sy) * -10vh); }
+:root:not(:has(.hero-full)) .ambient { display: block; position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+:root:has(.hero-full) .ambient { display: block; position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.ambient-blobs { position: absolute; inset: -12%; }
 .ambient-blob { position: absolute; border-radius: 9999px; opacity: var(--blob-alpha, 0.56); will-change: transform;
   background: radial-gradient(closest-side, var(--orb), transparent 100%); }
 .ambient-blob-a { --orb: rgb(194 69 45 / 80%); animation: hero-drift-a 30s ease-in-out infinite alternate; }
@@ -1290,7 +1299,7 @@ body:has(.commit-stage) main { color: #fff; }
 :root:not(:has(.hero-full)) main :is(.hero-ink, .page-title, .project-head) > :nth-child(2) { animation-delay: 90ms; }
 :root:not(:has(.hero-full)) main :is(.hero-ink, .page-title, .project-head) > :nth-child(3) { animation-delay: 180ms; }
 :root:not(:has(.hero-full)) main :is(.hero-ink, .page-title, .project-head) > :nth-child(n + 4) { animation-delay: 270ms; }
-@keyframes night-rise { from { opacity: 0; filter: blur(8px); transform: translateY(12px); } }
+@keyframes night-rise { from { opacity: 0; transform: translateY(8px); } }
 .page-title h1 { text-wrap: balance; }
 :root:not(:has(.hero-full)) .page-title { border-bottom: 0; position: relative; }
 :root:not(:has(.hero-full)) .page-title::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
@@ -1309,8 +1318,8 @@ body:has(.commit-stage) main { color: #fff; }
 :root:not(:has(.hero-full)) .panel > header { background: transparent; border-color: var(--glass-line); }
 :root:not(:has(.hero-full)) .panel > header h2 { color: rgb(255 247 242 / 70%); }
 :root:not(:has(.hero-full)) .panel > header h2 { letter-spacing: 0.06em; }
-[data-reveal] { transition: opacity 700ms var(--ease-quad), transform 700ms var(--ease-quad), filter 700ms var(--ease-quad); }
-[data-reveal="hidden"] { opacity: 0; transform: translateY(18px); filter: blur(6px); }
+[data-reveal] { transition: opacity 500ms var(--ease-quad), transform 500ms var(--ease-quad); }
+[data-reveal="hidden"] { opacity: 0; transform: translateY(12px); }
 
 /* Interactive cards and rows lift toward the light. */
 :root:not(:has(.hero-full)) main a:is(.rounded-xl, .rounded-2xl).border,
@@ -1326,8 +1335,8 @@ body:has(.commit-stage) main { color: #fff; }
 :root:not(:has(.hero-full)) main :is(ol, ul).divide-y > li:hover { background-color: rgb(255 247 242 / 2.5%); }
 
 /* Buttons (components/ui Button, data-variant). Primary glows like the hero CTA on hover. */
-:root:not(:has(.hero-full)) .btn[data-variant="primary"] { background: #fff; color: var(--color-night); box-shadow: 0 10px 28px -14px rgb(255 247 242 / 45%); }
-:root:not(:has(.hero-full)) .btn[data-variant="primary"]:not(:disabled):hover { background: var(--color-brand); color: #fff; box-shadow: 0 14px 32px -12px rgb(194 69 45 / 85%); }
+:root:not(:has(.hero-full)) .btn[data-variant="primary"] { background: var(--color-brand); color: #fff; box-shadow: 0 8px 22px -12px rgb(194 69 45 / 70%); }
+:root:not(:has(.hero-full)) .btn[data-variant="primary"]:not(:disabled):hover { background: var(--color-brand-deep); color: #fff; box-shadow: 0 10px 26px -12px rgb(194 69 45 / 80%); }
 :root:not(:has(.hero-full)) .btn[data-variant="secondary"] { background: rgb(255 247 242 / 7%); box-shadow: inset 0 0 0 1px var(--glass-line); }
 :root:not(:has(.hero-full)) .btn[data-variant="secondary"]:not(:disabled):hover { background: rgb(255 247 242 / 12%); }
 :root:not(:has(.hero-full)) .btn[data-variant="ghost"]:not(:disabled):hover { background: rgb(255 247 242 / 7%); }
@@ -1362,10 +1371,9 @@ body:has(.commit-stage) main { color: #fff; }
 
 @media (prefers-reduced-motion: reduce) {
   .ambient-blob, :root:not(:has(.hero-full)) main .hero-ink::before, .loading-dot { animation: none; }
-  .ambient-blobs { translate: none; }
   :root:not(:has(.hero-full)) main :is(.hero-ink, .page-title, .project-head) > * { animation: none; }
   [data-reveal] { transition: none; }
-  [data-reveal="hidden"] { opacity: 1; transform: none; filter: none; }
+  [data-reveal="hidden"] { opacity: 1; transform: none; }
   :root:not(:has(.hero-full)) main a:is(.rounded-xl, .rounded-2xl).border:hover, :root:not(:has(.hero-full)) .demo-card:hover { transform: none; }
 }
 
@@ -1794,11 +1802,11 @@ body:has(.commit-stage) main { color: #fff; }
 body:has(.project-shell) .site-main { max-width: 100rem; padding-inline: 1rem; }
 body:has(.setup-layout) .site-main { max-width: none; padding: 0; }
 body:has(.project-shell) { --project-site-header-height: 77px; }
-body:has(.project-shell) .site-header { position: sticky; top: 0; z-index: 60; background: rgb(18 12 11 / 62%); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+body:has(.project-shell) .site-header { position: sticky; top: 0; z-index: 60; background: rgb(18 12 11); }
 body:has(.project-shell) .site-header-inner,
 body:has(.setup-layout) .site-header-inner { max-width: 100rem; padding-inline: 1rem; }
-.project-head { margin-inline: -1rem; padding-inline: 1rem; background: none; border-image: linear-gradient(rgb(18 12 11 / 62%), rgb(18 12 11 / 62%)) fill 0 / 0 / 0 100vw; }
-.project-tabbar { position: sticky; top: var(--project-site-header-height); z-index: 50; display: flex; min-width: 0; align-items: stretch; margin-inline: -1rem; padding: 0 1rem 1px; border-bottom: 0; background: none; border-image: linear-gradient(to top, var(--color-line) 1px, rgb(18 12 11 / 62%) 1px) fill 0 / 0 / 0 100vw; -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.project-head { margin-inline: -1rem; padding-inline: 1rem; background: rgb(18 12 11); border-image: linear-gradient(rgb(18 12 11), rgb(18 12 11)) fill 0 / 0 / 0 100vw; }
+.project-tabbar { position: sticky; top: var(--project-site-header-height); z-index: 50; display: flex; min-width: 0; align-items: stretch; margin-inline: -1rem; padding: 0 1rem 1px; border-bottom: 0; background: rgb(18 12 11); border-image: linear-gradient(to top, var(--color-line) 1px, rgb(18 12 11) 1px) fill 0 / 0 / 0 100vw; }
 .project-tab-scroll { display: flex; min-width: 0; flex: 1; align-items: stretch; overflow-x: auto; scrollbar-width: none; }
 .project-tab-scroll::-webkit-scrollbar { display: none; }
 .project-tab { display: inline-flex; min-height: 44px; min-width: 44px; flex: none; align-items: center; gap: 8px; padding: 13px 15px 11px; font-size: 15px; font-weight: 500; white-space: nowrap; text-decoration: none; }

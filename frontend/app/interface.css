@@ -21,6 +21,8 @@
   box-shadow: 0 1px 0 rgb(255 247 242 / 3%) inset;
 }
 :root:not(:has(.hero-full)) .panel > header { min-height: 52px; padding: 16px 20px; }
+:root:not(:has(.hero-full)) .panel > header { border-bottom-color: transparent; }
+:root:not(:has(.hero-full)) .panel > header + div { padding-top: 4px; }
 :root:not(:has(.hero-full)) .panel > header h2 { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; }
 :root:not(:has(.hero-full)) .demo-card:is(:hover, :focus-visible) { border-color: #b96652; box-shadow: 0 12px 30px -24px #c2452d; }
 :root:not(:has(.hero-full)) .page-title { padding-bottom: 28px; margin-bottom: 28px; }
