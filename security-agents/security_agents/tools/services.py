@@ -754,14 +754,13 @@ class TestRunner:
             if node_ids:
                 return {"error": "BAD_NODE_ID", "detail": "node test runs take files, not pytest node ids"}
             mode, files = "nodetest", [a for a in args[1:] if selection.startswith("added_tests")]
-            runner = self.node_test[0]
-            args = (
-                [runner, "run", *files]
-                if files and runner == "vitest"
-                else [runner, *files]
-                if files
-                else list(self.node_test)
-            )
+            # Selected files keep the recipe's own args (e.g. `--config vitest.rules.config.js`), or
+            # a test the default config excludes is never found.
+            # shortcut: a positional filter in the recipe args widens the selection, never narrows it.
+            base = list(self.node_test)
+            if base[0] == "vitest" and "run" not in base[1:]:
+                base.insert(1, "run")
+            args = [*base, *files] if files else list(self.node_test)
         spec = SandboxSpec(
             profile=SandboxProfile.TEST_RUNNER,
             network="none",

@@ -125,3 +125,31 @@ def test_node_suite_runs_through_the_test_runner_with_a_test_id_audit(workspace,
     assert any("protected tests not collected" in f and "requires_a_bearer_token" in f for f in findings), (
         findings
     )
+
+
+def test_added_tests_run_with_the_recipe_runner_config(workspace, intel):
+    """A test file the default vitest config excludes still runs as an added test (live mypypath run)."""
+    from security_agents import node_recipe
+    from security_agents.tools.services import TestRunner
+
+    (workspace / "vitest.config.js").write_text("export default { test: { exclude: ['tests/rules/**'] } };\n")
+    (workspace / "vitest.rules.config.js").write_text(
+        "export default { test: { include: ['tests/rules/**'] } };\n"
+    )
+    (workspace / "tests" / "rules").mkdir()
+    (workspace / "tests" / "rules" / "added.test.js").write_text(
+        "import { it, expect } from 'vitest';\nit('runs', () => expect(1).toBe(1));\n"
+    )
+    recipe = json.loads((workspace / "build_recipe.json").read_text())
+    recipe["test_command"] = {"runner": "vitest", "args": ["run", "--config", "vitest.rules.config.js"]}
+    recipe = node_recipe.resolved(recipe)
+    runner = TestRunner(
+        driver=LocalProcessDriver(allow=True),
+        workspace_provider=lambda _ctx: workspace,
+        node_test=node_recipe.test_command(recipe),
+        node_stack=node_recipe.stack_config(recipe, serve=False),
+    )
+    ctx = make_ctx(AgentName.PATCH, intel=intel, scope=make_scope(), now=lambda: NOW)
+    ctx.artifacts["tests_added"] = ["tests/rules/added.test.js"]
+    result = runner.run(ctx, "added_tests", [])
+    assert (result["passed"], result["failed"], result["errors"]) == (1, 0, 0), result
