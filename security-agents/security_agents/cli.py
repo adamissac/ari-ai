@@ -84,6 +84,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-hypotheses", type=int, default=3)
     parser.add_argument("--validate", type=int, default=2, help="hypotheses to validate")
     parser.add_argument("--max-usd", type=float, default=5.0)
+    parser.add_argument(
+        "--max-tokens", type=int, default=1_000_000, help="assessment token budget (agents get a share)"
+    )
     parser.add_argument("--report", type=Path, help="write the JSON report here")
     parser.add_argument(
         "--auto-approve", action="store_true", help="approve remediation automatically (local demo only)"
@@ -170,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
         scope=scope,
         target_id=TARGET_ID,
         requested_by="usr_operator",
-        budget=Budget(max_tokens=1_000_000, max_usd=args.max_usd, max_wall_clock_s=1800.0),
+        budget=Budget(max_tokens=args.max_tokens, max_usd=args.max_usd, max_wall_clock_s=1800.0),
         max_hypotheses=args.max_hypotheses,
         max_hypotheses_to_validate=args.validate,
     )
