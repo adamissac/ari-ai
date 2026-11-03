@@ -95,17 +95,34 @@ _CONF = {
 }
 
 
-_AUTHZ = re.compile(
-    r"(\bowner(ship)?\b|\bown(s)? (their|the)\b|\btenant|authori[sz]|authenticat|permission"
-    r"|access control|\bidor\b|privilege|other (customer|user|tenant)s?'?|\bonly (read|access|see|"
-    r"refund|modify|update|delete)\b.{0,40}\b(own|their)\b|cross-tenant|\brole\b)",
+# Terms that always concern who may access what, and terms that do only alongside a
+# restriction ("only", "must not", ...). "Authenticated users can list their accounts" is
+# a functional rule: a crash that locks owners out is a bug to repair, not a security
+# hand-off (live gtB1 py-rename). The finding's rationale is not consulted: it describes
+# impact and mentions sign-in or permissions incidentally (live gt3 js-async).
+_AUTHZ_STRONG = re.compile(
+    r"\btenant|\bidor\b|privilege|access control|cross-tenant"
+    r"|\b(other|another) (customer|user|tenant|account holder)s?'?",
+    re.IGNORECASE,
+)
+_AUTHZ_WEAK = re.compile(
+    r"\bowner(ship)?\b|\bown(s)? (their|the)\b|\btheir own\b|authori[sz]|authenticat"
+    r"|permission|\brole\b|\badmins?\b",
+    re.IGNORECASE,
+)
+_RESTRICT = re.compile(
+    r"\bonly\b|must not|may not|cannot|can't|\bnever\b|\bdenied\b|\bforbid|\brefuse"
+    r"|\breject|\bunauthori[sz]",
     re.IGNORECASE,
 )
 
 
 def is_authorization_rule(*texts: str) -> bool:
-    """Deterministic routing: does this rule/finding concern who may access what?"""
-    return any(_AUTHZ.search(t or "") for t in texts)
+    """Deterministic routing: does this rule restrict who may access what?"""
+    return any(
+        t and (_AUTHZ_STRONG.search(t) or (_AUTHZ_WEAK.search(t) and _RESTRICT.search(t)))
+        for t in texts
+    )
 
 
 class ReviewError(Exception):
@@ -513,7 +530,7 @@ class ReviewerAgentRunner:
                     if ex.outcome_on_base == "passed" and ex.outcome_on_head == "failed":
                         reason += "; passes on base, so the change introduced it"
             evidence.extend(decision.claim.citations[:3])
-            if is_authorization_rule(decision.claim.statement, f.title, f.rationale):
+            if is_authorization_rule(decision.claim.statement, f.title):
                 authz_std, cwe_reason = classify_weakness_safely(
                     f.weakness_class, evidence, 0.7 if status is FindingStatus.validated else 0.4
                 )
