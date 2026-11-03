@@ -1,0 +1,8 @@
+.....................................                                    [100%]
+=============================== warnings summary ===============================
+backend/tests/test_review_pipeline_reliability.py::test_concurrent_workers_respect_hourly_quota
+  /private/tmp/ari-release-audit/repo/backend/tests/conftest.py:182: PytestWarning: Value of environment variable PROJECT_ASSESSMENTS_PER_HOUR type should be str, but got 2 (type: int); converted to str implicitly
+    monkeypatch.setenv(k.upper(), v)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+37 passed, 1 warning in 4.44s
