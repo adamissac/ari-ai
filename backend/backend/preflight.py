@@ -82,8 +82,6 @@ def validate_config(s: Settings, *, worker: bool = False) -> PreflightResult:
             "ARTIFACT_STORE_URI is a local path in production; confirm it is a mounted volume"
         )
 
-    if not _secret_value(s.session_secret):
-        r.warnings.append("SESSION_SECRET is unset (declared in .env.example for signed payloads)")
     if not _secret_value(s.ops_token):
         r.warnings.append("OPS_TOKEN unset: /api/v1/ops/status stays disabled in this environment")
     if not _secret_value(s.alert_webhook_url):
