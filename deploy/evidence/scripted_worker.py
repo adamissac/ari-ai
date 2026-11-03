@@ -65,7 +65,8 @@ def _install_scripted_transports() -> None:
     from backend import llm
 
     review_script = list(pl_review_script(SimpleNamespace(repo=REPO)))
-    repair = fake(list(pl_repair_script("tests/test_refund_total_bound.py")))
+    repair_script = list(pl_repair_script("tests/test_refund_total_bound.py"))
+    repair = fake(list(repair_script))
 
     class _ReviewThenRepair:
         """Reviewer repair turns take the repair script; all else the review script.
@@ -97,7 +98,8 @@ def _install_scripted_transports() -> None:
                 assessment_id,
                 _held(
                     AlanScriptTransport(
-                        TARGET, fallback=_ReviewThenRepair(fake(review_script), repair)
+                        TARGET,
+                        fallback=_ReviewThenRepair(fake(review_script), fake(list(repair_script))),
                     )
                 ),
             )

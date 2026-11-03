@@ -540,15 +540,41 @@ def main() -> int:
         w4 = Proc(worker_env, "w4")
         w4.start()
         procs.append(w4)
-        _poll(lambda: asm_state(aid1), lambda s: s == "COMPLETED", timeout=args.timeout / 3)
+        # Every approved pause resumes here (S1's aid1 and S2a's aid2); each must finish
+        # its functional repair, not swallow a failed replay and still report COMPLETED.
+        resumed = [aid1, aid2]
+        for aid in resumed:
+            _poll(lambda a=aid: asm_state(a), lambda s: s == "COMPLETED", timeout=args.timeout / 3)
+
+        def repair_failures(aid: str) -> list[str]:
+            with transaction() as conn:
+                return [
+                    m
+                    for d in conn.execute(
+                        sa.select(assessment_events.c.doc)
+                        .where(assessment_events.c.assessment_id == aid)
+                        .order_by(assessment_events.c.seq)
+                    ).scalars()
+                    if (m := str((d or {}).get("message", ""))).startswith(
+                        "functional repair failed"
+                    )
+                ]
+
+        failures = {aid: repair_failures(aid) for aid in resumed}
         n_artifacts = len(list(artifacts.rglob("*"))) - len(
             [p for p in artifacts.rglob("*") if p.is_dir()]
         )
         results.record(
             "S3_checkpoint_resume",
-            bool(asm_state(aid1) == "COMPLETED" and found),
+            bool(
+                all(asm_state(a) == "COMPLETED" for a in resumed)
+                and not any(failures.values())
+                and found
+            ),
             {
                 "assessment_state": asm_state(aid1),
+                "resumed_states": {a: asm_state(a) for a in resumed},
+                "functional_repair_failures": failures,
                 "approvals_decided": len(pend),
                 "checkpoint_artifact_still_on_disk": bool(found),
                 "artifact_store_objects": n_artifacts,
