@@ -82,6 +82,7 @@ describe('demoFetch', () => {
           : apiClient.approvals(segments[1]!, url.searchParams.has('repo_id') ? { repoId: url.searchParams.get('repo_id')! } : {});
       } else if (segments[0] === 'repositories' && segments.length === 2) read = () => apiClient.repository(segments[1]!);
       else if (segments[0] === 'repositories' && segments[2] === 'setup') read = () => apiClient.repositorySetup(segments[1]!);
+      else if (segments[0] === 'repositories' && segments[2] === 'automation-status') read = () => apiClient.automationStatus(segments[1]!);
       else if (segments[0] === 'repositories' && segments[2] === 'commits') read = () => apiClient.repositoryCommits(segments[1]!);
       else if (segments[0] === 'repositories' && segments[2] === 'snapshots') read = () => apiClient.snapshots(segments[1]!, { limit: Number(url.searchParams.get('limit') ?? 100) });
       else if (segments[0] === 'snapshots' && segments.length === 2) read = () => apiClient.snapshot(segments[1]!);

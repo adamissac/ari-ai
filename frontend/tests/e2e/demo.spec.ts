@@ -32,8 +32,9 @@ test('access-code demo uses the real console with offline, read-only fixtures', 
   await signInWithCode(page, CODE);
 
   await expect(page.getByRole('heading', { name: 'Analytics' })).toBeVisible();
-  await expect(page.getByText('Demo account · Lumen Pay sample data — every repository, commit and result here is illustrative.')).toBeVisible();
+  await expect(page.getByText('Demo account · Lumen Pay sample data. Ari reviews each commit, seven security agents try to break it, a person approves the fix, and an independent check proves it. Every repository, commit and result here is illustrative.')).toBeVisible();
   await expect(page.getByTestId('repo-switcher').getByText('lumen-pay/payments-api')).toBeVisible();
+  apiRequests.length = 0;
 
   await page.getByRole('link', { name: 'Commits' }).click();
   await expect(page.getByRole('heading', { name: 'Commits' })).toBeVisible();
@@ -55,7 +56,7 @@ test('access-code demo uses the real console with offline, read-only fixtures', 
   await page.getByRole('button', { name: 'Exit demo' }).first().click();
   await expect(page).toHaveURL('/');
   await page.goto('/projects');
-  await expect(page.getByText('Demo account · Lumen Pay sample data — every repository, commit and result here is illustrative.')).toHaveCount(0);
+  await expect(page.getByText('Demo account · Lumen Pay sample data. Ari reviews each commit, seven security agents try to break it, a person approves the fix, and an independent check proves it. Every repository, commit and result here is illustrative.')).toHaveCount(0);
   await expect(page.getByText('Lumen Pay · payments-api')).toHaveCount(0);
 });
 

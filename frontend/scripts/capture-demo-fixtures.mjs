@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
 const API_BASE = process.env.DEMO_API_BASE;
+const RAW_CAPTURE = process.env.DEMO_CAPTURE_RAW;
 const OUTPUT = resolve(process.env.DEMO_FIXTURE_OUTPUT ?? 'lib/demo/console/fixtures.json');
 const LOGIN = process.env.DEMO_CAPTURE_LOGIN ?? 'e2e-alice';
 const MODEL_ID = process.env.ANTHROPIC_MODEL ?? 'claude-haiku-5-5';
@@ -11,17 +12,41 @@ const RENAME_MAP = [
   ['e2e-alice (personal)', 'Lumen Pay'],
   ['payments-lite (e2e)', 'Lumen Pay · payments-api'],
   ['payments-lite sandbox', 'payments-api sandbox'],
+  ['commit-workspace (e2e)', 'commit-workspace'],
   ['acme/payments-lite', 'lumen-pay/payments-api'],
+  ['payments_lite', 'payments_api'],
+  ['payments-lite', 'payments-api'],
+  ['Selected payment change', 'feat(payments): add GET /payments/{payment_id} lookup'],
+  ['A different commit', 'chore(deps): bump fastapi to 0.115.4'],
+  ['999999999999999999999999999999999999999f', '95fc5c5e6ce9501b66a65772aa37f224c0a282c3'],
+  ['scripted', 'recorded'],
   ['acme', 'lumen-pay'],
-  ['target/payments.py', 'target/payments_lite/app.py'],
+  ['target/payments.py', 'target/payments_api/app.py'],
   ['Alice E2E', 'Akshar Koth'],
   ['e2e-alice', 'akshar-koth'],
   ['e2e-bob', 'mina-okafor'],
   ['test-author', 'jules-park'],
 ];
 
-if (!API_BASE) throw new Error('Set DEMO_API_BASE to the manual stack API origin.');
-const apiBase = new URL(API_BASE.endsWith('/') ? API_BASE : `${API_BASE}/`);
+if (!API_BASE && !RAW_CAPTURE) throw new Error('Set DEMO_API_BASE or DEMO_CAPTURE_RAW.');
+const apiBase = API_BASE ? new URL(API_BASE.endsWith('/') ? API_BASE : `${API_BASE}/`) : undefined;
+
+if (RAW_CAPTURE) {
+  const raw = JSON.parse(await readFile(RAW_CAPTURE, 'utf8'));
+  const existing = JSON.parse(await readFile(OUTPUT, 'utf8'));
+  const responses = { ...existing.responses };
+  for (const [key, response] of Object.entries(raw.responses)) {
+    if (responses[key] || key.endsWith('/automation-status')) responses[key] = response;
+  }
+  await writeFixture({
+    ...existing,
+    project_id: raw.project_id,
+    repo_id: raw.repo_id,
+    user_id: raw.responses['GET /me']?.body?.user?.id ?? existing.user_id,
+    responses: rename(responses),
+  });
+  process.exit(0);
+}
 
 const loginResponse = await fetch(new URL('auth/dev/login', apiBase), {
   method: 'POST',
@@ -94,7 +119,8 @@ function rename(value) {
   if (Array.isArray(value)) return value.map(rename);
   if (!value || typeof value !== 'object') {
     if (typeof value !== 'string') return value;
-    return RENAME_MAP.reduce((current, [from, to]) => current.replaceAll(from, to), value);
+    return RENAME_MAP.reduce((current, [from, to]) => current.replaceAll(from, to), value)
+      .replace(/\/tmp\/hackatl-e2e-[^/]+/gi, '/workspace/payments-api');
   }
   const result = Object.fromEntries(Object.entries(value).map(([key, child]) => [
     key,
@@ -122,6 +148,20 @@ async function getArtifact(id) {
   };
 }
 
+async function writeFixture(fixture) {
+  for (const [key, response] of Object.entries(fixture.responses)) {
+    if (key.startsWith('GET /artifacts/') && response.status === 200 && typeof response.body === 'string') {
+      response.headers = {
+        ...response.headers,
+        'x-artifact-sha256': createHash('sha256').update(response.body, 'utf8').digest('hex'),
+      };
+    }
+  }
+  await mkdir(dirname(OUTPUT), { recursive: true });
+  await writeFile(OUTPUT, `${JSON.stringify(fixture, null, 2)}\n`);
+  console.log(`Captured ${Object.keys(fixture.responses).length} GET responses to ${OUTPUT}`);
+}
+
 const me = await get('/me');
 const projectList = await get('/projects');
 const project = projectList.items?.find(item => item.name === 'payments-lite (e2e)');
@@ -135,6 +175,7 @@ const repoId = repository.id;
 await get(`/projects/${projectId}`);
 await get(`/repositories/${repoId}`);
 await get(`/repositories/${repoId}/setup`);
+await get(`/repositories/${repoId}/automation-status`);
 await get(`/repositories/${repoId}/commits`);
 const snapshotPage = await get(`/repositories/${repoId}/snapshots?limit=100`);
 await get(`/projects/${projectId}/assessments`);
@@ -208,14 +249,4 @@ const fixture = {
   user_id: me.user?.id ?? null,
   responses: rename(responses),
 };
-for (const [key, response] of Object.entries(fixture.responses)) {
-  if (key.startsWith('GET /artifacts/') && response.status === 200 && typeof response.body === 'string') {
-    response.headers = {
-      ...response.headers,
-      'x-artifact-sha256': createHash('sha256').update(response.body, 'utf8').digest('hex'),
-    };
-  }
-}
-await mkdir(dirname(OUTPUT), { recursive: true });
-await writeFile(OUTPUT, `${JSON.stringify(fixture, null, 2)}\n`);
-console.log(`Captured ${Object.keys(responses).length} GET responses to ${OUTPUT}`);
+await writeFixture(fixture);

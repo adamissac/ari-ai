@@ -38,7 +38,7 @@ describe('components', () => {
     cleanup();
     document.cookie = 'ari_demo_view=1; Path=/';
     render(<DemoBanner />);
-    expect(screen.getByText('Demo account · Lumen Pay sample data — every repository, commit and result here is illustrative.')).toBeTruthy();
+    expect(screen.getByText(/Ari reviews each commit, seven security agents try to break it/)).toBeTruthy();
     document.cookie = 'ari_demo_view=; Max-Age=0; Path=/';
   });
 });

@@ -77,6 +77,52 @@
               "delivery_authorized_by": "usr_01M6FTWER1MGYDPG73E2HTQZRV"
             },
             "created_at": "2026-11-03T04:32:38.235162Z"
+          },
+          {
+            "id": "prj_01M6FTWEVE5XFS9TVPED9NX62M",
+            "org_id": "org_01M6FTWER1NGH55J6JB6A1MR33",
+            "name": "commit-workspace",
+            "settings": {
+              "default_budget": {
+                "max_tokens": 400000,
+                "max_usd": 10,
+                "max_wall_clock_s": 1800
+              },
+              "monitoring_policy": {
+                "enabled": false,
+                "min_interval_s": 600,
+                "ignore_paths_only": [
+                  "tests/**",
+                  "docs/**",
+                  "**/*.md"
+                ],
+                "monitoring_budget": {
+                  "max_tokens": 150000,
+                  "max_usd": 3,
+                  "max_wall_clock_s": 900
+                }
+              },
+              "review": {
+                "review_pushes": true,
+                "review_pull_requests": true,
+                "review_draft_prs": false,
+                "include_branches": [],
+                "exclude_branches": [],
+                "include_authors": [],
+                "exclude_authors": [
+                  "*[bot]"
+                ],
+                "strictness": 2,
+                "comment_on_pull_requests": true,
+                "max_reviews_per_hour": null
+              },
+              "languages": [
+                "python"
+              ],
+              "delivery_mode": "manual",
+              "delivery_authorized_by": "usr_01M6FTWER1MGYDPG73E2HTQZRV"
+            },
+            "created_at": "2026-11-03T04:32:38.253463Z"
           }
         ],
         "next_cursor": null
@@ -196,17 +242,17 @@
         "items": [
           {
             "sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
-            "message": "Selected payment change",
+            "message": "feat(payments): add GET /payments/{payment_id} lookup",
             "author": "akshar-koth",
             "committed_at": "2026-10-20T12:00:00Z",
             "html_url": "https://github.com/lumen-pay/payments-api/commit/94d9195a3741dbcc71418b3103acba1c0a2e747e"
           },
           {
-            "sha": "999999999999999999999999999999999999999f",
-            "message": "A different commit",
+            "sha": "95fc5c5e6ce9501b66a65772aa37f224c0a282c3",
+            "message": "chore(deps): bump fastapi to 0.115.4",
             "author": "jules-park",
             "committed_at": "2026-10-19T12:00:00Z",
-            "html_url": "https://github.com/lumen-pay/payments-api/commit/999999999999999999999999999999999999999f"
+            "html_url": "https://github.com/lumen-pay/payments-api/commit/95fc5c5e6ce9501b66a65772aa37f224c0a282c3"
           }
         ],
         "next_cursor": null,
@@ -402,7 +448,7 @@
               {
                 "kind": "source_span",
                 "note": "code",
-                "path": "target/payments_lite/app.py",
+                "path": "target/payments_api/app.py",
                 "span": {
                   "end_col": null,
                   "end_line": 157,
@@ -440,7 +486,7 @@
               {
                 "kind": "source_span",
                 "note": "docstring: Total refunds for a payment must never exceed",
-                "path": "target/payments_lite/app.py",
+                "path": "target/payments_api/app.py",
                 "span": {
                   "end_col": null,
                   "end_line": 7,
@@ -473,7 +519,7 @@
             "updated_at": "2026-11-03T04:38:00.660341Z",
             "snapshot_id": "snp_c9ccd69ec87d1e9c6a885255779c01c6",
             "subject_refs": [
-              "target/payments_lite/app.py"
+              "target/payments_api/app.py"
             ],
             "assessment_id": "asm_01M6FV677W708K04TE8Y7JHV29",
             "expectation_ids": [],
@@ -504,7 +550,7 @@
               {
                 "kind": "source_span",
                 "note": null,
-                "path": "payments_lite/app.py",
+                "path": "payments_api/app.py",
                 "span": {
                   "end_col": null,
                   "end_line": 141,
@@ -543,7 +589,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -586,7 +632,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -626,7 +672,7 @@
                     "metric": "S",
                     "status": "unverified",
                     "evidence": [],
-                    "rationale": "The impact stays within the payments-lite API."
+                    "rationale": "The impact stays within the payments-api API."
                   },
                   {
                     "value": "H",
@@ -655,7 +701,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -693,7 +739,7 @@
                   {
                     "kind": "source_span",
                     "note": null,
-                    "path": "payments_lite/app.py",
+                    "path": "payments_api/app.py",
                     "span": {
                       "end_col": null,
                       "end_line": 141,
@@ -741,7 +787,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -749,7 +795,7 @@
                           "start_line": 137
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -760,7 +806,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J"
@@ -768,7 +814,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "span": {
                           "end_col": null,
                           "end_line": 23,
@@ -776,7 +822,7 @@
                           "start_line": 17
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -787,7 +833,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J"
@@ -822,7 +868,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 141,
@@ -846,7 +892,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -854,7 +900,7 @@
                           "start_line": 137
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -865,7 +911,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J"
@@ -873,7 +919,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "span": {
                           "end_col": null,
                           "end_line": 23,
@@ -881,7 +927,7 @@
                           "start_line": 17
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -892,7 +938,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J"
@@ -938,7 +984,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -946,7 +992,7 @@
                           "start_line": 137
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -957,7 +1003,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J"
@@ -965,7 +1011,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "span": {
                           "end_col": null,
                           "end_line": 23,
@@ -973,7 +1019,7 @@
                           "start_line": 17
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -984,7 +1030,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J"
@@ -1116,7 +1162,7 @@
                     {
                       "kind": "source_span",
                       "note": null,
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "span": {
                         "end_col": null,
                         "end_line": 141,
@@ -1220,7 +1266,7 @@
               {
                 "kind": "source_span",
                 "note": "code",
-                "path": "target/payments_lite/app.py",
+                "path": "target/payments_api/app.py",
                 "span": {
                   "end_col": null,
                   "end_line": 157,
@@ -1258,7 +1304,7 @@
               {
                 "kind": "source_span",
                 "note": "docstring: Total refunds for a payment must never exceed",
-                "path": "target/payments_lite/app.py",
+                "path": "target/payments_api/app.py",
                 "span": {
                   "end_col": null,
                   "end_line": 7,
@@ -1302,7 +1348,7 @@
             "updated_at": "2026-11-03T04:37:39.311431Z",
             "snapshot_id": "snp_c9ccd69ec87d1e9c6a885255779c01c6",
             "subject_refs": [
-              "target/payments_lite/app.py"
+              "target/payments_api/app.py"
             ],
             "assessment_id": "asm_01M6FV2SMWPFS8PH97GT8X4FB2",
             "expectation_ids": [],
@@ -1354,7 +1400,7 @@
               {
                 "kind": "source_span",
                 "note": null,
-                "path": "payments_lite/app.py",
+                "path": "payments_api/app.py",
                 "span": {
                   "end_col": null,
                   "end_line": 141,
@@ -1393,7 +1439,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -1436,7 +1482,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -1476,7 +1522,7 @@
                     "metric": "S",
                     "status": "unverified",
                     "evidence": [],
-                    "rationale": "The impact stays within the payments-lite API."
+                    "rationale": "The impact stays within the payments-api API."
                   },
                   {
                     "value": "H",
@@ -1505,7 +1551,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -1543,7 +1589,7 @@
                   {
                     "kind": "source_span",
                     "note": null,
-                    "path": "payments_lite/app.py",
+                    "path": "payments_api/app.py",
                     "span": {
                       "end_col": null,
                       "end_line": 141,
@@ -1591,7 +1637,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -1599,7 +1645,7 @@
                           "start_line": 137
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -1610,7 +1656,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC"
@@ -1618,7 +1664,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "span": {
                           "end_col": null,
                           "end_line": 23,
@@ -1626,7 +1672,7 @@
                           "start_line": 17
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -1637,7 +1683,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC"
@@ -1672,7 +1718,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 141,
@@ -1696,7 +1742,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -1704,7 +1750,7 @@
                           "start_line": 137
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -1715,7 +1761,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC"
@@ -1723,7 +1769,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "span": {
                           "end_col": null,
                           "end_line": 23,
@@ -1731,7 +1777,7 @@
                           "start_line": 17
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -1742,7 +1788,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC"
@@ -1788,7 +1834,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -1796,7 +1842,7 @@
                           "start_line": 137
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -1807,7 +1853,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC"
@@ -1815,7 +1861,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "span": {
                           "end_col": null,
                           "end_line": 23,
@@ -1823,7 +1869,7 @@
                           "start_line": 17
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -1834,7 +1880,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC"
@@ -1966,7 +2012,7 @@
                     {
                       "kind": "source_span",
                       "note": null,
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "span": {
                         "end_col": null,
                         "end_line": 141,
@@ -2013,7 +2059,7 @@
                     {
                       "kind": "source_span",
                       "note": null,
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "span": {
                         "end_col": null,
                         "end_line": 80,
@@ -2103,7 +2149,7 @@
               {
                 "kind": "source_span",
                 "note": "code",
-                "path": "target/payments_lite/app.py",
+                "path": "target/payments_api/app.py",
                 "span": {
                   "end_col": null,
                   "end_line": 157,
@@ -2141,7 +2187,7 @@
               {
                 "kind": "source_span",
                 "note": "docstring: Total refunds for a payment must never exceed",
-                "path": "target/payments_lite/app.py",
+                "path": "target/payments_api/app.py",
                 "span": {
                   "end_col": null,
                   "end_line": 7,
@@ -2174,7 +2220,7 @@
             "updated_at": "2026-11-03T04:38:00.660341Z",
             "snapshot_id": "snp_c9ccd69ec87d1e9c6a885255779c01c6",
             "subject_refs": [
-              "target/payments_lite/app.py"
+              "target/payments_api/app.py"
             ],
             "assessment_id": "asm_01M6FV677W708K04TE8Y7JHV29",
             "expectation_ids": [],
@@ -2205,7 +2251,7 @@
               {
                 "kind": "source_span",
                 "note": null,
-                "path": "payments_lite/app.py",
+                "path": "payments_api/app.py",
                 "span": {
                   "end_col": null,
                   "end_line": 141,
@@ -2244,7 +2290,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -2287,7 +2333,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -2327,7 +2373,7 @@
                     "metric": "S",
                     "status": "unverified",
                     "evidence": [],
-                    "rationale": "The impact stays within the payments-lite API."
+                    "rationale": "The impact stays within the payments-api API."
                   },
                   {
                     "value": "H",
@@ -2356,7 +2402,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -2394,7 +2440,7 @@
                   {
                     "kind": "source_span",
                     "note": null,
-                    "path": "payments_lite/app.py",
+                    "path": "payments_api/app.py",
                     "span": {
                       "end_col": null,
                       "end_line": 141,
@@ -2442,7 +2488,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -2450,7 +2496,7 @@
                           "start_line": 137
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -2461,7 +2507,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J"
@@ -2469,7 +2515,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "span": {
                           "end_col": null,
                           "end_line": 23,
@@ -2477,7 +2523,7 @@
                           "start_line": 17
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -2488,7 +2534,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J"
@@ -2523,7 +2569,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 141,
@@ -2547,7 +2593,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -2555,7 +2601,7 @@
                           "start_line": 137
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -2566,7 +2612,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J"
@@ -2574,7 +2620,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "span": {
                           "end_col": null,
                           "end_line": 23,
@@ -2582,7 +2628,7 @@
                           "start_line": 17
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -2593,7 +2639,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J"
@@ -2639,7 +2685,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -2647,7 +2693,7 @@
                           "start_line": 137
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -2658,7 +2704,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J"
@@ -2666,7 +2712,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "span": {
                           "end_col": null,
                           "end_line": 23,
@@ -2674,7 +2720,7 @@
                           "start_line": 17
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -2685,7 +2731,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J"
@@ -2817,7 +2863,7 @@
                     {
                       "kind": "source_span",
                       "note": null,
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "span": {
                         "end_col": null,
                         "end_line": 141,
@@ -2921,7 +2967,7 @@
               {
                 "kind": "source_span",
                 "note": "code",
-                "path": "target/payments_lite/app.py",
+                "path": "target/payments_api/app.py",
                 "span": {
                   "end_col": null,
                   "end_line": 157,
@@ -2959,7 +3005,7 @@
               {
                 "kind": "source_span",
                 "note": "docstring: Total refunds for a payment must never exceed",
-                "path": "target/payments_lite/app.py",
+                "path": "target/payments_api/app.py",
                 "span": {
                   "end_col": null,
                   "end_line": 7,
@@ -3003,7 +3049,7 @@
             "updated_at": "2026-11-03T04:37:39.311431Z",
             "snapshot_id": "snp_c9ccd69ec87d1e9c6a885255779c01c6",
             "subject_refs": [
-              "target/payments_lite/app.py"
+              "target/payments_api/app.py"
             ],
             "assessment_id": "asm_01M6FV2SMWPFS8PH97GT8X4FB2",
             "expectation_ids": [],
@@ -3055,7 +3101,7 @@
               {
                 "kind": "source_span",
                 "note": null,
-                "path": "payments_lite/app.py",
+                "path": "payments_api/app.py",
                 "span": {
                   "end_col": null,
                   "end_line": 141,
@@ -3094,7 +3140,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -3137,7 +3183,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -3177,7 +3223,7 @@
                     "metric": "S",
                     "status": "unverified",
                     "evidence": [],
-                    "rationale": "The impact stays within the payments-lite API."
+                    "rationale": "The impact stays within the payments-api API."
                   },
                   {
                     "value": "H",
@@ -3206,7 +3252,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -3244,7 +3290,7 @@
                   {
                     "kind": "source_span",
                     "note": null,
-                    "path": "payments_lite/app.py",
+                    "path": "payments_api/app.py",
                     "span": {
                       "end_col": null,
                       "end_line": 141,
@@ -3292,7 +3338,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -3300,7 +3346,7 @@
                           "start_line": 137
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -3311,7 +3357,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC"
@@ -3319,7 +3365,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "span": {
                           "end_col": null,
                           "end_line": 23,
@@ -3327,7 +3373,7 @@
                           "start_line": 17
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -3338,7 +3384,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC"
@@ -3373,7 +3419,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 141,
@@ -3397,7 +3443,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -3405,7 +3451,7 @@
                           "start_line": 137
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -3416,7 +3462,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC"
@@ -3424,7 +3470,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "span": {
                           "end_col": null,
                           "end_line": 23,
@@ -3432,7 +3478,7 @@
                           "start_line": 17
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -3443,7 +3489,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC"
@@ -3489,7 +3535,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "span": {
                           "end_col": null,
                           "end_line": 150,
@@ -3497,7 +3543,7 @@
                           "start_line": 137
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -3508,7 +3554,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC"
@@ -3516,7 +3562,7 @@
                       {
                         "kind": "source_span",
                         "note": null,
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "span": {
                           "end_col": null,
                           "end_line": 23,
@@ -3524,7 +3570,7 @@
                           "start_line": 17
                         },
                         "sha256": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "provenance": "agent:trace",
                         "artifact_id": null
@@ -3535,7 +3581,7 @@
                         "path": null,
                         "span": null,
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "commit_sha": null,
                         "provenance": "agent:trace",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC"
@@ -3667,7 +3713,7 @@
                     {
                       "kind": "source_span",
                       "note": null,
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "span": {
                         "end_col": null,
                         "end_line": 141,
@@ -3714,7 +3760,7 @@
                     {
                       "kind": "source_span",
                       "note": null,
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "span": {
                         "end_col": null,
                         "end_line": 80,
@@ -3812,7 +3858,7 @@
           },
           {
             "id": "apv_01M6FV2W9WDSW9NHYPHQ6Q2ZRA",
-            "reason": "Approved in the local scripted demo capture.",
+            "reason": "Approved in the local recorded demo capture.",
             "status": "approved",
             "decided_at": "2026-11-03T04:37:26.940478Z",
             "decided_by": "usr_01M6FTWESCM29Z8EZ3MZZYYT06",
@@ -3824,7 +3870,7 @@
           },
           {
             "id": "apv_01M6FV2W98PTJ3F2YJBS23B6Y4",
-            "reason": "Approved in the local scripted demo capture.",
+            "reason": "Approved in the local recorded demo capture.",
             "status": "approved",
             "decided_at": "2026-11-03T04:37:26.949852Z",
             "decided_by": "usr_01M6FTWESCM29Z8EZ3MZZYYT06",
@@ -3881,7 +3927,7 @@
           },
           {
             "id": "apv_01M6FV2W9WDSW9NHYPHQ6Q2ZRA",
-            "reason": "Approved in the local scripted demo capture.",
+            "reason": "Approved in the local recorded demo capture.",
             "status": "approved",
             "decided_at": "2026-11-03T04:37:26.940478Z",
             "decided_by": "usr_01M6FTWESCM29Z8EZ3MZZYYT06",
@@ -3893,7 +3939,7 @@
           },
           {
             "id": "apv_01M6FV2W98PTJ3F2YJBS23B6Y4",
-            "reason": "Approved in the local scripted demo capture.",
+            "reason": "Approved in the local recorded demo capture.",
             "status": "approved",
             "decided_at": "2026-11-03T04:37:26.949852Z",
             "decided_by": "usr_01M6FTWESCM29Z8EZ3MZZYYT06",
@@ -3960,7 +4006,7 @@
           {
             "id": "scp_01M6FV2SM2P3857YA9SPCZ0CWY",
             "name": "payments-api sandbox",
-            "notes": "Local scripted assessment scope for demo capture.",
+            "notes": "Local recorded assessment scope for demo capture.",
             "status": "active",
             "targets": [
               {
@@ -4368,7 +4414,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 137,
@@ -4411,7 +4457,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 137,
@@ -4452,7 +4498,7 @@
                     "value": "U",
                     "status": "unverified",
                     "evidence": [],
-                    "rationale": "The impact stays within the payments-lite API."
+                    "rationale": "The impact stays within the payments-api API."
                   },
                   {
                     "metric": "C",
@@ -4480,7 +4526,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 137,
@@ -4528,7 +4574,7 @@
             "evidence": [
               {
                 "kind": "source_span",
-                "path": "payments_lite/app.py",
+                "path": "payments_api/app.py",
                 "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                 "span": {
                   "start_line": 131,
@@ -4577,7 +4623,7 @@
                 "evidence": [
                   {
                     "kind": "source_span",
-                    "path": "payments_lite/app.py",
+                    "path": "payments_api/app.py",
                     "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                     "span": {
                       "start_line": 131,
@@ -4624,7 +4670,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 131,
@@ -4671,7 +4717,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 137,
@@ -4679,7 +4725,7 @@
                           "start_col": null,
                           "end_col": null
                         },
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "artifact_id": null,
                         "sha256": null,
                         "provenance": "agent:trace",
@@ -4690,7 +4736,7 @@
                         "path": null,
                         "commit_sha": null,
                         "span": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                         "provenance": "agent:trace",
@@ -4698,7 +4744,7 @@
                       },
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 17,
@@ -4706,7 +4752,7 @@
                           "start_col": null,
                           "end_col": null
                         },
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "artifact_id": null,
                         "sha256": null,
                         "provenance": "agent:trace",
@@ -4717,7 +4763,7 @@
                         "path": null,
                         "commit_sha": null,
                         "span": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                         "provenance": "agent:trace",
@@ -4752,7 +4798,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 131,
@@ -4776,7 +4822,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 137,
@@ -4784,7 +4830,7 @@
                           "start_col": null,
                           "end_col": null
                         },
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "artifact_id": null,
                         "sha256": null,
                         "provenance": "agent:trace",
@@ -4795,7 +4841,7 @@
                         "path": null,
                         "commit_sha": null,
                         "span": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                         "provenance": "agent:trace",
@@ -4803,7 +4849,7 @@
                       },
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 17,
@@ -4811,7 +4857,7 @@
                           "start_col": null,
                           "end_col": null
                         },
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "artifact_id": null,
                         "sha256": null,
                         "provenance": "agent:trace",
@@ -4822,7 +4868,7 @@
                         "path": null,
                         "commit_sha": null,
                         "span": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                         "provenance": "agent:trace",
@@ -4868,7 +4914,7 @@
                       },
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 137,
@@ -4876,7 +4922,7 @@
                           "start_col": null,
                           "end_col": null
                         },
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "artifact_id": null,
                         "sha256": null,
                         "provenance": "agent:trace",
@@ -4887,7 +4933,7 @@
                         "path": null,
                         "commit_sha": null,
                         "span": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                         "provenance": "agent:trace",
@@ -4895,7 +4941,7 @@
                       },
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 17,
@@ -4903,7 +4949,7 @@
                           "start_col": null,
                           "end_col": null
                         },
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "artifact_id": null,
                         "sha256": null,
                         "provenance": "agent:trace",
@@ -4914,7 +4960,7 @@
                         "path": null,
                         "commit_sha": null,
                         "span": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                         "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                         "provenance": "agent:trace",
@@ -5074,13 +5120,13 @@
               "rationale": "existing refunds are not summed"
             },
             "subject_refs": [
-              "target/payments_lite/app.py"
+              "target/payments_api/app.py"
             ],
             "expectation_ids": [],
             "evidence": [
               {
                 "kind": "source_span",
-                "path": "target/payments_lite/app.py",
+                "path": "target/payments_api/app.py",
                 "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                 "span": {
                   "start_line": 157,
@@ -5118,7 +5164,7 @@
               },
               {
                 "kind": "source_span",
-                "path": "target/payments_lite/app.py",
+                "path": "target/payments_api/app.py",
                 "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                 "span": {
                   "start_line": 7,
@@ -6045,7 +6091,7 @@
     },
     "GET /assessments/asm_01M6FV677W708K04TE8Y7JHV29/events?after=0": {
       "status": 200,
-      "content_type": "text/event-stream; charset=utf-8",
+      "content_type": "text/event-stream",
       "body": "retry: 2000\n\nid: 1\nevent: assessment.state_changed\ndata: {\"at\":\"2026-11-03T04:37:58.142037Z\",\"seq\":1,\"data\":{\"trigger\":\"manual\",\"commit_sha\":\"94d9195a3741dbcc71418b3103acba1c0a2e747e\"},\"type\":\"assessment.state_changed\",\"agent\":null,\"state\":\"CREATED\",\"message\":\"assessment created\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 2\nevent: assessment.state_changed\ndata: {\"at\":\"2026-11-03T04:37:58.360404Z\",\"seq\":2,\"data\":{\"from\":\"CREATED\"},\"type\":\"assessment.state_changed\",\"agent\":null,\"state\":\"SCOPE_CHECK\",\"message\":\"checking authorized scope\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 3\nevent: assessment.state_changed\ndata: {\"at\":\"2026-11-03T04:37:58.387223Z\",\"seq\":3,\"data\":{\"from\":\"SCOPE_CHECK\"},\"type\":\"assessment.state_changed\",\"agent\":null,\"state\":\"INDEXING\",\"message\":\"live index (code_intelligence.api)\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 4\nevent: assessment.state_changed\ndata: {\"at\":\"2026-11-03T04:37:58.391424Z\",\"seq\":4,\"data\":{\"from\":\"INDEXING\"},\"type\":\"assessment.state_changed\",\"agent\":null,\"state\":\"FUNCTIONAL_REVIEW\",\"message\":\"baseline test run (code_review pillar pending)\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 5\nevent: assessment.state_changed\ndata: {\"at\":\"2026-11-03T04:37:58.402213Z\",\"seq\":5,\"data\":{\"from\":\"FUNCTIONAL_REVIEW\"},\"type\":\"assessment.state_changed\",\"agent\":null,\"state\":\"RECON\",\"message\":\"state -> RECON\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 6\nevent: agent_run.started\ndata: {\"at\":\"2026-11-03T04:37:58.467427Z\",\"seq\":6,\"data\":{},\"type\":\"agent_run.started\",\"agent\":\"scout\",\"state\":\"RECON\",\"message\":\"scout started recon\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":\"run_01M6FV67HYXS63MRNZRCY8XTEE\",\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 7\nevent: agent_run.started\ndata: {\"at\":\"2026-11-03T04:37:58.472092Z\",\"seq\":7,\"data\":{},\"type\":\"agent_run.started\",\"agent\":\"reviewer\",\"state\":\"RECON\",\"message\":\"reviewer started review\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":\"run_01M6FV67HZSJ82279SEMJK5YQP\",\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 8\nevent: assessment.progress\ndata: {\"at\":\"2026-11-03T04:37:58.482836Z\",\"seq\":8,\"data\":{\"changed_paths\":[]},\"type\":\"assessment.progress\",\"agent\":\"reviewer\",\"state\":\"RECON\",\"message\":\"reviewer: reviewing 0 changed path(s) at 94d9195a3741\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 9\nevent: agent_run.finished\ndata: {\"at\":\"2026-11-03T04:37:58.648742Z\",\"seq\":9,\"data\":{\"usage\":{\"usd\":0.004842,\"llm_calls\":4,\"tool_calls\":5,\"input_tokens\":45376,\"output_tokens\":610,\"sandbox_seconds\":0.0,\"cache_read_input_tokens\":0},\"error_code\":null},\"type\":\"agent_run.finished\",\"agent\":\"scout\",\"state\":null,\"message\":\"scout succeeded\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":\"run_01M6FV67HYXS63MRNZRCY8XTEE\",\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 10\nevent: finding.updated\ndata: {\"at\":\"2026-11-03T04:37:58.669894Z\",\"seq\":10,\"data\":{\"actor\":\"agent:scout\",\"status\":\"hypothesis\"},\"type\":\"finding.updated\",\"agent\":null,\"state\":null,\"message\":\"security finding hypothesis: Payment detail route may not enforce payment ownership\",\"finding_id\":\"fnd_01M6FV67QT7M1JTG9R003JJ8YB\",\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 11\nevent: assessment.state_changed\ndata: {\"at\":\"2026-11-03T04:37:58.677398Z\",\"seq\":11,\"data\":{\"from\":\"RECON\"},\"type\":\"assessment.state_changed\",\"agent\":null,\"state\":\"VALIDATION\",\"message\":\"state -> VALIDATION\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 12\nevent: agent_run.started\ndata: {\"at\":\"2026-11-03T04:37:58.687483Z\",\"seq\":12,\"data\":{},\"type\":\"agent_run.started\",\"agent\":\"probe\",\"state\":\"VALIDATION\",\"message\":\"probe started validation:0\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":\"run_01M6FV67RWY0VK9AHC6YF0GEN0\",\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 13\nevent: agent_run.finished\ndata: {\"at\":\"2026-11-03T04:37:59.666041Z\",\"seq\":13,\"data\":{\"usage\":{\"usd\":0.000658,\"llm_calls\":3,\"tool_calls\":3,\"input_tokens\":5304,\"output_tokens\":255,\"sandbox_seconds\":0.0,\"cache_read_input_tokens\":0},\"error_code\":null},\"type\":\"agent_run.finished\",\"agent\":\"probe\",\"state\":null,\"message\":\"probe succeeded\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":\"run_01M6FV67RWY0VK9AHC6YF0GEN0\",\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 14\nevent: finding.updated\ndata: {\"at\":\"2026-11-03T04:37:59.672497Z\",\"seq\":14,\"data\":{\"actor\":\"agent:orchestrator\",\"status\":\"validated\",\"from_status\":\"hypothesis\"},\"type\":\"finding.updated\",\"agent\":null,\"state\":null,\"message\":\"security finding hypothesis -> validated: Payment detail route may not enforce payment ownership\",\"finding_id\":\"fnd_01M6FV67QT7M1JTG9R003JJ8YB\",\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 15\nevent: finding.updated\ndata: {\"at\":\"2026-11-03T04:37:59.677100Z\",\"seq\":15,\"data\":{\"actor\":\"system:standards\",\"classification_only\":true},\"type\":\"finding.updated\",\"agent\":null,\"state\":null,\"message\":\"standards classification updated\",\"finding_id\":\"fnd_01M6FV67QT7M1JTG9R003JJ8YB\",\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 16\nevent: assessment.state_changed\ndata: {\"at\":\"2026-11-03T04:37:59.680786Z\",\"seq\":16,\"data\":{\"from\":\"VALIDATION\"},\"type\":\"assessment.state_changed\",\"agent\":null,\"state\":\"ANALYSIS\",\"message\":\"state -> ANALYSIS\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 17\nevent: agent_run.started\ndata: {\"at\":\"2026-11-03T04:37:59.713492Z\",\"seq\":17,\"data\":{},\"type\":\"agent_run.started\",\"agent\":\"diagnose\",\"state\":\"ANALYSIS\",\"message\":\"diagnose started diagnosis:fnd_01M6FV67QT7M1JTG9R003JJ8YB\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":\"run_01M6FV68RXG6NQCHKEVEDA3QEF\",\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 18\nevent: agent_run.started\ndata: {\"at\":\"2026-11-03T04:37:59.717359Z\",\"seq\":18,\"data\":{},\"type\":\"agent_run.started\",\"agent\":\"trace\",\"state\":\"ANALYSIS\",\"message\":\"trace started analysis:fnd_01M6FV67QT7M1JTG9R003JJ8YB\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":\"run_01M6FV68RYEY236HJ5Z2YYWTB8\",\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 19\nevent: agent_run.finished\ndata: {\"at\":\"2026-11-03T04:37:59.878670Z\",\"seq\":19,\"data\":{\"usage\":{\"usd\":0.0027660000000000002,\"llm_calls\":2,\"tool_calls\":2,\"input_tokens\":24364,\"output_tokens\":659,\"sandbox_seconds\":0.0,\"cache_read_input_tokens\":0},\"error_code\":null},\"type\":\"agent_run.finished\",\"agent\":\"trace\",\"state\":null,\"message\":\"trace succeeded\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":\"run_01M6FV68RYEY236HJ5Z2YYWTB8\",\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 20\nevent: agent_run.finished\ndata: {\"at\":\"2026-11-03T04:37:59.884765Z\",\"seq\":20,\"data\":{\"usage\":{\"usd\":0.003899,\"llm_calls\":3,\"tool_calls\":3,\"input_tokens\":36917,\"output_tokens\":416,\"sandbox_seconds\":0.0,\"cache_read_input_tokens\":0},\"error_code\":null},\"type\":\"agent_run.finished\",\"agent\":\"diagnose\",\"state\":null,\"message\":\"diagnose succeeded\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":\"run_01M6FV68RXG6NQCHKEVEDA3QEF\",\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 21\nevent: finding.updated\ndata: {\"at\":\"2026-11-03T04:37:59.898827Z\",\"seq\":21,\"data\":{\"actor\":\"system:standards\",\"classification_only\":true},\"type\":\"finding.updated\",\"agent\":null,\"state\":null,\"message\":\"standards classification updated\",\"finding_id\":\"fnd_01M6FV67QT7M1JTG9R003JJ8YB\",\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 22\nevent: finding.updated\ndata: {\"at\":\"2026-11-03T04:37:59.906888Z\",\"seq\":22,\"data\":{\"actor\":\"system:standards\",\"classification_only\":true},\"type\":\"finding.updated\",\"agent\":null,\"state\":null,\"message\":\"standards classification updated\",\"finding_id\":\"fnd_01M6FV67QT7M1JTG9R003JJ8YB\",\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 23\nevent: assessment.state_changed\ndata: {\"at\":\"2026-11-03T04:37:59.911099Z\",\"seq\":23,\"data\":{\"from\":\"ANALYSIS\"},\"type\":\"assessment.state_changed\",\"agent\":null,\"state\":\"DIAGNOSIS\",\"message\":\"state -> DIAGNOSIS\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 24\nevent: assessment.progress\ndata: {\"at\":\"2026-11-03T04:37:59.924871Z\",\"seq\":24,\"data\":{\"status\":\"diagnosed\",\"finding_id\":\"fnd_01M6FV67QT7M1JTG9R003JJ8YB\"},\"type\":\"assessment.progress\",\"agent\":null,\"state\":\"DIAGNOSIS\",\"message\":\"finding diagnosed\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 25\nevent: finding.updated\ndata: {\"at\":\"2026-11-03T04:37:59.928672Z\",\"seq\":25,\"data\":{\"actor\":\"agent:orchestrator\",\"status\":\"diagnosed\",\"from_status\":\"validated\"},\"type\":\"finding.updated\",\"agent\":null,\"state\":null,\"message\":\"security finding validated -> diagnosed: Payment detail route may not enforce payment ownership\",\"finding_id\":\"fnd_01M6FV67QT7M1JTG9R003JJ8YB\",\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 26\nevent: finding.updated\ndata: {\"at\":\"2026-11-03T04:38:00.666468Z\",\"seq\":26,\"data\":{\"actor\":\"agent:reviewer\",\"status\":\"validated\"},\"type\":\"finding.updated\",\"agent\":null,\"state\":null,\"message\":\"functional finding validated: Refunds can exceed the payment amount in total\",\"finding_id\":\"fnd_01M6FV69PRCRFQSZ5RXG2HKNH3\",\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 27\nevent: agent_run.finished\ndata: {\"at\":\"2026-11-03T04:38:00.677452Z\",\"seq\":27,\"data\":{\"usage\":{\"usd\":0.0008999999999999999,\"llm_calls\":6,\"tool_calls\":6,\"input_tokens\":5400,\"output_tokens\":720,\"sandbox_seconds\":0.0,\"cache_read_input_tokens\":0},\"error_code\":null},\"type\":\"agent_run.finished\",\"agent\":\"reviewer\",\"state\":null,\"message\":\"reviewer succeeded\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":\"run_01M6FV67HZSJ82279SEMJK5YQP\",\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 28\nevent: assessment.progress\ndata: {\"at\":\"2026-11-03T04:38:00.679572Z\",\"seq\":28,\"data\":{},\"type\":\"assessment.progress\",\"agent\":null,\"state\":\"DIAGNOSIS\",\"message\":\"functional review completed: 1 functional finding(s)\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 29\nevent: approval.requested\ndata: {\"at\":\"2026-11-03T04:38:00.683881Z\",\"seq\":29,\"data\":{},\"type\":\"approval.requested\",\"agent\":null,\"state\":null,\"message\":\"approval requested: remediation fnd_01M6FV69PRCRFQSZ5RXG2HKNH3\",\"finding_id\":null,\"approval_id\":\"apv_01M6FV69QA6SMVA612FC8FXJTS\",\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 30\nevent: assessment.progress\ndata: {\"at\":\"2026-11-03T04:38:00.686762Z\",\"seq\":30,\"data\":{},\"type\":\"assessment.progress\",\"agent\":null,\"state\":\"DIAGNOSIS\",\"message\":\"requested 1 functional remediation approval(s)\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 31\nevent: assessment.progress\ndata: {\"at\":\"2026-11-03T04:38:00.693494Z\",\"seq\":31,\"data\":{\"roe_artifact_id\":\"art_01M6FV69QMBSY3HJAJ0N4D5SJB\",\"sarif_artifact_id\":\"art_01M6FV69QHC2DSDJ49FH8X2HXW\"},\"type\":\"assessment.progress\",\"agent\":null,\"state\":\"DIAGNOSIS\",\"message\":\"standards artifacts stored (SARIF 2.1.0, rules of engagement)\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 32\nevent: assessment.state_changed\ndata: {\"at\":\"2026-11-03T04:38:00.696390Z\",\"seq\":32,\"data\":{\"from\":\"DIAGNOSIS\"},\"type\":\"assessment.state_changed\",\"agent\":null,\"state\":\"AWAITING_APPROVAL\",\"message\":\"state -> AWAITING_APPROVAL\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 33\nevent: approval.requested\ndata: {\"at\":\"2026-11-03T04:38:00.699533Z\",\"seq\":33,\"data\":{},\"type\":\"approval.requested\",\"agent\":null,\"state\":null,\"message\":\"approval requested: remediation rmp_01M6FV68ZGH00P9KSTFJCWDZ05\",\"finding_id\":null,\"approval_id\":\"apv_01M6FV69QTZJ9WJT4SH3PZZ154\",\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 34\nevent: assessment.progress\ndata: {\"at\":\"2026-11-03T04:38:00.740614Z\",\"seq\":34,\"data\":{\"checkpoint_namespace\":\"security_agents.approval.v1\",\"checkpoint_artifact_id\":\"art_01M6FV69S3KD7AF19H9J2X6X7Q\"},\"type\":\"assessment.progress\",\"agent\":null,\"state\":null,\"message\":\"checkpoint saved\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\nid: 35\nevent: assessment.progress\ndata: {\"at\":\"2026-11-03T04:38:00.742066Z\",\"seq\":35,\"data\":{},\"type\":\"assessment.progress\",\"agent\":null,\"state\":\"AWAITING_APPROVAL\",\"message\":\"awaiting human remediation approval\",\"finding_id\":null,\"approval_id\":null,\"agent_run_id\":null,\"assessment_id\":\"asm_01M6FV677W708K04TE8Y7JHV29\"}\n\n",
       "partial": true
     },
@@ -6713,7 +6759,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 137,
@@ -6756,7 +6802,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 137,
@@ -6797,7 +6843,7 @@
                     "value": "U",
                     "status": "unverified",
                     "evidence": [],
-                    "rationale": "The impact stays within the payments-lite API."
+                    "rationale": "The impact stays within the payments-api API."
                   },
                   {
                     "metric": "C",
@@ -6825,7 +6871,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 137,
@@ -6873,7 +6919,7 @@
             "evidence": [
               {
                 "kind": "source_span",
-                "path": "payments_lite/app.py",
+                "path": "payments_api/app.py",
                 "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                 "span": {
                   "start_line": 131,
@@ -6943,7 +6989,7 @@
                 "evidence": [
                   {
                     "kind": "source_span",
-                    "path": "payments_lite/app.py",
+                    "path": "payments_api/app.py",
                     "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                     "span": {
                       "start_line": 131,
@@ -6990,7 +7036,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 131,
@@ -7037,7 +7083,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 74,
@@ -7075,7 +7121,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 137,
@@ -7083,7 +7129,7 @@
                           "start_col": null,
                           "end_col": null
                         },
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "artifact_id": null,
                         "sha256": null,
                         "provenance": "agent:trace",
@@ -7094,7 +7140,7 @@
                         "path": null,
                         "commit_sha": null,
                         "span": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                         "provenance": "agent:trace",
@@ -7102,7 +7148,7 @@
                       },
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 17,
@@ -7110,7 +7156,7 @@
                           "start_col": null,
                           "end_col": null
                         },
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "artifact_id": null,
                         "sha256": null,
                         "provenance": "agent:trace",
@@ -7121,7 +7167,7 @@
                         "path": null,
                         "commit_sha": null,
                         "span": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                         "provenance": "agent:trace",
@@ -7156,7 +7202,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 131,
@@ -7180,7 +7226,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 137,
@@ -7188,7 +7234,7 @@
                           "start_col": null,
                           "end_col": null
                         },
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "artifact_id": null,
                         "sha256": null,
                         "provenance": "agent:trace",
@@ -7199,7 +7245,7 @@
                         "path": null,
                         "commit_sha": null,
                         "span": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                         "provenance": "agent:trace",
@@ -7207,7 +7253,7 @@
                       },
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 17,
@@ -7215,7 +7261,7 @@
                           "start_col": null,
                           "end_col": null
                         },
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "artifact_id": null,
                         "sha256": null,
                         "provenance": "agent:trace",
@@ -7226,7 +7272,7 @@
                         "path": null,
                         "commit_sha": null,
                         "span": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                         "provenance": "agent:trace",
@@ -7272,7 +7318,7 @@
                       },
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 137,
@@ -7280,7 +7326,7 @@
                           "start_col": null,
                           "end_col": null
                         },
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "artifact_id": null,
                         "sha256": null,
                         "provenance": "agent:trace",
@@ -7291,7 +7337,7 @@
                         "path": null,
                         "commit_sha": null,
                         "span": null,
-                        "symbol": "payments_lite.app.create_app.get_payment",
+                        "symbol": "payments_api.app.create_app.get_payment",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                         "provenance": "agent:trace",
@@ -7299,7 +7345,7 @@
                       },
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/store.py",
+                        "path": "payments_api/store.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 17,
@@ -7307,7 +7353,7 @@
                           "start_col": null,
                           "end_col": null
                         },
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "artifact_id": null,
                         "sha256": null,
                         "provenance": "agent:trace",
@@ -7318,7 +7364,7 @@
                         "path": null,
                         "commit_sha": null,
                         "span": null,
-                        "symbol": "payments_lite.app.create_app.payment_out",
+                        "symbol": "payments_api.app.create_app.payment_out",
                         "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                         "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                         "provenance": "agent:trace",
@@ -7478,13 +7524,13 @@
               "rationale": "existing refunds are not summed"
             },
             "subject_refs": [
-              "target/payments_lite/app.py"
+              "target/payments_api/app.py"
             ],
             "expectation_ids": [],
             "evidence": [
               {
                 "kind": "source_span",
-                "path": "target/payments_lite/app.py",
+                "path": "target/payments_api/app.py",
                 "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                 "span": {
                   "start_line": 157,
@@ -7522,7 +7568,7 @@
               },
               {
                 "kind": "source_span",
-                "path": "target/payments_lite/app.py",
+                "path": "target/payments_api/app.py",
                 "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                 "span": {
                   "start_line": 7,
@@ -9918,7 +9964,7 @@
                       "evidence": [
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/app.py",
+                          "path": "payments_api/app.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 137,
@@ -9961,7 +10007,7 @@
                       "evidence": [
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/app.py",
+                          "path": "payments_api/app.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 137,
@@ -10002,7 +10048,7 @@
                       "value": "U",
                       "status": "unverified",
                       "evidence": [],
-                      "rationale": "The impact stays within the payments-lite API."
+                      "rationale": "The impact stays within the payments-api API."
                     },
                     {
                       "metric": "C",
@@ -10030,7 +10076,7 @@
                       "evidence": [
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/app.py",
+                          "path": "payments_api/app.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 137,
@@ -10078,7 +10124,7 @@
               "evidence": [
                 {
                   "kind": "source_span",
-                  "path": "payments_lite/app.py",
+                  "path": "payments_api/app.py",
                   "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                   "span": {
                     "start_line": 131,
@@ -10148,7 +10194,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 131,
@@ -10195,7 +10241,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 131,
@@ -10242,7 +10288,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 74,
@@ -10280,7 +10326,7 @@
                       "evidence": [
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/app.py",
+                          "path": "payments_api/app.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 137,
@@ -10288,7 +10334,7 @@
                             "start_col": null,
                             "end_col": null
                           },
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": null,
                           "sha256": null,
                           "provenance": "agent:trace",
@@ -10299,7 +10345,7 @@
                           "path": null,
                           "commit_sha": null,
                           "span": null,
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                           "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                           "provenance": "agent:trace",
@@ -10307,7 +10353,7 @@
                         },
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/store.py",
+                          "path": "payments_api/store.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 17,
@@ -10315,7 +10361,7 @@
                             "start_col": null,
                             "end_col": null
                           },
-                          "symbol": "payments_lite.app.create_app.payment_out",
+                          "symbol": "payments_api.app.create_app.payment_out",
                           "artifact_id": null,
                           "sha256": null,
                           "provenance": "agent:trace",
@@ -10326,7 +10372,7 @@
                           "path": null,
                           "commit_sha": null,
                           "span": null,
-                          "symbol": "payments_lite.app.create_app.payment_out",
+                          "symbol": "payments_api.app.create_app.payment_out",
                           "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                           "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                           "provenance": "agent:trace",
@@ -10361,7 +10407,7 @@
                       "evidence": [
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/app.py",
+                          "path": "payments_api/app.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 131,
@@ -10385,7 +10431,7 @@
                       "evidence": [
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/app.py",
+                          "path": "payments_api/app.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 137,
@@ -10393,7 +10439,7 @@
                             "start_col": null,
                             "end_col": null
                           },
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": null,
                           "sha256": null,
                           "provenance": "agent:trace",
@@ -10404,7 +10450,7 @@
                           "path": null,
                           "commit_sha": null,
                           "span": null,
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                           "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                           "provenance": "agent:trace",
@@ -10412,7 +10458,7 @@
                         },
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/store.py",
+                          "path": "payments_api/store.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 17,
@@ -10420,7 +10466,7 @@
                             "start_col": null,
                             "end_col": null
                           },
-                          "symbol": "payments_lite.app.create_app.payment_out",
+                          "symbol": "payments_api.app.create_app.payment_out",
                           "artifact_id": null,
                           "sha256": null,
                           "provenance": "agent:trace",
@@ -10431,7 +10477,7 @@
                           "path": null,
                           "commit_sha": null,
                           "span": null,
-                          "symbol": "payments_lite.app.create_app.payment_out",
+                          "symbol": "payments_api.app.create_app.payment_out",
                           "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                           "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                           "provenance": "agent:trace",
@@ -10477,7 +10523,7 @@
                         },
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/app.py",
+                          "path": "payments_api/app.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 137,
@@ -10485,7 +10531,7 @@
                             "start_col": null,
                             "end_col": null
                           },
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": null,
                           "sha256": null,
                           "provenance": "agent:trace",
@@ -10496,7 +10542,7 @@
                           "path": null,
                           "commit_sha": null,
                           "span": null,
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                           "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                           "provenance": "agent:trace",
@@ -10504,7 +10550,7 @@
                         },
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/store.py",
+                          "path": "payments_api/store.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 17,
@@ -10512,7 +10558,7 @@
                             "start_col": null,
                             "end_col": null
                           },
-                          "symbol": "payments_lite.app.create_app.payment_out",
+                          "symbol": "payments_api.app.create_app.payment_out",
                           "artifact_id": null,
                           "sha256": null,
                           "provenance": "agent:trace",
@@ -10523,7 +10569,7 @@
                           "path": null,
                           "commit_sha": null,
                           "span": null,
-                          "symbol": "payments_lite.app.create_app.payment_out",
+                          "symbol": "payments_api.app.create_app.payment_out",
                           "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                           "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                           "provenance": "agent:trace",
@@ -10671,9 +10717,9 @@
                   "diff_artifact_id": "art_01M6FV5A3H1M0SS7HKCC7PGM87",
                   "diff_sha256": "ac9cca4b8a37e801c4a5ef0067dc7a439b9277eea1e0316597386d46164e37b7",
                   "base_commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
-                  "worktree_ref": "/tmp/hackatl-e2e-9ouyy3qk/work/asm_01M6FV2SMWPFS8PH97GT8X4FB2-x7ei92lr/work/worktree-fnd_01M6FV2T6GQA31S3WMS7G2NJPW-1",
+                  "worktree_ref": "/workspace/payments-api/work/asm_01M6FV2SMWPFS8PH97GT8X4FB2-x7ei92lr/work/worktree-fnd_01M6FV2T6GQA31S3WMS7G2NJPW-1",
                   "files_changed": [
-                    "payments_lite/app.py",
+                    "payments_api/app.py",
                     "tests/test_authz_regression.py"
                   ],
                   "tests_added": [
@@ -10702,7 +10748,7 @@
                           "artifact_id": "art_ver01M6FV5CZK8HJGVNVBT8068MQBdiffscopeok",
                           "sha256": "36b402ef6cc8ac473abeeb6db8f6b5c171b946354852aa07484d205d888bccfb",
                           "provenance": "agent:verify",
-                          "note": "changed files within plan: ['payments_lite/app.py', 'tests/test_authz_regression.py']"
+                          "note": "changed files within plan: ['payments_api/app.py', 'tests/test_authz_regression.py']"
                         },
                         {
                           "kind": "artifact",
@@ -10821,13 +10867,13 @@
                 "rationale": "existing refunds are not summed"
               },
               "subject_refs": [
-                "target/payments_lite/app.py"
+                "target/payments_api/app.py"
               ],
               "expectation_ids": [],
               "evidence": [
                 {
                   "kind": "source_span",
-                  "path": "target/payments_lite/app.py",
+                  "path": "target/payments_api/app.py",
                   "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                   "span": {
                     "start_line": 157,
@@ -10865,7 +10911,7 @@
                 },
                 {
                   "kind": "source_span",
-                  "path": "target/payments_lite/app.py",
+                  "path": "target/payments_api/app.py",
                   "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                   "span": {
                     "start_line": 7,
@@ -10931,7 +10977,7 @@
                   "base_commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                   "worktree_ref": "ephemeral-export:94d9195a3741",
                   "files_changed": [
-                    "target/payments_lite/app.py"
+                    "target/payments_api/app.py"
                   ],
                   "tests_added": [
                     "target/tests/generated/test_cr_refund_bound.py"
@@ -11046,7 +11092,7 @@
             ]
           }
         ],
-        "generated_at": "2026-11-03T04:47:07.357943Z",
+        "generated_at": "2026-11-03T04:38:18.517752Z",
         "source": "persisted records",
         "standards": {
           "classification_only": true,
@@ -11069,7 +11115,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 131,
@@ -11116,7 +11162,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 131,
@@ -11163,7 +11209,7 @@
                     "evidence": [
                       {
                         "kind": "source_span",
-                        "path": "payments_lite/app.py",
+                        "path": "payments_api/app.py",
                         "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                         "span": {
                           "start_line": 74,
@@ -11201,7 +11247,7 @@
                       "evidence": [
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/app.py",
+                          "path": "payments_api/app.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 137,
@@ -11209,7 +11255,7 @@
                             "start_col": null,
                             "end_col": null
                           },
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": null,
                           "sha256": null,
                           "provenance": "agent:trace",
@@ -11220,7 +11266,7 @@
                           "path": null,
                           "commit_sha": null,
                           "span": null,
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                           "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                           "provenance": "agent:trace",
@@ -11228,7 +11274,7 @@
                         },
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/store.py",
+                          "path": "payments_api/store.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 17,
@@ -11236,7 +11282,7 @@
                             "start_col": null,
                             "end_col": null
                           },
-                          "symbol": "payments_lite.app.create_app.payment_out",
+                          "symbol": "payments_api.app.create_app.payment_out",
                           "artifact_id": null,
                           "sha256": null,
                           "provenance": "agent:trace",
@@ -11247,7 +11293,7 @@
                           "path": null,
                           "commit_sha": null,
                           "span": null,
-                          "symbol": "payments_lite.app.create_app.payment_out",
+                          "symbol": "payments_api.app.create_app.payment_out",
                           "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                           "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                           "provenance": "agent:trace",
@@ -11282,7 +11328,7 @@
                       "evidence": [
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/app.py",
+                          "path": "payments_api/app.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 131,
@@ -11306,7 +11352,7 @@
                       "evidence": [
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/app.py",
+                          "path": "payments_api/app.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 137,
@@ -11314,7 +11360,7 @@
                             "start_col": null,
                             "end_col": null
                           },
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": null,
                           "sha256": null,
                           "provenance": "agent:trace",
@@ -11325,7 +11371,7 @@
                           "path": null,
                           "commit_sha": null,
                           "span": null,
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                           "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                           "provenance": "agent:trace",
@@ -11333,7 +11379,7 @@
                         },
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/store.py",
+                          "path": "payments_api/store.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 17,
@@ -11341,7 +11387,7 @@
                             "start_col": null,
                             "end_col": null
                           },
-                          "symbol": "payments_lite.app.create_app.payment_out",
+                          "symbol": "payments_api.app.create_app.payment_out",
                           "artifact_id": null,
                           "sha256": null,
                           "provenance": "agent:trace",
@@ -11352,7 +11398,7 @@
                           "path": null,
                           "commit_sha": null,
                           "span": null,
-                          "symbol": "payments_lite.app.create_app.payment_out",
+                          "symbol": "payments_api.app.create_app.payment_out",
                           "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                           "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                           "provenance": "agent:trace",
@@ -11398,7 +11444,7 @@
                         },
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/app.py",
+                          "path": "payments_api/app.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 137,
@@ -11406,7 +11452,7 @@
                             "start_col": null,
                             "end_col": null
                           },
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": null,
                           "sha256": null,
                           "provenance": "agent:trace",
@@ -11417,7 +11463,7 @@
                           "path": null,
                           "commit_sha": null,
                           "span": null,
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                           "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                           "provenance": "agent:trace",
@@ -11425,7 +11471,7 @@
                         },
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/store.py",
+                          "path": "payments_api/store.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 17,
@@ -11433,7 +11479,7 @@
                             "start_col": null,
                             "end_col": null
                           },
-                          "symbol": "payments_lite.app.create_app.payment_out",
+                          "symbol": "payments_api.app.create_app.payment_out",
                           "artifact_id": null,
                           "sha256": null,
                           "provenance": "agent:trace",
@@ -11444,7 +11490,7 @@
                           "path": null,
                           "commit_sha": null,
                           "span": null,
-                          "symbol": "payments_lite.app.create_app.payment_out",
+                          "symbol": "payments_api.app.create_app.payment_out",
                           "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                           "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                           "provenance": "agent:trace",
@@ -11613,7 +11659,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 74,
@@ -11682,13 +11728,13 @@
             "rationale": "existing refunds are not summed"
           },
           "subject_refs": [
-            "target/payments_lite/app.py"
+            "target/payments_api/app.py"
           ],
           "expectation_ids": [],
           "evidence": [
             {
               "kind": "source_span",
-              "path": "target/payments_lite/app.py",
+              "path": "target/payments_api/app.py",
               "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
               "span": {
                 "start_line": 157,
@@ -11726,7 +11772,7 @@
             },
             {
               "kind": "source_span",
-              "path": "target/payments_lite/app.py",
+              "path": "target/payments_api/app.py",
               "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
               "span": {
                 "start_line": 7,
@@ -11795,7 +11841,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 137,
@@ -11838,7 +11884,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 137,
@@ -11879,7 +11925,7 @@
                   "value": "U",
                   "status": "unverified",
                   "evidence": [],
-                  "rationale": "The impact stays within the payments-lite API."
+                  "rationale": "The impact stays within the payments-api API."
                 },
                 {
                   "metric": "C",
@@ -11907,7 +11953,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 137,
@@ -11955,7 +12001,7 @@
           "evidence": [
             {
               "kind": "source_span",
-              "path": "payments_lite/app.py",
+              "path": "payments_api/app.py",
               "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
               "span": {
                 "start_line": 131,
@@ -12004,7 +12050,7 @@
               "evidence": [
                 {
                   "kind": "source_span",
-                  "path": "payments_lite/app.py",
+                  "path": "payments_api/app.py",
                   "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                   "span": {
                     "start_line": 131,
@@ -12051,7 +12097,7 @@
                 "evidence": [
                   {
                     "kind": "source_span",
-                    "path": "payments_lite/app.py",
+                    "path": "payments_api/app.py",
                     "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                     "span": {
                       "start_line": 131,
@@ -12098,7 +12144,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 137,
@@ -12106,7 +12152,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -12117,7 +12163,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                       "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                       "provenance": "agent:trace",
@@ -12125,7 +12171,7 @@
                     },
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/store.py",
+                      "path": "payments_api/store.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 17,
@@ -12133,7 +12179,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -12144,7 +12190,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                       "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                       "provenance": "agent:trace",
@@ -12179,7 +12225,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 131,
@@ -12203,7 +12249,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 137,
@@ -12211,7 +12257,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -12222,7 +12268,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                       "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                       "provenance": "agent:trace",
@@ -12230,7 +12276,7 @@
                     },
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/store.py",
+                      "path": "payments_api/store.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 17,
@@ -12238,7 +12284,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -12249,7 +12295,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                       "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                       "provenance": "agent:trace",
@@ -12295,7 +12341,7 @@
                     },
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 137,
@@ -12303,7 +12349,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -12314,7 +12360,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                       "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                       "provenance": "agent:trace",
@@ -12322,7 +12368,7 @@
                     },
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/store.py",
+                      "path": "payments_api/store.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 17,
@@ -12330,7 +12376,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -12341,7 +12387,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                       "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                       "provenance": "agent:trace",
@@ -12491,7 +12537,7 @@
               "cited_spans": [
                 {
                   "kind": "source_span",
-                  "path": "payments_lite/app.py",
+                  "path": "payments_api/app.py",
                   "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                   "span": {
                     "start_line": 131,
@@ -12565,7 +12611,7 @@
                       "evidence": [
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/app.py",
+                          "path": "payments_api/app.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 137,
@@ -12573,7 +12619,7 @@
                             "start_col": null,
                             "end_col": null
                           },
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": null,
                           "sha256": null,
                           "provenance": "agent:trace",
@@ -12584,7 +12630,7 @@
                           "path": null,
                           "commit_sha": null,
                           "span": null,
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                           "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                           "provenance": "agent:trace",
@@ -12598,12 +12644,12 @@
                   ],
                   "order": 1,
                   "description": "An authenticated customer requests a payment id belonging to another customer and receives the payment record.",
-                  "symbol_ref": "payments_lite.app.create_app.get_payment",
+                  "symbol_ref": "payments_api.app.create_app.get_payment",
                   "verified": true,
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 137,
@@ -12611,7 +12657,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -12622,7 +12668,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                       "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                       "provenance": "agent:trace",
@@ -12634,12 +12680,12 @@
                   "attack": [],
                   "order": 2,
                   "description": "The record exposes the amount, currency and description of another customer's payment.",
-                  "symbol_ref": "payments_lite.app.create_app.payment_out",
+                  "symbol_ref": "payments_api.app.create_app.payment_out",
                   "verified": false,
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/store.py",
+                      "path": "payments_api/store.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 17,
@@ -12647,7 +12693,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -12658,7 +12704,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": "art_sbx01M6FV67SFQ550B7HR3759618J",
                       "sha256": "9958e93ee1dfb3df3e93fbc00accf69f1a95ff5be88d021ff6a2cbf8d63c3da5",
                       "provenance": "agent:trace",
@@ -12691,7 +12737,7 @@
               "cause_spans": [
                 {
                   "kind": "source_span",
-                  "path": "payments_lite/app.py",
+                  "path": "payments_api/app.py",
                   "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                   "span": {
                     "start_line": 137,
@@ -12699,7 +12745,7 @@
                     "start_col": null,
                     "end_col": null
                   },
-                  "symbol": "payments_lite.app.create_app.get_payment",
+                  "symbol": "payments_api.app.create_app.get_payment",
                   "artifact_id": null,
                   "sha256": null,
                   "provenance": "agent:diagnose",
@@ -12720,7 +12766,7 @@
                 "every /payments route must keep requiring a valid bearer token"
               ],
               "files_expected": [
-                "payments_lite/app.py"
+                "payments_api/app.py"
               ],
               "test_plan": "must fail before: a non-owner requesting another customer's payment detail is refused | must pass after: a non-owner receives 404 for another customer's payment detail; the owner still receives 200 for their own payment"
             }
@@ -12761,13 +12807,13 @@
             "rationale": "existing refunds are not summed"
           },
           "subject_refs": [
-            "target/payments_lite/app.py"
+            "target/payments_api/app.py"
           ],
           "expectation_ids": [],
           "evidence": [
             {
               "kind": "source_span",
-              "path": "target/payments_lite/app.py",
+              "path": "target/payments_api/app.py",
               "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
               "span": {
                 "start_line": 157,
@@ -12805,7 +12851,7 @@
             },
             {
               "kind": "source_span",
-              "path": "target/payments_lite/app.py",
+              "path": "target/payments_api/app.py",
               "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
               "span": {
                 "start_line": 7,
@@ -12891,7 +12937,7 @@
               "base_commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
               "worktree_ref": "ephemeral-export:94d9195a3741",
               "files_changed": [
-                "target/payments_lite/app.py"
+                "target/payments_api/app.py"
               ],
               "tests_added": [
                 "target/tests/generated/test_cr_refund_bound.py"
@@ -13035,7 +13081,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 137,
@@ -13078,7 +13124,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 137,
@@ -13119,7 +13165,7 @@
                   "value": "U",
                   "status": "unverified",
                   "evidence": [],
-                  "rationale": "The impact stays within the payments-lite API."
+                  "rationale": "The impact stays within the payments-api API."
                 },
                 {
                   "metric": "C",
@@ -13147,7 +13193,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 137,
@@ -13195,7 +13241,7 @@
           "evidence": [
             {
               "kind": "source_span",
-              "path": "payments_lite/app.py",
+              "path": "payments_api/app.py",
               "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
               "span": {
                 "start_line": 131,
@@ -13265,7 +13311,7 @@
               "evidence": [
                 {
                   "kind": "source_span",
-                  "path": "payments_lite/app.py",
+                  "path": "payments_api/app.py",
                   "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                   "span": {
                     "start_line": 131,
@@ -13312,7 +13358,7 @@
                 "evidence": [
                   {
                     "kind": "source_span",
-                    "path": "payments_lite/app.py",
+                    "path": "payments_api/app.py",
                     "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                     "span": {
                       "start_line": 131,
@@ -13359,7 +13405,7 @@
                 "evidence": [
                   {
                     "kind": "source_span",
-                    "path": "payments_lite/app.py",
+                    "path": "payments_api/app.py",
                     "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                     "span": {
                       "start_line": 74,
@@ -13397,7 +13443,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 137,
@@ -13405,7 +13451,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -13416,7 +13462,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                       "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                       "provenance": "agent:trace",
@@ -13424,7 +13470,7 @@
                     },
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/store.py",
+                      "path": "payments_api/store.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 17,
@@ -13432,7 +13478,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -13443,7 +13489,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                       "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                       "provenance": "agent:trace",
@@ -13478,7 +13524,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 131,
@@ -13502,7 +13548,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 137,
@@ -13510,7 +13556,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -13521,7 +13567,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                       "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                       "provenance": "agent:trace",
@@ -13529,7 +13575,7 @@
                     },
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/store.py",
+                      "path": "payments_api/store.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 17,
@@ -13537,7 +13583,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -13548,7 +13594,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                       "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                       "provenance": "agent:trace",
@@ -13594,7 +13640,7 @@
                     },
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 137,
@@ -13602,7 +13648,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -13613,7 +13659,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                       "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                       "provenance": "agent:trace",
@@ -13621,7 +13667,7 @@
                     },
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/store.py",
+                      "path": "payments_api/store.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 17,
@@ -13629,7 +13675,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -13640,7 +13686,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                       "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                       "provenance": "agent:trace",
@@ -13790,7 +13836,7 @@
               "cited_spans": [
                 {
                   "kind": "source_span",
-                  "path": "payments_lite/app.py",
+                  "path": "payments_api/app.py",
                   "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                   "span": {
                     "start_line": 131,
@@ -13864,7 +13910,7 @@
                       "evidence": [
                         {
                           "kind": "source_span",
-                          "path": "payments_lite/app.py",
+                          "path": "payments_api/app.py",
                           "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                           "span": {
                             "start_line": 137,
@@ -13872,7 +13918,7 @@
                             "start_col": null,
                             "end_col": null
                           },
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": null,
                           "sha256": null,
                           "provenance": "agent:trace",
@@ -13883,7 +13929,7 @@
                           "path": null,
                           "commit_sha": null,
                           "span": null,
-                          "symbol": "payments_lite.app.create_app.get_payment",
+                          "symbol": "payments_api.app.create_app.get_payment",
                           "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                           "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                           "provenance": "agent:trace",
@@ -13897,12 +13943,12 @@
                   ],
                   "order": 1,
                   "description": "An authenticated customer requests a payment id belonging to another customer and receives the payment record.",
-                  "symbol_ref": "payments_lite.app.create_app.get_payment",
+                  "symbol_ref": "payments_api.app.create_app.get_payment",
                   "verified": true,
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 137,
@@ -13910,7 +13956,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -13921,7 +13967,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.get_payment",
+                      "symbol": "payments_api.app.create_app.get_payment",
                       "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                       "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                       "provenance": "agent:trace",
@@ -13933,12 +13979,12 @@
                   "attack": [],
                   "order": 2,
                   "description": "The record exposes the amount, currency and description of another customer's payment.",
-                  "symbol_ref": "payments_lite.app.create_app.payment_out",
+                  "symbol_ref": "payments_api.app.create_app.payment_out",
                   "verified": false,
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/store.py",
+                      "path": "payments_api/store.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 17,
@@ -13946,7 +13992,7 @@
                         "start_col": null,
                         "end_col": null
                       },
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": null,
                       "sha256": null,
                       "provenance": "agent:trace",
@@ -13957,7 +14003,7 @@
                       "path": null,
                       "commit_sha": null,
                       "span": null,
-                      "symbol": "payments_lite.app.create_app.payment_out",
+                      "symbol": "payments_api.app.create_app.payment_out",
                       "artifact_id": "art_sbx01M6FV2T8A416PQZRX7F5SEJTC",
                       "sha256": "8286b8c39373235b1e17275f5727a8620c2c79216a009911330986fb84d9ee99",
                       "provenance": "agent:trace",
@@ -13990,7 +14036,7 @@
               "cause_spans": [
                 {
                   "kind": "source_span",
-                  "path": "payments_lite/app.py",
+                  "path": "payments_api/app.py",
                   "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                   "span": {
                     "start_line": 137,
@@ -13998,7 +14044,7 @@
                     "start_col": null,
                     "end_col": null
                   },
-                  "symbol": "payments_lite.app.create_app.get_payment",
+                  "symbol": "payments_api.app.create_app.get_payment",
                   "artifact_id": null,
                   "sha256": null,
                   "provenance": "agent:diagnose",
@@ -14019,7 +14065,7 @@
                 "every /payments route must keep requiring a valid bearer token"
               ],
               "files_expected": [
-                "payments_lite/app.py"
+                "payments_api/app.py"
               ],
               "test_plan": "must fail before: a non-owner requesting another customer's payment detail is refused | must pass after: a non-owner receives 404 for another customer's payment detail; the owner still receives 200 for their own payment"
             }
@@ -14043,7 +14089,7 @@
                   "evidence": [
                     {
                       "kind": "source_span",
-                      "path": "payments_lite/app.py",
+                      "path": "payments_api/app.py",
                       "commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
                       "span": {
                         "start_line": 74,
@@ -14102,9 +14148,9 @@
               "diff_artifact_id": "art_01M6FV5A3H1M0SS7HKCC7PGM87",
               "diff_sha256": "ac9cca4b8a37e801c4a5ef0067dc7a439b9277eea1e0316597386d46164e37b7",
               "base_commit_sha": "94d9195a3741dbcc71418b3103acba1c0a2e747e",
-              "worktree_ref": "/tmp/hackatl-e2e-9ouyy3qk/work/asm_01M6FV2SMWPFS8PH97GT8X4FB2-x7ei92lr/work/worktree-fnd_01M6FV2T6GQA31S3WMS7G2NJPW-1",
+              "worktree_ref": "/workspace/payments-api/work/asm_01M6FV2SMWPFS8PH97GT8X4FB2-x7ei92lr/work/worktree-fnd_01M6FV2T6GQA31S3WMS7G2NJPW-1",
               "files_changed": [
-                "payments_lite/app.py",
+                "payments_api/app.py",
                 "tests/test_authz_regression.py"
               ],
               "tests_added": [
@@ -14133,7 +14179,7 @@
                       "artifact_id": "art_ver01M6FV5CZK8HJGVNVBT8068MQBdiffscopeok",
                       "sha256": "36b402ef6cc8ac473abeeb6db8f6b5c171b946354852aa07484d205d888bccfb",
                       "provenance": "agent:verify",
-                      "note": "changed files within plan: ['payments_lite/app.py', 'tests/test_authz_regression.py']"
+                      "note": "changed files within plan: ['payments_api/app.py', 'tests/test_authz_regression.py']"
                     },
                     {
                       "kind": "artifact",
@@ -14298,17 +14344,17 @@
       "status": 200,
       "content_type": "application/json",
       "headers": {
-        "x-artifact-sha256": "47668e26671ec3831d62c66787e1d3bfb7a1cd938dddaa6a430e4f4f8a30659b"
+        "x-artifact-sha256": "4045fd9207125bd397492fd4c9a0d0ebf4845310f0907d28f0daac900b7ed268"
       },
-      "body": "{\"finding_id\": \"fnd_01M6FV2W8NADW70P1R1BHRWE4H\", \"limitations\": \"Accepted Verify outcome associates these sources with executed runs; individual node execution is not claimed. Stored source may be redacted; cite the stored artifact hash.\", \"patch_id\": \"pat_01M6FV5HXFC0CH3KJS9RBB769V\", \"producer\": \"deterministic:functional-verify\", \"sandbox_run_ids\": [\"sbx_01M6FV5HY9ED7ENQDHWAEZ4X4T\", \"sbx_01M6FV5JVGYQQGVAAHGZF2QWW8\", \"sbx_01M6FV5KSZ3QVNYQCPG9F7TNZQ\"], \"schema_version\": \"verified-regression-sources.v1\", \"status\": \"sources_associated_with_accepted_independent_verification\", \"tests\": [{\"original_verified_source_sha256\": \"5b2ea15a3296a10dfbbaee3017deae4bd1c9b623b89000d2b6516d74f1147c5e\", \"path\": \"tests/generated/test_cr_refund_bound.py\", \"source\": \"from fastapi.testclient import TestClient\\n\\nfrom payments_lite.app import create_app\\n\\nALICE = {\\\"Authorization\\\": \\\"Bearer [REDACTED:bearer]\\\"}\\n\\n\\ndef test_total_refunds_never_exceed_payment_amount():\\n    client = TestClient(create_app())\\n    first = client.post(\\\"/refunds\\\", json={\\\"payment_id\\\": \\\"pay_a1\\\", \\\"amount\\\": \\\"100.00\\\"}, headers=ALICE)\\n    assert first.status_code == 201\\n    second = client.post(\\\"/refunds\\\", json={\\\"payment_id\\\": \\\"pay_a1\\\", \\\"amount\\\": \\\"50.00\\\"}, headers=ALICE)\\n    assert second.status_code == 422, second.text\\n\"}], \"verification_checks\": [{\"evidence\": [{\"artifact_id\": \"art_01M6FV5MV53SBWHZFZWQ0WN50H\", \"commit_sha\": null, \"kind\": \"sandbox_run\", \"note\": null, \"path\": null, \"provenance\": \"agent:verify\", \"sha256\": \"84e9b945bc412c50d90372ed1440656e9243dae135813b40a1a361d882c8e7a7\", \"span\": null, \"symbol\": null}], \"name\": \"diff_scope_ok\", \"passed\": true}, {\"evidence\": [{\"artifact_id\": \"art_01M6FV5MV53SBWHZFZWQ0WN50H\", \"commit_sha\": null, \"kind\": \"sandbox_run\", \"note\": null, \"path\": null, \"provenance\": \"agent:verify\", \"sha256\": \"84e9b945bc412c50d90372ed1440656e9243dae135813b40a1a361d882c8e7a7\", \"span\": null, \"symbol\": null}], \"name\": \"no_test_tampering\", \"passed\": true}, {\"evidence\": [{\"artifact_id\": \"art_01M6FV5MV53SBWHZFZWQ0WN50H\", \"commit_sha\": null, \"kind\": \"sandbox_run\", \"note\": null, \"path\": null, \"provenance\": \"agent:verify\", \"sha256\": \"84e9b945bc412c50d90372ed1440656e9243dae135813b40a1a361d882c8e7a7\", \"span\": null, \"symbol\": null}], \"name\": \"original_check_now_fails_to_reproduce\", \"passed\": true}, {\"evidence\": [{\"artifact_id\": \"art_01M6FV5MV53SBWHZFZWQ0WN50H\", \"commit_sha\": null, \"kind\": \"sandbox_run\", \"note\": null, \"path\": null, \"provenance\": \"agent:verify\", \"sha256\": \"84e9b945bc412c50d90372ed1440656e9243dae135813b40a1a361d882c8e7a7\", \"span\": null, \"symbol\": null}], \"name\": \"functional_suite_passes\", \"passed\": true}, {\"evidence\": [{\"artifact_id\": \"art_01M6FV5MV53SBWHZFZWQ0WN50H\", \"commit_sha\": null, \"kind\": \"sandbox_run\", \"note\": null, \"path\": null, \"provenance\": \"agent:verify\", \"sha256\": \"84e9b945bc412c50d90372ed1440656e9243dae135813b40a1a361d882c8e7a7\", \"span\": null, \"symbol\": null}], \"name\": \"generated_tests_pass\", \"passed\": true}], \"verification_id\": \"ver_01M6FV5MV9QZ7MM355475ZEAFY\", \"verify_run_id\": \"run_01M6FV5HY4MVMVB1R1K2GJP6TZ\"}"
+      "body": "{\"finding_id\": \"fnd_01M6FV2W8NADW70P1R1BHRWE4H\", \"limitations\": \"Accepted Verify outcome associates these sources with executed runs; individual node execution is not claimed. Stored source may be redacted; cite the stored artifact hash.\", \"patch_id\": \"pat_01M6FV5HXFC0CH3KJS9RBB769V\", \"producer\": \"deterministic:functional-verify\", \"sandbox_run_ids\": [\"sbx_01M6FV5HY9ED7ENQDHWAEZ4X4T\", \"sbx_01M6FV5JVGYQQGVAAHGZF2QWW8\", \"sbx_01M6FV5KSZ3QVNYQCPG9F7TNZQ\"], \"schema_version\": \"verified-regression-sources.v1\", \"status\": \"sources_associated_with_accepted_independent_verification\", \"tests\": [{\"original_verified_source_sha256\": \"5b2ea15a3296a10dfbbaee3017deae4bd1c9b623b89000d2b6516d74f1147c5e\", \"path\": \"tests/generated/test_cr_refund_bound.py\", \"source\": \"from fastapi.testclient import TestClient\\n\\nfrom payments_api.app import create_app\\n\\nALICE = {\\\"Authorization\\\": \\\"Bearer [REDACTED:bearer]\\\"}\\n\\n\\ndef test_total_refunds_never_exceed_payment_amount():\\n    client = TestClient(create_app())\\n    first = client.post(\\\"/refunds\\\", json={\\\"payment_id\\\": \\\"pay_a1\\\", \\\"amount\\\": \\\"100.00\\\"}, headers=ALICE)\\n    assert first.status_code == 201\\n    second = client.post(\\\"/refunds\\\", json={\\\"payment_id\\\": \\\"pay_a1\\\", \\\"amount\\\": \\\"50.00\\\"}, headers=ALICE)\\n    assert second.status_code == 422, second.text\\n\"}], \"verification_checks\": [{\"evidence\": [{\"artifact_id\": \"art_01M6FV5MV53SBWHZFZWQ0WN50H\", \"commit_sha\": null, \"kind\": \"sandbox_run\", \"note\": null, \"path\": null, \"provenance\": \"agent:verify\", \"sha256\": \"84e9b945bc412c50d90372ed1440656e9243dae135813b40a1a361d882c8e7a7\", \"span\": null, \"symbol\": null}], \"name\": \"diff_scope_ok\", \"passed\": true}, {\"evidence\": [{\"artifact_id\": \"art_01M6FV5MV53SBWHZFZWQ0WN50H\", \"commit_sha\": null, \"kind\": \"sandbox_run\", \"note\": null, \"path\": null, \"provenance\": \"agent:verify\", \"sha256\": \"84e9b945bc412c50d90372ed1440656e9243dae135813b40a1a361d882c8e7a7\", \"span\": null, \"symbol\": null}], \"name\": \"no_test_tampering\", \"passed\": true}, {\"evidence\": [{\"artifact_id\": \"art_01M6FV5MV53SBWHZFZWQ0WN50H\", \"commit_sha\": null, \"kind\": \"sandbox_run\", \"note\": null, \"path\": null, \"provenance\": \"agent:verify\", \"sha256\": \"84e9b945bc412c50d90372ed1440656e9243dae135813b40a1a361d882c8e7a7\", \"span\": null, \"symbol\": null}], \"name\": \"original_check_now_fails_to_reproduce\", \"passed\": true}, {\"evidence\": [{\"artifact_id\": \"art_01M6FV5MV53SBWHZFZWQ0WN50H\", \"commit_sha\": null, \"kind\": \"sandbox_run\", \"note\": null, \"path\": null, \"provenance\": \"agent:verify\", \"sha256\": \"84e9b945bc412c50d90372ed1440656e9243dae135813b40a1a361d882c8e7a7\", \"span\": null, \"symbol\": null}], \"name\": \"functional_suite_passes\", \"passed\": true}, {\"evidence\": [{\"artifact_id\": \"art_01M6FV5MV53SBWHZFZWQ0WN50H\", \"commit_sha\": null, \"kind\": \"sandbox_run\", \"note\": null, \"path\": null, \"provenance\": \"agent:verify\", \"sha256\": \"84e9b945bc412c50d90372ed1440656e9243dae135813b40a1a361d882c8e7a7\", \"span\": null, \"symbol\": null}], \"name\": \"generated_tests_pass\", \"passed\": true}], \"verification_id\": \"ver_01M6FV5MV9QZ7MM355475ZEAFY\", \"verify_run_id\": \"run_01M6FV5HY4MVMVB1R1K2GJP6TZ\"}"
     },
     "GET /artifacts/art_01M6FV5HXEAJ049QXHGK9AH0Z8": {
       "status": 200,
       "content_type": "text/x-diff; charset=utf-8",
       "headers": {
-        "x-artifact-sha256": "1c08cad2a3c2d25ea2b5fab401ace93d42243a2ce86dfb46045647ea34fa6393"
+        "x-artifact-sha256": "3c4e6e59a928c57877aa61e9f90848660b6eb68e2732e111e1cdc74d458de1e4"
       },
-      "body": "--- a/target/payments_lite/app.py\n+++ b/target/payments_lite/app.py\n@@ -154,7 +154,8 @@\n         if p is None:\n             raise HTTPException(status.HTTP_404_NOT_FOUND, \"not found\")\n         require_owner(p.customer_id, customer)\n-        if body.amount > p.amount:\n+        already = sum((r.amount for r in store.refunds_for(p.id)), Decimal(\"0\"))\n+        if already + body.amount > p.amount:\n             raise HTTPException(422, \"refund exceeds payment amount\")\n         r = Refund(store.next_id(\"ref\"), p.id, customer.id, body.amount, body.reason)\n         store.refunds[r.id] = r\n"
+      "body": "--- a/target/payments_api/app.py\n+++ b/target/payments_api/app.py\n@@ -154,7 +154,8 @@\n         if p is None:\n             raise HTTPException(status.HTTP_404_NOT_FOUND, \"not found\")\n         require_owner(p.customer_id, customer)\n-        if body.amount > p.amount:\n+        already = sum((r.amount for r in store.refunds_for(p.id)), Decimal(\"0\"))\n+        if already + body.amount > p.amount:\n             raise HTTPException(422, \"refund exceeds payment amount\")\n         r = Refund(store.next_id(\"ref\"), p.id, customer.id, body.amount, body.reason)\n         store.refunds[r.id] = r\n"
     },
     "GET /artifacts/art_01M6FV5MV53SBWHZFZWQ0WN50H": {
       "status": 200,
@@ -14322,17 +14368,17 @@
       "status": 200,
       "content_type": "application/json",
       "headers": {
-        "x-artifact-sha256": "383f8d71de52419f459419abc8128349f16700acc91dd9c5ea6e782d7c5587db"
+        "x-artifact-sha256": "0c3d18e5c92c93df370debfbed41cfd772dbc3a86337a020379b75dab4249e4c"
       },
-      "body": "{\"finding_id\": \"fnd_01M6FV2T6GQA31S3WMS7G2NJPW\", \"limitations\": \"Accepted Verify outcome associates these sources with executed runs; individual node execution is not claimed. Stored source may be redacted; cite the stored artifact hash.\", \"patch_id\": \"pat_01M6FV5A36H6GDT9A940STXS6F\", \"sandbox_run_ids\": [\"sbx_01M6FV5A5PC9X3C9KX6F22MC3C\", \"sbx_01M6FV5B1HBZREVT81CN6G2EJJ\", \"sbx_01M6FV5C2FC24JP9H387GGB3GB\"], \"schema_version\": \"verified-regression-sources.v1\", \"status\": \"sources_associated_with_accepted_independent_verification\", \"tests\": [{\"original_verified_source_sha256\": \"1e3c21eec2ffdbb66f03863fe76dfa6b2b8f0c4ac2f177816512434e8908e98d\", \"path\": \"tests/test_authz_regression.py\", \"source\": \"\\\"\\\"\\\"Regression test for the payment-detail ownership finding.\\\"\\\"\\\"\\n\\nfrom fastapi.testclient import TestClient\\n\\nfrom payments_lite.app import create_app\\n\\nALICE = {\\\"Authorization\\\": \\\"Bearer [REDACTED:bearer]\\\"}\\nBOB = {\\\"Authorization\\\": \\\"Bearer [REDACTED:bearer]\\\"}\\n\\n\\ndef test_non_owner_cannot_read_payment_detail():\\n    client = TestClient(create_app())\\n    assert client.get(\\\"/payments/pay_a1\\\", headers=BOB).status_code == 404\\n\\n\\ndef test_owner_can_still_read_payment_detail():\\n    client = TestClient(create_app())\\n    resp = client.get(\\\"/payments/pay_a1\\\", headers=ALICE)\\n    assert resp.status_code == 200\\n    assert resp.json()[\\\"id\\\"] == \\\"pay_a1\\\"\\n\"}], \"verification_checks\": [{\"detail\": \"changed files within plan: ['payments_lite/app.py', 'tests/test_authz_regression.py']\", \"evidence\": [], \"name\": \"diff_scope_ok\", \"passed\": true}, {\"detail\": \"no protected test modified (protected: 3 file(s))\", \"evidence\": [], \"name\": \"no_test_tampering\", \"passed\": true}, {\"detail\": \"the expectation now holds against the patched target (finding no longer reproduces)\", \"evidence\": [{\"artifact_id\": \"sbx_01M6FV5A5PC9X3C9KX6F22MC3C\", \"path\": null, \"provenance\": \"check_run\", \"sha\": null, \"span\": null, \"symbol\": null}], \"name\": \"original_check_now_fails_to_reproduce\", \"passed\": true}, {\"detail\": \"13 passed; failures equal to baseline ([])\", \"evidence\": [{\"artifact_id\": \"sbx_01M6FV5B1HBZREVT81CN6G2EJJ\", \"path\": null, \"provenance\": \"check_run\", \"sha\": null, \"span\": null, \"symbol\": null}], \"name\": \"functional_suite_passes\", \"passed\": true}, {\"detail\": \"added tests fail on the unpatched code (tests/test_authz_regression.py::test_non_owner_cannot_read_payment_detail) and pass after the patch (tests/test_authz_regression.py)\", \"evidence\": [{\"artifact_id\": \"sbx_01M6FV5C2FC24JP9H387GGB3GB\", \"path\": null, \"provenance\": \"check_run\", \"sha\": null, \"span\": null, \"symbol\": null}], \"name\": \"generated_tests_pass\", \"passed\": true}], \"verification_id\": \"ver_01M6FV5CZK8HJGVNVBT8068MQB\", \"verify_run_id\": \"run_01M6FV5A414XYJRRFQHHZSEWTW\"}"
+      "body": "{\"finding_id\": \"fnd_01M6FV2T6GQA31S3WMS7G2NJPW\", \"limitations\": \"Accepted Verify outcome associates these sources with executed runs; individual node execution is not claimed. Stored source may be redacted; cite the stored artifact hash.\", \"patch_id\": \"pat_01M6FV5A36H6GDT9A940STXS6F\", \"sandbox_run_ids\": [\"sbx_01M6FV5A5PC9X3C9KX6F22MC3C\", \"sbx_01M6FV5B1HBZREVT81CN6G2EJJ\", \"sbx_01M6FV5C2FC24JP9H387GGB3GB\"], \"schema_version\": \"verified-regression-sources.v1\", \"status\": \"sources_associated_with_accepted_independent_verification\", \"tests\": [{\"original_verified_source_sha256\": \"1e3c21eec2ffdbb66f03863fe76dfa6b2b8f0c4ac2f177816512434e8908e98d\", \"path\": \"tests/test_authz_regression.py\", \"source\": \"\\\"\\\"\\\"Regression test for the payment-detail ownership finding.\\\"\\\"\\\"\\n\\nfrom fastapi.testclient import TestClient\\n\\nfrom payments_api.app import create_app\\n\\nALICE = {\\\"Authorization\\\": \\\"Bearer [REDACTED:bearer]\\\"}\\nBOB = {\\\"Authorization\\\": \\\"Bearer [REDACTED:bearer]\\\"}\\n\\n\\ndef test_non_owner_cannot_read_payment_detail():\\n    client = TestClient(create_app())\\n    assert client.get(\\\"/payments/pay_a1\\\", headers=BOB).status_code == 404\\n\\n\\ndef test_owner_can_still_read_payment_detail():\\n    client = TestClient(create_app())\\n    resp = client.get(\\\"/payments/pay_a1\\\", headers=ALICE)\\n    assert resp.status_code == 200\\n    assert resp.json()[\\\"id\\\"] == \\\"pay_a1\\\"\\n\"}], \"verification_checks\": [{\"detail\": \"changed files within plan: ['payments_api/app.py', 'tests/test_authz_regression.py']\", \"evidence\": [], \"name\": \"diff_scope_ok\", \"passed\": true}, {\"detail\": \"no protected test modified (protected: 3 file(s))\", \"evidence\": [], \"name\": \"no_test_tampering\", \"passed\": true}, {\"detail\": \"the expectation now holds against the patched target (finding no longer reproduces)\", \"evidence\": [{\"artifact_id\": \"sbx_01M6FV5A5PC9X3C9KX6F22MC3C\", \"path\": null, \"provenance\": \"check_run\", \"sha\": null, \"span\": null, \"symbol\": null}], \"name\": \"original_check_now_fails_to_reproduce\", \"passed\": true}, {\"detail\": \"13 passed; failures equal to baseline ([])\", \"evidence\": [{\"artifact_id\": \"sbx_01M6FV5B1HBZREVT81CN6G2EJJ\", \"path\": null, \"provenance\": \"check_run\", \"sha\": null, \"span\": null, \"symbol\": null}], \"name\": \"functional_suite_passes\", \"passed\": true}, {\"detail\": \"added tests fail on the unpatched code (tests/test_authz_regression.py::test_non_owner_cannot_read_payment_detail) and pass after the patch (tests/test_authz_regression.py)\", \"evidence\": [{\"artifact_id\": \"sbx_01M6FV5C2FC24JP9H387GGB3GB\", \"path\": null, \"provenance\": \"check_run\", \"sha\": null, \"span\": null, \"symbol\": null}], \"name\": \"generated_tests_pass\", \"passed\": true}], \"verification_id\": \"ver_01M6FV5CZK8HJGVNVBT8068MQB\", \"verify_run_id\": \"run_01M6FV5A414XYJRRFQHHZSEWTW\"}"
     },
     "GET /artifacts/art_01M6FV5A3H1M0SS7HKCC7PGM87": {
       "status": 200,
       "content_type": "text/x-diff; charset=utf-8",
       "headers": {
-        "x-artifact-sha256": "ac9cca4b8a37e801c4a5ef0067dc7a439b9277eea1e0316597386d46164e37b7"
+        "x-artifact-sha256": "b5ab8bcc9c410e52869e93ff4572cdf6960bb4532fd7662746b486b87eb027e5"
       },
-      "body": "diff --git a/payments_lite/app.py b/payments_lite/app.py\n--- a/payments_lite/app.py\n+++ b/payments_lite/app.py\n@@ -138,6 +138,7 @@\n         p = store.payments.get(payment_id)\n         if p is None:\n             raise HTTPException(status.HTTP_404_NOT_FOUND, \"not found\")\n+        require_owner(p.customer_id, customer)\n         return payment_out(store, p)\n \n     @app.post(\"/refunds\", response_model=RefundOut, status_code=status.HTTP_201_CREATED)\ndiff --git a/tests/test_authz_regression.py b/tests/test_authz_regression.py\nnew file mode 100644\n--- /dev/null\n+++ b/tests/test_authz_regression.py\n@@ -0,0 +1,20 @@\n+\"\"\"Regression test for the payment-detail ownership finding.\"\"\"\n+\n+from fastapi.testclient import TestClient\n+\n+from payments_lite.app import create_app\n+\n+ALICE = {\"Authorization\": \"Bearer [REDACTED:bearer]\"}\n+BOB = {\"Authorization\": \"Bearer [REDACTED:bearer]\"}\n+\n+\n+def test_non_owner_cannot_read_payment_detail():\n+    client = TestClient(create_app())\n+    assert client.get(\"/payments/pay_a1\", headers=BOB).status_code == 404\n+\n+\n+def test_owner_can_still_read_payment_detail():\n+    client = TestClient(create_app())\n+    resp = client.get(\"/payments/pay_a1\", headers=ALICE)\n+    assert resp.status_code == 200\n+    assert resp.json()[\"id\"] == \"pay_a1\"\n"
+      "body": "diff --git a/payments_api/app.py b/payments_api/app.py\n--- a/payments_api/app.py\n+++ b/payments_api/app.py\n@@ -138,6 +138,7 @@\n         p = store.payments.get(payment_id)\n         if p is None:\n             raise HTTPException(status.HTTP_404_NOT_FOUND, \"not found\")\n+        require_owner(p.customer_id, customer)\n         return payment_out(store, p)\n \n     @app.post(\"/refunds\", response_model=RefundOut, status_code=status.HTTP_201_CREATED)\ndiff --git a/tests/test_authz_regression.py b/tests/test_authz_regression.py\nnew file mode 100644\n--- /dev/null\n+++ b/tests/test_authz_regression.py\n@@ -0,0 +1,20 @@\n+\"\"\"Regression test for the payment-detail ownership finding.\"\"\"\n+\n+from fastapi.testclient import TestClient\n+\n+from payments_api.app import create_app\n+\n+ALICE = {\"Authorization\": \"Bearer [REDACTED:bearer]\"}\n+BOB = {\"Authorization\": \"Bearer [REDACTED:bearer]\"}\n+\n+\n+def test_non_owner_cannot_read_payment_detail():\n+    client = TestClient(create_app())\n+    assert client.get(\"/payments/pay_a1\", headers=BOB).status_code == 404\n+\n+\n+def test_owner_can_still_read_payment_detail():\n+    client = TestClient(create_app())\n+    resp = client.get(\"/payments/pay_a1\", headers=ALICE)\n+    assert resp.status_code == 200\n+    assert resp.json()[\"id\"] == \"pay_a1\"\n"
     },
     "GET /artifacts/art_ver01M6FV5CZK8HJGVNVBT8068MQBdiffscopeok": {
       "status": 404,
@@ -14400,6 +14446,25 @@
           "details": {},
           "request_id": "req_01M6FVPZQ1PRYQZ79E4MFZBXA4"
         }
+      }
+    },
+    "GET /repositories/rep_01M6FTWEV8R3H2YKB9JHYA0XRV/automation-status": {
+      "status": 200,
+      "content_type": "application/json",
+      "body": {
+        "repo_id": "rep_01M6FTWEV8R3H2YKB9JHYA0XRV",
+        "state": "off",
+        "reasons": [
+          {
+            "code": "repository_off",
+            "message": "Automatic reviews are off for this repository."
+          },
+          {
+            "code": "project_monitoring_off",
+            "message": "Project monitoring is off."
+          }
+        ],
+        "resets_at": null
       }
     }
   }
