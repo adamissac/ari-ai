@@ -37,10 +37,13 @@ describe('demo access code', () => {
     expect(cookieGrantsAccess(old)).toBe(false);
   });
 
-  it('only redirects to demo paths after sign-in', () => {
+  it('only redirects to console paths after sign-in', () => {
     expect(safeNext('/demo/lumen-pay/payments-api')).toBe('/demo/lumen-pay/payments-api');
     expect(safeNext('/demo')).toBe('/demo');
-    for (const bad of ['https://evil.example', '//evil.example', '/projects', '/demo?x=1', '/demox', null, undefined]) {
+    expect(safeNext('/connect/lumen-pay')).toBe('/connect/lumen-pay');
+    expect(safeNext('/projects')).toBe('/projects');
+    expect(DEMO_HOME).toBe('/connect');
+    for (const bad of ['https://evil.example', '//evil.example', '/connect//evil.example', '/settings', '/demo?x=1', '/demox', null, undefined]) {
       expect(safeNext(bad)).toBe(DEMO_HOME);
     }
   });

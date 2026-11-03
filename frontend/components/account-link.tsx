@@ -7,9 +7,10 @@ import type { MeResponse } from '@hackatl/frontend-transport';
 import { RollText } from '@/components/ui';
 import { api } from '@/lib/api';
 import { DEMO_ONLY } from '@/lib/deployment';
+import { resetDemoSimulation } from '@/lib/demo/console/state';
 import { notifySessionChanged, SESSION_CHANGED_EVENT, type SessionChangedEventDetail } from '@/lib/session-events';
 
-const DEMO_HOME_PATH = '/projects/prj_01M6FTWETXBNGJRSYY6JDZMTPS';
+const DEMO_HOME_PATH = '/connect';
 const subscribeDemoSession = (onChange: () => void) => {
   window.addEventListener('ari-demo-session-changed', onChange);
   return () => window.removeEventListener('ari-demo-session-changed', onChange);
@@ -129,6 +130,7 @@ export function AccountLink() {
     try {
       if (demoMode) {
         await fetch('/api/demo-session', { method: 'DELETE', cache: 'no-store' });
+        resetDemoSimulation();
         router.push('/');
         return;
       }

@@ -29,6 +29,27 @@ persistent sample-data banner. Demo actions remain disabled; exit clears both de
 cookies and returns to the public home page. Fixtures and labels are illustrative,
 not claims about customer activity.
 
+### Amendment 2026-11-03: the full signed-in flow, simulated
+
+Investors could not see what a real account does first (pick a repository, grant the
+GitHub App, answer setup, approve testing). The demo account now walks that flow:
+
+- After the access code, `/access/github` shows the GitHub App permissions for the
+  fictional `lumen-pay` organization ("simulated"; nothing reaches GitHub), then opens
+  `/connect` like a real sign-in.
+- `lib/demo/console/sim.ts` answers the connect flow in the browser: five fictional
+  Lumen Pay repositories (only `payments-api` connected), connect, the eight setup
+  questions, project settings, sandbox scopes, the automatic-review switch, starting a
+  check, and approving a fix. State lives in `sessionStorage` and is cleared on sign-in
+  and exit. Recorded history stays read-only; other mutations still return 403.
+- The account opens with a copy of the recorded run paused at human approval. Approving
+  it replays the rest (Patch, Fortify, Verify, report) on a compressed clock through the
+  same detail, event-log and SSE contracts. A check started on another repository
+  replays a clean run (review and Scout only) that the console labels as limited coverage.
+- The commit page's quick read uses the bundled sample scenarios instead of
+  `/api/analyze`, and is labelled "sample analysis". GitHub links and the
+  "Refresh from GitHub" sign-in are hidden in the demo account.
+
 ## Consequences
 
 - The demo follows the real console UI and runtime contracts rather than a parallel
