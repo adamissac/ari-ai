@@ -6,8 +6,10 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Restored native scrolling, shortened the landing story chapters, and made console chrome calmer and more opaque.
 - Failed assessments now record an error code and a readable reason.
 - Assessments interrupted by a lost worker can restart once, retaining usage and conservatively estimating unsettled sandbox time.
+- Ops: `uptime-watch` now probes `/readyz` instead of the static `/healthz`, so a Postgres, queue or worker outage behind a live app container opens the alert; a 503 names the failed components and `capabilities_ready=false` is reported as a problem.
 - Ops: `uptime-watch` workflow (every 15 min) opens `[ops-alert] Production is down` when `/healthz` fails or any Railway service has no live deployment, and closes it on recovery. Production was down from 2026-10-28 20:13 UTC until 2026-10-30 because both Railway deployments were removed and nothing alerted.
 - Ops: `uptime-watch` also probes `/readyz` (503 when the database, queue or required workers are down; `capabilities_ready=false` when a real assessment cannot run), and a missing `RAILWAY_TOKEN` is reported as a problem instead of silently skipping the deployment check.
 - Settings → Repositories manages every repository in the project from one place. Each row has an Automatic reviews ON/OFF switch, the derived automatic-review status, and Disconnect (with confirmation); disconnected rows show Reconnect. The header's automatic-review status links to it.

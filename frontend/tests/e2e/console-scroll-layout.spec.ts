@@ -28,6 +28,7 @@ test('console header and tab band stay stacked while scrolling Analytics', async
           if (!element) return null;
           const bounds = element.getBoundingClientRect();
           const style = getComputedStyle(element);
+          const alpha = Number(style.backgroundColor.match(/[,/]\s*([\d.]+)\s*\)$/)?.[1] ?? 1);
           return {
             top: Math.round(bounds.top),
             bottom: Math.round(bounds.bottom),
@@ -35,6 +36,8 @@ test('console header and tab band stay stacked while scrolling Analytics', async
             position: style.position,
             zIndex: style.zIndex,
             background: style.backgroundColor,
+            backgroundAlpha: alpha,
+            backdropFilter: style.backdropFilter,
           };
         };
         return {
@@ -47,11 +50,13 @@ test('console header and tab band stay stacked while scrolling Analytics', async
         };
       });
       expect(layout.siteHeader?.top).toBe(0);
-      expect(layout.siteHeader?.background).not.toBe('rgba(0, 0, 0, 0)');
+      expect(layout.siteHeader?.backgroundAlpha).toBeGreaterThanOrEqual(0.95);
+      expect(layout.siteHeader?.backdropFilter).toBe('none');
       expect(Number(layout.siteHeader?.zIndex)).toBeGreaterThan(Number(layout.tabBand?.zIndex));
       expect(layout.tabBand?.position).toBe('sticky');
       expect(layout.tabBand!.top).toBeGreaterThanOrEqual(layout.siteHeader!.bottom);
-      expect(layout.tabBand?.background).not.toBe('rgba(0, 0, 0, 0)');
+      expect(layout.tabBand?.backgroundAlpha).toBeGreaterThanOrEqual(0.95);
+      expect(layout.tabBand?.backdropFilter).toBe('none');
       if (scrollY === 300) {
         expect(Math.abs(layout.tabBand!.top - layout.siteHeader!.bottom)).toBeLessThanOrEqual(1);
       }

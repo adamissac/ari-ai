@@ -3,6 +3,26 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-11-03 — Devin (agent, Alan) — pilot backend reliability
+- Did: Took the R1 restart-harness update (S2 now asserts #725's one automatic restart, then honest `FAILED/CONFLICT_STATE` on a second kill); pointed `uptime-watch` at `/readyz` so a database/queue/worker outage behind a live container alerts (W1).
+- State of the code: Branch `fix/alan/pilot-backend-reliability`; no backend contract or schema change.
+- Commands run and results: `deploy/evidence/restart_recovery.py` on `079f7777` (main) — S1 PASS, S2 timed out at `AWAITING_APPROVAL` (stale harness); on this branch — S1, S2a, S2b, S3, S4, S5, S6, S7 PASS (scripted model, local). `python -m unittest tests/ops/test_uptime_watch.py` — 12 OK (4 new). Recovery-related pytest selection — 137 passed, 1 skipped (live smoke opt-in).
+- Decisions made (ADR links): None.
+- Assumptions / open questions (RQ links): R2 (lost-segment sandbox estimate capped at `worker_lease_s`) and W2 (no `RAILWAY_TOKEN` silently skips the deployment check) remain open.
+- Next steps: Owner review and merge; the workflow picks up `/readyz` on the next scheduled run.
+- Warnings for the next session: `/readyz` returns 503 when workers are required and none are alive, so a long worker-only outage now also alerts.
+- Follow-up (Codex P2 on #776): S2b's second SIGKILL could land on an idle worker after the restarted attempt already reached `AWAITING_APPROVAL`. `scripted_worker.py` now blocks model calls while `EVIDENCE_HOLD_FILE` exists, so S2b kills `w3b` mid-attempt, and S2b asserts the state at the kill is non-terminal. The race was reproduced with a delayed controller (S2b FAIL, killed at `AWAITING_APPROVAL`); with the barrier the full harness passes S1–S7.
+- Follow-up (second Codex P2 on #776): S3 resumes both S1's and S2a's approval pauses, but every per-assessment gateway shared one scripted repair `FakeTransport`; the second functional repair hit `FakeTransport script exhausted`, which `_repair_functional` reports as progress while the assessment still reaches `COMPLETED`, so S3 passed falsely. S3 now waits for every resumed assessment and fails on any `functional repair failed` event (reproduced: S3 FAIL), and `scripted_worker.py` gives each assessment a fresh repair fake.
+
+### 2026-11-02 — Devin (agent, Adam) — native scrolling and console UI polish
+- Did: Replaced global wheel easing with reduced-motion-aware same-page hash scrolling, removed scroll-linked ambient parallax and blur-based reveals, shortened landing chapters, and refined console buttons, empty states, panel headers, and sticky bars.
+- State of the code: `fix/adam/native-scroll-ui-polish` contains the implementation and tests, ready for review.
+- Commands run and results: frontend lint and typecheck passed; Vitest passed (109 files, 467 tests); production build passed; the requested landing E2E passed (10/10). The first E2E attempt found the Playwright Chromium binary missing; installing Chromium resolved it.
+- Decisions made (ADR links): Wheel/trackpad scrolling stays browser-native; only eligible same-page hash links use smooth scrolling, with reduced-motion users left to native anchor behavior.
+- Assumptions / open questions (RQ links): None. No visual review was requested or performed.
+- Next steps: The user will re-brief the CI loop; do not monitor CI after push.
+- Warnings for the next session: E2E emitted `XDG_RUNTIME_DIR is not set, falling back to /run/user/1000`; `/run/user/1000` is owned by uid 1000 with mode 700. Set `XDG_RUNTIME_DIR=/run/user/1000` for future E2E commands.
+
 ### 2026-10-27 — Devin (agent, Adam) — wildcard per-commit assessment routing
 - Did: Routed non-empty author configuration, including `*`, through per-commit scheduling; added wildcard push and unlisted-author regressions.
 - State of the code: Branch `fix/adam/per-commit-wildcard`; ready to commit and push.

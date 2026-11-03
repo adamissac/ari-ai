@@ -29,7 +29,7 @@ export function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, n
     const smooth = () => {
       smoothFrame = 0;
       const delta = target - progress;
-      progress = Math.abs(delta) < 0.001 ? target : progress + delta * 0.14;
+      progress = Math.abs(delta) < 0.001 ? target : progress + delta * 0.3;
       el.style.setProperty('--p', progress.toFixed(4));
       setP(progress);
       if (progress !== target) smoothFrame = requestAnimationFrame(smooth);
