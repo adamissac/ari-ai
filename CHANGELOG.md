@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Restored native scrolling, shortened the landing story chapters, and made console chrome calmer and more opaque.
 - Failed assessments now record an error code and a readable reason.
 - Assessments interrupted by a lost worker can restart once, retaining usage and conservatively estimating unsettled sandbox time.
 - Ops: `uptime-watch` workflow (every 15 min) opens `[ops-alert] Production is down` when `/healthz` fails or any Railway service has no live deployment, and closes it on recovery. Production was down from 2026-10-28 20:13 UTC until 2026-10-30 because both Railway deployments were removed and nothing alerted.

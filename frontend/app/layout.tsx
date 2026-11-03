@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { AnchorScroll } from '@/components/anchor-scroll';
 import { Ambient } from '@/components/ambient';
 import { BRAND_NAME, Wordmark } from '@/components/brand';
 import { DemoBanner } from '@/components/demo-banner';
@@ -9,7 +10,6 @@ import { HeaderContrast } from '@/components/header-contrast';
 import { RouteTransition } from '@/components/route-transition';
 import { SiteNavigation } from '@/components/site-navigation';
 import { SiteFooter } from '@/components/site-footer';
-import { SmoothScroll } from '@/components/smooth-scroll';
 import './globals.css';
 import './interface.css';
 
@@ -54,7 +54,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
         <HeaderContrast />
-        <SmoothScroll />
+        <AnchorScroll />
         <RouteTransition />
         <DemoBanner />
         <main id="main" className="site-main mx-auto px-4 py-6">{children}</main>
