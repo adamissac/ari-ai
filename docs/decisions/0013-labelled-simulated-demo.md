@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Proposed |
+| Status | Superseded by ADR-0024 |
 | Date | 2026-10-17 |
 | Deciders | Adam (product owner request recorded in session); team ratification pending |
 | Related | docs/14 "Demo considerations", docs/20, `frontend/app/demo/`, `frontend/lib/demo/` |

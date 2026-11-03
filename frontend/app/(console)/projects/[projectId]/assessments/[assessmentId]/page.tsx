@@ -81,7 +81,12 @@ export default function AssessmentPage() {
     refreshTimer.current = setTimeout(() => { loadDetail(); reloadPhaseLog.current(); }, 250);
   }, [loadDetail]);
 
+  const assessmentState = detail?.assessment.state;
+  const demoView = typeof document !== 'undefined'
+    && document.cookie.split(';').some(cookie => cookie.trim() === 'ari_demo_view=1');
+
   useEffect(() => {
+    if (!assessmentState || (demoView && assessmentState === 'AWAITING_APPROVAL')) return;
     const controller = new AbortController();
     let cursor = 0;
     (async () => {
@@ -95,12 +100,15 @@ export default function AssessmentPage() {
       if (!controller.signal.aborted) setStreamError(err);
     });
     return () => controller.abort();
-  }, [id, streamNonce, scheduleRefresh]);
+  }, [assessmentState, demoView, id, streamNonce, scheduleRefresh]);
 
   useEffect(() => () => { if (refreshTimer.current) clearTimeout(refreshTimer.current); }, []);
 
   // Polling fallback: persisted records stay current even if an intermediary buffers SSE.
-  const running = detail !== null && !TERMINAL_STATES.has(detail.assessment.state);
+  const running = detail !== null
+    && assessmentState !== undefined
+    && !(demoView && assessmentState === 'AWAITING_APPROVAL')
+    && !TERMINAL_STATES.has(assessmentState);
   const phaseLog = useResource(
     `phase-log:${id}`,
     signal => fullEventLog(after => api().eventsLog(id, after, { signal })),
@@ -149,11 +157,13 @@ export default function AssessmentPage() {
       <AssessmentOutcome assessment={a} findings={detail.findings} runs={detail.agent_runs} approvals={relayApprovals} relay={relay} skipNote={skipNote} projectId={project.id} />
       <ProviderSummary runs={detail.agent_runs} />
       {a.state === 'AWAITING_APPROVAL' && <ApprovalGate projectId={project.id} events={events} findings={detail?.findings ?? []} onDecided={() => loadDetail()} />}
-      <div className="mt-4 rounded-xl border border-line bg-panel p-5">
+      <div className="mt-4">
         <AgentRelay
           items={relay}
           selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'}
           onSelect={setSelectedAgent}
+          findings={detail.findings}
+          skipNote={skipNote}
         />
       </div>
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[2fr_3fr]">

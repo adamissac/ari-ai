@@ -6,6 +6,8 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Replace the separate demo UI with the real Ari console backed by renamed, captured sample fixtures; keep demo reads offline and mutations disabled.
+
 - Automatic GitHub review reliability:
   - A pull request whose head commit was already queued or reviewed from its push now gets the review comment, still from a single assessment of that commit.
   - PR review comments are no longer posted to a repository disconnected after the assessment finished; the skip is audited as `monitoring.pr_review_skipped`.
@@ -22,6 +24,7 @@ All notable changes are documented here. Format follows
   - A 5xx answer to the review POST is no longer assumed to mean "not created". Each review carries a hidden `<!-- ari-review:{effect_key} -->` marker; the worker reads the PR's reviews back. Found: the review counts as posted. Not found or lookup failed: the job ends `recovery_required` and is never replayed blindly (an immediate read-back can lag the write, so absence does not prove the review was not created). 4xx and rate limits still count as not applied.
   - The review reservation and POST run inside the per-repository write lease that disconnect takes, so disconnect waits for a review POST already on the wire (or returns 409) and a review never starts after disconnect has returned 200.
   - A dead, failed or cancelled legacy `prreview:{assessment}` job no longer prevents the per-PR review job; the legacy job's PR fallback uses the same ordered PR list as the per-PR enqueue.
+- Assessment pages now present the eight-agent review as a grouped pipeline dashboard with findings totals, a clear human-approval gate, and one concise early-end explanation.
 - Restored native scrolling, shortened the landing story chapters, and made console chrome calmer and more opaque.
 - Failed assessments now record an error code and a readable reason.
 - Assessments interrupted by a lost worker can restart once, retaining usage and conservatively estimating unsettled sandbox time.

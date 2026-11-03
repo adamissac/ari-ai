@@ -35,7 +35,7 @@ Spec: [docs/14](../docs/14_FRONTEND_UX_DESIGN.md).
 | `/projects/[id]/incidents` open (record-only note; simulated by default, labelled), NIST lifecycle rail, triage, assign owner, transitions, two-person approval gates (requester cannot decide), timeline with CSF refs; closure panel: link findings and accepted verifications, closure criteria satisfied with hash-pinned patch/regression artifacts, lessons learned (Fortify regression evidence), communications (RS.CO-02/03, RC.CO-03), closure readiness list | `/projects/{id}/incidents`, `/incidents/{id}`, `/incidents/{id}/actions` |
 | `/projects/[id]/settings` project name, languages, default + monitoring budgets, trigger policy (enabled, coalescing interval, record-only globs); validated client-side, owner-only on the backend; trigger policy is labelled 24/7 defense | `PATCH /projects/{id}` |
 | `/lab` Defense Lab: signed-in users can toggle 24/7 defense for their projects when the backend is available (hidden in demo-only mode); plain-language header and a one-line explainer with the controlled-test-environment caveat; **headline held-out scores first** (three key numbers for the trained defender versus baselines, then one compact score card per headline metric with 95% CI and a computed trade-off note); then the recorded-episode replay (status bar labelled SIMULATION · RECORDED EVALUATION, stable network map with service icons, signal states and action badges, story panel — what's happening / what the AI did / why (reasoning shown as not recorded) / effect — service inspector, key moments, playback with speed and an observed-signal timeline). Provenance stays one click away in a collapsed footer. Hidden attacker stage only as an opt-in, labelled overlay | `rl-defense/results/protocol-*/defense_lab.json`, validated server-side against `rl-defense/fixtures/defense_lab.schema.json`; optional project list via `/projects` |
-| `/demo` **demo account** ([ADR-0013](../docs/decisions/0013-labelled-simulated-demo.md)), not linked publicly: sign in on `/access` with the access code (`DEMO_ACCESS_CODE`, server-only env; unset = closed). `proxy.ts` keeps `/demo` closed without the signed httpOnly cookie. Opens the Lumen Pay sample account: organization → repository → recent commits; per commit an animated replay with Overview, Code review, Seven agents and Defense Lab. A small "Demo account · sample data" tag and footer on every page | Nothing: sample data in `lib/demo/` (no backend, GitHub or model calls) |
+| `/access` **demo account** ([ADR-0024](../docs/decisions/0024-real-console-recorded-demo.md)), not linked publicly: sign in with the access code (`DEMO_ACCESS_CODE`, server-only env; unset = closed). Opens the real console at Lumen Pay Analytics; `/demo/**` redirects there. A persistent illustrative-sample banner appears on console pages; mutations are disabled | Recorded JSON fixtures from `lib/demo/console/fixtures.json`, replayed in-browser with no backend calls |
 
 Same-origin API: `app/api/v1/[...path]` proxies to `BACKEND_ORIGIN` at request time
 (no CORS; the backend's `SameSite=Lax` cookie and CSRF header work as designed;
@@ -44,17 +44,19 @@ SSE streams unbuffered). Types and runtime validation come only from
 
 Honesty rules enforced in code: backend offline → "Backend unreachable"; a response
 that fails the shared JSON Schema → "Backend response rejected" (never rendered);
-non-`live` `provider_mode` runs are labelled "Not a live-provider run"; fixture mode
-exists only behind `NEXT_PUBLIC_DEMO_FIXTURES=1` and shows a permanent DEMO DATA banner.
+non-`live` `provider_mode` runs are labelled "Not a live-provider run"; the gated
+demo uses recorded in-browser fixtures, a persistent sample-data banner and disabled
+actions.
 Every `ErrorState` adds a "What to do" line derived from the HTTP status and error code (`describeError().recovery` in `lib/api.ts`), and 403/404 errors link back to `/connect`; the request ID stays visible for support.
 
 ## Plain-language layer (UX clarity)
 
 For readers with no programming, security or RL background, see
 [UX_CLARITY_CHECKLIST.md](UX_CLARITY_CHECKLIST.md): the overview's pillar loop, the eight-agent
-relay with its human approval gate, before/after fix evidence, inline glossary terms, and a
-Defense Lab that explains itself. Technical detail (orchestrator states, usage, event log,
-every RL metric and provenance) is kept, one click away. All counts come from records.
+review pipeline with findings totals and its human approval gate, before/after fix evidence,
+inline glossary terms, and a Defense Lab that explains itself. Technical detail (orchestrator
+states, usage, event log, every RL metric and provenance) is kept, one click away. All counts
+come from records.
 
 ## Interface finish
 

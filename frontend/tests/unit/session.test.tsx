@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const session = vi.fn();
 const logout = vi.fn();
 const devLogin = vi.fn();
-vi.mock('next/navigation', () => ({ usePathname: () => '/projects' }));
+vi.mock('next/navigation', () => ({ usePathname: () => '/projects', useRouter: () => ({ push: () => undefined }) }));
 vi.mock('@/lib/api', () => ({ api: () => ({ session, logout, devLogin }) }));
 
 import { AccountLink } from '@/components/account-link';
