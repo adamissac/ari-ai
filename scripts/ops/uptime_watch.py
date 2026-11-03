@@ -142,7 +142,9 @@ def evaluate(
         keys.append("health")
     if ready_problem:
         problems.append(f"Backend readiness check failed: {ready_problem}")
-        keys.append("ready")
+        # The problem text is stable per failure class (HTTP code, status, capability),
+        # so an escalation such as capabilities_ready=false -> 503 updates the alert.
+        keys.append(f"ready:{ready_problem}")
     if not railway_checked:
         problems.append(
             "Railway deployment check skipped: RAILWAY_TOKEN is not set, so removed "

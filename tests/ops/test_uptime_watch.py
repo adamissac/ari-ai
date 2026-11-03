@@ -131,7 +131,7 @@ class ReadinessTests(unittest.TestCase):
         self.assertIn("not_ready", problem)
         report = uptime_watch.evaluate(None, LIVE, ready_problem=problem)
         self.assertEqual(len(report.problems), 1)
-        self.assertIn("ready", report.alert_keys)
+        self.assertTrue(any(k.startswith("ready:") for k in report.alert_keys))
 
     def test_capabilities_not_ready_alerts(self):
         body = b'{"status":"ready","database":true,"capabilities_ready":false}'
@@ -149,6 +149,28 @@ class ReadinessTests(unittest.TestCase):
         self.assertEqual(
             uptime_watch.ready_url_for("https://h.example/healthz"), "https://h.example/readyz"
         )
+
+    def test_readiness_escalation_updates_open_alert(self):
+        degraded = uptime_watch.check_ready(
+            "https://x/readyz",
+            opener_returning(b'{"status":"ready","database":true,"capabilities_ready":false}'),
+        )
+        db_down = uptime_watch.check_ready(
+            "https://x/readyz",
+            opener_raising(http_error_with_body(503, b'{"status":"not_ready","database":false}')),
+        )
+        first = uptime_watch.evaluate(None, LIVE, ready_problem=degraded)
+        client = FakeClient()
+        uptime_watch.sync_issue(client, "o/r", first)
+        issue = {
+            "number": 7,
+            "title": uptime_watch.ALERT_TITLE,
+            "body": client.calls[-1][2]["body"],
+        }
+        self.assertEqual(uptime_watch.sync_issue(FakeClient([issue]), "o/r", first), "unchanged")
+        second = uptime_watch.evaluate(None, LIVE, ready_problem=db_down)
+        self.assertNotEqual(first.alert_keys, second.alert_keys)
+        self.assertEqual(uptime_watch.sync_issue(FakeClient([issue]), "o/r", second), "updated")
 
 
 class UncheckedDeploymentTests(unittest.TestCase):
