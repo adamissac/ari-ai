@@ -81,7 +81,12 @@ export default function AssessmentPage() {
     refreshTimer.current = setTimeout(() => { loadDetail(); reloadPhaseLog.current(); }, 250);
   }, [loadDetail]);
 
+  const assessmentState = detail?.assessment.state;
+  const demoView = typeof document !== 'undefined'
+    && document.cookie.split(';').some(cookie => cookie.trim() === 'ari_demo_view=1');
+
   useEffect(() => {
+    if (!assessmentState || (demoView && assessmentState === 'AWAITING_APPROVAL')) return;
     const controller = new AbortController();
     let cursor = 0;
     (async () => {
@@ -95,12 +100,15 @@ export default function AssessmentPage() {
       if (!controller.signal.aborted) setStreamError(err);
     });
     return () => controller.abort();
-  }, [id, streamNonce, scheduleRefresh]);
+  }, [assessmentState, demoView, id, streamNonce, scheduleRefresh]);
 
   useEffect(() => () => { if (refreshTimer.current) clearTimeout(refreshTimer.current); }, []);
 
   // Polling fallback: persisted records stay current even if an intermediary buffers SSE.
-  const running = detail !== null && !TERMINAL_STATES.has(detail.assessment.state);
+  const running = detail !== null
+    && assessmentState !== undefined
+    && !(demoView && assessmentState === 'AWAITING_APPROVAL')
+    && !TERMINAL_STATES.has(assessmentState);
   const phaseLog = useResource(
     `phase-log:${id}`,
     signal => fullEventLog(after => api().eventsLog(id, after, { signal })),

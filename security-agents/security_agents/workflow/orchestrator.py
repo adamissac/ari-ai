@@ -21,7 +21,7 @@ from typing import Any
 
 from shared.scope import check_category_allowed
 
-from .. import specialist_bridge, standards_bridge
+from .. import node_recipe, specialist_bridge, standards_bridge
 from ..agents import diagnose as diagnose_agent
 from ..agents import fortify as fortify_agent
 from ..agents import patch as patch_agent
@@ -83,7 +83,7 @@ from ..tools import (
     default_registry,
     recipe_from_snapshot,
 )
-from ..tools.services import sandbox_setup
+from ..tools.services import node_drivers, sandbox_setup
 from .states import (
     AssessmentState,
     RemediationState,
@@ -562,11 +562,10 @@ class Orchestrator:
 
         # ---- INDEXING (code intelligence is an upstream subsystem)
         self._goto(AssessmentState.INDEXING, self.intel.provenance().get("status", ""))
-        if not self.intel.entry_points():
-            # No HTTP entry points are recognised (only Python web routes are; a JavaScript
-            # app has none). The functional review still runs on the commit; the security
-            # agents have no attack surface to test, so they are skipped and labelled as such.
-            note = "no HTTP entry points in snapshot index; security agents skipped"
+        note = self._no_testable_surface()
+        if note:
+            # The functional review still runs on the commit; the security agents have no
+            # attack surface they can serve and test, so they are skipped and labelled.
             self._goto(AssessmentState.FUNCTIONAL_REVIEW, "functional review only: " + note)
             self._goto(AssessmentState.RECON, "skipped: " + note)
             return self._report_or_wait(note)
@@ -693,6 +692,35 @@ class Orchestrator:
     def _wait_external(self) -> bool:
         return bool(self.external_pending and self.external_pending())
 
+    def _no_testable_surface(self) -> str | None:
+        """Why the agents cannot run, or None. JS/TS routes are indexed (ADR-0023) but only a
+        Python target can be served until the node_http recipe kind lands."""
+        recipe = self._recipe()
+        if node_recipe.is_node(recipe):
+            issues = node_recipe.problems(recipe)
+            if issues:
+                return f"invalid node_http build recipe ({'; '.join(issues[:3])}); security agents skipped"
+            driver = getattr(self.driver, "name", "")
+            if driver not in node_drivers():
+                return f"node_http targets are not supported on the {driver} sandbox yet; security agents skipped"
+            return None
+        entries = self.intel.entry_points()
+        if not entries:
+            return "no HTTP entry points in snapshot index; security agents skipped"
+        if not any(str(e.path).endswith(".py") for e in entries):
+            return (
+                f"{len(entries)} JavaScript/TypeScript HTTP entry points, but no node_http build "
+                "recipe to serve them (ADR-0023); security agents skipped"
+            )
+        return None
+
+    def _recipe(self) -> dict[str, Any]:
+        path = self.intel.snapshot.root / "build_recipe.json"
+        with contextlib.suppress(ValueError, OSError):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        return {}
+
     def _report_or_wait(self, note: str) -> AssessmentResult:
         """Security work ended early. If a functional remediation approval is still owed,
         walk the skipped phases (each labelled) to AWAITING_APPROVAL and pause;
@@ -806,11 +834,8 @@ class Orchestrator:
 
     def _test_runner(self, workspace_provider: Any, *, suite_workspace_provider: Any = None) -> TestRunner:
         """Tests run with the target recipe's `test_command` and `sandbox` setup when it has them."""
-        recipe: dict[str, Any] = {}
-        path = self.intel.snapshot.root / "build_recipe.json"
-        if path.is_file():
-            with contextlib.suppress(ValueError, OSError):
-                recipe = json.loads(path.read_text(encoding="utf-8"))
+        recipe = self._recipe()
+        node = node_recipe.is_node(recipe) and not node_recipe.problems(recipe)
         command = recipe.get("test_command")
         valid = isinstance(command, list) and all(isinstance(a, str) for a in command) and command
         setup: dict[str, tuple[str, ...]] = {}
@@ -822,6 +847,8 @@ class Orchestrator:
             suite_workspace_provider=suite_workspace_provider,
             test_command_args=tuple(command) if valid else self.config.test_command_args,
             setup=setup,
+            node_test=node_recipe.test_command(recipe) if node else None,
+            node_stack=node_recipe.stack_config(node_recipe.resolved(recipe), serve=False) if node else None,
         )
 
     @property

@@ -11,6 +11,7 @@ Checklist for each template:
 - [ ] It opens no sockets, spawns no processes and reads no environment or files outside the workspace.
 - [ ] Its assertions state the expectation, so a failure means the expectation did not hold.
 - [ ] Its side effects match the declared side_effect_class.
+- [ ] Harness templates only: the module starts the listed support file with `node` (no shell) and reads its JSON output; the support file reaches only the loopback Firestore emulator.
 - [ ] The renderer rejects unknown or missing parameters and identical owner and other identities.
 
 ## access_control.ownership@1
@@ -240,6 +241,350 @@ def test_permitted_identity_retains_access():
     assert resp.status_code < 400, (
         f"permitted identity lost legitimate access: {resp.status_code}"
     )
+```
+
+## firestore.owner_isolation@1
+
+- category: `access_control.ownership`; side effects: `ephemeral_target_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: path_id, owner_identity, other_identity
+- renderer_sha256: `53bb3f10ddb6fb870f9e5250407c9aa04769d7829000bde22c0651461811e1b6`
+- sample parameters: `{"other_identity": "bob", "owner_identity": "alice", "path_id": "user_doc"}`
+- rendered_sha256 (sample): `00c68e9e4f63512f4be64acd86e84d65d3f443ca76382fa6724b0ac4694e5d01`
+- imports: json, os, pathlib, pytest, subprocess, tempfile (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: firestore.owner_isolation@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Runs the reviewed .sandbox/firestore_harness.mjs against the run's Firestore emulator,
+which loads this workspace's own rules file. Only rules denials count as "denied".
+"""
+
+import json
+import os
+import pathlib
+import subprocess
+import tempfile
+
+import pytest
+
+PARAMS = {'project_id': 'demo-ari-sample', 'rules_path': 'firestore.rules', 'seed': [{'path': 'users/sbx-alice', 'data': {'sbx_seed': True}}], 'ops': [{'name': 'owner_get', 'op': 'get', 'path': 'users/sbx-alice', 'as': 'sbx-alice', 'claims': {}}, {'name': 'other_get', 'op': 'get', 'path': 'users/sbx-alice', 'as': 'sbx-bob', 'claims': {}}, {'name': 'other_set', 'op': 'set', 'path': 'users/sbx-alice', 'as': 'sbx-bob', 'claims': {}, 'data': {'sbx_probe': True}}]}
+RESULT = {}
+
+
+@pytest.fixture(scope="module")
+def outcomes():
+    here, work = pathlib.Path(__file__).parent, pathlib.Path(tempfile.mkdtemp())
+    params, out = work / "firestore_params.json", work / "firestore_out.json"
+    params.write_text(json.dumps({**PARAMS, "out": str(out)}))
+    subprocess.run(
+        ["node", str(here / "firestore_harness.mjs"), str(params)],
+        check=True, timeout=120, cwd=os.getcwd(),
+    )
+    rows = {o["name"]: o for o in json.loads(out.read_text())["outcomes"]}
+    RESULT["outcomes"] = rows
+    broken = [r for r in rows.values() if r["allowed"] is None]
+    if broken:  # an error is not evidence either way: fail the fixture, not the assertion
+        raise RuntimeError(f"emulator errors, no verdict: {broken}")
+    if rows["owner_get"]["allowed"] is not True:
+        # Positive control: if the owner cannot read either, the path is server-only or does
+        # not fit this template. Inconclusive, never a finding.
+        raise RuntimeError("positive control failed: the owner cannot read this document; no verdict")
+    return rows
+
+
+def test_other_identity_is_denied(outcomes):
+    leaked = [n for n in ("other_get", "other_set") if outcomes[n]["allowed"]]
+    RESULT["other_leaked"] = leaked
+    assert not leaked, f"rules allowed a different identity to {leaked} the owner's document"
+```
+
+Support file `firestore_harness.mjs` (reviewed with this template):
+
+```js
+// Reviewed Firestore-rules check harness (ADR-0023). Platform-owned, copied into the
+// sandbox as `.sandbox/firestore_harness.mjs`; never generated, never model-authored.
+//
+//   node firestore_harness.mjs <params.json>
+//
+// Loads the workspace's own rules file into the run's Firestore emulator
+// (FIRESTORE_EMULATOR_HOST) and records, for each operation in `ops`, whether the rules
+// allowed it. The caller compares the outcomes with the expectation; this file decides
+// nothing. Packages come from the platform directory ARI_NODE_DIR, not from the target.
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+
+const params = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+const require = createRequire(join(process.env.ARI_NODE_DIR, 'package.json'));
+const { initializeTestEnvironment } = require('@firebase/rules-unit-testing');
+const { doc, getDoc, setDoc, collection, getDocs, limit, query } = require('firebase/firestore');
+
+const [host, port] = (process.env.FIRESTORE_EMULATOR_HOST || '').split(':');
+if (host !== '127.0.0.1' && host !== 'localhost') throw new Error('emulator must be on loopback');
+
+const env = await initializeTestEnvironment({
+  projectId: params.project_id,
+  firestore: { host, port: Number(port), rules: readFileSync(params.rules_path, 'utf8') },
+});
+const outcomes = [];
+try {
+  await env.clearFirestore();
+  // Seed with rules disabled: the documents a real owner would already have.
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    for (const s of params.seed) await setDoc(doc(ctx.firestore(), s.path), s.data);
+  });
+  for (const op of params.ops) {
+    const db = (op.as === null ? env.unauthenticatedContext() : env.authenticatedContext(op.as, op.claims || {})).firestore();
+    let allowed;
+    let error = null;
+    try {
+      if (op.op === 'get') await getDoc(doc(db, op.path));
+      else if (op.op === 'set') await setDoc(doc(db, op.path), op.data, { merge: true });
+      else if (op.op === 'list') await getDocs(query(collection(db, op.path), limit(5)));
+      else throw new Error(`unknown op ${op.op}`);
+      allowed = true;
+    } catch (e) {
+      // Only a rules denial counts as "denied"; anything else is an error, not evidence.
+      if (e && e.code === 'permission-denied') allowed = false;
+      else { allowed = null; error = String(e && e.message || e).slice(0, 300); }
+    }
+    outcomes.push({ name: op.name, op: op.op, path: op.path, as: op.as, allowed, error });
+  }
+} finally {
+  await env.cleanup();
+}
+writeFileSync(params.out, JSON.stringify({ outcomes }, null, 2));
+```
+
+## firestore.unauthenticated_denied@1
+
+- category: `access_control.authentication`; side effects: `ephemeral_target_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: path_id, owner_identity
+- renderer_sha256: `60780821f8a3c0a72df435532d5c932b3e2e747935e341d506a66053a90b000b`
+- sample parameters: `{"owner_identity": "alice", "path_id": "user_doc"}`
+- rendered_sha256 (sample): `1082b4fe40ee580088909ea264122d8d34eef109fce7cbad68ece4aa9d0a4e85`
+- imports: json, os, pathlib, pytest, subprocess, tempfile (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: firestore.unauthenticated_denied@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Runs the reviewed .sandbox/firestore_harness.mjs against the run's Firestore emulator,
+which loads this workspace's own rules file. Only rules denials count as "denied".
+"""
+
+import json
+import os
+import pathlib
+import subprocess
+import tempfile
+
+import pytest
+
+PARAMS = {'project_id': 'demo-ari-sample', 'rules_path': 'firestore.rules', 'seed': [{'path': 'users/sbx-alice', 'data': {'sbx_seed': True}}], 'ops': [{'name': 'owner_get', 'op': 'get', 'path': 'users/sbx-alice', 'as': 'sbx-alice', 'claims': {}}, {'name': 'anon_get', 'op': 'get', 'path': 'users/sbx-alice', 'as': None}, {'name': 'anon_list', 'op': 'list', 'path': 'users', 'as': None}]}
+RESULT = {}
+
+
+@pytest.fixture(scope="module")
+def outcomes():
+    here, work = pathlib.Path(__file__).parent, pathlib.Path(tempfile.mkdtemp())
+    params, out = work / "firestore_params.json", work / "firestore_out.json"
+    params.write_text(json.dumps({**PARAMS, "out": str(out)}))
+    subprocess.run(
+        ["node", str(here / "firestore_harness.mjs"), str(params)],
+        check=True, timeout=120, cwd=os.getcwd(),
+    )
+    rows = {o["name"]: o for o in json.loads(out.read_text())["outcomes"]}
+    RESULT["outcomes"] = rows
+    broken = [r for r in rows.values() if r["allowed"] is None]
+    if broken:  # an error is not evidence either way: fail the fixture, not the assertion
+        raise RuntimeError(f"emulator errors, no verdict: {broken}")
+    if rows["owner_get"]["allowed"] is not True:
+        # Positive control: if the owner cannot read either, the path is server-only or does
+        # not fit this template. Inconclusive, never a finding.
+        raise RuntimeError("positive control failed: the owner cannot read this document; no verdict")
+    return rows
+
+
+def test_unauthenticated_request_is_denied(outcomes):
+    leaked = [n for n in ("anon_get", "anon_list") if outcomes[n]["allowed"]]
+    RESULT["anon_leaked"] = leaked
+    assert not leaked, f"rules allowed an unauthenticated client to {leaked}"
+```
+
+Support file `firestore_harness.mjs` (reviewed with this template):
+
+```js
+// Reviewed Firestore-rules check harness (ADR-0023). Platform-owned, copied into the
+// sandbox as `.sandbox/firestore_harness.mjs`; never generated, never model-authored.
+//
+//   node firestore_harness.mjs <params.json>
+//
+// Loads the workspace's own rules file into the run's Firestore emulator
+// (FIRESTORE_EMULATOR_HOST) and records, for each operation in `ops`, whether the rules
+// allowed it. The caller compares the outcomes with the expectation; this file decides
+// nothing. Packages come from the platform directory ARI_NODE_DIR, not from the target.
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+
+const params = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+const require = createRequire(join(process.env.ARI_NODE_DIR, 'package.json'));
+const { initializeTestEnvironment } = require('@firebase/rules-unit-testing');
+const { doc, getDoc, setDoc, collection, getDocs, limit, query } = require('firebase/firestore');
+
+const [host, port] = (process.env.FIRESTORE_EMULATOR_HOST || '').split(':');
+if (host !== '127.0.0.1' && host !== 'localhost') throw new Error('emulator must be on loopback');
+
+const env = await initializeTestEnvironment({
+  projectId: params.project_id,
+  firestore: { host, port: Number(port), rules: readFileSync(params.rules_path, 'utf8') },
+});
+const outcomes = [];
+try {
+  await env.clearFirestore();
+  // Seed with rules disabled: the documents a real owner would already have.
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    for (const s of params.seed) await setDoc(doc(ctx.firestore(), s.path), s.data);
+  });
+  for (const op of params.ops) {
+    const db = (op.as === null ? env.unauthenticatedContext() : env.authenticatedContext(op.as, op.claims || {})).firestore();
+    let allowed;
+    let error = null;
+    try {
+      if (op.op === 'get') await getDoc(doc(db, op.path));
+      else if (op.op === 'set') await setDoc(doc(db, op.path), op.data, { merge: true });
+      else if (op.op === 'list') await getDocs(query(collection(db, op.path), limit(5)));
+      else throw new Error(`unknown op ${op.op}`);
+      allowed = true;
+    } catch (e) {
+      // Only a rules denial counts as "denied"; anything else is an error, not evidence.
+      if (e && e.code === 'permission-denied') allowed = false;
+      else { allowed = null; error = String(e && e.message || e).slice(0, 300); }
+    }
+    outcomes.push({ name: op.name, op: op.op, path: op.path, as: op.as, allowed, error });
+  }
+} finally {
+  await env.cleanup();
+}
+writeFileSync(params.out, JSON.stringify({ outcomes }, null, 2));
+```
+
+## firestore.collection_enumeration@1
+
+- category: `access_control.ownership`; side effects: `ephemeral_target_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: path_id, owner_identity, other_identity
+- renderer_sha256: `0c52171f74f5ea4df8d7453b854eec032e8947583201dab27904057f3f78f657`
+- sample parameters: `{"other_identity": "bob", "owner_identity": "alice", "path_id": "user_doc"}`
+- rendered_sha256 (sample): `edfb51a961abe1b2c1362528bc1297c268e9241b66a7db96c4f9ef8495709fa1`
+- imports: json, os, pathlib, pytest, subprocess, tempfile (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: firestore.collection_enumeration@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Runs the reviewed .sandbox/firestore_harness.mjs against the run's Firestore emulator,
+which loads this workspace's own rules file. Only rules denials count as "denied".
+"""
+
+import json
+import os
+import pathlib
+import subprocess
+import tempfile
+
+import pytest
+
+PARAMS = {'project_id': 'demo-ari-sample', 'rules_path': 'firestore.rules', 'seed': [{'path': 'users/sbx-alice', 'data': {'sbx_seed': True}}], 'ops': [{'name': 'owner_get', 'op': 'get', 'path': 'users/sbx-alice', 'as': 'sbx-alice', 'claims': {}}, {'name': 'other_list', 'op': 'list', 'path': 'users', 'as': 'sbx-bob', 'claims': {}}]}
+RESULT = {}
+
+
+@pytest.fixture(scope="module")
+def outcomes():
+    here, work = pathlib.Path(__file__).parent, pathlib.Path(tempfile.mkdtemp())
+    params, out = work / "firestore_params.json", work / "firestore_out.json"
+    params.write_text(json.dumps({**PARAMS, "out": str(out)}))
+    subprocess.run(
+        ["node", str(here / "firestore_harness.mjs"), str(params)],
+        check=True, timeout=120, cwd=os.getcwd(),
+    )
+    rows = {o["name"]: o for o in json.loads(out.read_text())["outcomes"]}
+    RESULT["outcomes"] = rows
+    broken = [r for r in rows.values() if r["allowed"] is None]
+    if broken:  # an error is not evidence either way: fail the fixture, not the assertion
+        raise RuntimeError(f"emulator errors, no verdict: {broken}")
+    if rows["owner_get"]["allowed"] is not True:
+        # Positive control: if the owner cannot read either, the path is server-only or does
+        # not fit this template. Inconclusive, never a finding.
+        raise RuntimeError("positive control failed: the owner cannot read this document; no verdict")
+    return rows
+
+
+def test_collection_cannot_be_enumerated(outcomes):
+    RESULT["other_listed"] = outcomes["other_list"]["allowed"]
+    assert outcomes["other_list"]["allowed"] is False, "rules let another identity list the collection"
+```
+
+Support file `firestore_harness.mjs` (reviewed with this template):
+
+```js
+// Reviewed Firestore-rules check harness (ADR-0023). Platform-owned, copied into the
+// sandbox as `.sandbox/firestore_harness.mjs`; never generated, never model-authored.
+//
+//   node firestore_harness.mjs <params.json>
+//
+// Loads the workspace's own rules file into the run's Firestore emulator
+// (FIRESTORE_EMULATOR_HOST) and records, for each operation in `ops`, whether the rules
+// allowed it. The caller compares the outcomes with the expectation; this file decides
+// nothing. Packages come from the platform directory ARI_NODE_DIR, not from the target.
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+
+const params = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+const require = createRequire(join(process.env.ARI_NODE_DIR, 'package.json'));
+const { initializeTestEnvironment } = require('@firebase/rules-unit-testing');
+const { doc, getDoc, setDoc, collection, getDocs, limit, query } = require('firebase/firestore');
+
+const [host, port] = (process.env.FIRESTORE_EMULATOR_HOST || '').split(':');
+if (host !== '127.0.0.1' && host !== 'localhost') throw new Error('emulator must be on loopback');
+
+const env = await initializeTestEnvironment({
+  projectId: params.project_id,
+  firestore: { host, port: Number(port), rules: readFileSync(params.rules_path, 'utf8') },
+});
+const outcomes = [];
+try {
+  await env.clearFirestore();
+  // Seed with rules disabled: the documents a real owner would already have.
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    for (const s of params.seed) await setDoc(doc(ctx.firestore(), s.path), s.data);
+  });
+  for (const op of params.ops) {
+    const db = (op.as === null ? env.unauthenticatedContext() : env.authenticatedContext(op.as, op.claims || {})).firestore();
+    let allowed;
+    let error = null;
+    try {
+      if (op.op === 'get') await getDoc(doc(db, op.path));
+      else if (op.op === 'set') await setDoc(doc(db, op.path), op.data, { merge: true });
+      else if (op.op === 'list') await getDocs(query(collection(db, op.path), limit(5)));
+      else throw new Error(`unknown op ${op.op}`);
+      allowed = true;
+    } catch (e) {
+      // Only a rules denial counts as "denied"; anything else is an error, not evidence.
+      if (e && e.code === 'permission-denied') allowed = false;
+      else { allowed = null; error = String(e && e.message || e).slice(0, 300); }
+    }
+    outcomes.push({ name: op.name, op: op.op, path: op.path, as: op.as, allowed, error });
+  }
+} finally {
+  await env.cleanup();
+}
+writeFileSync(params.out, JSON.stringify({ outcomes }, null, 2));
 ```
 
 ## input_validation.concurrent_bound@1

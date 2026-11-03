@@ -3,7 +3,7 @@
 
 # Agent board — live coordination dashboard
 
-Regenerated 2026-11-03 01:40 UTC. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
+Regenerated 2026-11-03 08:46 UTC. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
 
 ## Active agents
 
@@ -29,9 +29,9 @@ Regenerated 2026-11-03 01:40 UTC. Comms channel: [issue #559](https://github.com
 
 | PR | Title | Branch | Head | Owned by | Merge position |
 | --- | --- | --- | --- | --- | --- |
-| #412 | ? | ? | ? | alan-live-defense | 1 |
+| #412 | feat(live-defense): Phase 6.5 RL-gated pilot infrastructure (RL BLOCKED) | feat/live-defense-phase6-5-rl-gated-pilot | ee6168fd | alan-live-defense | 1 |
 | #441 | ? | ? | ? | devin-pipeline-fixer | 19 |
-| #458 | ? | ? | ? | alan-live-defense | 0 |
+| #458 | feat(live-defense): Phase 7C authorized Scout/Diagnose execution | feat/alan/live-defense-phase7c-agent-execution | 122a309c | alan-live-defense | 0 |
 | #527 | ? | ? | ? | devin-pipeline-fixer | 14 |
 | #529 | ? | ? | ? | code-review-eval | 2 |
 | #531 | ? | ? | ? | devin-intel-audit | 12 |
@@ -60,6 +60,11 @@ Regenerated 2026-11-03 01:40 UTC. Comms channel: [issue #559](https://github.com
 | #580 | ? | ? | ? | devin-pipeline-fixer | 13 |
 | #614 | ? | ? | ? | codex-review-automation | 4 |
 | #649 | ? | ? | ? | devin-console-refinement | 5 |
+| #777 | fix(ops): uptime-watch probes /readyz and fails loudly without RAILWAY_TOKEN | devin/1793666000-uptime-readyz-main | dcfb065d | unassigned | — |
+| #786 | docs(adam): cloud health run 36 | feat/adam/cloud-20261103-0217 | 2f90282a | unassigned | — |
+| #787 | fix(frontend): stop How it works cards skipping on wheel scroll | fix/alan/how-it-works-scroll-steps | 2ba68718 | unassigned | — |
+| #792 | chore: integrate open PRs #777, #782, #786, #787 | chore/adam/integrate-open-prs-2 | 8e0d0ff1 | unassigned | — |
+| #798 | docs(status): Adam run 36 no-op entry | feat/adam/cloud-20261103-1 | 0dc75a75 | unassigned | — |
 
 ## File / subsystem claims
 

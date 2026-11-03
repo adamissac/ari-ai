@@ -53,6 +53,9 @@ def test_library_lists_runnable_templates(library):
         BOUNDS.ref,
         AUTHENTICATION.ref,
         ROLE.ref,
+        "firestore.owner_isolation@1",
+        "firestore.unauthenticated_denied@1",
+        "firestore.collection_enumeration@1",
         CONCURRENT_BOUND.ref,
         DESTINATION.ref,
     }

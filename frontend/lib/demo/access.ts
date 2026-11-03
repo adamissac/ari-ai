@@ -8,8 +8,9 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
  * Unset DEMO_ACCESS_CODE = the demo account is closed.
  */
 export const DEMO_COOKIE = 'ari_demo_access';
+export const DEMO_VIEW_COOKIE = 'ari_demo_view';
 export const DEMO_COOKIE_MAX_AGE_S = 12 * 60 * 60;
-export const DEMO_HOME = '/demo/lumen-pay';
+export const DEMO_HOME = '/projects/prj_01M6FTWETXBNGJRSYY6JDZMTPS';
 
 function secret(): string | null {
   const code = process.env.DEMO_ACCESS_CODE?.trim();

@@ -22,13 +22,14 @@ before Phase 1 implementation relies on them.
 | [0010](0010-no-vector-db-for-mvp.md) | No vector database for MVP | Proposed |
 | [0011](0011-standards-integration.md) | Versioned standards integration | Proposed |
 | [0012](0012-cvss-v31-primary-v40-alongside.md) | CVSS v3.1 sets the level now; v4.0 alongside | Proposed |
-| [0013](0013-labelled-simulated-demo.md) | A labelled, self-contained simulated demo at /demo | Proposed |
+| [0013](0013-labelled-simulated-demo.md) | A labelled, self-contained simulated demo at /demo | Superseded by ADR-0024 |
 | [0014](0014-seven-agent-rl-adversarial-post-training.md) | Seven-agent adversarial post-training: decoupled, offline, gated | Proposed |
 | [0014](0014-trained-specialist-models.md) | One trained specialist model per runtime agent, advisory and evidence-gated (numbered 0014 alongside the RL ADR) | Proposed |
 | [0015](0015-haiku-default-model.md) | Claude Haiku 5.5 is the default Anthropic model (cost; Opus via override) | Accepted |
 
 | [0016](0016-owner-sandbox-approval.md) | Explicit owner approval for sandbox-only scopes | Accepted |
 | [0017](0017-runtime-principal-detection.md) | Runtime principal detection feeds the RL defense (pseudonymous, aggregated) | Accepted |
+| [0024](0024-real-console-recorded-demo.md) | The access-code demo uses the real console with recorded fixtures | Proposed |
 
 ## Process
 
@@ -42,3 +43,4 @@ before Phase 1 implementation relies on them.
 - [ADR-0020: independent authorization gate for live controls (accepted)](0020-live-defense-control-authorization.md)
 - [ADR-0021: per-project fix delivery mode, auto, pull request or manual](0021-auto-delivery-mode.md)
 - [ADR-0022: boundaries of live policy enforcement in the isolated lab (proposed)](0022-live-lab-enforcement-boundaries.md)
+- [ADR-0023: security-agent testing for JavaScript/TypeScript repositories (proposed)](0023-js-ts-security-agent-testing.md)
