@@ -38,6 +38,7 @@ class CheckCategory(StrEnum):
     input_bounds = "input.bounds"
     input_validation_injection = "input_validation.injection"
     input_validation_path = "input_validation.path"
+    input_validation_ssrf = "input_validation.ssrf"
 
 
 _CHECK_CATEGORY_CANONICAL: dict[CheckCategory, CheckCategory] = {
@@ -52,6 +53,7 @@ _CHECK_CATEGORY_CANONICAL: dict[CheckCategory, CheckCategory] = {
     CheckCategory.input_bounds: CheckCategory.input_validation_bounds,
     CheckCategory.input_validation_injection: CheckCategory.input_validation_injection,
     CheckCategory.input_validation_path: CheckCategory.input_validation_path,
+    CheckCategory.input_validation_ssrf: CheckCategory.input_validation_ssrf,
 }
 
 

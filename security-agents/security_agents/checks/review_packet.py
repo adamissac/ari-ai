@@ -27,6 +27,10 @@ NODE_RECIPE: dict[str, Any] = {
     "firestore_paths": [{"id": "user_doc", "path_template": "users/{uid}"}],
 }
 FORBIDDEN_TOKENS = ("subprocess", "socket", "http://", "https://", "requests.", "os.system", "eval(", "exec(")
+# SSRF checks (ADR-0025) send http(s):// URLs to the target as request data; they still
+# open no socket, spawn no process and import nothing extra. Only the URL-scheme tokens
+# are permitted for a template that declares emits_url_payloads.
+URL_PAYLOAD_FORBIDDEN = tuple(t for t in FORBIDDEN_TOKENS if t not in ("http://", "https://"))
 SAMPLES: dict[str, dict[str, Any]] = {
     "access_control.ownership@1": {
         "route_id": "payment_detail",
@@ -79,6 +83,10 @@ SAMPLES: dict[str, dict[str, Any]] = {
         "route_id": "sample_statement",
         "identity": "alice",
     },
+    "input_validation.ssrf@1": {
+        "route_id": "sample_webhook",
+        "identity": "alice",
+    },
 }
 # payments-lite has no route that names a destination; the packet renders the destination
 # template against this illustrative one, added to the recipe for the packet only.
@@ -105,6 +113,12 @@ SAMPLE_ROUTES = [
         "query_param": "file",
         "sample_file": "2024-01.pdf",
     },
+    {
+        "id": "sample_webhook",
+        "method": "POST",
+        "path_template": "/webhooks/test",
+        "body_template": {"url": "{url}"},
+    },
 ]
 CHECKLIST = (
     "The rendered module imports only json, decimal, datetime, fastapi, pytest (to report a setup problem as skipped, never as a finding), threading and concurrent.futures (the race template) and the package named by the recipe's app_factory (validated as package.module:callable).",
@@ -114,7 +128,14 @@ CHECKLIST = (
     "Its side effects match the declared side_effect_class.",
     "Harness templates only: the module starts the listed support file with `node` (no shell) and reads its JSON output; the support file reaches only the loopback Firestore emulator.",
     "The renderer rejects unknown or missing parameters and identical owner and other identities.",
+    "SSRF templates only (emits_url_payloads, ADR-0025): http(s):// appears solely as a URL sent to the target as request data; the module still opens no socket, spawns no process and imports nothing outside the allowlist.",
 )
+
+
+def _forbidden_for(meta: lib.CheckTemplateMeta, harness: bool) -> tuple[str, ...]:
+    if harness:
+        return HARNESS_FORBIDDEN
+    return URL_PAYLOAD_FORBIDDEN if meta.emits_url_payloads else FORBIDDEN_TOKENS
 
 
 def _sha(text: str) -> str:
@@ -188,9 +209,7 @@ def packet(recipe_path: Path = RECIPE) -> list[dict[str, Any]]:
                     if harness
                     else ALLOWED_IMPORTS | {lib.app_factory(recipe)[0].split(".")[0]}
                 ),
-                "forbidden_tokens_found": [
-                    t for t in (HARNESS_FORBIDDEN if harness else FORBIDDEN_TOKENS) if t in code
-                ],
+                "forbidden_tokens_found": [t for t in _forbidden_for(meta, harness) if t in code],
                 "rendered": rendered,
                 "support_files": support,
             }

@@ -18,6 +18,7 @@ from security_agents.checks.library import (
     PATH_TRAVERSAL,
     ROLE,
     SQL_INJECTION,
+    SSRF,
     default_library,
     empty_library,
 )
@@ -62,6 +63,7 @@ def test_library_lists_runnable_templates(library):
         DESTINATION.ref,
         SQL_INJECTION.ref,
         PATH_TRAVERSAL.ref,
+        SSRF.ref,
     }
     assert all(t["runnable"] for t in library.list_public())
     assert library.categories() == {
@@ -71,6 +73,7 @@ def test_library_lists_runnable_templates(library):
         "input_validation.bounds",
         "input_validation.injection",
         "input_validation.path",
+        "input_validation.ssrf",
     }
 
 

@@ -13,6 +13,7 @@ Checklist for each template:
 - [ ] Its side effects match the declared side_effect_class.
 - [ ] Harness templates only: the module starts the listed support file with `node` (no shell) and reads its JSON output; the support file reaches only the loopback Firestore emulator.
 - [ ] The renderer rejects unknown or missing parameters and identical owner and other identities.
+- [ ] SSRF templates only (emits_url_payloads, ADR-0025): http(s):// appears solely as a URL sent to the target as request data; the module still opens no socket, spawns no process and imports nothing outside the allowlist.
 
 ## access_control.ownership@1
 
@@ -837,5 +838,55 @@ def test_traversal_cannot_escape_the_base_directory():
         RESULT.setdefault("statuses", []).append(resp.status_code)
         assert MARKER not in resp.text, (
             f"traversal payload {payload!r} returned a file outside the base directory"
+        )
+```
+
+## input_validation.ssrf@1
+
+- category: `input_validation.ssrf`; side effects: `ephemeral_target_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: route_id, identity
+- renderer_sha256: `2b02c5d8317358bf04726d73463b2cb01f122d616c712463f368c7aec1a8ea79`
+- sample parameters: `{"identity": "alice", "route_id": "sample_webhook"}`
+- rendered_sha256 (sample): `ff151d64070f2160d95524fc04862ad7009916ccdd16a4fc31e7cc32f57d41ba`
+- imports: decimal, fastapi, json, payments_lite, pytest (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: input_validation.ssrf@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Target is driven in-process through its own app factory; no sockets are opened.
+"""
+
+import json
+from decimal import Decimal
+
+from fastapi.testclient import TestClient
+
+from payments_lite.app import create_app
+
+RESULT = {}
+
+
+def _client():
+    return TestClient(create_app())
+
+import pytest
+
+CREATE_PATH = '/webhooks/test'
+HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
+BODIES = [{'url': 'http://169.254.169.254/latest/meta-data/'}, {'url': 'http://127.0.0.1/'}, {'url': 'http://localhost/'}]
+
+
+def test_internal_destinations_are_refused():
+    client = _client()
+    for body in BODIES:
+        resp = client.post(CREATE_PATH, json=body, headers=HEADERS)
+        if resp.status_code == 401:
+            # Unauthenticated: a setup problem, not evidence about SSRF validation.
+            pytest.skip(f"request refused for authentication, not destination: {resp.status_code}")
+        RESULT.setdefault("statuses", []).append(resp.status_code)
+        assert 400 <= resp.status_code < 500, (
+            f"endpoint did not refuse an internal/metadata destination: {resp.status_code}"
         )
 ```

@@ -3195,7 +3195,8 @@
         "access_control.rbac",
         "input.bounds",
         "input_validation.injection",
-        "input_validation.path"
+        "input_validation.path",
+        "input_validation.ssrf"
       ],
       "title": "CheckCategory",
       "type": "string"

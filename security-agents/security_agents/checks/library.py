@@ -38,6 +38,9 @@ class CheckTemplateMeta:
     parameters: tuple[str, ...]
     reviewed_by: str | None = None  # security-owner sign-off; None => not runnable
     support_files: tuple[str, ...] = ()  # reviewed files beside this module, copied into .sandbox/
+    # SSRF checks send URL payloads to the target as request data (never opening a socket
+    # themselves); the review packet permits http(s):// literals only for these, ADR-0025.
+    emits_url_payloads: bool = False
 
     @property
     def ref(self) -> str:
@@ -1075,6 +1078,71 @@ PATH_TRAVERSAL = CheckTemplateMeta(
 )
 
 
+_SSRF_PAYLOADS = (
+    "http://169.254.169.254/latest/meta-data/",
+    "http://127.0.0.1/",
+    "http://localhost/",
+)
+
+
+def _render_ssrf(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    """A route that fetches a caller-supplied URL must refuse internal and cloud-metadata
+    destinations (CWE-918). The run network is target-only with no egress, so the signal
+    is input validation, not a reached host: the endpoint must reject a loopback/metadata
+    URL with a 4xx that is not an auth failure, never attempt the fetch. The check sends
+    the URL as request data and opens no socket of its own."""
+    route = _route(recipe, str(params["route_id"]))
+    if str(route.get("method", "")).upper() != "POST":
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "ssrf template needs a POST route")
+    body_template = route.get("body_template")
+    if not isinstance(body_template, dict) or "{url}" not in body_template.values():
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "ssrf route body_template has no {url}")
+    identity = str(params["identity"])
+    bodies = [_body_src(body_template, {"{url}": u}) for u in _SSRF_PAYLOADS]
+    return (
+        _inprocess_preamble(str(params["_ref"]), recipe)
+        + f"""
+import pytest
+
+CREATE_PATH = {str(route["path_template"])!r}
+HEADERS = {{"Authorization": {_identity(recipe, identity)!r}}}
+BODIES = {bodies!r}
+
+
+def test_internal_destinations_are_refused():
+    client = _client()
+    for body in BODIES:
+        resp = client.post(CREATE_PATH, json=body, headers=HEADERS)
+        if resp.status_code == 401:
+            # Unauthenticated: a setup problem, not evidence about SSRF validation.
+            pytest.skip(f"request refused for authentication, not destination: {{resp.status_code}}")
+        RESULT.setdefault("statuses", []).append(resp.status_code)
+        assert 400 <= resp.status_code < 500, (
+            f"endpoint did not refuse an internal/metadata destination: {{resp.status_code}}"
+        )
+"""
+    )
+
+
+SSRF = CheckTemplateMeta(
+    template_id="input_validation.ssrf",
+    version="1",
+    category="input_validation.ssrf",
+    description=(
+        "SSRF check (CWE-918): a POST route that fetches a caller-supplied URL (body_template "
+        "with {url}) must refuse internal and cloud-metadata destinations "
+        "(169.254.169.254, 127.0.0.1, localhost) with a non-auth 4xx, never attempt the fetch. "
+        "The run network has no egress, so a vulnerable endpoint that attempts the fetch answers "
+        "5xx and fails the check. Skips on 401 (unauthenticated setup). Parameters: route_id, identity."
+    ),
+    side_effect_class="ephemeral_target_only",
+    expectation_kinds=("input_validation", "ssrf"),
+    parameters=("route_id", "identity"),
+    reviewed_by="security-owner:pending-human-signoff",
+    emits_url_payloads=True,
+)
+
+
 _RENDERERS = {
     OWNERSHIP.ref: _render_ownership,
     BOUNDS.ref: _render_bounds,
@@ -1087,6 +1155,7 @@ _RENDERERS = {
     DESTINATION.ref: _render_destination,
     SQL_INJECTION.ref: _render_sql_injection,
     PATH_TRAVERSAL.ref: _render_path_traversal,
+    SSRF.ref: _render_ssrf,
 }
 
 
@@ -1249,6 +1318,7 @@ def default_library() -> CheckLibrary:
     lib.register(DESTINATION)
     lib.register(SQL_INJECTION)
     lib.register(PATH_TRAVERSAL)
+    lib.register(SSRF)
     return lib
 
 
