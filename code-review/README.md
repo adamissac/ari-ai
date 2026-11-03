@@ -58,6 +58,8 @@ Repositories must be registered by the operator:
   repos, five rounds through production. Final: 9/9 flagged, 3/4 Python bugs fixed and Verify-accepted,
   0 false positives, ~21 s and ~$0.006 per review (Haiku). JS findings stay hypotheses (no JS runner).
   See [docs/REVIEWER_LIVE_EVAL_2026-11-03.md](../docs/REVIEWER_LIVE_EVAL_2026-11-03.md).
+  A second, harder set (gtB/gtC: async, cross-file, large diff, weakened test, clean traps;
+  5 rounds) reached 9/9 flagged with 0 false positives; 3/4 Python bugs fixed per round.
 * **Precision / recall:** the independent corpus exists and its 10 labels are proven by execution
   (`test_eval_corpus.py`), and the scorer is tested. **No live corpus run yet** on the 10-case
   corpus: real precision/recall needs an approved paid run of `test_live_corpus.py`.

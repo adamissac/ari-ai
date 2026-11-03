@@ -269,19 +269,19 @@ class CitationChecker:
         return SourceKind.code
 
 
-def inferred_fallback(claim: ClaimIn, evidence: list[EvidenceRef]) -> ClaimDecision:
+def inferred_fallback(key: str, statement: str, evidence: list[EvidenceRef]) -> ClaimDecision:
     """A claim whose citations all failed to verify, re-based on the finding's own verified
     spans. Implementation code only ever infers a rule, so the finding can at most be a
     hypothesis; dropping it instead lost correct findings (live gtB3 js-batch-obo)."""
     ic = IntentClaim(
-        statement=claim.statement,
+        statement=statement,
         status=IntentClaimStatus.inferred,
         citations=evidence[:3],
         confidence=_CONFIDENCE[IntentClaimStatus.inferred],
     )
     return ClaimDecision(
         claim=ic,
-        key=claim.key,
+        key=key,
         supported_by={SourceKind.code},
         notes=["no claim citation verified; re-based on the finding's spans"],
     )
