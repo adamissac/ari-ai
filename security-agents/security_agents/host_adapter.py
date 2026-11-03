@@ -826,8 +826,10 @@ class HostOrchestrator:
     workdir: Path | None = None
     driver: SandboxDriver | None = None
     registry: ToolRegistry | None = None
-    max_hypotheses: int = 3
-    validate_count: int = 2
+    # Probe steps run concurrently, so validating every hypothesis costs model tokens,
+    # not wall-clock; a cap of 2 left most of a multi-bug commit unvalidated.
+    max_hypotheses: int = 6
+    validate_count: int = 6
     _resumable: dict[str, Orchestrator] = field(default_factory=dict)
 
     def run(self, host: AssessmentHostLike) -> str | None:
