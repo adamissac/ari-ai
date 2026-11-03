@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Restored native scrolling, shortened the landing story chapters, and made console chrome calmer and more opaque.
 - Failed assessments now record an error code and a readable reason.
 - Assessments interrupted by a lost worker can restart once, retaining usage and conservatively estimating unsettled sandbox time.
 - Ops: `uptime-watch` now probes `/readyz` instead of the static `/healthz`, so a Postgres, queue or worker outage behind a live app container opens the alert; a 503 names the failed components and `capabilities_ready=false` is reported as a problem.
