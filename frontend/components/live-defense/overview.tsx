@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { DefenseMap } from '@/components/defense-map';
 import { DefenseSwitch } from '@/components/defense-switch';
 import { HealthUnknownNote, SimulationCaveat, SourceTag } from '@/components/live-defense/common';
-import { Async, Badge, Empty, Mono, Panel, Tag, Time } from '@/components/ui';
+import { Async, Badge, Empty, Mono, Panel, StatGrid, Tag, Time } from '@/components/ui';
 import {
   actionInWords,
   eventIncidentIds,
@@ -116,21 +116,22 @@ function LiveOverviewRecords({
   });
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <p className="min-w-0 rounded-xl border border-line bg-panel p-5 sm:p-6 text-sm text-ink" data-testid="live-defense-summary">{copy}</p>
       {project && reloadProject && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-panel px-5 py-4">
+        <div className="flex flex-wrap items-center gap-3">
           <DefenseSwitch project={project} onChange={() => reloadProject()} />
-          <p className="text-xs text-muted">Same owner-only switch as Monitoring. It turns repository re-checks on or off. It does not arm an enforcer.</p>
         </div>
       )}
-      <ul className="ld-stat-row" aria-label="Recorded Live Defense counts">
-        <li><span>Events</span> {events?.status === 'ready' ? eventItems.length : '…'}</li>
-        <li><span>Open incidents</span> {incidents?.status === 'ready' ? open.length : '…'}</li>
-        <li><span>Simulation recommendations</span> {recs?.status === 'ready' ? recItems.length : '…'}</li>
-        <li><span>Shadow decisions</span> {decisions?.status === 'ready' ? decisionItems.length : '…'}</li>
-        <li><span>Re-checks</span> {reassess?.status === 'ready' ? reassess.data.items.length : '…'}</li>
-        <li><span>Staging apps</span> {apps?.status === 'ready' ? apps.data.items.length : '…'}</li>
-      </ul>
+      <section aria-label="Recorded Live Defense counts">
+        <StatGrid items={[
+          { label: 'Events', value: events?.status === 'ready' ? eventItems.length : '…' },
+          { label: 'Open incidents', value: incidents?.status === 'ready' ? open.length : '…' },
+          { label: 'Recommendations', value: recs?.status === 'ready' ? recItems.length : '…' },
+          { label: 'Shadow decisions', value: decisions?.status === 'ready' ? decisionItems.length : '…' },
+          { label: 'Re-checks', value: reassess?.status === 'ready' ? reassess.data.items.length : '…' },
+          { label: 'Staging apps', value: apps?.status === 'ready' ? apps.data.items.length : '…' },
+        ]} />
+      </section>
+      <p className="-mt-4 text-xs text-muted" data-testid="live-defense-summary">{copy}</p>
       <Panel title="Recorded health and topology">
         <HealthUnknownNote />
         {health ? (
@@ -241,7 +242,6 @@ function LiveOverviewRecords({
         </Panel>
       </div>
       <Panel title="Shadow decisions" actions={<Link className="text-xs text-accent hover:underline" href={liveDefenseHref(projectId, 'explain')}>Explainability</Link>}>
-        <p className="text-sm text-muted">Produced only when rules or validated frozen-v6 inference actually ran. Enforcement is always NOT EXECUTED.</p>
         {decisions ? (
           <Async resource={decisions} label="shadow decisions">
             {page => (
@@ -294,9 +294,7 @@ function LiveOverviewRecords({
         ) : <Empty>Recommendations were not requested.</Empty>}
       </Panel>
       <Panel title="Owned-test controls" actions={<Link className="text-xs text-accent hover:underline" href={liveDefenseHref(projectId, 'controls')}>Authorize</Link>}>
-        <p className="text-sm text-muted">
-          Shadow decisions on this page stay NOT EXECUTED. Temporary rate-limit, exact-source block, logging, or human escalation run only after a separate authorization on the Controls tab.
-        </p>
+        <p className="text-sm text-muted">Temporary controls run only after a separate authorization on the Controls tab.</p>
       </Panel>
       <Panel title="Staging apps" actions={<Link className="text-xs text-accent hover:underline" href={liveDefenseHref(projectId, 'apps')}>Onboard</Link>}>
         {apps ? (

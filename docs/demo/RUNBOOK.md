@@ -5,7 +5,7 @@ screen rather than presenting sample data or saved evidence as a new live run.
 
 | Kind | What it is | How it is labelled |
 |---|---|---|
-| Demo account | `/access` opens the real console on a recorded, renamed Lumen Pay sample account. The browser replays captured API fixtures without calling the backend. | “Demo account · Lumen Pay sample data — every repository, commit and result here is illustrative.” |
+| Demo account | `/access` signs in to a fictional Lumen Pay account in the real console: a simulated GitHub step, repository picker, setup, and recorded checks. The browser replays captured API fixtures and simulates the visitor's own steps without calling the backend or GitHub. | “Demo account · Lumen Pay sample data — every repository, commit and result here is illustrative.” |
 | Recorded live evidence | One saved seven-agent run on `claude-opus-5-5` (M3, 2026-10-17, $1.39), displayed separately from the sample account's results. | “Recorded live run · not simulated” and “Replay of recorded run”. |
 | Real stack, scripted model | Real API, PostgreSQL, worker, sandbox checks, Patch, Verify and artifacts; model replies are test-only scripted responses. | Persisted `provider_mode=fake`, labelled as not live in the UI. |
 
@@ -84,12 +84,14 @@ owner's authorization and budget. This runbook does not authorize such a call.
 1. **Problem:** every push can break intended behavior or authorization.
 2. **Sample account:** sign in at `/access` and point out the persistent banner. Say
    “This is recorded, renamed sample data; it is not customer activity.”
-3. **Review workflow:** open Commits, a completed assessment, and its Review pipeline;
-   then show Findings and a finding detail in the real console.
-4. **Human control:** open Approvals and show the pending item. The account is
-   read-only, and no action is sent to the backend.
-5. **Limits:** the browser replays captured records, including captured non-200
-   responses. No clean assessment outcome was captured.
+3. **Connect:** authorize the simulated GitHub App, open `lumen-pay`, and connect
+   `checkout-web`. Walk the eight setup questions and approve sandbox testing.
+4. **Human control:** on `payments-api` Analytics, open "Review the proposed fix" and
+   approve both items. Open the check: Patch, Fortify and Verify finish in about a minute.
+5. **Evidence:** open Findings → fixed → a finding's before/after, then a commit's quick read.
+6. **Limits:** the browser replays captured records and simulates the visitor's own steps
+   in this tab only. A check on a repository other than `payments-api` is a clean run
+   that the console labels as limited coverage.
 
 ## Evidence and release gate
 

@@ -14,19 +14,17 @@ import { useResource } from '@/lib/use-resource';
 
 /** NIST SP 800-61r3 / CSF 2.0 incident lifecycle. Every gated step needs a second person. */
 export default function IncidentsPage() {
-  const { project, selectedRepo } = useProject();
+  const { project } = useProject();
   const list = useResource(`incidents:${project.id}`, s => api().incidents(project.id, { signal: s }), 15000);
   const [selected, setSelected] = useState<string | null>(null);
   return (
     <>
-      <PageTitle eyebrow="Defend" title="Incidents" subtitle={selectedRepo
-        ? <>Project-wide incidents · selected repository <span className="font-mono text-ink">{selectedRepo.full_name}</span> · incident records have no repository ID.</>
-        : 'Project-wide incidents; incident records have no repository ID.'} />
+      <PageTitle eyebrow="Defend" title="Incidents" subtitle="Project-wide incident records." />
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_3fr]">
       <div className="flex flex-col gap-4">
         <Panel title="Incidents">
           <Async resource={list} label="incidents">
-            {page => page.items.length === 0 ? <Empty>No incidents. Open one from a monitoring event, finding or synthetic drill.</Empty> : (
+            {page => page.items.length === 0 ? <Empty>No incidents.</Empty> : (
               <ul className="divide-y divide-line">
                 {page.items.map(i => (
                   <li key={i.id}>
@@ -75,7 +73,7 @@ function OpenIncident({ onCreated }: { onCreated: (id: string) => void }) {
   };
   return (
     <Panel title="Open incident">
-      <p className="mb-3 text-sm text-muted" data-testid="create-incident-note">{CREATE_INCIDENT_NOTE}</p>
+      <details className="mb-3 text-xs text-muted"><summary className="cursor-pointer">What opening an incident does</summary><p className="mt-2" data-testid="create-incident-note">{CREATE_INCIDENT_NOTE}</p></details>
       <form onSubmit={submit} className="flex flex-col gap-3">
         <Field label="Title"><input className={inputClass} value={title} onChange={e => setTitle(e.target.value)} maxLength={200} /></Field>
         <Field label="Initial report"><textarea className={`${inputClass} min-h-16`} value={note} onChange={e => setNote(e.target.value)} maxLength={500} /></Field>

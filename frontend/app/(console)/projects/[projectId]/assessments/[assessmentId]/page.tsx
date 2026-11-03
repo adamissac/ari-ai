@@ -145,7 +145,7 @@ export default function AssessmentPage() {
       <p className="mb-4 text-base text-ink" data-testid="assessment-phase">{currentPhaseSentence(a.state)}</p>
       {!terminal && a.state !== 'AWAITING_APPROVAL' && (
         <p className="-mt-2 mb-4 text-sm text-muted" data-testid="assessment-running-note">
-          Running on Ari&apos;s servers for <Elapsed since={a.created_at} />. It keeps running if you leave this page; find it again under Commits → Runs &amp; replay. It stops at its budget limit and never runs past it.
+          Running for <Elapsed since={a.created_at} />. Safe to leave this page.
         </p>
       )}
       {a.error && (
@@ -166,7 +166,7 @@ export default function AssessmentPage() {
           skipNote={skipNote}
         />
       </div>
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[2fr_3fr]">
+      <div className="mt-4">
         <Panel title={`What this check found (${detail.findings.length})`}>
           {detail.findings.length === 0 ? <Empty>{terminal ? 'No findings were recorded by this run.' : 'No findings recorded yet.'}</Empty> : (
             <ul className="divide-y divide-line">
@@ -186,14 +186,6 @@ export default function AssessmentPage() {
             </ul>
           )}
         </Panel>
-        <section aria-label="Phases of this check">
-          <h2 className="mb-2 text-sm font-semibold">Progress through each phase</h2>
-          <AssessmentPhases
-            state={a.state}
-            findingStatuses={detail.findings.map(finding => finding.status)}
-            log={phaseLog}
-          />
-        </section>
       </div>
       <div className="mt-4">
         <h2 className="mb-2 text-sm font-semibold">What the selected agent did, step by step</h2>
@@ -202,9 +194,17 @@ export default function AssessmentPage() {
       <details className="group mt-4 rounded-xl border border-line bg-panel" data-testid="technical-details" open={technicalOpen} onToggle={e => setTechnicalOpen((e.currentTarget as HTMLDetailsElement).open)}>
         <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:hidden">
           <span aria-hidden="true" className="mr-1 inline-block transition-transform group-open:rotate-90">▸</span>
-          Technical details: live connection, orchestrator states, usage and the full event log
+          Technical details
         </summary>
         <div className="border-t border-line p-4">
+          <section aria-label="Phases of this check" className="mb-4">
+            <h2 className="mb-2 text-sm font-semibold">Progress through each phase</h2>
+            <AssessmentPhases
+              state={a.state}
+              findingStatuses={detail.findings.map(finding => finding.status)}
+              log={phaseLog}
+            />
+          </section>
           <ConnectionBar state={connection} error={streamError} onReconnect={() => { setStreamError(null); setStreamNonce(n => n + 1); }} />
           <StateRail state={a.state} events={events} />
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
@@ -215,7 +215,7 @@ export default function AssessmentPage() {
           </div>
           <BudgetMeter used={a.usage.usd} cap={a.budget.max_usd} />
           <div className="mt-4">
-            <Panel title={`Event log (${events.length})`} actions={<a className="text-xs text-accent hover:underline" href={`/api/v1/assessments/${a.id}/report`} target="_blank" rel="noreferrer">JSON report</a>}>
+            <Panel title={`Event log (${events.length})`} actions={demoView ? undefined : <a className="text-xs text-accent hover:underline" href={`/api/v1/assessments/${a.id}/report`} target="_blank" rel="noreferrer">JSON report</a>}>
               <EventLog events={events} />
             </Panel>
           </div>

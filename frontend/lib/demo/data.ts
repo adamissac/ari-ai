@@ -154,6 +154,25 @@ export const DEMO_REPOS: DemoRepo[] = [
     ]),
   },
   {
+    org: 'lumen-pay', name: 'merchant-dashboard', language: 'TypeScript', visibility: 'private', defaultBranch: 'main', stars: 17,
+    description: 'Merchant-facing dashboard: payouts, disputes and API keys.',
+    components: WEB_COMPONENTS, links: WEB_LINKS,
+    commits: commits('merchant-dashboard', [
+      { message: 'feat(payouts): export payout statements', body: '', minutesAgo: 75, branch: 'main', ci: 'passing', verdict: 'fixed', scenario: 'injection', files: 4, additions: 83, deletions: 7 },
+      { message: 'fix(disputes): keep filters when paging', body: '', minutesAgo: 960, branch: 'main', ci: 'passing', verdict: 'clean', scenario: 'clean', files: 2, additions: 16, deletions: 9 },
+      { message: 'chore(deps): bump react to 19.3.1', body: '', minutesAgo: 3300, branch: 'main', ci: 'passing', verdict: 'clean', scenario: 'dependency', files: 2, additions: 4, deletions: 4 },
+    ]),
+  },
+  {
+    org: 'lumen-pay', name: 'docs-site', language: 'TypeScript', visibility: 'public', defaultBranch: 'main', stars: 64,
+    description: 'Public API reference and integration guides.',
+    components: WEB_COMPONENTS.slice(0, 2), links: [['cdn', 'site']],
+    commits: commits('docs-site', [
+      { message: 'docs: partial refunds guide', body: '', minutesAgo: 240, branch: 'main', ci: 'passing', verdict: 'clean', scenario: 'clean', files: 3, additions: 120, deletions: 4 },
+      { message: 'chore: update link checker', body: '', minutesAgo: 4100, branch: 'main', ci: 'passing', verdict: 'clean', scenario: 'clean', files: 1, additions: 6, deletions: 6 },
+    ]),
+  },
+  {
     org: 'harbor-labs', name: 'fleet-portal', language: 'TypeScript', visibility: 'private', defaultBranch: 'main', stars: 9,
     description: 'Device fleet admin portal and API.',
     components: FLEET_COMPONENTS, links: FLEET_LINKS,

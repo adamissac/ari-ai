@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { resetDemoSimulation } from '@/lib/demo/console/state';
 import { useDemoView } from '@/lib/demo/use-view';
 
 export function DemoBanner() {
@@ -8,6 +9,7 @@ export function DemoBanner() {
   const active = useDemoView();
   const exitDemo = async () => {
     await fetch('/api/demo-session', { method: 'DELETE', cache: 'no-store' });
+    resetDemoSimulation();
     router.push('/');
   };
   if (!active) return null;
