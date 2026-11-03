@@ -32,10 +32,8 @@ export function Explainability({
     <div className="flex min-w-0 flex-col gap-6">
       <Panel title="Why a stored recommendation looks the way it does" actions={<SourceTag mode="live" />}>
         <SimulationCaveat />
-        <p className="mt-3 text-sm text-muted">
-          Simulation Q-values explain a stored Defense Lab recommendation, not a live attack.
-          Shadow decisions below are separate: Q-values appear only when frozen v6 inference actually ran.
-          Missing fields are shown as unavailable. Held-out scores live in the <Link className="text-accent hover:underline" href="/lab">Defense Lab</Link>.
+        <p className="mt-3 text-xs text-muted">
+          Q-values explain a stored simulation recommendation, not a live attack. Held-out scores live in the <Link className="text-accent hover:underline" href="/lab">Defense Lab</Link>.
         </p>
       </Panel>
       <Panel title="Shadow decisions (authenticated ingest)">
