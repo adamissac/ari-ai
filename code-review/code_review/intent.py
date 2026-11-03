@@ -18,9 +18,11 @@ from pathlib import PurePosixPath
 
 from code_review.models import CitationIn, ClaimIn, SourceKind
 from code_review.workspace import (
+    COMMENT_DOC_SUFFIXES,
     GENERATED_TEST_DIR,
     Workspace,
     WorkspaceError,
+    comment_ranges,
     docstring_ranges,
     is_test_path,
 )
@@ -212,6 +214,9 @@ class CitationChecker:
         if kind is SourceKind.doc:
             return kind if suffix in _DOC_SUFFIXES else SourceKind.code
         if kind is SourceKind.docstring:
+            if suffix in COMMENT_DOC_SUFFIXES:
+                inside = any(a <= start and end <= b for a, b in comment_ranges(text))
+                return kind if inside else SourceKind.code
             if suffix != ".py":
                 return SourceKind.doc if suffix in _DOC_SUFFIXES else SourceKind.code
             inside = any(a <= start and end <= b for a, b in docstring_ranges(text))

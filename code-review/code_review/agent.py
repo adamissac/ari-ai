@@ -23,6 +23,7 @@ from importlib import resources
 from typing import Any
 
 from code_review import PROMPT_VERSION, REPAIR_PROMPT_VERSION
+from code_review.context import change_context
 from code_review.intent import (
     CitationChecker,
     IntentAdjudication,
@@ -50,8 +51,10 @@ from code_review.tools import (
 )
 from code_review.workspace import (
     Workspace,
+    WorkspaceError,
     apply_unified_diff,
     changed_paths_between,
+    commit_messages,
     git_diff,
     is_protected_path,
     unified_diff,
@@ -175,7 +178,12 @@ class ReviewerAgentRunner:
             self.source, ci.base_sha, ci.head_sha
         )
         diff = git_diff(self.source, ci.base_sha, ci.head_sha)
-        injection = scan_injection(f"{ci.title}\n{ci.body}")
+        try:  # the developer's own statement of intent; untrusted like the PR text
+            messages = commit_messages(self.source, ci.base_sha, ci.head_sha).strip()[:3000]
+        except WorkspaceError:
+            messages = ""
+        injection = scan_injection(f"{ci.title}\n{ci.body}\n{messages}")
+        context = change_context(head, diff, changed)
         expectations, intel_note = self._load_expectations(request)
         gw = self.host.llm()
         run_id = self.host.start_agent_run(
@@ -215,7 +223,14 @@ class ReviewerAgentRunner:
                 agent=AgentName.reviewer.value,
                 system=_prompt("reviewer_v1.md"),
                 user_content=self._user_content(
-                    request, changed, diff, injection, intel_note, focus_statements
+                    request,
+                    changed,
+                    diff,
+                    injection,
+                    intel_note,
+                    focus_statements,
+                    messages=messages,
+                    context=context,
                 ),
                 tools=tb.review_tools(),
                 output_model=ReviewerReport,
@@ -263,6 +278,9 @@ class ReviewerAgentRunner:
         injection: list[str],
         intel_note: str,
         focus_statements: list[str] | None = None,
+        *,
+        messages: str = "",
+        context: str = "",
     ) -> str:
         ci = request.change_intent
         cap = 15_000
@@ -282,11 +300,13 @@ class ReviewerAgentRunner:
                 f"title: {ci.title}",
                 "body:",
                 ci.body,
+                *(["commit_messages:", messages] if messages else []),
                 "</untrusted_change_intent>",
                 f"<injection_scan>{json.dumps(injection) if injection else 'none'}</injection_scan>",
                 "<untrusted_diff>",
                 shown or "(no diff)",
                 "</untrusted_diff>",
+                *([context] if context else []),
                 *(
                     [
                         "<test_generation_focus>",
