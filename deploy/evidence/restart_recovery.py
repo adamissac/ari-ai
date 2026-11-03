@@ -478,13 +478,69 @@ def main() -> int:
         # (CONFLICT_STATE, visible error), never a second restart or fabricated success.
         aid2b, jid2b = start_assessment()
         hard_kill_mid_run(jid2b, aid2b, "w2b")
+        # Test-only barrier: after the automatic restart commits, the restarted run's
+        # first state change out of SCOPE_CHECK blocks on an advisory lock the harness
+        # holds, so the second SIGKILL always lands mid-run (never on an idle worker
+        # that already reached AWAITING_APPROVAL).
+        barrier_key = 7250725
+        barrier_engine = sa.create_engine(db_url)
+        barrier = barrier_engine.connect()
+        barrier.execute(sa.text("SELECT pg_advisory_lock(:k)"), {"k": barrier_key})
+        barrier.commit()
+        barrier.execute(
+            sa.text(
+                f"""
+                CREATE FUNCTION ev_restart_barrier() RETURNS trigger AS $$
+                BEGIN
+                  IF NEW.id = '{aid2b}' AND OLD.state = 'SCOPE_CHECK'
+                     AND NEW.state IS DISTINCT FROM OLD.state
+                     AND EXISTS (
+                       SELECT 1 FROM assessment_events
+                       WHERE assessment_id = NEW.id
+                         AND doc->'data'->>'automatic_restart' = 'true')
+                  THEN
+                    PERFORM pg_advisory_xact_lock({barrier_key});
+                  END IF;
+                  RETURN NEW;
+                END $$ LANGUAGE plpgsql;
+                CREATE TRIGGER ev_restart_barrier BEFORE UPDATE ON assessments
+                  FOR EACH ROW EXECUTE FUNCTION ev_restart_barrier();
+                """
+            )
+        )
+        barrier.commit()
+
+        def barrier_waiters() -> list[int]:
+            with transaction() as conn:
+                return list(
+                    conn.execute(
+                        sa.text(
+                            "SELECT pid FROM pg_stat_activity WHERE datname = current_database()"
+                            " AND wait_event_type = 'Lock' AND wait_event = 'advisory'"
+                        )
+                    ).scalars()
+                )
+
         w3b = Proc(worker_env, "w3b")
         w3b.start()
         procs.append(w3b)
-        _poll(lambda: restart_events(aid2b), bool, timeout=180)
+        held = _poll(barrier_waiters, bool, timeout=180)
+        barrier_held = bool(
+            restart_events(aid2b) and job_running(jid2b) and asm_state(aid2b) == "SCOPE_CHECK"
+        )
+        state_at_second_kill = asm_state(aid2b)
         w3b.p.send_signal(signal.SIGKILL)
         w3b.p.wait(timeout=15)
-        state_at_second_kill = asm_state(aid2b)
+        # The killed worker's backend is still parked on the lock; end it so its
+        # uncommitted transition can never land, then remove the barrier.
+        for backend_pid in held:
+            barrier.execute(sa.text("SELECT pg_terminate_backend(:p)"), {"p": backend_pid})
+        barrier.execute(sa.text("DROP TRIGGER ev_restart_barrier ON assessments"))
+        barrier.execute(sa.text("DROP FUNCTION ev_restart_barrier()"))
+        barrier.execute(sa.text("SELECT pg_advisory_unlock(:k)"), {"k": barrier_key})
+        barrier.commit()
+        barrier.close()
+        barrier_engine.dispose()
         w3c = Proc(worker_env, "w3c")
         w3c.start()
         procs.append(w3c)
@@ -494,13 +550,15 @@ def main() -> int:
         results.record(
             "S2b_second_hard_kill_honest_failure",
             bool(
-                asm_state(aid2b) == "FAILED"
+                barrier_held
+                and asm_state(aid2b) == "FAILED"
                 and err2.get("code") == "CONFLICT_STATE"
                 and [a.get("to") for a in au2b] == ["SCOPE_CHECK", "FAILED"]
                 and len(restart_events(aid2b)) == 2
                 and [e.get("automatic_restart") for e in restart_events(aid2b)] == [True, False]
             ),
             {
+                "barrier_held_mid_run": barrier_held,
                 "state_at_second_kill": state_at_second_kill,
                 "assessment_state": asm_state(aid2b),
                 "error": err2,
