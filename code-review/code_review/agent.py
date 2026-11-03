@@ -23,7 +23,7 @@ from importlib import resources
 from typing import Any
 
 from code_review import PROMPT_VERSION, REPAIR_PROMPT_VERSION
-from code_review.context import change_context
+from code_review.context import change_context, hunk_citations
 from code_review.intent import (
     CitationChecker,
     IntentAdjudication,
@@ -236,7 +236,19 @@ class ReviewerAgentRunner:
                 output_model=ReviewerReport,
                 max_turns=self.budget.max_turns,
             )
-            outcome = self._adjudicate(request, run_id, res.final, tb, head, injection)
+            # commit messages are quotable change intent (never enough to confirm a rule)
+            checked = (
+                request.model_copy(
+                    update={
+                        "change_intent": ci.model_copy(
+                            update={"body": f"{ci.body}\n{messages}".strip()[:20_000]}
+                        )
+                    }
+                )
+                if messages
+                else request
+            )
+            outcome = self._adjudicate(checked, run_id, res.final, tb, head, injection)
             outcome.turns, outcome.provider_mode, outcome.model = (
                 res.turns,
                 res.provider_mode,
@@ -363,6 +375,12 @@ class ReviewerAgentRunner:
                 )
                 continue
             evidence = spans(f.suspected_spans)
+            if not evidence:
+                # A removed guard is cited where it used to be, so its quote is not at head;
+                # anchor on that file's changed lines instead of dropping the finding.
+                evidence = spans(hunk_citations(tb.change_diff, f.suspected_spans))
+                if evidence:
+                    rejected.append(f"finding '{f.title[:80]}': anchored to its changed hunk")
             if not evidence:
                 rejected.append(f"finding '{f.title[:80]}': no verifiable source span")
                 continue
