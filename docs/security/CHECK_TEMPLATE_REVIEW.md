@@ -782,3 +782,60 @@ def test_injection_cannot_leak_another_identitys_rows():
             f"injection payload {payload!r} leaked another identity's row ({CANARY})"
         )
 ```
+
+## input_validation.path_traversal@1
+
+- category: `input_validation.path`; side effects: `read_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: route_id, identity
+- renderer_sha256: `9af8f8dca248b6815d82ebc11ad2f1a8d5ca4da41c5c8c0512ff7c9ea3c0cad6`
+- sample parameters: `{"identity": "alice", "route_id": "sample_statement"}`
+- rendered_sha256 (sample): `ecd5f81a41773f91bc34b0a574e386df0b8f84e172e1eed350531c088eda0a32`
+- imports: decimal, fastapi, json, payments_lite, pytest (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: input_validation.path_traversal@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Target is driven in-process through its own app factory; no sockets are opened.
+"""
+
+import json
+from decimal import Decimal
+
+from fastapi.testclient import TestClient
+
+from payments_lite.app import create_app
+
+RESULT = {}
+
+
+def _client():
+    return TestClient(create_app())
+
+import pytest
+
+PATH = '/statements'
+QUERY_PARAM = 'file'
+HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
+SAMPLE_FILE = '2024-01.pdf'
+MARKER = 'root:'
+PAYLOADS = ['../../../../../../../../etc/passwd', '....//....//....//....//etc/passwd', '/etc/passwd']
+
+
+def test_traversal_cannot_escape_the_base_directory():
+    client = _client()
+    # Baseline: a legitimate in-scope file must be served, and must not itself look like
+    # /etc/passwd; otherwise the route is broken or misconfigured and proves nothing.
+    benign = client.get(PATH, params={QUERY_PARAM: SAMPLE_FILE}, headers=HEADERS)
+    if benign.status_code != 200:
+        pytest.skip(f"route did not serve the in-scope sample file: {benign.status_code}")
+    if MARKER in benign.text:
+        pytest.skip("in-scope file already contains the canary marker; not a traversal signal")
+    for payload in PAYLOADS:
+        resp = client.get(PATH, params={QUERY_PARAM: payload}, headers=HEADERS)
+        RESULT.setdefault("statuses", []).append(resp.status_code)
+        assert MARKER not in resp.text, (
+            f"traversal payload {payload!r} returned a file outside the base directory"
+        )
+```
