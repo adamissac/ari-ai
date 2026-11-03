@@ -136,6 +136,19 @@ def _in_hunks(evidence: list[EvidenceRef], diff: str) -> bool:
     )
 
 
+# A crash fails closed: it cannot widen access, so even under an access rule it is a
+# functional defect to repair (live gtB4 py-rename: AttributeError -> HTTP 500 for owners).
+_CRASH = re.compile(
+    r"\b(HTTP 500|500 error|returns? 500|crash(es|ed|ing)?|AttributeError|TypeError|KeyError"
+    r"|NameError|unhandled exception)\b|-> ?500\b",
+    re.IGNORECASE,
+)
+
+
+def is_crash(*texts: str) -> bool:
+    return any(_CRASH.search(t or "") for t in texts)
+
+
 def is_authorization_rule(*texts: str) -> bool:
     """Deterministic routing: does this rule restrict who may access what?"""
     return any(
@@ -557,7 +570,9 @@ class ReviewerAgentRunner:
                     if ex.outcome_on_base == "passed" and ex.outcome_on_head == "failed":
                         reason += "; passes on base, so the change introduced it"
             evidence.extend(decision.claim.citations[:3])
-            if is_authorization_rule(decision.claim.statement, f.title):
+            if is_authorization_rule(decision.claim.statement, f.title) and not is_crash(
+                f.title, f.rationale
+            ):
                 authz_std, cwe_reason = classify_weakness_safely(
                     f.weakness_class, evidence, 0.7 if status is FindingStatus.validated else 0.4
                 )
