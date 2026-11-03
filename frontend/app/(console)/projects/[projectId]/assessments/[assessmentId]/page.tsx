@@ -136,11 +136,13 @@ export default function AssessmentPage() {
       )}
       <ProviderSummary runs={detail.agent_runs} />
       {a.state === 'AWAITING_APPROVAL' && <ApprovalGate projectId={project.id} events={events} findings={detail?.findings ?? []} onDecided={() => loadDetail()} />}
-      <div className="mt-4 rounded-xl border border-line bg-panel p-5">
+      <div className="mt-4">
         <AgentRelay
           items={agentRelay({ runs: detail.agent_runs, findings: detail.findings, state: a.state, approvals: relayApprovals, skipNote })}
           selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'}
           onSelect={setSelectedAgent}
+          findings={detail.findings}
+          skipNote={skipNote}
         />
       </div>
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[2fr_3fr]">

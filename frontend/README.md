@@ -51,9 +51,10 @@ exists only behind `NEXT_PUBLIC_DEMO_FIXTURES=1` and shows a permanent DEMO DATA
 
 For readers with no programming, security or RL background, see
 [UX_CLARITY_CHECKLIST.md](UX_CLARITY_CHECKLIST.md): the overview's pillar loop, the eight-agent
-relay with its human approval gate, before/after fix evidence, inline glossary terms, and a
-Defense Lab that explains itself. Technical detail (orchestrator states, usage, event log,
-every RL metric and provenance) is kept, one click away. All counts come from records.
+review pipeline with findings totals and its human approval gate, before/after fix evidence,
+inline glossary terms, and a Defense Lab that explains itself. Technical detail (orchestrator
+states, usage, event log, every RL metric and provenance) is kept, one click away. All counts
+come from records.
 
 ## Interface finish
 

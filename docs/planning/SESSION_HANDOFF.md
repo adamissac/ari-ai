@@ -3,6 +3,16 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-11-03 — Devin (agent, Adam) — assessment review-pipeline dashboard
+- Did: Replaced the nested assessment agent tiles with a grouped review pipeline, four findings totals, an approval row, and a single early-end note while preserving `agentRelay` output.
+- State of the code: Branch `fix/adam/review-pipeline-dashboard`; implementation is ready for review.
+- Commands run and results: frontend lint and typecheck passed; Vitest passed (110 files, 478 tests); Next production build passed; `XDG_RUNTIME_DIR=/run/user/1000 ../.venv/bin/python tests/e2e/stack.py tests/e2e/journey.spec.ts` passed (3 tests). Journey logs included `SNAPSHOT_NOT_READY` worker messages for regression registration; they did not fail the E2E tests.
+- Visual evidence: `/home/ubuntu/ari-tools/pipeline/assessment-desktop-pipeline.png` (1440×900; the full pipeline fits), `/home/ubuntu/ari-tools/pipeline/assessment-desktop-full-page.png`, and `/home/ubuntu/ari-tools/pipeline/assessment-mobile-pipeline.png` (390×844). The seeded project had one assessment and no additional assessment with a relay skip note, so there was no early-end screenshot.
+- Decisions made (ADR links): Kept existing agent handoff and status derivation unchanged; summary counts are derived from the current relay items and persisted findings.
+- Assumptions / open questions (RQ links): None.
+- Next steps: Owner review and a separately briefed CI loop.
+- Warnings for the next session: CI was not monitored. The manual stack remains running at Next `http://127.0.0.1:3100` (shell `967b89`) and API `http://127.0.0.1:45103`.
+
 ### 2026-10-27 — Devin (agent, Adam) — wildcard per-commit assessment routing
 - Did: Routed non-empty author configuration, including `*`, through per-commit scheduling; added wildcard push and unlisted-author regressions.
 - State of the code: Branch `fix/adam/per-commit-wildcard`; ready to commit and push.
