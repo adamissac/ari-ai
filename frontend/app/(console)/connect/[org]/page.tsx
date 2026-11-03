@@ -95,12 +95,6 @@ export default function ConnectReposPage() {
           </>
         )}
         {list.status === 'ready' && list.data.live_checked === false && (<p className="mt-2 text-xs text-muted" data-testid="repo-access-unverified">Access shown is from your last GitHub sign-in. Ari confirms access with GitHub when you connect.</p>)}
-        {failed && takenElsewhere(error) && (
-          <div className="mt-3 rounded-xl border border-line bg-panel p-4 text-sm" data-testid="claim-repo">
-            <p className="text-muted">Another Ari project already has <span className="font-mono text-ink">{failed.full_name}</span> connected. If you are an admin of this repository on GitHub, you can take it over: the other project is disconnected (its history is kept) and the repository connects here.</p>
-            <button type="button" className="mt-3 rounded-lg bg-brand px-4 py-2 font-medium text-on-brand hover:bg-brand-deep disabled:opacity-50" disabled={busy !== null} onClick={() => void open(failed, true)}>{busy ? 'Claiming…' : 'Claim it (GitHub admins only)'}</button>
-          </div>
-        )}
       </div>
     </SetupLayout>
   );
