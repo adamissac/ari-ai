@@ -92,6 +92,7 @@ reviewer hypothesis).
 ## Fixes landed
 
 - #790 (combines #780, #783, #784): G1, G2, G3, G4, G5. Deployed 04:10 UTC.
+- #797: one-segment routes never matched themselves when reconciling a check, so a failed (confirming) check on `POST /transfers` was recorded inconclusive. Deployed 07:34 UTC.
 - #793: the registry scope-checked a run against the template *id* instead of its declared category, so `input_validation.concurrent_bound@1` was refused `CATEGORY_NOT_ALLOWED` live. Deployed 04:26 UTC.
 
 ## Run C after #790 (`555b66a`, recipe declares `{destination}` and `balance_field`)
@@ -110,9 +111,63 @@ Results: V2 validated -> patched -> verified -> hardened again, and **the fix PR
 
 Locally (same target code, same recipe, real CheckRunner): `concurrent_bound` confirms V7, `destination` confirms V8, `ownership` confirms V1.
 
+## Run D after #793 (`d0643c8`, transfers seeded to a third customer)
+
+`asm_01M6G499QRS4JD9DTZ2F9EQETN`: 2 min 7 s, $0.046. V1 validated -> patched -> verified ->
+hardened on the first attempt. Probe ran `input_validation.concurrent_bound@1` and the
+executed check **failed in the microVM** (8 concurrent 300.00 transfers accepted against a
+500.00 balance, 2,400.00 moved), yet the finding was recorded `inconclusive`:
+`probe.same_route` never matched a one-segment route (`POST /transfers`) to itself, so the
+run counted as outside the hypothesis subject. Fixed in #797 (deployed 07:34 UTC).
+
+## Run E after #797 (`0175cb3`, adds a second AWS example key pair in `ledgerlite/archive.py`)
+
+`asm_01M6G596S34CW7GY9M500J2ZQH`: push 07:34:19, created 07:34:21, COMPLETED 07:38:07
+(3 min 48 s), $0.092.
+
+| Stage | Start | End | Duration |
+|---|---|---|---|
+| Reviewer / Scout (parallel) | 34:24 | 34:46 / 34:50 | 22 s / 26 s |
+| Probe x4 (concurrent) | 34:50 | 35:00 | 10 s |
+| Trace x3 + Diagnose x3 (concurrent) | 35:00 | 35:27 | 27 s |
+| Fortify x3 (concurrent with Patch) | 35:28 | 35:55 | 27 s |
+| Patch + Verify V1 / V7 / V8 (sequential) | 35:28 | 38:04 | 37 s / 52 s / 48 s |
+| fix PRs #13, #14, #15 (into the demo branch) | | 36:23 / 37:19 / 38:10 | |
+
+V7's patch takes a `threading.Lock` around read-check-write in `make_transfer` and moves the
+balance check inside it; Verify re-ran the concurrent check on the patched code and
+accepted it. V8's patch rejects an unknown destination before any mutation.
+
+## Final scorecard (best live result per weakness)
+
+| ID | Found | Validated in sandbox | Patched | Verified | Hardened | Run |
+|---|---|---|---|---|---|---|
+| V1 BOLA | yes | yes | yes | yes | yes | B, D, E |
+| V2 no auth | yes | yes | yes | yes | yes | B, C |
+| V3 SQLi | yes | no template | - | - | - | A-E |
+| V4 traversal | yes | no template | - | - | - | A-E |
+| V5 SSRF | yes | no template | - | - | - | A, B, D |
+| V6 secret | yes (CWE-798, deterministic scan) | n/a (static) | - | - | - | E |
+| V7 race | yes | **yes** | yes | yes | yes | E |
+| V8 destination | yes | **yes** | yes | yes | yes | E |
+
+Before the fixes: 2 of 8 hardened, 6 of 8 found. After: 4 of 8 hardened, 8 of 8 found.
+False positives on the planted code: none. Two noise findings: the reviewer flagged the
+recipe's `{destination}` placeholder (run C, CWE-841) and an `[unclassified]` archive-key
+concern (run E).
+
+| Latency | Before (run B, 2 findings) | After (run E, 3 findings) |
+|---|---|---|
+| push -> assessment created | 3 s | 2 s |
+| Probe | 8.5 s per hypothesis, sequential | 10 s for 4, concurrent |
+| Trace | 18 s per finding, sequential | 27 s for 3, concurrent |
+| Patch + Verify | 33 s per finding, sequential | 37-52 s per finding, sequential |
+| push -> COMPLETED | 2 min 30 s | 3 min 48 s |
+
 ## Still open
 
-- **Not verified live:** V7 and V8 validation after #793. Re-run: push the fixture fix on a demo branch and watch Probe.
+- Each finding's fix PR is cut from the assessed commit, so PRs #13-#15 overlap in `app.py`/`store.py` and the second one merged will conflict.
+
 - G10: Patch retried 4 times with a plan that contradicts the confirming check (~2.5 min, ~$0.03 wasted); a rejection that cites the check should go back to Diagnose, not repeat Patch.
 - G6, G7, G9 above. The reviewer also raised a CWE-841 hypothesis about the recipe's `{destination}` placeholder itself (false positive on config).
 - Other sessions pushed 12 commits to the same target repo during this run (PR #10 is theirs).
