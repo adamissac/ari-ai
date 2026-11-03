@@ -39,6 +39,7 @@ from code_review.models import (
 )
 from code_review.ports import ExecResult, IntelligencePort, RepoSource, ReviewHost, SandboxPort
 from code_review.sandbox import LocalProcessSandbox, classify
+from code_review.secrets import scan_added_secrets
 from code_review.standards import classify_weakness_safely
 from code_review.tools import (
     ReviewBudget,
@@ -59,7 +60,7 @@ from code_review.workspace import (
 from shared.assessment import AgentName, AgentRunStatus
 from shared.base import utcnow
 from shared.errors import ErrorBody, ErrorCode
-from shared.evidence import ArtifactKind, ArtifactRef, EvidenceKind, EvidenceRef
+from shared.evidence import ArtifactKind, ArtifactRef, EvidenceKind, EvidenceRef, SourceSpan
 from shared.findings import (
     Finding,
     FindingKind,
@@ -222,6 +223,7 @@ class ReviewerAgentRunner:
                 max_turns=self.budget.max_turns,
             )
             outcome = self._adjudicate(request, run_id, res.final, tb, head, injection)
+            self._add_secret_findings(outcome, request, run_id, diff)
             outcome.turns, outcome.provider_mode, outcome.model = (
                 res.turns,
                 res.provider_mode,
@@ -254,6 +256,61 @@ class ReviewerAgentRunner:
                 ),
             )
             raise
+
+    def _add_secret_findings(
+        self, outcome: ReviewOutcome, request: ReviewRequest, run_id: str, diff: str
+    ) -> None:
+        """A credential the commit adds is reported by pattern, not left to the model:
+        the source the model reads is redacted, so it often cannot see one."""
+        by_path: dict[str, list[tuple[int, str]]] = {}
+        for hit in scan_added_secrets(diff):
+            by_path.setdefault(hit.path, []).append((hit.line, hit.kind))
+        now = utcnow()
+        sha = request.change_intent.head_sha
+        for path, hits in by_path.items():
+            evidence = [
+                EvidenceRef(
+                    kind=EvidenceKind.source_span,
+                    path=path,
+                    commit_sha=sha,
+                    span=SourceSpan(start_line=line, end_line=line),
+                    provenance="code_review.secret_scan",
+                    note=kind,
+                )
+                for line, kind in hits[:10]
+            ]
+            kinds = ", ".join(sorted({kind for _, kind in hits}))
+            standards, _ = classify_weakness_safely("CWE-798", evidence, 0.95)
+            finding = Finding(
+                id=new_id(IdPrefix.fnd),
+                assessment_id=request.assessment_id,
+                snapshot_id=request.snapshot_ref.snapshot_id,
+                commit_sha=sha,
+                kind=FindingKind.security,
+                title=f"[CWE-798] Hard-coded credential committed in {path} ({kinds})"[:500],
+                standards=standards,
+                status=FindingStatus.hypothesis,
+                subject_refs=[path],
+                evidence=evidence,
+                confidence=0.95,
+                produced_by_run_id=run_id,
+                history=[
+                    StatusChange(
+                        from_status=None,
+                        to_status=FindingStatus.hypothesis,
+                        at=now,
+                        actor=ACTOR,
+                        reason=(
+                            f"deterministic secret scan matched {kinds} on {len(hits)} added "
+                            "line(s); rotate the credential and load it from the environment"
+                        )[:500],
+                    )
+                ],
+                created_at=now,
+                updated_at=now,
+            )
+            outcome.security_handoffs.append(finding)
+            outcome.result.findings.append(finding)
 
     def _user_content(
         self,
