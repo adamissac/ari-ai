@@ -6,6 +6,7 @@ All notable changes are documented here. Format follows
 
 ## [Unreleased]
 
+- Console pages beyond Analytics, Commits, Findings, Approvals and Settings now read like a dashboard: stat tiles first, explanations collapsed under a details toggle (Connect, Monitoring, Scopes, Live Defense, Incidents, Expectations, Onboarding, Setup, assessment detail).
 - Connecting a JavaScript/TypeScript repository now proposes a `node_http` build recipe (ADR-0023) when there is something testable. The draft is deterministic; no Claude call drafts it. It contains:
   - Firestore paths whose rules tie a document to `request.auth.uid`, directly or through a helper such as `isOwner(uid)`.
   - Vercel `api/` routes with an explicit GET and no path parameter.
