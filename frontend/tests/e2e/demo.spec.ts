@@ -30,6 +30,8 @@ test('the access-code demo walks the real signed-in flow on simulated, offline d
   await expect(page.getByTestId('access-error')).toContainText('not valid');
   await signInWithCode(page, CODE);
   await expect(page.getByTestId('demo-github-step')).toContainText('lumen-pay');
+  // The signed-out account probe on /access is pre-demo.
+  apiRequests.length = 0;
   await page.getByTestId('demo-github-authorize').click();
   await expect(page).toHaveURL(/\/connect$/);
   await expect(page.getByText(BANNER)).toBeVisible();
