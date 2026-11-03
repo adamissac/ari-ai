@@ -7,7 +7,7 @@ from pathlib import Path
 from cr_fakes import InMemoryHost, fake, make_request
 from cr_scenarios import Scenario, _commit, _init, _write, line_of
 
-from code_review.context import change_context
+from code_review.context import change_context, hunk_citations
 from code_review.intent import CitationChecker
 from code_review.models import CitationIn, SourceKind
 from code_review.ports import RepoSource
@@ -98,3 +98,35 @@ def test_js_comment_blocks_count_as_docstrings_and_code_lines_do_not(tmp_path: P
         assert kind(3, "export function summarize(scores) {") is SourceKind.code
     finally:
         ws.close()
+
+
+def test_hunk_citations_cover_the_head_side_of_each_cited_files_hunks(tmp_path: Path) -> None:
+    sc = _js_repo(tmp_path)
+    assert sc.base_sha
+    diff = git_diff(RepoSource(sc.repo), sc.base_sha, sc.head_sha)
+    cited = [CitationIn(source_kind=SourceKind.code, path="src/summary.js", start_line=9)]
+    (c,) = hunk_citations(diff, cited)
+    assert (c.path, c.start_line) == ("src/summary.js", 1)
+    assert c.end_line == SUMMARY_HEAD.count("\n") and not c.quote
+    assert hunk_citations(diff, [CitationIn(source_kind=SourceKind.code, path="x.js")]) == []
+
+
+def test_commit_message_quotes_are_accepted_but_never_confirm(tmp_path: Path) -> None:
+    """Production gt2/py-contract: the claim quoted the commit message, which the checker did
+    not know, so the claim was rejected."""
+    from cr_fakes import call
+
+    from code_review.agent import ReviewerAgentRunner
+
+    sc = _js_repo(tmp_path)
+    claim = {
+        "key": "c_rename",
+        "statement": "The change only renames a field.",
+        "proposed_status": "confirmed",
+        "citations": [{"source_kind": "change_intent", "quote": "Rename the passed count field"}],
+    }
+    host = InMemoryHost(fake([call("submit_result", summary="s", claims=[claim], findings=[])]))
+    outcome = ReviewerAgentRunner(host, RepoSource(sc.repo)).review(make_request(host, sc))
+    assert not any("c_rename" in r for r in outcome.rejected), outcome.rejected
+    (c,) = outcome.result.intent_evidence.claims
+    assert c.status.value == "inferred"
