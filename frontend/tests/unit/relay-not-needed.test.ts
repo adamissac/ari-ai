@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { agentRelay, earlyEndNote, type RelayTile } from '@/lib/relay';
+import { agentRelay, earlyEndNote, relaySummary, type RelayTile } from '@/lib/relay';
 
 const run = (agent: string, status = 'succeeded') => ({ agent: agent as RelayTile['agent'], status, tool_calls: [] });
 const tile = (items: ReturnType<typeof agentRelay>, agent: string) => {
@@ -48,5 +48,34 @@ describe('earlyEndNote', () => {
   it('is null for a full-chain run and for non-transition events', () => {
     expect(earlyEndNote([ev('REPORTING', '')])).toBeNull();
     expect(earlyEndNote([{ type: 'agent_run.finished', message: 'done' }])).toBeNull();
+  });
+});
+
+describe('relaySummary', () => {
+  it('counts findings and agent outcomes without including the approval gate', () => {
+    const findings = [
+      { kind: 'functional', status: 'hypothesis' },
+      { kind: 'functional', status: 'validated' },
+      { kind: 'security', status: 'hypothesis' },
+      { kind: 'security', status: 'validated' },
+      { kind: 'security', status: 'verified' },
+      { kind: 'security', status: 'hardened' },
+    ];
+    const items = agentRelay({
+      runs: [run('reviewer'), run('scout')],
+      findings,
+      state: 'COMPLETED',
+      approvals: [],
+      skipNote: 'no confirmed findings',
+    });
+    expect(relaySummary(items, findings)).toEqual({
+      behaviour: 2,
+      suspicions: 4,
+      confirmed: 3,
+      fixesVerified: 2,
+      finished: 2,
+      skipped: 6,
+      total: 8,
+    });
   });
 });

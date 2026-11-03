@@ -3,7 +3,7 @@
 
 # Agent board — live coordination dashboard
 
-Regenerated 2026-10-26 10:21 UTC. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
+Regenerated 2026-11-03 01:40 UTC. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
 
 ## Active agents
 
@@ -11,12 +11,15 @@ Regenerated 2026-10-26 10:21 UTC. Comms channel: [issue #559](https://github.com
 | --- | --- | --- | --- | --- | --- | --- |
 | alan-live-defense | Alan | security-agents/, live-defense Phase 6.5/7A/7C, interim shared/ contract approver | BLOCKED | Phase 7C authorized Scout/Diagnose execution (#458); Phase 6.5 RL-gated pilot infra (#412) | feat/alan/live-defense-phase7c-agent-execution, feat/live-defense-phase6-5-rl-gated-pilot | 9486a5b0 |
 | code-review-eval | Adam | standalone functional AI code reviewer evaluation + scorer integration | DONE | Reviewer eval report merged (#529); combined scorer verified on merged release-gate head | docs/reviewer-eval-report (merged), docs/adam/status-final-verification | 19a16af0 |
+| codex-36bd-check | Alan | exact integrated 36bd05ee merge-readiness check | READY_FOR_REVIEW | ? | codex/check-36bd05ee | f6883835 |
+| codex-b6d-check | Alan | exact b6d5108b independent check | READY_FOR_REVIEW | ? | codex/check-b6d5108b | 1f4cf1ef |
 | codex-rc4-n8-review | Alan | repeat independent integration code review | READY_FOR_REVIEW | Review N8-remediated RC4 at 4fdcf10c | codex/rc4-n8-independent-review | 99bf3d6d |
 | codex-rc4-review | Alan | independent RC4 security audit | READY_FOR_REVIEW | Exact-SHA RC4 review | codex/rc4-independent-audit | 78dc57bc |
+| codex-rc5-check | Alan | independent RC5 follow-up | READY_FOR_REVIEW | ? | codex/rc5-independent-check | 36893bca |
 | codex-review-automation | Alan | bounded independent release review automation | READY_FOR_REVIEW | Devin → CI → immutable-SHA independent Codex review | codex/ari-review-cycle | ed68a7bd |
 | devin-console-refinement | Adam | frontend console refinement | READY_FOR_REVIEW | Merge origin/main into feat/adam/setup-walkthrough, preserving setup behavior and main updates | feat/adam/setup-walkthrough | 4afaaf5197aa6fd582fd6193a3158eb9a670e67b |
 | devin-defense-lab | Adam | Defense Lab pilot audit + two-org rehearsal + live-deployment rehearsal leg | BLOCKED | Live leg on adamissac/pilot-rehearsal-target: 2 pushes delivered 202 (recipe merge 256c8e8 @00:40, re-trigger 7cf48de @01:06) — no assessment/fix PR after ~25min; outcome only visible in prod UI/DB | feat/adam/defense-lab-pilot-audit | 6ffaccda |
-| devin-frontend-ui | Adam | frontend UI — landing rework + SaaS sidebar console revamp; pilot-readiness support (coordination lane) | READY_FOR_REVIEW | PR #536 landing + console revamp green/mergeable (owner review required); tracked #570 redaction fix — commander ruling adopted over-redaction, in CI; assessing remaining pilot work | feat/adam/home-deep-sea-landing | 9e89652e |
+| devin-frontend-ui | Adam | frontend UI — landing and console UX, including assessment review-pipeline dashboard | READY_FOR_REVIEW | Assessment review-pipeline dashboard redesign; awaiting owner review and separately briefed CI loop | fix/adam/review-pipeline-dashboard | 9bb630d23fe7a64caff1782ed9f52313470bb954 |
 | devin-frontend-ux | Adam | first-user usability — pilot UX workstream (PR #538 on #496) | READY_FOR_REVIEW | Named approval cards, two-step approve/confirm on assessment page + approvals inbox, plain-English replay (plainToolName), honest quick-read errors, flow map + blockers doc | feat/adam/first-user-usability | c890e2c9 |
 | devin-intel-audit | Adam | code-intelligence engine + persistent memory pilot-readiness audit; secret redaction hardening | READY_FOR_REVIEW | PR #531: executed audit report + parse-safe redaction (#441 fix carried verbatim) + mid-line secret redaction + honest route-gap IndexIssues + retrieval eval + index benchmark | feat/adam/intel-pipeline-audit | 46a734b3 |
 | devin-pipeline-fixer | Adam | pilot readiness: merge chain landed; sealed-diff delivery fix (pilot C9) | AWAITING_REVIEW | PR #580 sealed verified-diff delivery — awaiting Adam security review (trust-boundary, no merge without it) | fix/adam/sealed-diff-delivery | 994165dd |
@@ -26,18 +29,18 @@ Regenerated 2026-10-26 10:21 UTC. Comms channel: [issue #559](https://github.com
 
 | PR | Title | Branch | Head | Owned by | Merge position |
 | --- | --- | --- | --- | --- | --- |
-| #412 | feat(live-defense): Phase 6.5 RL-gated pilot infrastructure (RL BLOCKED) | feat/live-defense-phase6-5-rl-gated-pilot | ee6168fd | alan-live-defense | 1 |
+| #412 | ? | ? | ? | alan-live-defense | 1 |
 | #441 | ? | ? | ? | devin-pipeline-fixer | 19 |
-| #458 | feat(live-defense): Phase 7C authorized Scout/Diagnose execution | feat/alan/live-defense-phase7c-agent-execution | 122a309c | alan-live-defense | 0 |
-| #527 | ? | ? | ? | devin-pipeline-fixer | 15 |
+| #458 | ? | ? | ? | alan-live-defense | 0 |
+| #527 | ? | ? | ? | devin-pipeline-fixer | 14 |
 | #529 | ? | ? | ? | code-review-eval | 2 |
-| #531 | ? | ? | ? | devin-intel-audit | 13 |
+| #531 | ? | ? | ? | devin-intel-audit | 12 |
 | #532 | ? | ? | ? | devin-defense-lab | 6 |
-| #533 | ? | ? | ? | devin-pipeline-fixer | 16 |
-| #535 | ? | ? | ? | devin-pipeline-fixer | 17 |
-| #536 | ? | ? | ? | devin-frontend-ui | 11 |
+| #533 | ? | ? | ? | devin-pipeline-fixer | 15 |
+| #535 | ? | ? | ? | devin-pipeline-fixer | 16 |
+| #536 | ? | ? | ? | devin-pipeline-fixer | 17 |
 | #537 | ? | ? | ? | devin-pipeline-fixer | 18 |
-| #538 | ? | ? | ? | devin-frontend-ux | 12 |
+| #538 | ? | ? | ? | devin-frontend-ux | 11 |
 | #540 | ? | ? | ? | integration-lead | 30 |
 | #541 | ? | ? | ? | devin-defense-lab | 7 |
 | #544 | ? | ? | ? | devin-defense-lab | 8 |
@@ -54,16 +57,9 @@ Regenerated 2026-10-26 10:21 UTC. Comms channel: [issue #559](https://github.com
 | #571 | ? | ? | ? | integration-lead | 28 |
 | #572 | ? | ? | ? | devin-pipeline-fixer | 22 |
 | #573 | ? | ? | ? | integration-lead | 29 |
-| #580 | ? | ? | ? | devin-pipeline-fixer | 14 |
+| #580 | ? | ? | ? | devin-pipeline-fixer | 13 |
 | #614 | ? | ? | ? | codex-review-automation | 4 |
-| #649 | feat(frontend): one-question setup walkthrough with coach marks and first-run gate | feat/adam/setup-walkthrough | 4afaaf51 | devin-console-refinement | 5 |
-| #639 | docs(review): N9 closed and RC5 latest-main landing security suite passes | codex/rc5-independent-check | 7394af90 | unassigned | — |
-| #644 | fix(verify): runtime pytest hook/collection audit; fix static-scan false rejections | fix/adam/verify-runtime-hook-audit | 27403855 | unassigned | — |
-| #650 | docs(review): b6d5108b security passes; latest frontend merge gates remain | codex/check-b6d5108b | 68504a0e | unassigned | — |
-| #651 | docs(adam): scheduled cloud health run 29 handoff | feat/adam/cloud-20261026-0818 | a35ea408 | unassigned | — |
-| #652 | docs(review): exact integrated 36bd05ee receives technical GO | codex/check-36bd05ee | afe159d2 | unassigned | — |
-| #654 | fix(frontend): lava-lamp hero, scroll-drawn walkthrough path, light sections on pricing and home | fix/adam/landing-walkthrough-blur | ba7c08e4 | unassigned | — |
-| #655 | docs(status): Adam cloud health run 29 (no-op) | feat/adam/cloud-20261026-1019 | 2f92f1b9 | unassigned | — |
+| #649 | ? | ? | ? | devin-console-refinement | 5 |
 
 ## File / subsystem claims
 
@@ -73,7 +69,7 @@ Regenerated 2026-10-26 10:21 UTC. Comms channel: [issue #559](https://github.com
 - **codex-review-automation**: `scripts/ari_review/`, `.github/ari-review/`, `.github/workflows/ari-*.yml`
 - **devin-console-refinement**: `frontend/components/project.tsx`, `frontend/app/globals.css`, `frontend/app/(console)/projects/[projectId]/live-defense/page.tsx`, `frontend/tests/e2e/pages.spec.ts`, `CHANGELOG.md`, `docs/planning/SESSION_HANDOFF.md`
 - **devin-defense-lab**: `scripts/rehearsal/run_rehearsal.py driver (shared w/ pipeline-fixer)`, `docs/DEFENSE_LAB_*`, `backend/backend/live_defense/quarantine.py`, `live-deployment rehearsal verification`
-- **devin-frontend-ui**: `frontend/`, `docs/planning/SESSION_HANDOFF.md (append-only)`, `CHANGELOG.md (append-only)`
+- **devin-frontend-ui**: `frontend/components/agent-relay.tsx`, `frontend/lib/relay.ts`, `frontend/app/(console)/projects/[projectId]/assessments/[assessmentId]/page.tsx`, `frontend/app/globals.css`, `frontend/tests/unit/`, `docs/planning/SESSION_HANDOFF.md (append-only)`, `CHANGELOG.md (append-only)`
 - **devin-frontend-ux**: `frontend/components/assessment-approval-gate.tsx`, `frontend/components/commit-run-workspace.tsx`, `frontend/lib/demo/agent-map.ts`, `frontend/app/(console)/projects/[projectId]/approvals/page.tsx`, `frontend/tests/e2e/journey.spec.ts`, `frontend/tests/e2e/commit-workspace.spec.ts`, `docs/planning/FIRST_USER_FLOW_AND_USABILITY.md`
 - **devin-intel-audit**: `code-intelligence/code_intelligence/privacy.py`, `code-intelligence/code_intelligence/extract.py`, `code-intelligence/tests/`, `code-intelligence/evidence/`, `docs/research/intel-pipeline-audit/`, `coordination/messages/*intel*`
 - **devin-pipeline-fixer**: `delivery.py verified-bytes path`, `host.store_sealed`, `host_adapter binding doc`, `test_auto_delivery e2e`
@@ -87,9 +83,7 @@ Regenerated 2026-10-26 10:21 UTC. Comms channel: [issue #559](https://github.com
 - **devin-defense-lab** depends on integration-lead merge order
 - **devin-defense-lab** depends on owner check of prod Assessments view for pilot-rehearsal-target
 - **devin-defense-lab** depends on #571 gitleaks allowlist merge (unblocks #532)
-- **devin-frontend-ui** depends on integration-lead merge order (position 18)
-- **devin-frontend-ui** depends on owner review of #536 before merge
-- **devin-frontend-ui** depends on commander merge hold until prod 502 resolves
+- **devin-frontend-ui** depends on Owner review and separately briefed CI loop
 - **devin-frontend-ux** depends on PR #496 (base branch) merge — integration-lead wave 4
 - **devin-intel-audit** depends on integration-lead merge order (position 13)
 - **devin-intel-audit** depends on #535 RLS/purge as second layer (merged)
@@ -101,27 +95,34 @@ Regenerated 2026-10-26 10:21 UTC. Comms channel: [issue #559](https://github.com
 
 - **alan-live-defense**: #458 and #412 held per owner order
 - **alan-live-defense**: schema: main moving to 0.22.0 — #412 reserved 0.20.0 must rebase to 0.22.0+
+- **codex-36bd-check**: Customer deployment not approved
+- **codex-36bd-check**: Alternative sequential transfers still need documentary/test conflict resolution
+- **codex-b6d-check**: Current-main frontend/test/document conflicts after #638
+- **codex-b6d-check**: Full actual resulting-SHA release CI
 - **codex-rc4-n8-review**: N9/P2 non-secret source and stored-diff corruption
 - **codex-rc4-n8-review**: Final corrected-SHA independent and operational gates
 - **codex-rc4-review**: N8 literal-credential artifact disclosure
 - **codex-rc4-review**: Latest-main sequential composition conflicts
 - **codex-rc4-review**: Final landing-tree CI unverified
+- **codex-rc5-check**: Actual integration candidate must include #629/current main
+- **codex-rc5-check**: Reconcile handoff doc and obtain full CI on actual resulting SHA
 - **codex-review-automation**: Paid API and Devin activation intentionally OFF
 - **devin-defense-lab**: prod assessment not externally observable — no assessment id/state/findings to report
-- **devin-frontend-ui**: prod API 502 since ~01:27Z — merges paused per commander; Railway logs owner-only
-- **devin-frontend-ui**: #536 merge requires owner review
 - **integration-lead**: prod 502 since ~01:27Z on deploy 2c8ad50d — merges paused per pilot-completion-commander hold; Railway logs Adam-only
 
 ## Next actions
 
 - **alan-live-defense**: hold; rebase onto post-integration main when asked
 - **code-review-eval**: none — workstream complete; #530 carries inverted score_api conflict resolution (verified clean) and is ready for final security review + merge by integration lead. Re-verify only if scorer code changes again.
+- **codex-36bd-check**: Release owner may use exact integrated candidate through normal protected-branch process; no approval/merge/deploy executed
+- **codex-b6d-check**: Integration/frontend owners reconcile current main; security GO on requested candidate, merge HOLD; no deploy
 - **codex-rc4-n8-review**: Redaction owner fixes statement-boundary handling; cascade and re-review; no merge/deploy
 - **codex-rc4-review**: Owners fix N8 and reconcile latest-main composition; fresh independent review; no merge/deploy
+- **codex-rc5-check**: Integration owner refreshes candidate; selected landing security suite GO, actual merge HOLD; no deploy
 - **codex-review-automation**: Human review/manual installation; configure protected credentials and validate first pinned candidate cycle
 - **devin-console-refinement**: Await CI and review on #649; the main integration is pushed.
 - **devin-defense-lab**: owner checks prod project Assessments view; merge #571 then #532 goes green
-- **devin-frontend-ui**: monitor #570 CI + prod recovery; pick up unblocked pilot staging prep that does not need owner credentials
+- **devin-frontend-ui**: Owner to review the pushed branch and re-brief the CI loop
 - **devin-frontend-ux**: hold for integration-lead merge after #496; watch CI on current head
 - **devin-intel-audit**: await CI green on 46a734b3 then merge at board position 13
 - **devin-pipeline-fixer**: watch #580 CI; on merge+deploy ping commander for C9 re-run
