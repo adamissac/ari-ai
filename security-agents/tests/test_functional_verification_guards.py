@@ -138,3 +138,18 @@ def test_every_error_code_referenced_in_the_package_exists():
         }
     )
     assert not missing, missing
+
+
+def test_pytest_counts_come_from_the_summary_line_not_captured_logs():
+    """Firebase's stderr in a live mypypath run once parsed as 59956 errors."""
+    out = (
+        "F [100%]\n"
+        "--- Captured stderr setup ---\n"
+        "GrpcConnection RPC 'Write' stream 0x16c59956 error. Code: 7\n"
+        "FAILED .sandbox/test_generated_check.py::test_other_identity_is_denied - Asse...\n"
+        "1 failed in 1.07s\n"
+    )
+    parsed = parse_pytest(out)
+    assert (parsed["passed"], parsed["failed"], parsed["errors"]) == (0, 1, 0)
+    assert parse_pytest("==== 3 passed, 1 error, 2 warnings in 0.5s ====")["errors"] == 1
+    assert parse_pytest("FAILED a.test.js::x\n2 passed, 1 failed")["failed"] == 1  # nodetest shape

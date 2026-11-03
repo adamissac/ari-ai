@@ -62,13 +62,20 @@ def node_drivers() -> frozenset[str]:
 PYTEST_SUMMARY = re.compile(
     r"(?:(?P<passed>\d+) passed)?(?:, )?(?:(?P<failed>\d+) failed)?(?:, )?(?:(?P<errors>\d+) error)?"
 )
+_COUNT = r"\d+ (?:passed|failed|errors?|skipped|deselected|xfailed|xpassed|warnings?|rerun)"
+_SUMMARY_LINE = re.compile(rf"^=*\s*((?:{_COUNT})(?:, {_COUNT})*)(?: in [\d.]+s\b.*)?\s*=*\s*$", re.MULTILINE)
 NODEID = re.compile(r"^(?P<file>[\w./-]+\.py)(?:::(?P<rest>[\w:\[\]-]+))?$")
 
 
 def parse_pytest(stdout: str) -> dict[str, Any]:
     """Structured outcome from pytest output: counts plus failing test ids."""
     passed = failed = errors = skipped = 0
-    for m in re.finditer(r"(\d+) (passed|failed|error|errors|skipped)", stdout):
+    # Counts come from the final summary line only: captured target logs can hold text such as
+    # Firebase's "stream 0x16c59956 error", which must not read as 59956 errors.
+    summaries = _SUMMARY_LINE.findall(stdout)
+    for m in re.finditer(
+        r"(\d+) (passed|failed|error|errors|skipped)", summaries[-1] if summaries else stdout
+    ):
         n, what = int(m.group(1)), m.group(2)
         if what == "passed":
             passed = n
