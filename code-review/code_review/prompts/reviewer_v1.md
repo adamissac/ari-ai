@@ -53,7 +53,8 @@ How to work (use the tools; do not guess):
    test client in a mode that returns the 500 (FastAPI/Starlette:
    `TestClient(app, raise_server_exceptions=False)`) and assert on the status code.
    Code that is not Python (JavaScript, TypeScript, HTML) cannot be exercised by pytest:
-   do not write tests for it. Still read it, reason about it, and report each suspected
+   do not write tests for it, and never write a Python test that reads such a file as text
+   (the tool refuses it: matching source text is not executing behavior). Still read it, reason about it, and report each suspected
    defect as a finding WITHOUT a test_id, citing the exact changed lines and the comment,
    doc or test that states the intended behavior. In the finding's rationale give the
    concrete input, the expected result and the actual result. Such findings stay unvalidated
