@@ -69,6 +69,15 @@ adds an entry before ending.
 - Assumptions / open questions (RQ links): `PRODUCTION_HOSTS` default lists the known Railway/Vercel production hosts; confirm before the pilot.
 - Next steps: Staging deploy + remote gates by an operator with staging access (report lists the NO-GO items).
 - Warnings for the next session: Production defaults are unchanged (`recommendation_only` false outside staging).
+### 2026-11-03 — Devin (agent, Alan) — How it works scroll steps
+- Did: Fixed the landing "How it works" cards skipping on wheel scroll. After #761 its 200vh track left 25vh (about two 100px wheel notches) per card and the last card opened only when 25% of the pin remained, so a gesture went 3 → out of the chapter. Added `chapterStep()` (equal steps plus a half-step hold on the last) and a dedicated `.story-track-how` at 300vh. Scrolling stays browser-native.
+- State of the code: Branch `fix/alan/how-it-works-scroll-steps`; frontend only.
+- Commands run and results: new Playwright wheel test (`landing.spec.ts`, 100px notches at 1440x900) failed on main (a card held < 3 notches) and passes on the branch; `tests/unit/story-steps.test.ts` added; tsc and eslint clean.
+- Decisions made (ADR links): None. Lengthens only the How it works track (200vh → 300vh); the problem chapter and walkthrough keep #761's heights.
+- Assumptions / open questions (RQ links): The walkthrough (`story-track-4`, 200vh, four steps) has the same 25vh-per-step budget; left unchanged pending owner review.
+- Next steps: Owner review.
+- Warnings for the next session: `next dev` writes an untracked `frontend/AGENTS.md`; do not commit it.
+
 ### 2026-11-03 — Devin (agent, Alan) — pilot backend reliability
 - Did: Took the R1 restart-harness update (S2 now asserts #725's one automatic restart, then honest `FAILED/CONFLICT_STATE` on a second kill); pointed `uptime-watch` at `/readyz` so a database/queue/worker outage behind a live container alerts (W1).
 - State of the code: Branch `fix/alan/pilot-backend-reliability`; no backend contract or schema change.

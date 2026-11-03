@@ -74,6 +74,14 @@ export function useTrack<T extends HTMLElement>(): [React.RefObject<T | null>, n
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
+/** Extra track, in steps, the last step keeps after it opens, so it is read before the chapter scrolls away. */
+const LAST_STEP_HOLD = 0.5;
+
+/** Which of `count` equal scroll steps progress `p` (0..1) is in; the last step also gets the hold. */
+export function chapterStep(p: number, count: number): number {
+  return Math.min(count - 1, Math.floor(clamp01(p) * (count + LAST_STEP_HOLD)));
+}
+
 function LandingVignette({ kind }: { kind: 'agents' | 'shield' | 'clock' | 'patrol' }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 100 100" className={`landing-vignette landing-vignette-${kind}`}>
@@ -200,10 +208,10 @@ const MARK: Record<string, string> = { ok: '✓', q: '?', bad: '✕', run: '›'
 
 export function HowItWorks() {
   const [ref, p] = useTrack<HTMLDivElement>();
-  const active = Math.min(HOW.length - 1, Math.floor(p * HOW.length * 0.999));
+  const active = chapterStep(p, HOW.length);
 
   return (
-    <div ref={ref} className="story-track story-track-4 bleed bleed-ink text-white" id="how">
+    <div ref={ref} className="story-track story-track-how bleed bleed-ink text-white" id="how">
       <section aria-labelledby="how-title" className="story-stage story-rain relative flex flex-col justify-center py-16">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-end">
           <div>

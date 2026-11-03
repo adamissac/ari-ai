@@ -22,6 +22,7 @@ All notable changes are documented here. Format follows
   - A 5xx answer to the review POST is no longer assumed to mean "not created". Each review carries a hidden `<!-- ari-review:{effect_key} -->` marker; the worker reads the PR's reviews back. Found: the review counts as posted. Not found or lookup failed: the job ends `recovery_required` and is never replayed blindly (an immediate read-back can lag the write, so absence does not prove the review was not created). 4xx and rate limits still count as not applied.
   - The review reservation and POST run inside the per-repository write lease that disconnect takes, so disconnect waits for a review POST already on the wire (or returns 409) and a review never starts after disconnect has returned 200.
   - A dead, failed or cancelled legacy `prreview:{assessment}` job no longer prevents the per-PR review job; the legacy job's PR fallback uses the same ordered PR list as the per-PR enqueue.
+- Landing "How it works": each process card now gets about 45vh of native scroll (about four mouse-wheel notches) and the last card holds an extra half step, so a wheel gesture no longer skips from card 3 straight out of the chapter.
 - Restored native scrolling, shortened the landing story chapters, and made console chrome calmer and more opaque.
 - Failed assessments now record an error code and a readable reason.
 - Assessments interrupted by a lost worker can restart once, retaining usage and conservatively estimating unsettled sandbox time.
