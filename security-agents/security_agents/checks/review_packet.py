@@ -75,6 +75,10 @@ SAMPLES: dict[str, dict[str, Any]] = {
         "owner_identity": "alice",
         "other_identity": "bob",
     },
+    "input_validation.path_traversal@1": {
+        "route_id": "sample_statement",
+        "identity": "alice",
+    },
 }
 # payments-lite has no route that names a destination; the packet renders the destination
 # template against this illustrative one, added to the recipe for the packet only.
@@ -93,6 +97,13 @@ SAMPLE_ROUTES = [
         "path_template": "/payments/search",
         "resource": "payment",
         "query_param": "q",
+    },
+    {
+        "id": "sample_statement",
+        "method": "GET",
+        "path_template": "/statements",
+        "query_param": "file",
+        "sample_file": "2024-01.pdf",
     },
 ]
 CHECKLIST = (
