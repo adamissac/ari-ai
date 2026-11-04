@@ -576,3 +576,8 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - Synced origin/main (7234eb41). No new messages addressed to Adam. Since run 37 only shared/ changed in Adam's dependency surface (a 2-line addition in shared/shared/scope.py plus regenerated AuthorizedScope/ScopeCreate schemas and contracts.ts); rl-defense/, examples/payments-lite and Adam's CI/docs unchanged. `gh` not authenticated (GraphQL 403); git only.
 - Health: rl-defense contract/env subset (test_shared_contract, test_platform_mapping, test_standards, test_env) 37 passed against the new shared/; full suite NOT re-run (last full pass run 30's 569). payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 776 files, 0 problems. No live-LLM tests, no training/eval.
 - No-op. Open: none.
+
+### 2026-11-04 — run 38 addendum (not a no-op)
+- Found: with the unpinned CI install, pydantic resolves to 2.14.2 and `rl-defense/tests/test_duration_screen.py` fails (frozen evidence verifies only against pydantic==2.14.1). Fix: `.github/workflows/rl.yml` now also installs `results/duration-screen/frozen/requirements.txt` after the editable installs.
+- Verified locally with pydantic 2.14.1: rl-defense full suite 569 passed (16 min); test_duration_screen 17 passed. The CI workflow edit itself is untested until CI runs. Run 38's "full suite not re-run" line above is superseded by this.
+- Open: gh unavailable, merged via GitHub MCP if possible; otherwise branch feat/adam/cloud-20261104-run is pushed.
