@@ -11,7 +11,7 @@ import type {
 } from '@hackatl/frontend-transport';
 import { useState } from 'react';
 import { SourceTag } from '@/components/live-defense/common';
-import { Async, Button, Empty, ErrorState, Field, inputClass, Mono, Panel, Tag } from '@/components/ui';
+import { Async, Button, Details, Empty, ErrorState, Field, inputClass, Mono, Panel, Tag } from '@/components/ui';
 import { api } from '@/lib/api';
 import { EVIDENCE_STATES, FIRST_RESPONDER_COPY, type LiveDefenseMode } from '@/lib/live-defense';
 import type { Resource } from '@/lib/use-resource';
@@ -53,18 +53,18 @@ export function FirstResponder({
   if (!projectId) return <Empty>Choose a project to configure first-responder mode.</Empty>;
   return (
     <div className="flex min-w-0 flex-col gap-6" data-testid="live-defense-first-responder">
-      <p data-testid="live-defense-first-responder-copy" className="rounded-xl border border-line bg-panel-2 px-4 py-3 text-sm text-ink">
-        {FIRST_RESPONDER_COPY}
-      </p>
-      <p data-testid="live-defense-evidence-states" className="text-sm text-ink">
-        Case states: {EVIDENCE_STATES.join(' / ')}. Recommended is not Executed. An RL recommendation never becomes Executed defense.
-      </p>
       <ModePanel projectId={projectId} frMode={frMode} onChange={onChange} />
       <CapabilitiesPanel capabilities={capabilities} />
       <DecisionsPanel decisions={decisions} />
       <InvocationsPanel invocations={invocations} />
       <HandoffsPanel handoffs={handoffs} />
       <MappingPanel apps={apps} onChange={onChange} />
+      <Details summary="What first-responder mode can do">
+        <p data-testid="live-defense-first-responder-copy">{FIRST_RESPONDER_COPY}</p>
+        <p data-testid="live-defense-evidence-states">
+          Case states: {EVIDENCE_STATES.join(' / ')}. Recommended is not Executed. An RL recommendation never becomes Executed defense.
+        </p>
+      </Details>
     </div>
   );
 }
