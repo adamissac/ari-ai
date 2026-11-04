@@ -28,6 +28,7 @@ from code_review.intent import (
     CitationChecker,
     IntentAdjudication,
     adjudicate_claims,
+    inferred_fallback,
     scan_injection,
 )
 from code_review.models import (
@@ -119,6 +120,33 @@ _RESTRICT = re.compile(
     r"|\bdenied\b|\bforbid|\bunauthori[sz]|\brefuse|\breject",
     re.IGNORECASE,
 )
+
+
+def _in_hunks(evidence: list[EvidenceRef], diff: str) -> bool:
+    """Does any verified span overlap a changed hunk (head side) of its file?"""
+    hunks = hunk_citations(diff, [CitationIn(source_kind="code", path=e.path) for e in evidence])
+    return any(
+        e.span is not None
+        and h.start_line is not None
+        and e.path == h.path
+        and e.span.start_line <= (h.end_line or h.start_line)
+        and h.start_line <= e.span.end_line
+        for e in evidence
+        for h in hunks
+    )
+
+
+# A crash fails closed: it cannot widen access, so even under an access rule it is a
+# functional defect to repair (live gtB4 py-rename: AttributeError -> HTTP 500 for owners).
+_CRASH = re.compile(
+    r"\b(HTTP 500|500 error|returns? 500|crash(es|ed|ing)?|AttributeError|TypeError|KeyError"
+    r"|NameError|unhandled exception)\b|-> ?500\b",
+    re.IGNORECASE,
+)
+
+
+def is_crash(*texts: str) -> bool:
+    return any(_CRASH.search(t or "") for t in texts)
 
 
 def is_authorization_rule(*texts: str) -> bool:
@@ -445,13 +473,9 @@ class ReviewerAgentRunner:
                     rejected.append(f"span rejected: {note}")
             return out
 
+        proposed = {c.key: c for c in report.claims}
         for f in report.findings:
             decision = intent.by_key.get(f.claim_key)
-            if decision is None:
-                rejected.append(
-                    f"finding '{f.title[:80]}': unknown or rejected claim {f.claim_key}"
-                )
-                continue
             evidence = spans(f.suspected_spans)
             if not evidence:
                 # A removed guard is cited where it used to be, so its quote is not at head;
@@ -462,6 +486,19 @@ class ReviewerAgentRunner:
             if not evidence:
                 rejected.append(f"finding '{f.title[:80]}': no verifiable source span")
                 continue
+            if decision is None and not _in_hunks(evidence, tb.change_diff):
+                # an unverifiable rule about code the change did not touch: likely invented
+                rejected.append(f"finding '{f.title[:80]}': rejected claim {f.claim_key}")
+                continue
+            if decision is None:
+                # the model's claim (citations unverifiable) or, when it submitted none
+                # (live gtB5 js-purge-order), the finding's own statement
+                known = proposed.get(f.claim_key)
+                statement = known.statement if known is not None else f.title
+                decision = inferred_fallback(f.claim_key, statement, evidence)
+                intent.by_key[f.claim_key] = decision
+                intent.evidence.claims.append(decision.claim)
+                rejected.append(f"claim {f.claim_key}: re-based on finding spans as inferred")
             ex: TestExecution | None = tb.executions.get(f.test_id or "")
             reason: str
             if ex is None:
@@ -534,7 +571,9 @@ class ReviewerAgentRunner:
                     if ex.outcome_on_base == "passed" and ex.outcome_on_head == "failed":
                         reason += "; passes on base, so the change introduced it"
             evidence.extend(decision.claim.citations[:3])
-            if is_authorization_rule(decision.claim.statement, f.title):
+            if is_authorization_rule(decision.claim.statement, f.title) and not is_crash(
+                f.title, f.rationale
+            ):
                 authz_std, cwe_reason = classify_weakness_safely(
                     f.weakness_class, evidence, 0.7 if status is FindingStatus.validated else 0.4
                 )

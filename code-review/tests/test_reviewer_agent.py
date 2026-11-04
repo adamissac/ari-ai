@@ -1003,3 +1003,67 @@ def test_finding_citing_text_absent_at_head_is_anchored_to_its_hunk(tmp_path: Pa
     bug_line = line_of(INVOICE_HEAD, "return discounted.quantize(CENT)")
     assert span.span is not None
     assert span.span.start_line <= bug_line <= span.span.end_line
+
+
+def test_finding_whose_claim_citations_all_fail_stays_a_hypothesis(tmp_path: Path) -> None:
+    """Live gtB3 js-batch-obo/js-foreach-async/py-test-weakened: every claim citation failed
+    to verify, the claim was dropped, and correct findings went with it."""
+    script = _discount_script()
+    submit = script[-1]
+
+    def bad_claim_citations(req):  # type: ignore[no-untyped-def]
+        out = submit(req)
+        for block in out["content"]:
+            if block.get("type") == "tool_use":
+                for cit in block["input"]["claims"][0]["citations"]:
+                    cit["quote"] = "a sentence that appears nowhere in the repository"
+        return out
+
+    script[-1] = bad_claim_citations
+    sc = discount_rounding(tmp_path)
+    host = InMemoryHost(fake(script))
+    outcome = ReviewerAgentRunner(host, RepoSource(sc.repo)).review(make_request(host, sc))
+    (f,) = outcome.result.findings
+    # a failing test against a rule only the code supports: never validated, never dropped
+    assert f.status is FindingStatus.hypothesis
+    assert any("re-based on finding spans" in r for r in outcome.rejected)
+    assert outcome.result.status is ReviewStatus.needs_clarification
+
+
+@pytest.mark.parametrize(
+    "text,crash",
+    [
+        ("Customer.id rename breaks ownership checks in app.py (AttributeError -> HTTP 500)", True),
+        ("Valid transfers crash with 500 after amount typed as float", True),
+        ("GET /payments/{payment_id} returns other customers' payments", False),
+        ("no require_owner call unlike sibling routes", False),
+    ],
+)
+def test_crash_findings_are_not_access_widening(text: str, crash: bool) -> None:
+    from code_review.agent import is_crash
+
+    assert is_crash(text) is crash
+
+
+def test_finding_for_a_claim_never_submitted_stays_a_hypothesis(tmp_path: Path) -> None:
+    """Live gtB5 js-purge-order: the finding named claim c1 but the report had no claims, so
+    a correct finding on the changed lines was dropped as an unknown claim."""
+    script = _discount_script()
+    submit = script[-1]
+
+    def no_claims(req):  # type: ignore[no-untyped-def]
+        out = submit(req)
+        for block in out["content"]:
+            if block.get("type") == "tool_use":
+                block["input"]["claims"] = []
+        return out
+
+    script[-1] = no_claims
+    sc = discount_rounding(tmp_path)
+    host = InMemoryHost(fake(script))
+    outcome = ReviewerAgentRunner(host, RepoSource(sc.repo)).review(make_request(host, sc))
+    (f,) = outcome.result.findings
+    assert f.status is FindingStatus.hypothesis
+    (claim,) = outcome.result.intent_evidence.claims
+    assert claim.status is IntentClaimStatus.inferred
+    assert claim.statement == "apply_discount rounds half-even instead of half-up"

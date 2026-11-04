@@ -62,6 +62,7 @@ def _norm(s: str) -> str:
 QUOTE_SLACK = 3
 _LINE_NO = re.compile(r"^\s*\d+(?:\s{2,}|\s*[:|]\s*)")
 _ELLIPSIS = re.compile(r"\.\.\.|\u2026")
+_COMMENT_MARK = re.compile(r"^\s*(?:#+|//+|/\*+|\*+/?)\s?|\s*\*+/\s*$")
 
 
 def clean_quote(quote: str) -> str:
@@ -78,7 +79,9 @@ def locate_quote(quote: str, lines: list[str], start: int, end: int) -> tuple[in
     # Each quoted line (and each piece around "...") must appear, in order, near the citation;
     # models often skip lines without marking the elision.
     fragments = [
-        _norm(f) for line in clean_quote(quote).splitlines() for f in _ELLIPSIS.split(line)
+        _norm(_COMMENT_MARK.sub("", f))
+        for line in clean_quote(quote).splitlines()
+        for f in _ELLIPSIS.split(line)
     ]
     fragments = [f for f in fragments if f]
     if not fragments:
@@ -87,7 +90,8 @@ def locate_quote(quote: str, lines: list[str], start: int, end: int) -> tuple[in
     hi = min(len(lines), end + QUOTE_SLACK)
     text, owner = "", []  # normalized window text and the source line of every character
     for n in range(lo, hi + 1):
-        piece = _norm(lines[n - 1])
+        # comment markers ("//", " * ") wrap a quoted sentence across lines
+        piece = _norm(_COMMENT_MARK.sub("", lines[n - 1]))
         if not piece:
             continue
         if text:
@@ -126,6 +130,7 @@ class IntentAdjudication:
 
 
 _TEST_NAME = re.compile(r"\btest_\w+")
+_JS_TEST = re.compile(r"\s*(it|test)(\.\w+)?\(\s*['\"`](.+?)['\"`]")
 
 
 class CitationChecker:
@@ -238,6 +243,11 @@ class CitationChecker:
             for n, line in enumerate(lines, 1):
                 if re.match(rf"\s*(async\s+)?def\s+{name}\s*\(", line):
                     return n, line.strip()
+        said = _norm(text)
+        for n, line in enumerate(lines, 1):  # JS: it('title', ...) / test("title", ...)
+            m = _JS_TEST.match(line)
+            if m and len(m.group(3)) >= 12 and _norm(m.group(3)) in said:
+                return n, line.strip()
         return None
 
     @staticmethod
@@ -257,6 +267,24 @@ class CitationChecker:
             generated = path.startswith(GENERATED_TEST_DIR) or f"/{GENERATED_TEST_DIR}/" in path
             return kind if is_test_path(path) and not generated else SourceKind.code
         return SourceKind.code
+
+
+def inferred_fallback(key: str, statement: str, evidence: list[EvidenceRef]) -> ClaimDecision:
+    """A claim whose citations all failed to verify, re-based on the finding's own verified
+    spans. Implementation code only ever infers a rule, so the finding can at most be a
+    hypothesis; dropping it instead lost correct findings (live gtB3 js-batch-obo)."""
+    ic = IntentClaim(
+        statement=statement,
+        status=IntentClaimStatus.inferred,
+        citations=evidence[:3],
+        confidence=_CONFIDENCE[IntentClaimStatus.inferred],
+    )
+    return ClaimDecision(
+        claim=ic,
+        key=key,
+        supported_by={SourceKind.code},
+        notes=["no claim citation verified; re-based on the finding's spans"],
+    )
 
 
 def adjudicate_claims(
