@@ -69,7 +69,7 @@ def run_targets(
             "JavaScript tests need a vitest/jest project with a package-lock.json and a sandbox "
             "with Node; report the finding as a hypothesis instead"
         )
-    run: Any = sandbox.run_nodetest
+    run: Any = getattr(sandbox, "run_nodetest")  # noqa: B009 - optional on the port
     result: ExecResult = run(project_dir, runner, validate_targets(js), timeout_s=timeout_s)
     return result
 

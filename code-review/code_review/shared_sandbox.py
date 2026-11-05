@@ -37,7 +37,7 @@ REPORT_NAME = "cr_report.json"
 NODE_REPORT = "node_tests.json"
 # Node without a served app or emulators: the platform's Node plus the target's
 # lockfile-installed node_modules (ADR-0023), deny-all network.
-_BARE_NODE = {
+_BARE_NODE: dict[str, object] = {
     "project_id": "demo-ari-sandbox",
     "emulators": [],
     "identities": [],
