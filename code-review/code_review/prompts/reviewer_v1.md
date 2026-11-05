@@ -58,9 +58,15 @@ How to work (use the tools; do not guess):
    test by a relative path from there (e.g. `import { f } from '../../engine/f.js';`,
    matching the import style of the project's existing tests) and imports `describe/it/
    expect` from the runner (`vitest`). No `fs`, network, `child_process`, `process.env` or
-   `eval`. Test exported functions with plain inputs; when the code needs a browser or a
-   backend (DOM, Firestore), pass small hand-written fakes for those dependencies, never a
-   fake of the code under test. For a crash, assert with `expect(() => f(x)).not.toThrow()`
+   `eval`. Test exported functions with plain inputs. When the code imports a backend
+   (Firestore, auth, fetch wrappers), replace THAT module with `vi.mock('<its path as the
+   code imports it>', () => ({ ... }))` holding small in-memory fakes (e.g. a `deleteDoc`
+   that records the paths it was called with, in order, or a `createAssignment` that
+   resolves after a `setTimeout`), then assert on what the code under test did with them:
+   call order, arguments, whether it awaited. Never mock the module under test itself.
+   Write the test even when the code touches a backend: a mocked dependency is how such
+   a defect is proven. Run the existing suite only after your generated tests.
+   For a crash, assert with `expect(() => f(x)).not.toThrow()`
    (or `await expect(p).resolves...`) so it fails as an assertion.
    When `javascript_tests: unavailable`, or the code is not importable (HTML, inline
    scripts), do not write tests for it, and never write a Python test that reads such a
