@@ -796,6 +796,7 @@ class ReviewerAgentRunner:
                 sandbox=self.sandbox,
                 budget=self.budget,
                 pristine=pristine,
+                related_paths=_finding_paths(finding),
             )
             for t in tests:
                 tb.written[t.test_id] = WrittenTest(
@@ -981,7 +982,12 @@ class ReviewerAgentRunner:
                     if classify(r) != "passed":
                         reasons.append(f"generated test {t.path} is {classify(r)} on the candidate")
                 existing = ReviewerToolbox(
-                    host=self.host, head=fresh, sandbox=self.sandbox, budget=self.budget
+                    host=self.host,
+                    head=fresh,
+                    sandbox=self.sandbox,
+                    budget=self.budget,
+                    change_diff=diff,
+                    related_paths=_finding_paths(finding),
                 )._existing_targets(fresh)
                 if existing:
                     before = run_targets(
@@ -1051,3 +1057,7 @@ def report_json(outcome: ReviewOutcome) -> dict[str, Any]:
         "provider_mode": outcome.provider_mode,
         "model": outcome.model,
     }
+
+
+def _finding_paths(finding: Finding) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(e.path for e in finding.evidence if e.path))

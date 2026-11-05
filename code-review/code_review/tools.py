@@ -15,6 +15,7 @@ import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from pathlib import PurePosixPath
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -65,6 +66,8 @@ _FORBIDDEN_IMPORTS = {
 }
 _FORBIDDEN_CALLS = {"system", "popen", "exec", "eval", "fork", "unlink", "rmtree", "__import__"}
 
+_JS_SOURCE = (".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx")
+MAX_RELATED_JS_TESTS = 12
 _NON_PYTHON_SOURCE = (".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx", ".vue", ".svelte", ".html")
 _BUDGET_LOCK = threading.Lock()
 SEARCH_MAX_FILE_BYTES = 512_000
@@ -184,6 +187,7 @@ class ReviewerToolbox:
     sandbox: SandboxPort
     budget: ReviewBudget
     change_diff: str = ""
+    related_paths: tuple[str, ...] = ()  # repair: the finding's files (JS suite selection)
     base: Workspace | None = None
     intelligence: IntelligencePort | None = None
     snapshot_ref: SnapshotRef | None = None
@@ -400,14 +404,31 @@ class ReviewerToolbox:
             and (f.rsplit("/", 1)[-1].startswith("test_") or f.endswith("_test.py"))
         ]
         if not tests and node_runner(ws.project_dir) and supports_node(self.sandbox):
-            tests = [
-                ws.project_rel(f)
-                for f in ws.files()
-                if f.endswith(JS_TEST_SUFFIXES)
-                and "node_modules/" not in f
-                and not ws.project_rel(f).startswith(gen)
-            ]
+            tests = self._related_js_tests(ws, gen)
         return sorted(tests)
+
+    def _related_js_tests(self, ws: Workspace, gen: str) -> list[str]:
+        """The project's JS tests that mention a changed file. The whole suite under jsdom
+        was killed (exit 137) after 131 s in the microVM (live gtB6), so never all of it."""
+        changed = {*diff_target_paths(self.change_diff), *self.related_paths}
+        stems = {
+            PurePosixPath(p).name.split(".", 1)[0]
+            for p in changed
+            if p.endswith(_JS_SOURCE) and not p.endswith(JS_TEST_SUFFIXES)
+        }
+        stems.discard("index")
+        out = []
+        for f in ws.files():
+            rel = ws.project_rel(f)
+            if not f.endswith(JS_TEST_SUFFIXES) or "node_modules/" in f or rel.startswith(gen):
+                continue
+            try:
+                text = ws.read(f)
+            except WorkspaceError:
+                continue
+            if any(stem in text for stem in stems):
+                out.append(rel)
+        return out[:MAX_RELATED_JS_TESTS]
 
     def _store_run(self, label: str, ws: Workspace, results: list[ExecResult]) -> ArtifactRef:
         return self.host.store_json(

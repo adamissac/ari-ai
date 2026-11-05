@@ -174,6 +174,7 @@ def test_js_test_runs_through_nodetest_and_validates(tmp_path: Path) -> None:
         )
         sbx = FakeNodeSandbox([failing])
         tb = _toolbox(ws, sbx)
+        tb.change_diff = "--- a/src/key.js\n+++ b/src/key.js\n@@ -1 +1 @@\n-x\n+y\n"
         out = tb.write_test(
             WriteTestIn(
                 name="key", content=GOOD_TEST, claim_key="c1", rationale="r", language="javascript"
@@ -188,6 +189,9 @@ def test_js_test_runs_through_nodetest_and_validates(tmp_path: Path) -> None:
             RunTestsIn(target="existing")
         )  # the project's own JS suite, generated tests excluded
         assert sbx.calls[-1] == ("vitest", ["tests/key.test.js"])
+        # only tests that mention a changed file run (the whole jsdom suite was OOM-killed live)
+        tb.change_diff = "--- a/src/other.js\n+++ b/src/other.js\n"
+        assert tb._existing_targets(ws) == []
     finally:
         ws.close()
 
