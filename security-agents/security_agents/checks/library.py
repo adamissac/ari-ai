@@ -1000,6 +1000,81 @@ SQL_INJECTION = CheckTemplateMeta(
 )
 
 
+_TRAVERSAL_PAYLOADS = (
+    "../../../../../../../../etc/passwd",
+    "....//....//....//....//etc/passwd",
+    "/etc/passwd",
+)
+_TRAVERSAL_MARKER = "root:"
+
+
+def _render_path_traversal(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    """A route that serves a file named by a query parameter must confine reads to its
+    base directory: a traversal payload cannot return a file outside it (CWE-22).
+    /etc/passwd (universal, no secrets) is the canary; its ``root:`` line must never
+    appear in a response."""
+    route = _route(recipe, str(params["route_id"]))
+    if str(route.get("method", "GET")).upper() != "GET":
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "path_traversal template covers GET file routes only")
+    path = str(route["path_template"])
+    if _PATH_PARAM.findall(path):
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "file route must not take a path parameter")
+    query_param = str(route.get("query_param") or "file")
+    sample_file = route.get("sample_file")
+    if not sample_file:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "file route has no sample_file (an in-scope filename)")
+    identity = str(params["identity"])
+    return (
+        _inprocess_preamble(str(params["_ref"]), recipe)
+        + f"""
+import pytest
+
+PATH = {path!r}
+QUERY_PARAM = {query_param!r}
+HEADERS = {{"Authorization": {_identity(recipe, identity)!r}}}
+SAMPLE_FILE = {str(sample_file)!r}
+MARKER = {_TRAVERSAL_MARKER!r}
+PAYLOADS = {list(_TRAVERSAL_PAYLOADS)!r}
+
+
+def test_traversal_cannot_escape_the_base_directory():
+    client = _client()
+    # Baseline: a legitimate in-scope file must be served, and must not itself look like
+    # /etc/passwd; otherwise the route is broken or misconfigured and proves nothing.
+    benign = client.get(PATH, params={{QUERY_PARAM: SAMPLE_FILE}}, headers=HEADERS)
+    if benign.status_code != 200:
+        pytest.skip(f"route did not serve the in-scope sample file: {{benign.status_code}}")
+    if MARKER in benign.text:
+        pytest.skip("in-scope file already contains the canary marker; not a traversal signal")
+    for payload in PAYLOADS:
+        resp = client.get(PATH, params={{QUERY_PARAM: payload}}, headers=HEADERS)
+        RESULT.setdefault("statuses", []).append(resp.status_code)
+        assert MARKER not in resp.text, (
+            f"traversal payload {{payload!r}} returned a file outside the base directory"
+        )
+"""
+    )
+
+
+PATH_TRAVERSAL = CheckTemplateMeta(
+    template_id="input_validation.path_traversal",
+    version="1",
+    category="input_validation.path",
+    description=(
+        "Path-traversal check (CWE-22): a GET route that serves a file named by a query "
+        "parameter must confine reads to its base directory. Traversal payloads "
+        "(../../etc/passwd, a ....// bypass, an absolute path) must not return a file outside "
+        "it; the canary is /etc/passwd's `root:` line. Skips when the in-scope sample file is "
+        "not served. Needs a GET route with a sample_file and an optional query_param "
+        "(default file). Parameters: route_id, identity."
+    ),
+    side_effect_class="read_only",
+    expectation_kinds=("input_validation", "path_traversal"),
+    parameters=("route_id", "identity"),
+    reviewed_by="security-owner:pending-human-signoff",
+)
+
+
 _RENDERERS = {
     OWNERSHIP.ref: _render_ownership,
     BOUNDS.ref: _render_bounds,
@@ -1011,6 +1086,7 @@ _RENDERERS = {
     CONCURRENT_BOUND.ref: _render_concurrent_bound,
     DESTINATION.ref: _render_destination,
     SQL_INJECTION.ref: _render_sql_injection,
+    PATH_TRAVERSAL.ref: _render_path_traversal,
 }
 
 
@@ -1123,6 +1199,16 @@ class CheckLibrary:
                 name == "route_id" and meta.template_id == OWNERSHIP.template_id
             ):
                 values[name] = [describe(r) for r in routes if single_param_get(r)]
+            elif name == "route_id" and meta.template_id in (
+                SQL_INJECTION.template_id,
+                PATH_TRAVERSAL.template_id,
+            ):
+                values[name] = [
+                    describe(r)
+                    for r in routes
+                    if str(r.get("method", "GET")).upper() == "GET"
+                    and not _PATH_PARAM.findall(str(r.get("path_template", "")))
+                ]
             elif name == "route_id":
                 values[name] = [
                     describe(r)
@@ -1162,6 +1248,7 @@ def default_library() -> CheckLibrary:
     lib.register(CONCURRENT_BOUND)
     lib.register(DESTINATION)
     lib.register(SQL_INJECTION)
+    lib.register(PATH_TRAVERSAL)
     return lib
 
 
