@@ -39,8 +39,9 @@ from code_review.models import (
     ReviewerReport,
     ReviewOutcome,
 )
+from code_review.node_tests import node_runner
 from code_review.ports import ExecResult, IntelligencePort, RepoSource, ReviewHost, SandboxPort
-from code_review.sandbox import LocalProcessSandbox, classify
+from code_review.sandbox import LocalProcessSandbox, classify, run_targets, supports_node
 from code_review.secrets import scan_added_secrets
 from code_review.standards import classify_weakness_safely
 from code_review.tools import (
@@ -281,6 +282,9 @@ class ReviewerAgentRunner:
                     focus_statements,
                     messages=messages,
                     context=context,
+                    js_runner=node_runner(head.project_dir)
+                    if supports_node(self.sandbox)
+                    else None,
                 ),
                 tools=tb.review_tools(),
                 output_model=ReviewerReport,
@@ -399,6 +403,7 @@ class ReviewerAgentRunner:
         *,
         messages: str = "",
         context: str = "",
+        js_runner: str | None = None,
     ) -> str:
         ci = request.change_intent
         cap = 15_000
@@ -412,6 +417,7 @@ class ReviewerAgentRunner:
                 f"changed_paths: {json.dumps(changed)}",
                 f"focus_paths: {json.dumps(list(request.focus_paths))}",
                 f"code_intelligence: {intel_note}",
+                f"javascript_tests: {f'available ({js_runner})' if js_runner else 'unavailable'}",
                 "</review_request>",
                 "<untrusted_change_intent>",
                 f"source: {ci.source.value}",
@@ -965,8 +971,11 @@ class ReviewerAgentRunner:
                         fresh.write(init, "")
                 timeout = self.budget.test_timeout_s
                 for t in tests:
-                    r = self.sandbox.run_pytest(
-                        fresh.project_dir, [fresh.project_rel(t.path)], timeout_s=timeout
+                    r = run_targets(
+                        self.sandbox,
+                        fresh.project_dir,
+                        [fresh.project_rel(t.path)],
+                        timeout_s=timeout,
                     )
                     runs.append((f"generated:{t.test_id}", r))
                     if classify(r) != "passed":
@@ -975,10 +984,12 @@ class ReviewerAgentRunner:
                     host=self.host, head=fresh, sandbox=self.sandbox, budget=self.budget
                 )._existing_targets(fresh)
                 if existing:
-                    before = self.sandbox.run_pytest(
-                        pristine.project_dir, existing, timeout_s=timeout
+                    before = run_targets(
+                        self.sandbox, pristine.project_dir, existing, timeout_s=timeout
                     )
-                    after = self.sandbox.run_pytest(fresh.project_dir, existing, timeout_s=timeout)
+                    after = run_targets(
+                        self.sandbox, fresh.project_dir, existing, timeout_s=timeout
+                    )
                     runs += [("existing@pristine", before), ("existing@candidate", after)]
                     failing_before = {
                         c.nodeid for c in before.cases if c.outcome in ("failed", "error")

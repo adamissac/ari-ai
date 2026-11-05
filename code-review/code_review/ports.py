@@ -120,6 +120,9 @@ class SandboxPort(Protocol):
         self, project_dir: Path, targets: Sequence[str], *, timeout_s: float
     ) -> ExecResult: ...
 
+    # Optional (``supports_node``): the project's own vitest/jest on JS test files.
+    # def run_nodetest(self, project_dir, runner, targets, *, timeout_s) -> ExecResult
+
 
 @dataclass(frozen=True)
 class RepoSource:
