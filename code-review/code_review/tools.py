@@ -21,8 +21,14 @@ from pydantic import BaseModel, Field
 
 from backend.llm import Tool
 from backend.redaction import _PATTERNS as _SECRET_PATTERNS
+from code_review.node_tests import (
+    JS_TEST_SUFFIXES,
+    check_js_test_source,
+    imports_project,
+    node_runner,
+)
 from code_review.ports import ExecResult, IntelligencePort, ReviewHost, SandboxPort
-from code_review.sandbox import SandboxPolicyError, classify
+from code_review.sandbox import SandboxPolicyError, classify, run_targets, supports_node
 from code_review.workspace import (
     GENERATED_TEST_DIR,
     Workspace,
@@ -130,8 +136,18 @@ class ContextPackIn(BaseModel):
 
 
 class WriteTestIn(BaseModel):
-    name: str = Field(pattern=r"^[a-z][a-z0-9_]{2,60}$", description="becomes test_cr_<name>.py")
-    content: str = Field(min_length=20, max_length=20_000, description="complete pytest module")
+    name: str = Field(
+        pattern=r"^[a-z][a-z0-9_]{2,60}$",
+        description="becomes tests/generated/test_cr_<name>.py (python) or cr_<name>.test.js (javascript)",
+    )
+    content: str = Field(
+        min_length=20,
+        max_length=20_000,
+        description="complete pytest module, or a vitest/jest test file for JavaScript code",
+    )
+    language: Literal["python", "javascript"] = Field(
+        default="python", description="'javascript' runs the project's own vitest/jest"
+    )
     claim_key: str = Field(max_length=32, description="the intent claim this test encodes")
     rationale: str = Field(max_length=500)
 
@@ -269,7 +285,17 @@ class ReviewerToolbox:
     def write_test(self, a: WriteTestIn) -> str:
         if len(self.written) >= self.budget.max_tests_written:
             raise ToolDenied(f"test budget exhausted ({self.budget.max_tests_written} tests)")
-        problem = check_test_source(a.content)
+        if a.language == "javascript":
+            if node_runner(self.head.project_dir) is None or not supports_node(self.sandbox):
+                raise ToolDenied(
+                    "JavaScript tests are unavailable here (no vitest/jest with a package-lock.json, "
+                    "or no Node sandbox); report the finding as a hypothesis"
+                )
+            problem = check_js_test_source(a.content)
+            rel = self.head.repo_rel(f"{GENERATED_TEST_DIR}/cr_{a.name}.test.js")
+        else:
+            problem = check_test_source(a.content)
+            rel = self.head.repo_rel(f"{GENERATED_TEST_DIR}/test_cr_{a.name}.py")
         if problem:
             raise ToolDenied(problem)
         unknown = [v for v in credential_values(a.content) if not self._in_repo(v)]
@@ -278,26 +304,38 @@ class ReviewerToolbox:
                 "generated tests may only use credential-shaped values that already exist in the "
                 "repository's own fixtures"
             )
-        if not self._imports_project(a.content):
+        project_rel = self.head.project_rel(rel)
+        if not (
+            imports_project(
+                a.content, project_rel, lambda p: self.head.exists(self.head.repo_rel(p))
+            )
+            if a.language == "javascript"
+            else self._imports_project(a.content)
+        ):
             # A copy of the logic transcribed into the test proves nothing about the code
             # (live gtB3 js-lessonkey "validated" a Python re-implementation of a JS function).
             raise ToolDenied(
                 "generated tests must import the code under test from this repository; "
                 "no module of the project is imported"
             )
-        rel = self.head.repo_rel(f"{GENERATED_TEST_DIR}/test_cr_{a.name}.py")
         if self.head.exists(rel):
             raise ToolDenied(f"{rel} already exists; choose another name")
         self.head.write(rel, a.content)
         init = self.head.repo_rel(f"{GENERATED_TEST_DIR}/__init__.py")
-        if self.head.exists(self.head.repo_rel("tests/__init__.py")) and not self.head.exists(init):
+        python = a.language == "python"
+        if (
+            python
+            and self.head.exists(self.head.repo_rel("tests/__init__.py"))
+            and not self.head.exists(init)
+        ):
             self.head.write(init, "")
         if self.base is not None:
             self.base.write(rel, a.content)
-            if self.head.exists(init) and not self.base.exists(init):
+            if python and self.head.exists(init) and not self.base.exists(init):
                 self.base.write(init, "")
         test_id = new_id(IdPrefix.tst)
-        art = self.host.store_text(a.content, ArtifactKind.other, media_type="text/x-python")
+        media = "text/x-python" if python else "text/javascript"
+        art = self.host.store_text(a.content, ArtifactKind.other, media_type=media)
         self.written[test_id] = WrittenTest(test_id, rel, a.content, a.claim_key, a.rationale, art)
         return f"wrote {rel} as test_id={test_id}. Run it with run_tests(target='generated', test_id='{test_id}')."
 
@@ -345,8 +383,8 @@ class ReviewerToolbox:
         if not speculative:
             self._charge_test_run()
         try:
-            return self.sandbox.run_pytest(
-                ws.project_dir, targets, timeout_s=self.budget.test_timeout_s
+            return run_targets(
+                self.sandbox, ws.project_dir, targets, timeout_s=self.budget.test_timeout_s
             )
         except SandboxPolicyError as e:
             raise ToolDenied(str(e)) from e
@@ -361,6 +399,14 @@ class ReviewerToolbox:
             and not ws.project_rel(f).startswith(gen)
             and (f.rsplit("/", 1)[-1].startswith("test_") or f.endswith("_test.py"))
         ]
+        if not tests and node_runner(ws.project_dir) and supports_node(self.sandbox):
+            tests = [
+                ws.project_rel(f)
+                for f in ws.files()
+                if f.endswith(JS_TEST_SUFFIXES)
+                and "node_modules/" not in f
+                and not ws.project_rel(f).startswith(gen)
+            ]
         return sorted(tests)
 
     def _store_run(self, label: str, ws: Workspace, results: list[ExecResult]) -> ArtifactRef:
