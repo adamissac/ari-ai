@@ -8,8 +8,8 @@ from cr_fakes import InMemoryHost, fake, make_request
 from cr_scenarios import Scenario, _commit, _init, _write, line_of
 
 from code_review.context import change_context, hunk_citations
-from code_review.intent import CitationChecker
-from code_review.models import CitationIn, SourceKind
+from code_review.intent import CitationChecker, adjudicate_claims
+from code_review.models import CitationIn, ClaimIn, SourceKind
 from code_review.ports import RepoSource
 from code_review.workspace import (
     Workspace,
@@ -18,6 +18,7 @@ from code_review.workspace import (
     commit_messages,
     git_diff,
 )
+from shared.review import IntentClaimStatus
 
 SUMMARY_BASE = """/* Summary of unit scores.
    Unit numbers are 1..10 inclusive. */
@@ -96,6 +97,47 @@ def test_js_comment_blocks_count_as_docstrings_and_code_lines_do_not(tmp_path: P
 
         assert kind(2, "Unit numbers are 1..10 inclusive.") is SourceKind.docstring
         assert kind(3, "export function summarize(scores) {") is SourceKind.code
+    finally:
+        ws.close()
+
+
+def test_a_js_comment_cited_as_code_confirms_an_inferred_claim(tmp_path: Path) -> None:
+    """Live gtB7 js-batch-obo: the model filed the paging comment as `code` and so rated
+    the claim inferred. The comment is a docstring; plain code citations stay inferred."""
+    sc = _js_repo(tmp_path)
+    ws = Workspace.export(RepoSource(sc.repo), sc.head_sha)
+    try:
+        intent = make_request(InMemoryHost(fake([])), sc).change_intent
+
+        def claim(key: str, line: int, quote: str) -> ClaimIn:
+            cit = CitationIn(
+                source_kind="code",
+                path="src/summary.js",
+                start_line=line,
+                end_line=line,
+                quote=quote,
+            )
+            return ClaimIn(
+                key=key,
+                statement="unit numbers are 1..10",
+                proposed_status="inferred",
+                citations=[cit],
+            )
+
+        adj = adjudicate_claims(
+            [
+                claim("c1", 2, "Unit numbers are 1..10 inclusive."),
+                claim("c2", 3, "export function summarize(scores) {"),
+            ],
+            ws,
+            intent,
+            {},
+            [],
+            [],
+        )
+        assert adj.by_key["c1"].claim.status is IntentClaimStatus.confirmed
+        assert SourceKind.docstring in adj.by_key["c1"].supported_by
+        assert adj.by_key["c2"].claim.status is IntentClaimStatus.inferred
     finally:
         ws.close()
 
