@@ -74,7 +74,10 @@ def node_runner(project_dir: Path) -> str | None:
 
 def runner_args(runner: str, targets: Sequence[str]) -> list[str]:
     files = [t.split("::", 1)[0] for t in targets]
-    return [runner, "run", *files] if runner == "vitest" else [runner, "--ci", *files]
+    # two workers: a jsdom suite on more was OOM-killed (exit 137) in the 2 GB microVM
+    if runner == "vitest":
+        return [runner, "run", "--maxWorkers=2", "--minWorkers=1", *files]
+    return [runner, "--ci", "--maxWorkers=2", *files]
 
 
 def check_js_test_source(content: str) -> str | None:
