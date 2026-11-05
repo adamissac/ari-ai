@@ -133,6 +133,9 @@ _TEST_NAME = re.compile(r"\btest_\w+")
 _JS_TEST = re.compile(r"\s*(it|test)(\.\w+)?\(\s*['\"`](.+?)['\"`]")
 
 
+COMMENT_AS_DOC = "comment cited as code reclassified as docstring"
+
+
 class CitationChecker:
     def __init__(
         self,
@@ -228,7 +231,14 @@ class CitationChecker:
         )
         notes = [
             n
-            for n in (anchor_note, "" if kind is c.source_kind else f"reclassified as {kind.value}")
+            for n in (
+                anchor_note,
+                ""
+                if kind is c.source_kind
+                else COMMENT_AS_DOC
+                if c.source_kind is SourceKind.code
+                else f"reclassified as {kind.value}",
+            )
             if n
         ]
         return ev, kind, "; ".join(notes)
@@ -266,6 +276,12 @@ class CitationChecker:
         if kind is SourceKind.test:
             generated = path.startswith(GENERATED_TEST_DIR) or f"/{GENERATED_TEST_DIR}/" in path
             return kind if is_test_path(path) and not generated else SourceKind.code
+        if suffix in COMMENT_DOC_SUFFIXES and any(
+            a <= start and end <= b for a, b in comment_ranges(text)
+        ):
+            # A JS comment block cited as code is still the language's docstring
+            # (live gtB7 js-batch-obo cited "Loop because a batch caps at 500 writes" as code).
+            return SourceKind.docstring
         return SourceKind.code
 
 
@@ -322,6 +338,11 @@ def adjudicate_claims(
         status = IntentClaimStatus(claim.proposed_status.value)
         if CONFLICT_NOTE in notes:  # a human/index decision says sources disagree: never confirm
             status = IntentClaimStatus.conflicting
+        if status is IntentClaimStatus.inferred and any(COMMENT_AS_DOC in n for n in notes):
+            # The model rated it inferred because it filed the comment as code; the
+            # comment is a docstring, the same source that confirms when labelled as one.
+            status = IntentClaimStatus.confirmed
+            notes.append("confirmed: a cited comment block states the rule")
         if status is IntentClaimStatus.confirmed and not kinds & _SUPPORTING:
             status = IntentClaimStatus.inferred
             notes.append("downgraded to inferred: only PR text or implementation code supports it")
