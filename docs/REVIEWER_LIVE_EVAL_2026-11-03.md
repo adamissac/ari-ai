@@ -111,7 +111,7 @@ Delivery behaved correctly for the branch-only bugs: "main already contains this
 
 ## What still falls short
 
-- **No JavaScript execution.** All five JS bugs are flagged with precise explanations, but none can be proven or fixed. The production sandbox has no Node runtime; that work is the security-agents JS stack (#762–#764). This is the largest remaining gap for `mypypath`.
+- **No JavaScript execution.** Fixed since (#830–#832, JavaScript section below). Functional Verify still cannot replay JS tests, so JS fixes are not delivered.
 - **"Refactor must not change behavior" never confirms on its own.** For `py-null-dest`, the test fails on head and passes on base, but the only rule is the commit message, so the finding stays a hypothesis with `needs_clarification`. This is deliberate: auto-repairing on an untrusted message could revert intended behavior.
 - **Haiku only.** Production forces `claude-haiku-5-5` for every agent (`Settings.model_for`). Every number here is Haiku's. A stronger reviewer model is an owner cost decision and was not changed.
 - **Classification noise.** Keyword rules sometimes file a functional bug as a security hand-off (gt3 `js-async`). Duplicate findings for one root cause appear on JS contract breaks.
@@ -197,5 +197,40 @@ gtC (the defects among the 4 commits are test-weakened, buried and rename): flag
 - **#812:** a finding that names a claim the model never submitted keeps an `inferred` claim built from the finding, when its spans are in the change (gtB5 js-purge-order).
 
 ### Still short (in addition to the list above)
-- **JavaScript tests.** Production sets no `SECURITY_AGENTS_NODE_ON_VERCEL`, so the sandbox has no Node, and every JS bug stays a hypothesis. The JS repair path (vitest runner, reviewer replay, functional Verify on a node recipe) also does not exist for the reviewer yet. This is the next large piece. It needs the Vercel Node path smoke-tested first.
+- **JavaScript tests.** Superseded: see the JavaScript section below. The remaining JS gap is functional Verify, which replays generated tests with pytest only.
 - **Model variance.** With Haiku, the same change can land as fixed in one round and as a hypothesis in the next (py-async-audit, py-float, py-rename).
+
+## JavaScript tests in production (gtB6–gtB8, gtC5–gtC7), 2026-11-05
+
+The JS half of the second set was re-run after the reviewer gained JavaScript test execution. It used the same 9 mypypath commits per round: 6 planted bugs (including js-buried), 2 clean commits, and js-clean-rename, which is a true positive (see the label correction above). mypypath main did not change between rounds, so the earlier oracle labels still hold.
+
+**What changed:**
+- **#830:** `write_test(language="javascript")` writes `tests/generated/cr_<name>.test.js`. A static policy forbids `fs`, network, `child_process`, `process.env`, `eval` and computed imports, and the test must import a real source module by a relative path. It runs through the security_agents sandbox `nodetest` mode, using the target's lockfile-installed `node_modules` with no network. Railway sets `CODE_REVIEW_NODE_ON_VERCEL=1`. The first run built the Node base snapshot and the deps snapshot in about 1 minute each.
+- **#831:** in gtB6, running the whole jsdom suite was killed with exit 137 after 131 s. The suite is now limited to tests that mention a changed file (at most 12), with two workers. The prompt asks for `vi.mock` fakes of backend modules (never the module under test).
+- **#832:** in gtB7, three generated tests failed on head and passed on base, but their claims never confirmed. A JS comment cited as `code` now counts as a docstring, and the prompt asks findings to name the claim that their sources confirm (`reviewer@6`).
+
+| Case | gtB6 (#830) | gtB7 (#831) | gtB8 (#832) |
+|---|---|---|---|
+| js-lessonkey | validated, repaired | validated, repaired | validated, repaired |
+| js-purge-order | validated, repaired | hyp (5 tests, none failed) | validated, repaired |
+| js-buried (gtC) | validated, repaired | validated, repaired | validated, repaired |
+| js-batch-obo | hyp | hyp (test fails on head; claim inferred) | validated, repaired |
+| js-foreach-async | hyp (whole suite killed, no test) | hyp (test fails; code-only claim) | validated, repaired |
+| js-arg-swap | hyp | hyp (test fails; caller code only) | hyp (test fails; caller code only) |
+| js-clean-rename (TP) | hyp | hyp | hyp |
+| 2 clean | 0 findings | 0 findings | 0 findings |
+
+| | gtB6 | gtB7 | gtB8 |
+|---|---|---|---|
+| JS bugs flagged (6) | 6/6 | 6/6 | 6/6 |
+| Proven by a reproducible failing vitest test (6) | 3/6 | 2/6 | 5/6 |
+| Reviewer fix accepted on fresh replay | 3 | 2 | 5 |
+| False positives on clean commits (2) | 0 | 0 | 0 |
+| Reviewer run, median / max | 183 s / 406 s | 64 s / 175 s | 67 s / 151 s |
+| Reviewer cost per review, mean | $0.0061 (7 of 9 recorded) | $0.0102 | $0.0117 |
+
+Every validated finding has the same evidence chain. The generated test failed twice on head in the Vercel microVM (about 15 s per run) and passed on the base commit. For example, gtB6 js-lessonkey failed with `AssertionError: expected 'unit_5F1_5F_5Flesson' to be 'unit_5F1__lesson'`.
+
+js-arg-swap stays a hypothesis by design. Its generated test fails, but its only evidence for the rule is the unchanged caller's code, and code never confirms a rule.
+
+**Not delivered.** Functional Verify in the security agents rejected every one of these fixes (`patch_rejected`). It replays generated tests with pytest only, so it cannot run a `.test.js`. Making Verify run them through the same `nodetest` mode is security-agents work and was not done here. Until then, JS fixes stop at "accepted on fresh replay by the reviewer". The demo branches (27) are deleted, and no delivery PRs were opened.

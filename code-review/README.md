@@ -56,7 +56,11 @@ Repositories must be registered by the operator:
 
 * **Live ground truth (2026-11-03):** 9 planted functional bugs + 4 clean commits pushed to the connected
   repos, five rounds through production. Final: 9/9 flagged, 3/4 Python bugs fixed and Verify-accepted,
-  0 false positives, ~21 s and ~$0.006 per review (Haiku). JS findings stay hypotheses (no JS runner).
+  0 false positives, ~21 s and ~$0.006 per review (Haiku).
+* **JavaScript (2026-11-05):** generated vitest/jest tests run in the sandbox `nodetest` mode
+  (`write_test(language="javascript")`; Vercel needs `CODE_REVIEW_NODE_ON_VERCEL=1`). Live gtB8: 5/6 JS
+  bugs validated and repaired, 0 false positives, 67 s median. Functional Verify still replays pytest
+  only, so JS fixes are not delivered.
   See [docs/REVIEWER_LIVE_EVAL_2026-11-03.md](../docs/REVIEWER_LIVE_EVAL_2026-11-03.md).
   A second, harder set (gtB/gtC: async, cross-file, large diff, weakened test, clean traps;
   5 rounds) reached 9/9 flagged with 0 false positives; 3/4 Python bugs fixed per round.
