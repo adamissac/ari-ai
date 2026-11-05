@@ -21,8 +21,10 @@ import tempfile
 import time
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
-from code_review.ports import CaseResult, ExecResult
+from code_review.node_tests import is_js_test, node_runner
+from code_review.ports import CaseResult, ExecResult, SandboxPort
 
 _PLUGIN_SRC = Path(__file__).with_name("_pytest_report.py")
 _TARGET = re.compile(r"^[A-Za-z0-9_./\-]+(::[A-Za-z0-9_\[\]\-.]+)*$")
@@ -48,8 +50,33 @@ def _limits(cpu_s: int) -> None:  # runs in the child before exec
     resource.setrlimit(resource.RLIMIT_FSIZE, (64 * 1024 * 1024, 64 * 1024 * 1024))
 
 
+def supports_node(sandbox: SandboxPort) -> bool:
+    return bool(getattr(sandbox, "supports_node", False))
+
+
+def run_targets(
+    sandbox: SandboxPort, project_dir: Path, targets: Sequence[str], *, timeout_s: float
+) -> ExecResult:
+    """pytest for Python targets, the project's vitest/jest for JS test files."""
+    js = [t for t in targets if is_js_test(t)]
+    if not js:
+        return sandbox.run_pytest(project_dir, targets, timeout_s=timeout_s)
+    if len(js) != len(targets):
+        raise SandboxPolicyError("one run takes Python or JavaScript tests, not both")
+    runner = node_runner(project_dir)
+    if runner is None or not supports_node(sandbox):
+        raise SandboxPolicyError(
+            "JavaScript tests need a vitest/jest project with a package-lock.json and a sandbox "
+            "with Node; report the finding as a hypothesis instead"
+        )
+    run: Any = sandbox.run_nodetest
+    result: ExecResult = run(project_dir, runner, validate_targets(js), timeout_s=timeout_s)
+    return result
+
+
 class LocalProcessSandbox:
     name = "local-process"
+    supports_node = False  # no node_modules here; JS runs through the shared drivers
     isolation_level = "local-process (scrubbed env, rlimits, timeout; no network isolation)"
 
     def __init__(self, python: str | None = None) -> None:

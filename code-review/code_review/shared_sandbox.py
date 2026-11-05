@@ -28,11 +28,23 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from code_review.node_tests import parse_report, runner_args
 from code_review.ports import CaseResult, ExecResult, SandboxPort
 from code_review.sandbox import LocalProcessSandbox, validate_targets
 
 _PLUGIN = Path(__file__).with_name("_pytest_report.py")
 REPORT_NAME = "cr_report.json"
+NODE_REPORT = "node_tests.json"
+# Node without a served app or emulators: the platform's Node plus the target's
+# lockfile-installed node_modules (ADR-0023), deny-all network.
+_BARE_NODE = {
+    "project_id": "demo-ari-sandbox",
+    "emulators": [],
+    "identities": [],
+    "seed": [],
+    "env": {},
+    "serve": None,
+}
 
 
 class SharedSandboxAdapter:
@@ -40,6 +52,10 @@ class SharedSandboxAdapter:
         self.driver = driver
         self.name = f"security_agents:{driver.name}"
         self.isolation_level = str(driver.isolation_level)
+        # Node on Vercel is opt-in until a live run proves it (as for the security agents).
+        self.supports_node = driver.name == "local-process" or (
+            driver.name == "vercel-sandbox" and os.environ.get("CODE_REVIEW_NODE_ON_VERCEL") == "1"
+        )
 
     def run_pytest(
         self, project_dir: Path, targets: Sequence[str], *, timeout_s: float
@@ -71,6 +87,35 @@ class SharedSandboxAdapter:
             duration_s=r.duration_s,
             timed_out=r.timed_out,
             cases=cases,
+            driver=f"{self.name}#{r.run_id}",
+            isolation_level=r.isolation_level,
+        )
+
+    def run_nodetest(
+        self, project_dir: Path, runner: str, targets: Sequence[str], *, timeout_s: float
+    ) -> ExecResult:
+        from security_agents.sandbox.driver import SandboxLimits, SandboxProfile, SandboxSpec  # type: ignore[import-not-found,unused-ignore]
+
+        args = runner_args(runner, validate_targets(targets))
+        spec = SandboxSpec(
+            profile=SandboxProfile.TEST_RUNNER,
+            network="none",
+            workspace=project_dir,
+            mode="nodetest",
+            args=args,
+            labels={"component": "code_review"},
+            limits=SandboxLimits(timeout_s=timeout_s),
+            node_stack=dict(_BARE_NODE),
+        )
+        r = self.driver.run(spec)
+        return ExecResult(
+            command=["python", "-I", "-B", ".sandbox/entry.py", "nodetest", *args],
+            exit_code=r.exit_code,
+            stdout=r.stdout,
+            stderr=r.stderr,
+            duration_s=r.duration_s,
+            timed_out=r.timed_out,
+            cases=parse_report(r.out_files.get(NODE_REPORT), targets),
             driver=f"{self.name}#{r.run_id}",
             isolation_level=r.isolation_level,
         )

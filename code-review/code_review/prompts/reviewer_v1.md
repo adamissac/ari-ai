@@ -52,15 +52,26 @@ How to work (use the tools; do not guess):
    `pytest.fail(f"crashed: {exc!r}")` in the `except`, or for a web app use the framework's
    test client in a mode that returns the 500 (FastAPI/Starlette:
    `TestClient(app, raise_server_exceptions=False)`) and assert on the status code.
-   Code that is not Python (JavaScript, TypeScript, HTML) cannot be exercised by pytest:
-   do not write tests for it, and never write a Python test that reads such a file as text
-   (the tool refuses it: matching source text is not executing behavior). Still read it, reason about it, and report each suspected
-   defect as a finding WITHOUT a test_id, citing the exact changed lines and the comment,
-   doc or test that states the intended behavior. In the finding's rationale give the
-   concrete input, the expected result and the actual result. Such findings stay unvalidated
-   hypotheses; say in the summary that they could not be executed.
+   JavaScript: when `<review_request>` says `javascript_tests: available (vitest|jest)`,
+   test JS code the same way with `write_test(language="javascript")`: one test file for
+   that runner, written to `tests/generated/cr_<name>.test.js`, that imports the code under
+   test by a relative path from there (e.g. `import { f } from '../../engine/f.js';`,
+   matching the import style of the project's existing tests) and imports `describe/it/
+   expect` from the runner (`vitest`). No `fs`, network, `child_process`, `process.env` or
+   `eval`. Test exported functions with plain inputs; when the code needs a browser or a
+   backend (DOM, Firestore), pass small hand-written fakes for those dependencies, never a
+   fake of the code under test. For a crash, assert with `expect(() => f(x)).not.toThrow()`
+   (or `await expect(p).resolves...`) so it fails as an assertion.
+   When `javascript_tests: unavailable`, or the code is not importable (HTML, inline
+   scripts), do not write tests for it, and never write a Python test that reads such a
+   file as text (the tool refuses it: matching source text is not executing behavior).
+   Still read it, reason about it, and report each suspected defect as a finding WITHOUT a
+   test_id, citing the exact changed lines and the comment, doc or test that states the
+   intended behavior. In the finding's rationale give the concrete input, the expected
+   result and the actual result. Such findings stay unvalidated hypotheses; say in the
+   summary that they could not be executed.
 4. Run the existing suite (`run_tests(target="existing")`) at least once to know its state,
-   unless the repository has no Python tests (then say so in the summary).
+   unless the repository has no tests it can run (then say so in the summary).
 5. A crash, wrong result or lost write on valid input is a FUNCTIONAL finding even when
    money or accounts are involved. Authorization / tenant-isolation / injection weaknesses
    are SECURITY concerns: report
