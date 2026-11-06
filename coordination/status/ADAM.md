@@ -594,5 +594,5 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 
 ### 2026-11-06 — scheduled cloud health run (41)
 - Synced origin/main (aae53435). No new messages addressed to Adam. rl-defense/, shared/, examples/payments-lite and Adam's CI/docs unchanged since run 40 (only code-review/ reviewer PRs #831/#832/#834 and CI stabilization landed). `gh` not authenticated (GH_TOKEN rejected); git only, so no PR created.
-- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 776 files, 0 problems. rl-defense contract/env subset result recorded below if different. Full rl-defense suite NOT re-run (last full pass 569). No live-LLM tests, no training/eval.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 776 files, 0 problems. rl-defense contract/env subset (test_shared_contract, test_platform_mapping, test_standards, test_env) 37 passed. Full rl-defense suite NOT re-run (last full pass 569). No live-LLM tests, no training/eval.
 - No-op. Open: none.
