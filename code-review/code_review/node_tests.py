@@ -11,14 +11,15 @@ from __future__ import annotations
 import json
 import posixpath
 import re
-from collections.abc import Callable, Sequence
-from pathlib import Path
+from collections.abc import Callable, Iterable, Sequence
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from code_review.ports import CaseResult
 
 JS_TEST_SUFFIXES = (".test.js", ".test.mjs", ".test.cjs", ".spec.js", ".spec.mjs", ".spec.cjs")
 RUNNERS = ("vitest", "jest")
+MAX_RELATED_JS_TESTS = 12
 _SOURCE_SUFFIXES = (".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx")
 
 _FORBIDDEN_MODULES = {
@@ -78,6 +79,20 @@ def runner_args(runner: str, targets: Sequence[str]) -> list[str]:
     if runner == "vitest":
         return [runner, "run", "--maxWorkers=2", "--minWorkers=1", *files]
     return [runner, "--ci", "--maxWorkers=2", *files]
+
+
+def related_js_tests(changed: Iterable[str], sources: Iterable[tuple[str, str]]) -> list[str]:
+    """The tests in `sources` ((path, text) pairs) that mention a changed file. The whole
+    suite under jsdom was killed (exit 137) after 131 s in the microVM (live gtB6), so never
+    all of it."""
+    stems = {
+        PurePosixPath(p).name.split(".", 1)[0]
+        for p in changed
+        if p.endswith(_SOURCE_SUFFIXES) and not p.endswith(JS_TEST_SUFFIXES)
+    }
+    stems.discard("index")
+    out = [rel for rel, text in sources if any(stem in text for stem in stems)]
+    return out[:MAX_RELATED_JS_TESTS]
 
 
 def check_js_test_source(content: str) -> str | None:
