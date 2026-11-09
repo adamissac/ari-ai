@@ -28,6 +28,7 @@ import importlib
 import os
 import subprocess
 import threading
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -1412,6 +1413,81 @@ def _write_generated_tests(root: Path, tests: list[Any], prefix: str) -> list[st
     return paths
 
 
+class _JsVerifyRunner:
+    """Replays generated vitest/jest tests as the reviewer ran them, in `TestRunner.run`'s
+    result shape so every Verify predicate applies unchanged.
+
+    `project_suite` is the generated tests plus the existing tests that mention a changed
+    file, not the whole suite: under jsdom that is OOM-killed (exit 137) in the 2 GB microVM.
+    """
+
+    def __init__(self, driver: SandboxDriver, root: Path, changed: list[str]) -> None:
+        from code_review.shared_sandbox import SharedSandboxAdapter
+
+        from .tools.services import node_drivers
+
+        self.sandbox = SharedSandboxAdapter(driver)
+        self.sandbox.supports_node = self.sandbox.supports_node or driver.name in node_drivers()
+        self.root = root
+        self.changed = changed
+
+    def _existing_tests(self) -> Iterator[tuple[str, str]]:
+        from code_review.node_tests import JS_TEST_SUFFIXES
+        from code_review.workspace import GENERATED_TEST_DIR
+
+        for path in sorted(self.root.rglob("*")):
+            rel = path.relative_to(self.root).as_posix()
+            if (
+                path.is_file()
+                and rel.endswith(JS_TEST_SUFFIXES)
+                and "node_modules/" not in rel
+                and not rel.startswith(f"{GENERATED_TEST_DIR}/")
+            ):
+                yield rel, path.read_text(encoding="utf-8", errors="replace")
+
+    def run(self, ctx: ToolContext, selection: str, node_ids: list[str]) -> dict[str, Any]:
+        from code_review.node_tests import related_js_tests
+        from code_review.sandbox import run_targets
+
+        from .sandbox.driver import SandboxLimits
+
+        targets = list(node_ids)
+        if selection == "project_suite":
+            related = related_js_tests(self.changed, self._existing_tests())
+            targets = [*related, *ctx.artifacts["tests_added"]]
+        # A missing runner or Node-less driver raises: the run fails and nothing is accepted.
+        res = run_targets(self.sandbox, self.root, targets, timeout_s=SandboxLimits().timeout_s)
+        count = {o: sum(c.outcome == o for c in res.cases) for o in ("passed", "failed", "error", "skipped")}
+        summary = {
+            "passed": count["passed"],
+            "failed": count["failed"],
+            "errors": count["error"],
+            "skipped": count["skipped"],
+            "failing_tests": [c.nodeid for c in res.cases if c.outcome in ("failed", "error")],
+        }
+        sandbox_run_id = res.driver.rsplit("#", 1)[-1]
+        ctx.audit.emit(
+            "sandbox.tests_run",
+            agent=ctx.agent.value,
+            run_id=ctx.run_id,
+            sandbox_run_id=sandbox_run_id,
+            selection=selection,
+            **summary,
+        )
+        return {
+            "sandbox_run_id": sandbox_run_id,
+            "exit_code": res.exit_code,
+            "timed_out": res.timed_out,
+            "duration_s": res.duration_s,
+            "selection": selection,
+            "targets": targets,
+            "related_tests_only": selection == "project_suite",
+            **summary,
+            "stdout_tail": res.stdout[-2000:],
+            "stderr_tail": res.stderr[-2000:],
+        }
+
+
 def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrator, outcome: Any) -> None:
     """Independent Verify of a reviewer PatchCandidate (fresh checkout; not Patch's worktree).
 
@@ -1435,6 +1511,7 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
 
     try:
         from code_review import api as review_api
+        from code_review.node_tests import is_js_test
     except ImportError:
         host.progress("functional Verify skipped: code_review is not installed")
         return
@@ -1478,7 +1555,11 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
         )
         ctx.run_id = run_id
         ctx.artifacts["tests_added"] = tests_added
-        runner = orchestrator._test_runner(lambda _ctx: root)
+        runner: Any = (
+            _JsVerifyRunner(orchestrator.driver, root, diff_paths(diff_text))
+            if tests_added and all(is_js_test(t) for t in tests_added)
+            else orchestrator._test_runner(lambda _ctx: root)
+        )
         unpatched = runner.run(ctx, "added_tests", tests_added) if tests_added else None
         ok, err = apply_diff(root, snapshot_diff)
         touched = [_snapshot_rel(p, prefix) for p in diff_paths(diff_text)]
@@ -1571,7 +1652,7 @@ def _verify_functional_patch(host: AssessmentHostLike, orchestrator: Orchestrato
             else [
                 f"apply={ok} err={err}; out_of_scope={out_of_scope}; protected={list(inputs.protected_paths)}; "
                 f"unpatched_failed={unpatched_failed}; patched={patched_passed}; "
-                f"suite={suite_ok} new_failures={new_failures}"
+                f"suite={suite_ok} new_failures={new_failures}"[:500]  # the model's limit; JS titles are long
             ],
             produced_by_run_id=run_id,
             created_at=utcnow(),
