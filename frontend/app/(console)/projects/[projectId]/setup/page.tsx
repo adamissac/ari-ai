@@ -275,9 +275,9 @@ function Walkthrough({
               const done = finished || progress.answers[QUESTION_KEYS[index] as SetupQuestion] !== undefined;
               return (
                 <li key={label} aria-current={!finished && currentQuestion === number ? 'step' : undefined} className={`flex items-center gap-3 border-l-2 px-3 py-2 text-sm ${!finished && currentQuestion === number ? 'border-brand bg-brand/10 text-ink' : done ? 'border-line-3 text-muted' : 'border-transparent text-faint'}`}>
-                  <span className="w-6 shrink-0 font-mono text-[10px] tabular-nums">{String(number).padStart(2, '0')}</span>
+                  <span className="w-6 shrink-0 font-mono text-xs tabular-nums">{number}</span>
                   <span>{label}</span>
-                  {done && <span className="ml-auto font-mono text-[10px] text-muted">SAVED</span>}
+                  {done && <span className="ml-auto font-mono text-xs text-muted">Saved</span>}
                 </li>
               );
             })}
@@ -286,7 +286,7 @@ function Walkthrough({
 
         <div className="min-w-0">
           <p className="label-mono text-muted">Setup / {repo.full_name}</p>
-          <h1 className="setup-title mt-1 min-w-0 max-w-full whitespace-normal break-words text-2xl font-semibold tracking-tight sm:text-3xl">Let&apos;s set up Ari for {repo.full_name.split('/')[1]}</h1>
+          <h1 className="setup-title mt-1 min-w-0 max-w-full whitespace-normal break-words text-2xl font-semibold tracking-tight sm:text-3xl">Set up Ari for {repo.full_name.split('/')[1]}</h1>
           <p className="mt-2 mb-6 text-sm text-muted">Eight questions. You can change these choices later in Settings.</p>
           {error !== null && <div className="mb-4"><ErrorState error={error} /></div>}
           {finished ? (

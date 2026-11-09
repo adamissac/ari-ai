@@ -82,8 +82,8 @@ export function CommitAnalysis({ repo, commit, analysis: given, live, realRun, r
           <div className="flex flex-col items-start gap-2 md:items-end">
             {replay.done ? <VerdictChip verdict={commit.verdict} /> : <span className="demo-chip demo-chip-info" data-testid="demo-analyzing">Analyzing · {pct}%</span>}
             {!replay.done
-              ? <button type="button" onClick={replay.skip} className="rounded-full bg-white/10 px-4 py-1.5 text-xs text-white transition-colors hover:bg-white/20" data-testid="demo-skip">Skip to result</button>
-              : <button type="button" onClick={replay.restart} className="rounded-full bg-white/10 px-4 py-1.5 text-xs text-white transition-colors hover:bg-white/20" data-testid="demo-replay">↺ Replay</button>}
+              ? <button type="button" onClick={replay.skip} className="rounded-lg bg-white/10 px-4 py-1.5 text-xs text-white transition-colors hover:bg-white/20" data-testid="demo-skip">Skip to result</button>
+              : <button type="button" onClick={replay.restart} className="rounded-lg bg-white/10 px-4 py-1.5 text-xs text-white transition-colors hover:bg-white/20" data-testid="demo-replay">↺ Replay</button>}
           </div>
         </div>
       </header>
@@ -122,7 +122,7 @@ function Review({ analysis, accepted, live }: { analysis: Analysis; accepted: bo
         <p className="label-mono text-white/55">{analysis.findings.length ? 'What Ari found' : 'Result'}</p>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <h2 className="big-verdict">{analysis.headline}</h2>
-          <span className={`demo-chip ${verdict.tone === 'ok' ? 'demo-chip-ok' : 'demo-chip-warn'} text-[0.75rem]`}>{verdict.word}</span>
+          <span className={`demo-chip ${verdict.tone === 'ok' ? 'demo-chip-ok' : 'demo-chip-warn'} text-xs`}>{verdict.word}</span>
         </div>
         <p className="mt-2 text-sm text-white/60">{r.intent}</p>
         <p className="mt-4 text-sm leading-relaxed text-white/70">{analysis.summary}</p>
@@ -153,7 +153,7 @@ function Review({ analysis, accepted, live }: { analysis: Analysis; accepted: bo
                   <span className="text-sm font-medium text-white">{c.title}</span>
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-white/70">{c.body}</p>
-                <p className="mt-1.5 font-mono text-[0.72rem] text-white/45">{c.path} · {c.line}</p>
+                <p className="mt-1.5 font-mono text-xs text-white/45">{c.path} · {c.line}</p>
               </li>
             ))}
           </ul>
@@ -189,7 +189,7 @@ function Review({ analysis, accepted, live }: { analysis: Analysis; accepted: bo
                       <span className="text-sm text-white">{e.text}</span>
                     </p>
                     <p className="mt-1.5 pl-6 text-xs leading-relaxed text-white/55">{broken ? (accepted ? 'This change broke it; the fix restores it.' : 'This change breaks it.') : 'Still holds after this change.'} Learned from {e.source}.</p>
-                    {tests.length > 0 && <ul className="mt-1.5 flex flex-col gap-1 pl-6 font-mono text-[0.72rem] text-white/60">{tests.map(x => <li key={x.name}>{x.name}: {x.before === 'fail' ? 'failed before the fix' : 'passed'}, passes now</li>)}</ul>}
+                    {tests.length > 0 && <ul className="mt-1.5 flex flex-col gap-1 pl-6 font-mono text-xs text-white/60">{tests.map(x => <li key={x.name}>{x.name}: {x.before === 'fail' ? 'failed before the fix' : 'passed'}, passes now</li>)}</ul>}
                   </li>
                 );
               })}

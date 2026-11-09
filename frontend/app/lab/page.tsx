@@ -118,7 +118,7 @@ export default function DefenseLabPage() {
             </div>
           </div>
         )}
-        <p role="note" className="label-mono mt-3 inline-flex rounded-full border border-line px-3 py-1 text-faint" data-testid="lab-caveat">
+        <p role="note" className="label-mono mt-3 inline-flex rounded-lg border border-line px-3 py-1 text-faint" data-testid="lab-caveat">
           Recorded run · test network
         </p>
       </header>

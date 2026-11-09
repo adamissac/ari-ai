@@ -26,11 +26,11 @@ beforeEach(() => {
 afterEach(cleanup);
 
 it.each([
-  ['recipe.pr_opened', 'PR OPENED', 'Ari opened a pull request adding build_recipe.json'],
-  ['recipe.skipped', 'SKIPPED', 'No supported build command'],
-  ['recipe.unsupported', 'UNSUPPORTED', 'Language is not supported'],
-  ['recipe.invalid', 'INVALID', 'missing build command'],
-  ['recipe.failed', 'FAILED', 'Recipe generation failed'],
+  ['recipe.pr_opened', 'PR opened', 'Ari opened a pull request adding build_recipe.json'],
+  ['recipe.skipped', 'Skipped', 'No supported build command'],
+  ['recipe.unsupported', 'Unsupported', 'Language is not supported'],
+  ['recipe.invalid', 'Invalid', 'missing build command'],
+  ['recipe.failed', 'Failed', 'Recipe generation failed'],
 ])('maps %s to its readiness status', (action, status, text) => {
   const details = action === 'recipe.invalid'
     ? { reasons: ['missing build command'] }
@@ -81,7 +81,7 @@ it('finds a matching recipe event on page two', async () => {
   expect(data).toEqual({ items: [{ ...found, subject_id: 'rep_otherid' }, found], truncated: false });
   mocks.useResource.mockReturnValue({ status: 'ready', data, reload: vi.fn() });
   render(<BuildRecipeReadiness projectId="prj_12345678" repo={repo()} />);
-  expect(screen.getByText('SKIPPED')).toBeTruthy();
+  expect(screen.getByText('Skipped')).toBeTruthy();
   expect(screen.getByText('No supported build command')).toBeTruthy();
 });
 

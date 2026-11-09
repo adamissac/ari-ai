@@ -40,11 +40,11 @@ export function GitHubStep({ next }: { next: string }) {
           <p className="text-white/60">{DEMO_GITHUB_REPOS.length} repositories selected for the {BRAND_NAME} GitHub App</p>
         </div>
       </div>
-      <p className="label-mono mt-5 text-[11px] text-white/55">{BRAND_NAME} will be able to</p>
+      <p className="label-mono mt-5 text-xs text-white/55">{BRAND_NAME} will be able to</p>
       <dl className="mt-2 divide-y divide-white/10 text-sm">
         {PERMISSIONS.map(([name, level, why]) => (
           <div key={name} className="py-2.5">
-            <dt className="flex items-center justify-between gap-3 text-white"><span>{name}</span><span className="font-mono text-[11px] text-white/60">{level}</span></dt>
+            <dt className="flex items-center justify-between gap-3 text-white"><span>{name}</span><span className="font-mono text-xs text-white/60">{level}</span></dt>
             <dd className="mt-0.5 text-xs text-white/55">{why}</dd>
           </div>
         ))}

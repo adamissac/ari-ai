@@ -126,7 +126,7 @@ test('Live Defense shadow pilot: staging app, ingest, unknown health, review wit
   const shadowId = shadowItems[0]?.id;
   if (!shadowId) throw new Error('expected a persisted shadow decision');
   const shadow = page.getByTestId(`live-defense-decision-${shadowId}`);
-  await expect(shadow).toContainText('NOT EXECUTED');
+  await expect(shadow).toContainText('Not executed');
   await expect(shadow).toContainText('authenticated');
   const shadowReview = page.getByTestId(`live-defense-review-${shadowId}`);
   await shadowReview.getByLabel('Decision').selectOption('accept');

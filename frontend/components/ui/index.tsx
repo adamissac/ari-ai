@@ -7,38 +7,46 @@ import { describeError } from '@/lib/api';
 import type { Resource } from '@/lib/use-resource';
 import type { StatusView, Tone } from '@/lib/status';
 import { formatTime, relativeTime } from '@/lib/format';
-import { useRevealOnScroll } from '@/components/reveal';
 
 const TONE: Record<Tone, string> = {
-  ok: 'border-ok/40 bg-ok/10 text-ok',
-  warn: 'border-warn/40 bg-warn/10 text-warn',
-  bad: 'border-bad/40 bg-bad/10 text-bad',
-  info: 'border-info/40 bg-info/10 text-info',
-  accent: 'border-accent/40 bg-accent/10 text-accent',
-  neutral: 'border-line bg-panel-2 text-muted',
+  ok: 'text-ok',
+  warn: 'text-warn',
+  bad: 'text-bad',
+  info: 'text-info',
+  accent: 'text-ember',
+  neutral: 'text-muted',
 };
 
+/** Shape of the evidence mark for a status: how far the claim is proven, independent of colour. */
+function markFor(view: StatusView): string {
+  if (view.glyph === '⏸') return 'paused';
+  if (view.glyph === '×' || view.tone === 'bad') return 'failed';
+  if (view.glyph === '✓' || view.tone === 'ok') return 'done';
+  if (view.glyph === '!') return 'partial';
+  if (view.glyph === '◔') return 'running';
+  return 'pending';
+}
+
 export function Badge({ view, title }: { view: StatusView; title?: string }) {
-  const mark = view.glyph === '⏸' ? 'paused' : view.tone === 'bad' ? 'failed' : view.tone === 'ok' ? 'done' : 'pending';
+  const mark = markFor(view);
   return (
-    <span title={title} className={`status-badge inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${TONE[view.tone]}`}>
-      <span aria-hidden="true" className={`status-mark status-mark-${mark}`}>{mark === 'failed' ? '×' : null}</span>
+    <span title={title} className="status-badge inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-muted">
+      <span aria-hidden="true" className={`status-mark status-mark-${mark} ${TONE[view.tone]}`}>{mark === 'failed' ? '×' : null}</span>
       {view.label}
     </span>
   );
 }
 
 export function Tag({ children, tone = 'neutral' }: { children: ReactNode; tone?: Tone }) {
-  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${TONE[tone]}`}>{children}</span>;
+  return <span className={`inline-flex items-center whitespace-nowrap text-xs ${TONE[tone]}`}>{children}</span>;
 }
 
 export function Panel({ title, actions, children, className = '', id }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; id?: string }) {
-  const ref = useRevealOnScroll<HTMLElement>();
   return (
-    <section ref={ref} id={id} className={`panel min-w-0 rounded-lg border border-line bg-panel ${className}`} aria-label={typeof title === 'string' ? title : undefined}>
+    <section id={id} className={`panel min-w-0 rounded-xl border border-line bg-panel ${className}`} aria-label={typeof title === 'string' ? title : undefined}>
       {(title || actions) && (
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-panel-2/60 px-4 py-2.5">
-          {title && <h2 className="label-mono flex items-center gap-2 text-ink"><span aria-hidden="true" className="h-3 w-0.5 rounded-full bg-brand" />{title}</h2>}
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3">
+          {title && <h2 className="text-sm font-medium text-ink">{title}</h2>}
           {actions && <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
@@ -49,19 +57,19 @@ export function Panel({ title, actions, children, className = '', id }: { title?
 
 export function Button({ variant = 'secondary', className = '', children, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost' }) {
   const styles = {
-    primary: 'bg-brand text-on-brand hover:bg-brand-deep shadow-[0_6px_16px_-8px_rgba(194,69,45,0.6)] hover:shadow-[0_8px_20px_-8px_rgba(194,69,45,0.5)]',
-    secondary: 'bg-brand/[0.07] text-ink hover:bg-brand/[0.14] shadow-sm hover:shadow-md',
-    danger: 'border border-bad/50 bg-bad/10 text-bad hover:bg-bad/20 shadow-sm hover:shadow-md',
-    ghost: 'text-muted hover:bg-brand/[0.07] hover:text-ink hover:shadow-sm',
+    primary: 'bg-brand text-on-brand hover:bg-brand-deep',
+    secondary: 'border border-line bg-panel-2 text-ink hover:border-control',
+    danger: 'border border-bad/40 text-bad hover:bg-bad/10',
+    ghost: 'text-muted hover:bg-panel-2 hover:text-ink',
   }[variant];
   return (
     <button
       type="button"
       data-variant={variant}
       {...props}
-      className={`btn group label-mono inline-flex h-8 items-center justify-center gap-1.5 rounded-md px-3 transition-[background-color,color,box-shadow,transform] duration-[250ms] ease-[var(--ease-smooth)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:active:scale-100 disabled:shadow-none ${styles} ${className}`}
+      className={`btn inline-flex items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-[background-color,border-color,color,transform] duration-150 ease-[var(--ease-out)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 ${styles} ${className}`}
     >
-      {typeof children === 'string' ? <RollText>{children}</RollText> : children}
+      {children}
     </button>
   );
 }
@@ -80,7 +88,7 @@ export function ErrorState({ error, onRetry, context }: { error: unknown; onRetr
   const e = describeError(error);
   const signedOut = e.status === 401 || e.code === 'UNAUTHENTICATED' || e.code === 'CSRF_FAILED';
   return (
-    <div role="alert" data-testid="error-state" className="rounded-md border border-bad/40 bg-bad/5 p-3 text-sm shadow-sm hover:shadow-md transition-shadow duration-300">
+    <div role="alert" data-testid="error-state" className="rounded-md border border-bad/40 bg-bad/5 p-3 text-sm ">
       <p className="font-semibold text-bad"><span aria-hidden="true">× </span>{context ? `${context}: ` : ''}{e.title}</p>
       <p className="mt-1 text-muted">{e.detail}</p>
       {e.recovery && <p className="mt-1 text-ink" data-testid="error-recovery"><span className="font-semibold">What to do: </span>{e.recovery}</p>}
@@ -202,12 +210,11 @@ export function Crumbs({ items }: { items: Array<{ href?: string; label: string 
   );
 }
 
-export function PageTitle({ title, subtitle, actions, eyebrow }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode }) {
+export function PageTitle({ title, subtitle, actions }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
     <div className="page-title mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-line pb-5">
       <div className="min-w-0">
-        {eyebrow && <p className="label-mono mb-2 text-brand">{eyebrow}</p>}
-        <h1 className="text-3xl font-semibold tracking-[-0.03em] text-ink md:text-4xl">{title}</h1>
+        <h1 className="text-3xl font-medium tracking-[-0.02em] text-ink">{title}</h1>
         {subtitle && <div className="mt-2 max-w-2xl text-sm text-muted">{subtitle}</div>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}

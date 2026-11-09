@@ -245,7 +245,7 @@ function AppCard({
               {token.revoked_at ? <Tag tone="warn">revoked</Tag> : <Tag tone="ok">active</Tag>}
               last used {token.last_used_at ? <Time iso={token.last_used_at} /> : 'unavailable'}
               {!token.revoked_at && (
-                <Button className="!h-6 !px-2 !py-0 text-[11px]" onClick={() => { void api().revokeIngestToken(token.id).then(() => onChange?.()); }}>
+                <Button className="!h-6 !px-2 !py-0 text-xs" onClick={() => { void api().revokeIngestToken(token.id).then(() => onChange?.()); }}>
                   Revoke
                 </Button>
               )}
@@ -330,7 +330,7 @@ function GrantForm({
                   {grant.allowed_kinds.map(kind => <Tag key={kind}>{kind}</Tag>)}
                   {grant.revoked_at ? <Tag tone="warn">revoked</Tag> : <Tag tone="ok">active</Tag>}
                   {!grant.revoked_at && (
-                    <Button className="!h-6 !px-2 !py-0 text-[11px]" onClick={() => { void api().revokeControlGrant(grant.id).then(() => onChange?.()); }}>
+                    <Button className="!h-6 !px-2 !py-0 text-xs" onClick={() => { void api().revokeControlGrant(grant.id).then(() => onChange?.()); }}>
                       Revoke grant
                     </Button>
                   )}

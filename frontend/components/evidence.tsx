@@ -53,7 +53,7 @@ export function ArtifactPeek({ id, label = 'artifact', asDiff = false }: { id: s
   return (
     <div className="mt-1">
       <p className="text-faint">sha256 <Mono>{state.sha.slice(0, 16)}…</Mono> {state.verified ? '· matches server hash' : '· server sent no hash'}</p>
-      {asDiff ? <DiffView diff={state.text} /> : <pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap rounded bg-bg p-2 font-mono text-[0.75rem] text-muted">{state.text}</pre>}
+      {asDiff ? <DiffView diff={state.text} /> : <pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap rounded bg-bg p-2 font-mono text-xs text-muted">{state.text}</pre>}
     </div>
   );
 }

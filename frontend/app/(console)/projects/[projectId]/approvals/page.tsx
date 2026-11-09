@@ -42,7 +42,7 @@ export default function ApprovalsPage() {
   const approvals = useResource(`approvals:${project.id}:${repoId ?? 'all'}`, s => api().approvals(project.id, { signal: s, ...(repoId ? { repoId } : {}) }), 5000);
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <PageTitle eyebrow="Review" title="Approvals" subtitle={repoId ? `Decisions for ${selectedRepo!.full_name}` : 'Every decision in this project, across all repositories.'} />
+      <PageTitle title="Approvals" subtitle={repoId ? `Decisions for ${selectedRepo!.full_name}` : 'Every decision in this project, across all repositories.'} />
       {selectedRepo && (
         <div role="tablist" aria-label="Approval scope" className="flex gap-1 text-sm">
           <button role="tab" type="button" aria-selected={!wholeProject} onClick={() => setWholeProject(false)} className={`rounded-md px-3 py-1.5 ${!wholeProject ? 'bg-panel-2 text-ink' : 'text-muted hover:text-ink'}`}>This repository</button>

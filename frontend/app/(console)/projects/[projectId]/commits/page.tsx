@@ -35,7 +35,7 @@ export default function CommitsPage() {
     router.replace(`/projects/${project.id}/commits?${params.toString()}`, { scroll: false });
   };
 
-  if (!selectedRepo) return <div className="flex flex-col gap-6"><PageTitle title="Commits" subtitle="Select a repository to view its commits." /><Empty>No repository connected. <Link className="text-brand hover:underline" href={`/projects/${project.id}/settings#connect-repo`}>Connect a repository</Link>.</Empty></div>;
+  if (!selectedRepo) return <div className="flex flex-col gap-6"><PageTitle title="Commits" subtitle="Select a repository to view its commits" /><Empty>No repository connected. <Link className="text-brand hover:underline" href={`/projects/${project.id}/settings#connect-repo`}>Connect a repository</Link>.</Empty></div>;
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <PageTitle title="Commits" subtitle={selectedRepo.full_name} />

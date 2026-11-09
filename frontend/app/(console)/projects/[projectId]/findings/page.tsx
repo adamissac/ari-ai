@@ -25,7 +25,7 @@ export default function FindingsPage() {
   const [tab, setTab] = useState<FindingGroup>('open');
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <PageTitle eyebrow="Review" title="Findings" subtitle={selectedRepo?.full_name ?? 'No repository connected'} />
+      <PageTitle title="Findings" subtitle={selectedRepo?.full_name ?? 'No repository connected'} />
       {!selectedRepo && <Empty>No repository connected. <Link className="text-brand hover:underline" href={`/projects/${project.id}/settings#connect-repo`}>Connect a repository</Link>.</Empty>}
       {selectedRepo && <Panel title="Findings">
       <p className="mb-1 text-sm text-muted">What these words mean: <Term t="finding">finding</Term>, <Term t="hypothesis">hypothesis</Term>, <Term t="validated">validated</Term>, <Term t="verification">verified</Term>.</p>
@@ -66,7 +66,7 @@ export default function FindingsPage() {
             <>
               <div className="hidden min-w-0 overflow-x-auto sm:block" data-testid="findings-table-scroll">
                 <table className="w-full min-w-[640px] text-left text-sm">
-                  <thead className="text-xs uppercase tracking-wider text-faint">
+                  <thead className="text-xs tracking-wider text-faint">
                     <tr><th className="py-1.5 pr-3">Finding</th><th className="pr-4">Status</th><th className="pr-3">Kind</th><th className="pr-3">Severity</th><th className="pr-3">Commit</th><th>Updated</th></tr>
                   </thead>
                   <tbody className="divide-y divide-line">

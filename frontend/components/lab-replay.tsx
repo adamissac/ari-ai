@@ -241,7 +241,7 @@ function GroundTruth({ episode, t, truth, onToggle, label }: { episode: LabEpiso
       <p className="text-xs text-faint">Test-environment ground truth — hidden attacker stage, never observed by the policy</p>
       {truth && (
         <ul className="mt-1 flex w-full flex-wrap gap-1.5 text-xs">
-          {states.map(s => <li key={s.node} className="rounded-full bg-panel-2 px-2 py-0.5">{label(s.node)} · attacker {STAGE_WORDS[s.hidden_stage_ground_truth]}</li>)}
+          {states.map(s => <li key={s.node} className="rounded-md bg-panel-2 px-2 py-0.5">{label(s.node)} · attacker {STAGE_WORDS[s.hidden_stage_ground_truth]}</li>)}
         </ul>
       )}
     </div>

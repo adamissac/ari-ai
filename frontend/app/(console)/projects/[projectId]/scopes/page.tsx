@@ -18,7 +18,7 @@ export default function ScopesPage() {
   const scopes = useResource(`scopes:${project.id}`, s => api().scopes(project.id, { signal: s }));
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <PageTitle eyebrow="Defend" title="Authorized scopes" subtitle={selectedRepo ? <span className="font-mono text-ink">{selectedRepo.full_name}</span> : 'Select a connected repository.'} />
+      <PageTitle title="Authorized scopes" subtitle={selectedRepo ? <span className="font-mono text-ink">{selectedRepo.full_name}</span> : 'Select a connected repository.'} />
       <Async resource={scopes} label="scope counts">
         {page => {
           const mine = page.items.filter(scope => selectedRepo && scope.targets.some(target => target.repo_id === selectedRepo.id));

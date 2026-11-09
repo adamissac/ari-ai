@@ -31,7 +31,7 @@ export default function ExpectationsPage() {
   const { selectedRepo } = useProject();
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <PageTitle eyebrow="Defend" title="Expectations" subtitle={selectedRepo
+      <PageTitle title="Expectations" subtitle={selectedRepo
         ? <>Intended behavior for <span className="font-mono text-ink">{selectedRepo.full_name}</span>, learned from its indexed snapshots.</>
         : 'Connect a repository and index a snapshot to review expectations.'} />
       {selectedRepo

@@ -42,7 +42,7 @@ export default function MonitoringPage() {
   });
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <PageTitle eyebrow="Defend" title="Monitoring" subtitle={selectedRepo ? <span className="font-mono text-ink">{selectedRepo.full_name}</span> : 'Select a connected repository.'}
+      <PageTitle title="Monitoring" subtitle={selectedRepo ? <span className="font-mono text-ink">{selectedRepo.full_name}</span> : 'Select a connected repository.'}
         actions={<div className="flex flex-wrap gap-3"><DefenseSwitch project={project} onChange={() => reloadProject()} /><DeliverySwitch project={project} onChange={() => reloadProject()} /></div>} />
       <StatGrid testId="monitoring-stats" items={[
         { label: 'Events', value: events.status === 'ready' ? repoEvents.length : '…' },

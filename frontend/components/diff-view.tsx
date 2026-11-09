@@ -13,7 +13,7 @@ export function DiffView({ diff }: { diff: string }) {
             <span><span className="text-ok">+{f.added}</span> <span className="text-bad">−{f.removed}</span></span>
           </figcaption>
           <div className="overflow-x-auto">
-            <table className="w-full font-mono text-[0.75rem]">
+            <table className="w-full font-mono text-xs">
               <tbody>
                 {f.lines.map((l, j) => (
                   <tr key={j} className={l.kind === 'add' ? 'bg-ok/10' : l.kind === 'del' ? 'bg-bad/10' : l.kind === 'hunk' ? 'bg-indigo/10 text-faint' : ''}>

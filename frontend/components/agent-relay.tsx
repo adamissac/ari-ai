@@ -61,7 +61,7 @@ export function AgentRelay({
                   className="pipeline-row"
                   title={item.job}
                 >
-                  <span className="pipeline-number" aria-hidden="true">{String(n).padStart(2, '0')}</span>
+                  <span className="pipeline-number" aria-hidden="true">{n}</span>
                   <span className="pipeline-agent">
                     <span className="pipeline-agent-name">{item.label}</span>
                     <span className="pipeline-job">{item.job}</span>

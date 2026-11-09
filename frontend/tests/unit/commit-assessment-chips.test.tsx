@@ -71,11 +71,11 @@ describe('commit assessment chips', () => {
     expect(screen.queryByTestId('not-reviewed')).toBeNull();
   });
 
-  it('shows NOT REVIEWED only after the complete assessment list is read', async () => {
+  it('shows Not reviewed only after the complete assessment list is read', async () => {
     mocks.projectForRepository.mockResolvedValue('project-1');
     mocks.assessments.mockResolvedValue({ items: [], next_cursor: null });
     renderChip();
-    expect((await screen.findByTestId('not-reviewed')).textContent).toBe('NOT REVIEWED');
+    expect((await screen.findByTestId('not-reviewed')).textContent).toBe('Not reviewed');
 
     cleanup();
     mocks.assessments.mockClear();

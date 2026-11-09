@@ -29,7 +29,7 @@
   --font-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --ease-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955);
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 html { color-scheme: light; }
@@ -56,30 +56,6 @@ body { background: linear-gradient(180deg, var(--color-bg) 0%, color-mix(in srgb
 :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
 ::selection { background: color-mix(in srgb, var(--color-brand) 22%, transparent); }
 
-/* Enhanced button hover states and transitions */
-.btn {
-  transition: background-color 250ms var(--ease-smooth), color 250ms var(--ease-smooth), 
-              box-shadow 250ms var(--ease-smooth), transform 200ms var(--ease-smooth);
-}
-.btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-.btn:active:not(:disabled) {
-  transform: translateY(0) scale(0.97);
-}
-.btn:disabled {
-  transform: none;
-  cursor: not-allowed;
-}
-
-/* Enhanced panel hover states */
-.panel {
-  transition: box-shadow 300ms var(--ease-smooth), border-color 300ms var(--ease-smooth);
-}
-.panel:hover {
-  border-color: color-mix(in srgb, var(--color-line) 60%, var(--color-brand) 20%);
-}
-
 /* Enhanced loading dot animation */
 .loading-dot {
   display: inline-block;
@@ -99,33 +75,12 @@ body { background: linear-gradient(180deg, var(--color-bg) 0%, color-mix(in srgb
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Enhanced empty state */
-.empty-state {
-  transition: background-color 300ms var(--ease-smooth), border-color 300ms var(--ease-smooth);
-}
-.empty-state:hover {
-  background: color-mix(in srgb, var(--color-panel-2) 80%, var(--color-bg));
-  border-color: var(--color-muted);
-}
 :root:not(:has(.hero-full)) .panel .empty-state {
   border: 0;
   background: transparent;
   box-shadow: none;
   padding-block: 28px;
 }
-:root:not(:has(.hero-full)) .panel .empty-state:hover {
-  background: transparent;
-  border-color: transparent;
-}
-
-/* Enhanced badge with subtle shadow */
-.status-badge {
-  transition: box-shadow 250ms var(--ease-smooth), transform 200ms var(--ease-smooth);
-}
-.status-badge:hover {
-  box-shadow: 0 2px 8px rgba(28, 18, 16, 0.12);
-}
-
 /* Custom scrollbar for webkit browsers */
 ::-webkit-scrollbar {
   width: 8px;
@@ -145,7 +100,7 @@ body { background: linear-gradient(180deg, var(--color-bg) 0%, color-mix(in srgb
 /* Small uppercase mono label used for eyebrows, nav and buttons. */
 .label-mono {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -545,9 +500,6 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .panel { 
   transition: box-shadow 300ms var(--ease-smooth), border-color 300ms var(--ease-smooth);
 }
-.panel:hover {
-  border-color: color-mix(in srgb, var(--color-line) 60%, var(--color-brand) 20%);
-}
 .panel > header { background: color-mix(in srgb, var(--color-panel-2) 55%, transparent); border-top-left-radius: inherit; border-top-right-radius: inherit; }
 
 /* Ari mark: the bare ant (components/brand.tsx), filled with the current text colour. */
@@ -557,10 +509,10 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 /* Defense Lab (app/lab/page.tsx). */
 .lab-run-picker { width: 15rem; max-width: 100%; flex-shrink: 0; align-self: flex-start; border-radius: 12px; padding: 14px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16); }
 .lab-run-picker > div { gap: 8px; }
-.lab-run-picker label { padding-left: 12px; color: rgba(255, 255, 255, 0.7); font-size: 11px; line-height: 16px; letter-spacing: .06em; text-transform: uppercase; }
+.lab-run-picker label { padding-left: 12px; color: rgba(255, 255, 255, 0.7); font-size: 12px; line-height: 16px; letter-spacing: .06em; text-transform: uppercase; }
 .lab-run-picker select { display: block; width: 100%; min-height: 44px; margin: 0; padding: 10px 36px 10px 12px; font-size: 14px; line-height: 22px; color: #fff8f2; border-color: #ffffff38; border-radius: 7px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23fff8f2' stroke-width='1.5'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
 @media (max-width: 640px) { .lab-run-picker { width: 100%; } }
-.lab-best { margin-left: 8px; display: inline-block; border-radius: 9999px; padding: 1px 8px; font-size: 0.68rem; font-weight: 600; line-height: 1.5; vertical-align: 1px; color: var(--color-brand-deep); background: var(--color-brand-soft); }
+.lab-best { margin-left: 8px; display: inline-block; border-radius: 9999px; padding: 1px 8px; font-size: 0.75rem; font-weight: 600; line-height: 1.5; vertical-align: 1px; color: var(--color-brand-deep); background: var(--color-brand-soft); }
 .lab-headline { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); border-radius: 20px; background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--color-line); overflow: hidden; }
 .lab-headline-tile { padding: 22px 24px; box-shadow: -1px 0 0 0 var(--color-line), 0 -1px 0 0 var(--color-line); }
 .lab-headline-num { display: block; font-family: var(--font-display); font-size: clamp(2.2rem, 5vw, 3rem); font-weight: 600; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--color-brand-deep); }
@@ -574,7 +526,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .lab-score-row[data-ai] .lab-score-bar { background: var(--color-brand); }
 .lab-score-row[data-ai] .lab-score-band { background: color-mix(in srgb, var(--color-brand) 18%, transparent); }
 .lab-score-value { grid-area: value; display: inline-flex; align-items: baseline; gap: 8px; white-space: nowrap; font-family: var(--font-mono); font-size: 0.82rem; font-variant-numeric: tabular-nums; color: var(--color-ink); }
-.lab-score-range { font-size: 0.7rem; color: var(--color-faint); }
+.lab-score-range { font-size: 0.75rem; color: var(--color-faint); }
 @media (min-width: 640px) {
   .lab-score-row { grid-template-columns: 12.5rem minmax(0, 1fr) 9rem; grid-template-areas: "name track value"; }
   .lab-score-value { justify-content: flex-end; }
@@ -587,10 +539,10 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .lab-segment-btn { border-radius: 9px; padding: 7px 12px; font-size: 0.82rem; font-weight: 500; color: var(--color-muted); transition: background-color 200ms, color 200ms, box-shadow 200ms; }
 .lab-segment-btn:hover { color: var(--color-ink); }
 .lab-segment-btn[aria-pressed="true"] { background: #fff; color: var(--color-night); box-shadow: 0 1px 3px rgba(28, 18, 16, 0.14); }
-.lab-segment-sm .lab-segment-btn { padding: 4px 9px; font-family: var(--font-mono); font-size: 0.72rem; }
+.lab-segment-sm .lab-segment-btn { padding: 4px 9px; font-family: var(--font-mono); font-size: 0.75rem; }
 .lab-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border-radius: 14px; padding: 8px 10px; background: var(--color-panel-2); box-shadow: inset 0 0 0 1px var(--color-line); }
 .lab-now { border-radius: 16px; padding: 18px; color: #fff; background: radial-gradient(120% 120% at 100% 0%, color-mix(in srgb, var(--color-brand) 40%, transparent), transparent 60%), var(--color-night); }
-.lab-outcome { border-radius: 9999px; padding: 5px 12px; font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.lab-outcome { border-radius: 9999px; padding: 5px 12px; font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
 .lab-outcome-ok { color: var(--color-ok); background: color-mix(in srgb, var(--color-ok) 12%, transparent); }
 .lab-outcome-bad { color: var(--color-bad); background: color-mix(in srgb, var(--color-bad) 12%, transparent); }
 .lab-diverge { position: relative; display: block; height: 8px; border-radius: 9999px; background: var(--color-panel-2); }
@@ -706,7 +658,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .lab-tone-elevated .lab-dot { background: #d9822b; }
 .lab-tone-high .lab-dot { background: var(--color-brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-brand) 20%, transparent); }
 .lab-tone-high { color: var(--color-brand-deep); font-weight: 500; }
-.lab-q { margin-bottom: 2px; font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255, 255, 255, 0.5); }
+.lab-q { margin-bottom: 2px; font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255, 255, 255, 0.5); }
 .lab-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 10px; font-size: 0.75rem; color: var(--color-muted); }
 .lab-legend > span { display: inline-flex; align-items: center; gap: 6px; }
 .lab-key { width: 18px; height: 18px; flex: none; }
@@ -737,7 +689,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .ld-q-bar { display: block; height: 100%; border-radius: inherit; background: color-mix(in srgb, var(--color-brand) 70%, var(--color-ink)); }
 
 /* Header account entry: retain the compact phone avatar and full accessible name. */
-.hdr-avatar { display: grid; width: 18px; height: 18px; place-items: center; border-radius: 9999px; font-size: 0.65rem; color: var(--color-on-brand); background: var(--color-brand); }
+.hdr-avatar { display: grid; width: 18px; height: 18px; place-items: center; border-radius: 9999px; font-size: 0.75rem; color: var(--color-on-brand); background: var(--color-brand); }
 
 /* Defense Lab player (components/lab-replay.tsx): one slim bar, the scrubber is the timeline. */
 .lab-player { display: flex; align-items: center; gap: 6px; border-radius: 14px; padding: 8px 12px 8px 8px; background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--color-line); }
@@ -750,7 +702,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .lab-skip:disabled { opacity: 0.35; cursor: not-allowed; }
 .lab-skip svg { width: 14px; height: 14px; fill: currentColor; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .lab-time { flex: none; text-align: right; font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-faint); font-variant-numeric: tabular-nums; }
-.lab-speed { flex: none; min-width: 34px; border-radius: 8px; padding: 4px 6px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-muted); transition: background-color 200ms, color 200ms; }
+.lab-speed { flex: none; min-width: 34px; border-radius: 8px; padding: 4px 6px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-muted); transition: background-color 200ms, color 200ms; }
 .lab-speed:hover { color: var(--color-ink); background: var(--color-panel-2); }
 .lab-scrub { position: relative; flex: 1; min-width: 80px; height: 28px; margin: 0 8px; }
 .lab-scrub-track { position: absolute; left: 0; right: 0; top: 50%; height: 6px; translate: 0 -50%; overflow: hidden; border-radius: 9999px; background: var(--color-panel-2); }
@@ -796,7 +748,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
    hairline borders, one accent. Motion is slow and stops under reduced motion. */
 .demo-marker {
   display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; padding: 3px 10px;
-  font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase;
   color: var(--color-brand-deep); background: var(--color-brand-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-brand) 30%, transparent);
 }
 .demo-marker-dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--color-brand); }
@@ -821,7 +773,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .demo-card:hover { border-color: color-mix(in srgb, var(--color-brand) 45%, var(--color-line)); box-shadow: 0 18px 40px -28px rgba(194, 69, 45, 0.55); transform: translateY(-1px); }
 .demo-chip {
   display: inline-flex; align-items: center; gap: 4px; border-radius: 9999px; padding: 2px 9px; white-space: nowrap;
-  font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.04em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase;
 }
 .demo-chip-ok { color: #1f7a4d; background: #e3f3ea; }
 .demo-chip-warn { color: #8a4b00; background: #fbefd9; }
@@ -921,7 +873,7 @@ html[data-home-hero] .site-header { position: fixed; inset-inline: 0; top: 0; }
 .commit-repository { border:1px solid var(--color-line); border-radius:16px; overflow:hidden; }.commit-repository>header { padding:20px 24px; border-bottom:1px solid var(--color-line); }.commit-repository h2 { margin-top:6px; font-weight:600; }
 .commit-columns { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }.commit-columns>div { padding:24px; }.commit-story { border-left:1px solid var(--color-line); background:var(--color-panel); }.commit-story h3 { margin:12px 0; font-size:22px; letter-spacing:-.03em; }
 .commit-chapters { display:grid; gap:22px; margin:26px 0; }.commit-chapters li { display:flex; gap:16px; }.commit-chapters b { font:11px var(--font-mono); color:#527a81; padding-top:3px; }.commit-chapters strong,.commit-chapters small { display:block; }.commit-chapters strong { font-size:13px; }.commit-chapters small { font-size:12px; color:var(--color-muted); line-height:1.65; margin-top:4px; }
-.commit-run { display:flex; align-items:center; gap:10px; padding:16px 0; border-top:1px solid var(--color-line); font-size:13px; }.commit-run>span:first-child { flex:1; }.commit-run small { display:block; font-size:10px; color:var(--color-muted); margin-top:5px; }.commit-analyze { display:flex; justify-content:space-between; margin-top:20px; background:#102f35; color:#e6f3f4; border-radius:8px; padding:14px 18px; font-size:13px; }
+.commit-run { display:flex; align-items:center; gap:10px; padding:16px 0; border-top:1px solid var(--color-line); font-size:13px; }.commit-run>span:first-child { flex:1; }.commit-run small { display:block; font-size: 12px; color:var(--color-muted); margin-top:5px; }.commit-analyze { display:flex; justify-content:space-between; margin-top:20px; background:#102f35; color:#e6f3f4; border-radius:8px; padding:14px 18px; font-size:13px; }
 @media(max-width:760px) { .replay-brief { flex-direction:column; padding:20px; gap:16px; }.replay-keys { max-width:none; }.commit-columns { grid-template-columns:1fr; }.commit-story { border-left:0; border-top:1px solid var(--color-line); }.commit-intro { padding:24px; } }
 .replay-stage-grid { display:grid; gap:20px; }.replay-explanation { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); align-items:start; gap:14px; min-width:0; }.replay-explanation .lab-now { grid-row:span 2; background:#102b31; }.replay-explanation .lab-now dl { display:grid; grid-template-columns:1fr 1fr; gap:20px; }.replay-explanation .lab-now dl>div:first-child { grid-column:1 / -1; }
 .net-truth-chip { position:static; margin:0; padding:10px 20px; border:0; border-top:1px solid #29454a; border-radius:0; color:#a8c6ca; font-size:9px; background:transparent; }
@@ -986,7 +938,7 @@ body:has(.commit-stage) main { color: #fff; }
 .amap-phases-compact .amap-phase-compact[data-state="done"] { color: rgb(255 255 255 / 62%); }
 .amap-phases-compact .amap-phase-compact[data-state="active"] { color: rgb(255 255 255 / 62%); }
 .amap-phases-compact .amap-phase-compact[aria-pressed="true"] { background: rgb(194 69 45 / 24%); color: #fff; }
-.amap-phase-check { color: #5fd49a; font-size: 0.7rem; line-height: 1; }
+.amap-phase-check { color: #5fd49a; font-size: 0.75rem; line-height: 1; }
 .amap-phase::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 2px; border-radius: 2px; background: rgb(255 255 255 / 10%); transition: background-color 300ms; }
 .amap-phase[aria-pressed="true"], .amap-phase[data-state="active"] { color: #fff; }
 .amap-phase[aria-pressed="true"]::after, .amap-phase[data-state="active"]::after { background: #fff; }
@@ -1005,7 +957,7 @@ body:has(.commit-stage) main { color: #fff; }
 .amap-grid-compact .amap-compact-agent-list > li { flex: none; }
 .amap-grid-compact .amap-rail-compact .amap-agent { width: auto; min-height: 32px; align-items: center; gap: 6px; border: 0; border-radius: 9999px; background: transparent; padding: 4px 8px; }
 .amap-grid-compact .amap-rail-compact .amap-agent[aria-pressed="true"] { background: rgb(255 255 255 / 8%); box-shadow: inset 2px 0 var(--team); }
-.amap-rail-compact .amap-agent-name { white-space: nowrap; font-size: 0.72rem; }
+.amap-rail-compact .amap-agent-name { white-space: nowrap; font-size: 0.75rem; }
 .amap-rail-compact :is(.amap-agent-status, .amap-agent-job) { display: none; }
 .amap-compact-dot { display: inline-block; width: 6px; height: 6px; flex: none; border-radius: 9999px; background: rgb(255 255 255 / 28%); }
 .amap-compact-dot[data-status="done"] { background: #5fd49a; }
@@ -1025,14 +977,14 @@ body:has(.commit-stage) main { color: #fff; }
 }
 .amap-rail { display: flex; flex-direction: column; gap: 14px; padding: 16px 12px; border-bottom: 1px solid rgb(255 255 255 / 7%); }
 @media (min-width: 1100px) { .amap-rail { border-bottom: 0; border-right: 1px solid rgb(255 255 255 / 7%); } }
-.amap-group-label { padding: 0 8px 4px; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.02em; color: rgb(255 255 255 / 40%); }
+.amap-group-label { padding: 0 8px 4px; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.02em; color: rgb(255 255 255 / 40%); }
 .amap-group ol { display: flex; flex-direction: column; gap: 2px; }
 .amap-agent { position: relative; display: flex; width: 100%; gap: 10px; align-items: flex-start; border-radius: 10px; padding: 7px 8px; text-align: left; transition: background-color 200ms; }
 .amap-agent:hover { background: rgb(255 255 255 / 4%); }
 .amap-agent[aria-pressed="true"] { background: rgb(255 255 255 / 7%); }
 .amap-agent[data-status="running"]::before { content: ""; position: absolute; left: -12px; top: 8px; bottom: 8px; width: 2px; border-radius: 2px; background: var(--team); box-shadow: 0 0 10px var(--team); }
 .amap-agent-name { font-size: 0.875rem; font-weight: 500; color: rgb(255 255 255 / 92%); }
-.amap-agent-status { font-size: 0.7rem; color: rgb(255 255 255 / 40%); }
+.amap-agent-status { font-size: 0.75rem; color: rgb(255 255 255 / 40%); }
 .amap-agent[data-status="running"] .amap-agent-status { color: #fff; }
 .amap-agent-job { display: block; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; color: rgb(255 255 255 / 45%); }
 .amap-agent[data-status="queued"] :is(.amap-agent-name, .amap-agent-job) { opacity: 0.55; }
@@ -1062,21 +1014,21 @@ body:has(.commit-stage) main { color: #fff; }
 .amap-node[data-state="issue"] { background: rgb(60 20 14 / 85%); box-shadow: inset 0 0 0 1.5px #ff6b52, 0 0 34px -10px rgb(255 107 82 / 80%); }
 .amap-node[data-state="issue"][data-active] { box-shadow: inset 0 0 0 1.5px #ff6b52, 0 0 0 5px color-mix(in srgb, var(--beam) 18%, transparent), 0 0 40px -8px var(--beam); }
 .amap-node[data-state="fixed"] { background: rgb(14 40 28 / 80%); box-shadow: inset 0 0 0 1.5px #5fd49a, 0 0 30px -12px #5fd49a; }
-.amap-node-state { margin-top: 6px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 26px; font-size: 0.74rem; color: rgb(255 255 255 / 45%); }
+.amap-node-state { margin-top: 6px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 26px; font-size: 0.75rem; color: rgb(255 255 255 / 45%); }
 .amap-node[data-state="clear"] .amap-node-state { color: rgb(255 255 255 / 62%); }
 .amap-node[data-active] .amap-node-state { color: #fff; }
 .amap-node[data-state="issue"] .amap-node-state { color: #ffb0a3; }
 .amap-node[data-state="fixed"] .amap-node-state { color: #9ff0c6; }
 .amap-icon { width: 16px; height: 16px; flex: none; color: rgb(255 255 255 / 70%); }
-.amap-crit { font-size: 0.66rem; color: rgb(255 255 255 / 45%); }
+.amap-crit { font-size: 0.75rem; color: rgb(255 255 255 / 45%); }
 .amap-hub-wrap { position: relative; }
 .amap-wire { stroke: rgb(255 255 255 / 9%); stroke-width: 1; fill: none; }
 .amap-wire line[data-touched] { stroke: rgb(255 255 255 / 20%); }
-.amap-beam { fill: none; stroke-width: 2; stroke-dasharray: 4 6; filter: drop-shadow(0 0 3px currentColor); animation: amap-flow 0.9s linear infinite; }
+.amap-beam { fill: none; stroke-width: 2; stroke-dasharray: 4 6; animation: amap-flow 0.9s linear infinite; }
 @keyframes amap-flow { to { stroke-dashoffset: -20; } }
 .amap-hub { position: absolute; left: 20%; right: 20%; top: 50%; transform: translateY(-50%); border-radius: 14px; padding: 14px 10px; text-align: center; background: rgb(14 10 9 / 96%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 16%), 0 20px 40px -20px rgb(0 0 0 / 80%); transition: box-shadow 300ms; }
 .amap-hub[data-active] { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 30%), 0 0 40px -12px var(--beam); }
-.amap-hub-label { font-size: 0.7rem; color: rgb(255 255 255 / 45%); }
+.amap-hub-label { font-size: 0.75rem; color: rgb(255 255 255 / 45%); }
 
 .amap-transport { display: flex; align-items: center; gap: 12px; padding: 12px 20px 16px; border-top: 1px solid rgb(255 255 255 / 7%); }
 .amap-play { display: grid; width: 34px; height: 34px; flex: none; place-items: center; border-radius: 9999px; background: #fff; color: var(--color-night); transition: transform 150ms, box-shadow 200ms; }
@@ -1093,12 +1045,12 @@ body:has(.commit-stage) main { color: #fff; }
 .amap-scrub:focus { outline: none; }
 .amap-scrub:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgb(255 255 255 / 30%); }
 .amap-scrub:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px rgb(255 255 255 / 30%); }
-.amap-speed { flex: none; min-width: 40px; border-radius: 8px; padding: 4px 8px; font-family: var(--font-mono); font-size: 0.72rem; color: rgb(255 255 255 / 75%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 14%); transition: background-color 200ms; }
+.amap-speed { flex: none; min-width: 40px; border-radius: 8px; padding: 4px 8px; font-family: var(--font-mono); font-size: 0.75rem; color: rgb(255 255 255 / 75%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 14%); transition: background-color 200ms; }
 .amap-speed:hover { background: rgb(255 255 255 / 7%); }
 
 .amap-inspect { padding: 20px; border-top: 1px solid rgb(255 255 255 / 7%); }
 @media (min-width: 1100px) { .amap-inspect { max-height: 600px; overflow-y: auto; border-top: 0; border-left: 1px solid rgb(255 255 255 / 7%); } }
-.amap-kicker { font-size: 0.72rem; color: rgb(255 255 255 / 45%); }
+.amap-kicker { font-size: 0.75rem; color: rgb(255 255 255 / 45%); }
 .amap-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; color: rgb(255 255 255 / 70%); }
 .amap-pill::before { content: ""; width: 7px; height: 7px; border-radius: 9999px; background: rgb(255 255 255 / 35%); }
 .amap-pill[data-state="checking"]::before { background: #fff; }
@@ -1128,10 +1080,10 @@ body:has(.commit-stage) main { color: #fff; }
 .commit-stage .demo-pipe-item { background: rgba(255, 255, 255, 0.035); }
 
 /* Defense Lab page rhythm: eyebrow → heading → content, one card per section. */
-.lab-eyebrow { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-brand-deep); }
+.lab-eyebrow { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-brand-deep); }
 .lab-lede { max-width: 46rem; font-family: var(--font-display); font-size: clamp(1.15rem, 2.2vw, 1.4rem); line-height: 1.45; letter-spacing: -0.015em; color: var(--color-ink); }
 .lab-step { position: relative; border-radius: 20px; padding: 22px 24px; background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--color-line); }
-.lab-step-n { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9999px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-brand-deep); background: var(--color-brand-soft); }
+.lab-step-n { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9999px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-brand-deep); background: var(--color-brand-soft); }
 .lab-caveat { display: flex; align-items: flex-start; gap: 10px; max-width: 56rem; font-size: 0.82rem; line-height: 1.55; color: var(--color-muted); }
 .lab-caveat svg { color: var(--color-warn); }
 .lab-caveat strong { color: var(--color-ink); }
@@ -1141,7 +1093,7 @@ body:has(.commit-stage) main { color: #fff; }
 
 /* Stat chips strip — quick-glance eval facts. */
 .lab-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.lab-chip { display: inline-flex; align-items: baseline; gap: 7px; border-radius: 9999px; padding: 7px 14px; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.02em; color: var(--color-muted); background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--color-line); }
+.lab-chip { display: inline-flex; align-items: baseline; gap: 7px; border-radius: 9999px; padding: 7px 14px; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.02em; color: var(--color-muted); background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--color-line); }
 .lab-chip strong { font-weight: 600; font-size: 0.85rem; color: var(--color-ink); }
 .lab-chip-warn { color: var(--color-warn); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-warn) 40%, var(--color-line)); }
 
@@ -1159,7 +1111,7 @@ body:has(.commit-stage) main { color: #fff; }
 .lab-replay-foot { display: flex; flex-direction: column; gap: 14px; margin: 4px -20px -20px; padding: 18px 20px; border-top: 1px solid var(--color-line); background: color-mix(in srgb, var(--color-panel-2) 50%, transparent); }
 .lab-replay-foot .lab-outcome-row { margin: 0; }
 @media (min-width: 1000px) { .lab-swipe { display: none; } }
-.lab-replay-card .lab-mode { padding: 3px 9px; font-size: 0.62rem; color: var(--color-muted); background: transparent; box-shadow: inset 0 0 0 1px var(--color-line); }
+.lab-replay-card .lab-mode { padding: 3px 9px; font-size: 0.75rem; color: var(--color-muted); background: transparent; box-shadow: inset 0 0 0 1px var(--color-line); }
 .lab-replay-card .lab-status { gap: 6px 18px; font-size: 0.8rem; }
 @media (max-width: 767px) {
   .lab-step { display: grid; grid-template-columns: 30px minmax(0, 1fr); column-gap: 14px; padding: 16px 18px; }
@@ -1194,6 +1146,7 @@ body:has(.commit-stage) main { color: #fff; }
   --color-ember: #ff8a75; /* brand-coloured text on night: #c2452d is only 3.6:1 there */
   --glass: rgb(255 247 242 / 4%);
   --glass-line: rgb(255 247 242 / 9%);
+  --ui-radius: 12px;
 }
 :root:not(:has(.hero-full)) body { background: var(--color-night); }
 :root:not(:has(.hero-full)) ::selection { background: color-mix(in srgb, var(--color-brand) 45%, transparent); color: #fff; }
@@ -1279,68 +1232,32 @@ body:has(.commit-stage) main { color: #fff; }
 :root:not(:has(.hero-full)) .demo-chip-warn { color: #ffc36b; background: rgb(240 164 58 / 14%); }
 :root:not(:has(.hero-full)) .demo-chip-bad { color: #ff9b88; background: rgb(224 115 92 / 16%); }
 
-/* Ink bands (project header, Lab header, pricing, sign-in) become small heroes: a drifting
-   ember orb under the grain, glowing display type, and the hero's staggered blur-rise. */
+/* Ink bands (project header, Lab header, pricing, sign-in) are one flat raised surface. */
 :root:not(:has(.hero-full)) .hero-ink {
   background:
     radial-gradient(55% 120% at 100% 0%, rgb(194 69 45 / 24%), transparent 70%),
     linear-gradient(180deg, rgb(255 247 242 / 5%), rgb(255 247 242 / 1.5%)),
     rgb(24 17 15 / 88%);
 }
-:root:not(:has(.hero-full)) main .hero-ink::before {
-  content: ""; display: none; position: absolute; z-index: -1; width: 45%; aspect-ratio: 1; right: -10%; top: -60%; border-radius: 9999px; pointer-events: none; opacity: 0.55;
-  background: radial-gradient(circle, color-mix(in srgb, var(--color-brand) 45%, transparent) 0%, transparent 65%);
-  animation: hero-drift-b 18s ease-in-out infinite alternate; will-change: transform;
-}
 :root:not(:has(.hero-full)) main .hero-ink { box-shadow: inset 0 0 0 1px rgb(255 247 242 / 9%), 0 30px 70px -45px rgb(0 0 0 / 80%); }
-:root:not(:has(.hero-full)) main .hero-ink .display { color: #fff7f2; text-shadow: 0 0 0.12em rgb(255 205 184 / 16%), 0 0 0.5em rgb(255 247 242 / 8%); }
-:root:not(:has(.hero-full)) main :is(.hero-ink, .page-title, .project-head) > * { animation: night-rise 800ms var(--ease-quad) both; }
-:root:not(:has(.hero-full)) main :is(.hero-ink, .page-title, .project-head) > :nth-child(2) { animation-delay: 90ms; }
-:root:not(:has(.hero-full)) main :is(.hero-ink, .page-title, .project-head) > :nth-child(3) { animation-delay: 180ms; }
-:root:not(:has(.hero-full)) main :is(.hero-ink, .page-title, .project-head) > :nth-child(n + 4) { animation-delay: 270ms; }
-@keyframes night-rise { from { opacity: 0; transform: translateY(8px); } }
+:root:not(:has(.hero-full)) main .hero-ink .display { color: var(--color-ink); }
 .page-title h1 { text-wrap: balance; }
-:root:not(:has(.hero-full)) .page-title { border-bottom: 0; position: relative; }
-:root:not(:has(.hero-full)) .page-title::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
-  background: linear-gradient(90deg, rgb(255 247 242 / 45%), var(--glass-line) 35%, transparent); }
-:root:not(:has(.hero-full)) .page-title h1 { text-shadow: 0 0 0.6em rgb(255 247 242 / 10%); }
 
-/* Panels: dark glass on the ambient light, with a pointer-following ember glow (--gx/--gy
-   from ambient.tsx) and a one-time rise when first scrolled into view. */
-@property --glow { syntax: "<number>"; inherits: false; initial-value: 0; }
-:root:not(:has(.hero-full)) .panel {
-  border-color: var(--glass-line);
-  background: linear-gradient(180deg, rgb(255 247 242 / 3%), transparent 60%), rgb(20 14 13 / 82%);
-  transition: border-color 300ms var(--ease-quad), opacity 700ms var(--ease-quad), transform 700ms var(--ease-quad);
-}
-:root:not(:has(.hero-full)) .panel:hover { border-color: rgb(255 247 242 / 16%); }
+/* Panels and cards: a surface step plus a hairline. Nothing glows or lifts. */
+:root:not(:has(.hero-full)) .panel { border-color: var(--glass-line); }
 :root:not(:has(.hero-full)) .panel > header { background: transparent; border-color: var(--glass-line); }
-:root:not(:has(.hero-full)) .panel > header h2 { color: rgb(255 247 242 / 70%); }
-:root:not(:has(.hero-full)) .panel > header h2 { letter-spacing: 0.06em; }
 [data-reveal] { transition: opacity 500ms var(--ease-quad), transform 500ms var(--ease-quad); }
 [data-reveal="hidden"] { opacity: 0; transform: translateY(12px); }
-
-/* Interactive cards and rows lift toward the light. */
 :root:not(:has(.hero-full)) main a:is(.rounded-xl, .rounded-2xl).border,
-:root:not(:has(.hero-full)) .demo-card {
-  border-color: var(--glass-line); background: linear-gradient(180deg, rgb(255 247 242 / 5%), rgb(255 247 242 / 2%)), rgb(38 26 23 / 70%);
-  transition: border-color 250ms var(--ease-quad), box-shadow 250ms var(--ease-quad), transform 250ms var(--ease-quad);
-}
+:root:not(:has(.hero-full)) .demo-card { border-color: var(--glass-line); background: linear-gradient(180deg, rgb(255 247 242 / 5%), rgb(255 247 242 / 2%)), rgb(38 26 23 / 70%); transition: border-color 150ms var(--ease-out); }
 :root:not(:has(.hero-full)) main a:is(.rounded-xl, .rounded-2xl).border:hover,
-:root:not(:has(.hero-full)) .demo-card:hover { border-color: rgb(255 138 117 / 45%); box-shadow: 0 20px 44px -26px rgb(194 69 45 / 60%); transform: translateY(-2px); }
+:root:not(:has(.hero-full)) .demo-card:hover { border-color: rgb(255 247 242 / 20%); }
 :root:not(:has(.hero-full)) main .bg-white:not(a, button) { background: linear-gradient(180deg, rgb(255 247 242 / 5%), rgb(255 247 242 / 2%)), rgb(38 26 23 / 80%); border-color: var(--glass-line); }
 :root:not(:has(.hero-full)) main :is(a, button).bg-white { --color-ink: var(--color-night); --color-brand: #c2452d; color: var(--color-night); }
-:root:not(:has(.hero-full)) main :is(ol, ul).divide-y > li { transition: background-color 200ms; }
+:root:not(:has(.hero-full)) main :is(ol, ul).divide-y > li { transition: background-color 150ms var(--ease-out); }
 :root:not(:has(.hero-full)) main :is(ol, ul).divide-y > li:hover { background-color: rgb(255 247 242 / 2.5%); }
-
-/* Buttons (components/ui Button, data-variant). Primary glows like the hero CTA on hover. */
-:root:not(:has(.hero-full)) .btn[data-variant="primary"] { background: var(--color-brand); color: #fff; box-shadow: 0 8px 22px -12px rgb(194 69 45 / 70%); }
-:root:not(:has(.hero-full)) .btn[data-variant="primary"]:not(:disabled):hover { background: var(--color-brand-deep); color: #fff; box-shadow: 0 10px 26px -12px rgb(194 69 45 / 80%); }
-:root:not(:has(.hero-full)) .btn[data-variant="secondary"] { background: rgb(255 247 242 / 7%); box-shadow: inset 0 0 0 1px var(--glass-line); }
-:root:not(:has(.hero-full)) .btn[data-variant="secondary"]:not(:disabled):hover { background: rgb(255 247 242 / 12%); }
-:root:not(:has(.hero-full)) .btn[data-variant="ghost"]:not(:disabled):hover { background: rgb(255 247 242 / 7%); }
 :root:not(:has(.hero-full)) :is(input, select, textarea):not([type="checkbox"], [type="radio"], [type="range"]) { background-color: rgb(20 13 11 / 65%); }
-:root:not(:has(.hero-full)) :is(input, select, textarea):focus { box-shadow: 0 0 0 3px rgb(194 69 45 / 30%), 0 0 24px -4px rgb(194 69 45 / 45%); }
+:root:not(:has(.hero-full)) :is(input, select, textarea):focus { box-shadow: 0 0 0 1px var(--color-ember); }
 :root:not(:has(.hero-full)) :is(input[type="checkbox"], input[type="radio"], input[type="range"]) { accent-color: var(--color-brand); }
 
 /* Loading: an ember pulse instead of a blinking grey line. */
@@ -1357,8 +1274,7 @@ body:has(.commit-stage) main { color: #fff; }
   box-shadow: inset 0 0 0 1px var(--glass-line), 0 24px 48px -32px rgb(0 0 0 / 70%);
 }
 :root:not(:has(.hero-full)) .lab-headline-tile { box-shadow: -1px 0 0 0 var(--glass-line), 0 -1px 0 0 var(--glass-line); }
-:root:not(:has(.hero-full)) .lab-headline-num { text-shadow: 0 0 0.5em rgb(255 247 242 / 14%); }
-:root:not(:has(.hero-full)) .lab-score-row[data-ai] .lab-score-bar { background: #fff7f2; box-shadow: 0 0 10px rgb(255 247 242 / 30%); }
+:root:not(:has(.hero-full)) .lab-score-row[data-ai] .lab-score-bar { background: #fff7f2; box-shadow: none; }
 :root:not(:has(.hero-full)) .lab-score-row[data-ai] .lab-score-band { background: rgb(255 247 242 / 16%); }
 :root:not(:has(.hero-full)) .lab-score-bar { background: rgb(255 247 242 / 28%); }
 :root:not(:has(.hero-full)) .lab-scrub-played { background: color-mix(in srgb, var(--color-brand) 45%, transparent); }
@@ -1367,31 +1283,20 @@ body:has(.commit-stage) main { color: #fff; }
 .night-footer::before, .night-footer::after { content: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .ambient-blob, :root:not(:has(.hero-full)) main .hero-ink::before, .loading-dot { animation: none; }
-  :root:not(:has(.hero-full)) main :is(.hero-ink, .page-title, .project-head) > * { animation: none; }
+  .ambient-blob, .loading-dot { animation: none; }
   [data-reveal] { transition: none; }
   [data-reveal="hidden"] { opacity: 1; transform: none; }
-  :root:not(:has(.hero-full)) main a:is(.rounded-xl, .rounded-2xl).border:hover, :root:not(:has(.hero-full)) .demo-card:hover { transform: none; }
 }
 
 /* Pricing on night: the recommended plan is the lit one; the band dissolves into the page. */
-:root:not(:has(.hero-full)) .bleed-hero { -webkit-mask-image: linear-gradient(180deg, transparent, #000 14%, #000 72%, transparent); mask-image: linear-gradient(180deg, transparent, #000 14%, #000 72%, transparent); }
 :root:not(:has(.hero-full)) .pricing-card-dark {
   background: radial-gradient(70% 55% at 100% 0%, rgb(194 69 45 / 26%), transparent 70%), linear-gradient(180deg, rgb(255 247 242 / 6%), rgb(255 247 242 / 2%)), #1f1613;
   box-shadow: inset 0 0 0 1px rgb(255 247 242 / 22%), 0 40px 90px -45px rgb(0 0 0 / 85%);
 }
-:root:not(:has(.hero-full)) .pricing-card { transition: transform 400ms var(--ease-quad), box-shadow 400ms var(--ease-quad); }
-:root:not(:has(.hero-full)) .pricing-card:hover { transform: translateY(-3px); }
-:root:not(:has(.hero-full)) .pricing-plans > * { animation: night-rise 900ms var(--ease-quad) both; animation-delay: 260ms; }
-:root:not(:has(.hero-full)) .pricing-plans > :nth-child(2) { animation-delay: 380ms; }
 :root:not(:has(.hero-full)) .faq-pill { background: var(--glass); box-shadow: inset 0 0 0 1px var(--glass-line); }
 :root:not(:has(.hero-full)) .faq, :root:not(:has(.hero-full)) .faq-item { border-color: var(--glass-line); }
 :root:not(:has(.hero-full)) .faq-q:hover { color: var(--color-ember); }
 :root:not(:has(.hero-full)) .faq-item[data-open] .faq-q { color: var(--color-ember); }
-@media (prefers-reduced-motion: reduce) {
-  :root:not(:has(.hero-full)) .pricing-plans > * { animation: none; }
-  :root:not(:has(.hero-full)) .pricing-card:hover { transform: none; }
-}
 
 /* Sign-in screens (components/auth-stage.tsx): the home hero's stage with a glass card. */
 .auth-stage { margin-bottom: -1.5rem; }
@@ -1464,7 +1369,7 @@ body:has(.commit-stage) main { color: #fff; }
 .auth-btn-ghost { height: 44px; background: rgb(255 255 255 / 6%); color: rgb(255 255 255 / 85%); border: 1px solid rgb(255 255 255 / 12%); }
 .auth-btn-ghost:hover:not(:disabled) { background: rgb(255 255 255 / 11%); }
 .hero-ink .auth-btn-light span, .hero-ink .auth-btn-light svg { color: inherit; }
-.auth-divider { display: flex; align-items: center; gap: 12px; margin: 1.5rem 0; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgb(255 255 255 / 45%); }
+.auth-divider { display: flex; align-items: center; gap: 12px; margin: 1.5rem 0; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: rgb(255 255 255 / 45%); }
 .auth-divider::before, .auth-divider::after { content: ""; height: 1px; flex: 1; background: rgb(255 255 255 / 12%); }
 .auth-link { color: #ffb8a6; text-underline-offset: 3px; transition: color 200ms; }
 .auth-link:hover { color: #fff; text-decoration: underline; }
@@ -1513,7 +1418,7 @@ body:has(.commit-stage) main { color: #fff; }
 :root:not(:has(.hero-full)) .network-actors { background: transparent; border-color: rgb(255 247 242 / 8%); }
 :root:not(:has(.hero-full)) .network-actors b { color: #fff7f2; }
 :root:not(:has(.hero-full)) .network-actors small { color: rgb(255 247 242 / 55%); }
-:root:not(:has(.hero-full)) .actor-threat { background: var(--color-brand); box-shadow: 0 0 8px rgb(194 69 45 / 70%); }
+:root:not(:has(.hero-full)) .actor-threat { background: var(--color-brand); box-shadow: none; }
 :root:not(:has(.hero-full)) .actor-guard { background: #fff; }
 :root:not(:has(.hero-full)) .network-zone { fill: rgb(255 247 242 / 35%); }
 :root:not(:has(.hero-full)) .network-boundary { stroke: rgb(255 247 242 / 18%); }
@@ -1543,11 +1448,11 @@ body:has(.commit-stage) main { color: #fff; }
 /* Player: the agent map's transport — white play button, neutral track, ember only as signal heat. */
 :root:not(:has(.hero-full)) .lab-player { border-top: 1px solid rgb(255 247 242 / 10%); border-bottom: 1px solid rgb(255 247 242 / 10%); border-radius: 0; padding: 10px 2px; background: transparent; box-shadow: none; }
 :root:not(:has(.hero-full)) .lab-play { background: var(--color-brand); color: #fff; box-shadow: 0 0 0 4px rgb(194 69 45 / 12%); }
-:root:not(:has(.hero-full)) .lab-play:hover { background: var(--color-brand-deep); box-shadow: 0 0 0 6px rgb(194 69 45 / 18%), 0 0 18px rgb(194 69 45 / 24%); }
+:root:not(:has(.hero-full)) .lab-play:hover { background: var(--color-brand-deep); box-shadow: 0 0 0 6px rgb(194 69 45 / 18%); }
 :root:not(:has(.hero-full)) .lab-skip:hover:not(:disabled), :root:not(:has(.hero-full)) .lab-speed:hover { background: rgb(255 247 242 / 8%); }
 :root:not(:has(.hero-full)) .lab-scrub-track { background: rgb(255 247 242 / 10%); }
 :root:not(:has(.hero-full)) .lab-scrub-heat { opacity: 0.75; }
-:root:not(:has(.hero-full)) .lab-scrub-played { background: var(--color-brand); box-shadow: 0 0 8px rgb(194 69 45 / 35%); }
+:root:not(:has(.hero-full)) .lab-scrub-played { background: var(--color-brand); box-shadow: none; }
 :root:not(:has(.hero-full)) .lab-scrub-dot { box-shadow: 0 0 0 1.5px rgb(255 247 242 / 45%); }
 :root:not(:has(.hero-full)) .lab-scrub-thumb { box-shadow: 0 0 0 2px var(--color-brand), 0 0 0 5px rgb(194 69 45 / 16%), 0 2px 6px rgb(0 0 0 / 50%); }
 :root:not(:has(.hero-full)) .lab-scrub:focus-within .lab-scrub-thumb { box-shadow: 0 0 0 2px var(--color-brand), 0 0 0 7px rgb(194 69 45 / 26%); }
@@ -1589,7 +1494,7 @@ body:has(.commit-stage) main { color: #fff; }
 .pipeline-stat { min-width: 0; padding: 15px 18px; }
 .pipeline-stat + .pipeline-stat { border-left: 1px solid var(--color-line); }
 .pipeline-stat strong { display: block; color: var(--color-ink); font: 600 24px/1 var(--font-display); letter-spacing: -0.04em; }
-.pipeline-stat span { display: block; margin-top: 6px; color: var(--color-muted); font-size: 11px; line-height: 1.35; }
+.pipeline-stat span { display: block; margin-top: 6px; color: var(--color-muted); font-size: 12px; line-height: 1.35; }
 .pipeline-skip-note { display: flex; align-items: center; gap: 8px; margin: 0; padding: 11px 22px; border-bottom: 1px solid var(--color-line); color: var(--color-warn); font-size: 12px; line-height: 1.4; }
 .pipeline-skip-dot { width: 6px; height: 6px; flex: none; border-radius: 9999px; background: var(--color-warn); }
 .pipeline-groups { padding: 0 22px 20px; }
@@ -1606,9 +1511,9 @@ body:has(.commit-stage) main { color: #fff; }
 .pipeline-number { grid-area: number; color: var(--color-faint); font: 10px/1 var(--font-mono); letter-spacing: 0.08em; }
 .pipeline-agent { display: flex; grid-area: agent; min-width: 0; align-items: baseline; gap: 8px; }
 .pipeline-agent-name { flex: none; font-size: 13px; font-weight: 600; white-space: nowrap; }
-.pipeline-job { min-width: 0; overflow: hidden; color: var(--color-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.pipeline-job { min-width: 0; overflow: hidden; color: var(--color-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .pipeline-result { grid-area: result; min-width: 0; overflow: hidden; color: var(--color-muted); font-size: 12px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
-.pipeline-status { display: inline-flex; grid-area: status; align-items: center; gap: 6px; color: var(--color-muted); font-size: 11px; white-space: nowrap; }
+.pipeline-status { display: inline-flex; grid-area: status; align-items: center; gap: 6px; color: var(--color-muted); font-size: 12px; white-space: nowrap; }
 .pipeline-chevron { grid-area: chevron; color: var(--color-faint); font-size: 20px; line-height: 1; }
 .pipeline-row[data-status="failed"] .pipeline-result { color: var(--color-bad); }
 .pipeline-row[data-status="running"] .pipeline-status { color: var(--color-info); }
@@ -1633,12 +1538,12 @@ body:has(.commit-stage) main { color: #fff; }
   .pipeline-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .pipeline-stat { padding: 12px 9px; }
   .pipeline-stat strong { font-size: 20px; }
-  .pipeline-stat span { font-size: 10px; }
+  .pipeline-stat span { font-size: 12px; }
   .pipeline-groups { padding-inline: 10px; }
   .pipeline-row { grid-template: "number agent status chevron" ". result result chevron" / 2rem minmax(0, 1fr) auto 0.75rem; gap: 5px 9px; padding: 12px 7px; }
   .pipeline-agent { display: block; }
   .pipeline-job { display: none; }
-  .pipeline-result { font-size: 11px; }
+  .pipeline-result { font-size: 12px; }
   .pipeline-group-heading { display: block; margin-bottom: 6px; }
   .pipeline-group-heading p { margin-top: 3px; }
 }
@@ -1647,7 +1552,6 @@ body:has(.commit-stage) main { color: #fff; }
 /* One continuous background on night pages: the commit stage no longer paints its own opaque
    band (that drew a hard edge under the header), and page headers are open hero headings rather
    than rounded boxes. */
-:root:not(:has(.hero-full)) .commit-stage { background: transparent; }
 :root:not(:has(.hero-full)) .commit-stage::before { display: none; }
 :root:not(:has(.hero-full)) main header.hero-ink.rounded-2xl { background: none; box-shadow: none; border-radius: 0; overflow: visible; padding-left: 0; padding-right: 0; border-bottom: 1px solid var(--glass-line); }
 :root:not(:has(.hero-full)) main header.hero-ink.rounded-2xl::before,
@@ -1658,7 +1562,7 @@ body:has(.commit-stage) main { color: #fff; }
    working there, in its team colour (red team, blue team, independent). */
 .amap-slot { position: relative; }
 .amap-tag { position: absolute; left: 12px; top: -9px; z-index: 2; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  border-radius: 6px; padding: 2px 7px; font-size: 0.68rem; font-weight: 600; line-height: 1.35; color: #120c0a; background: var(--team); box-shadow: 0 4px 14px -4px var(--team); }
+  border-radius: 6px; padding: 2px 7px; font-size: 0.75rem; font-weight: 600; line-height: 1.35; color: #120c0a; background: var(--team); box-shadow: 0 4px 14px -4px var(--team); }
 .amap-node-dot { display: inline-block; width: 6px; height: 6px; margin-right: 7px; vertical-align: 1px; border-radius: 9999px; background: rgb(255 255 255 / 30%); }
 .amap-node-state { padding-left: 0; }
 .amap-node[data-state="scanned"] { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0%); outline: 1px dashed rgb(255 255 255 / 30%); outline-offset: -1px; }
@@ -1674,7 +1578,7 @@ body:has(.commit-stage) main { color: #fff; }
 .amap-pill[data-state="refuted"]::before { background: #f2c14e; }
 .amap-pill[data-state="issue"]::before { background: #ff5a46; }
 @media (prefers-reduced-motion: reduce) { .amap-node-dot { animation: none !important; } }
-.amap-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 10px 20px 0; font-size: 0.72rem; color: rgb(255 255 255 / 55%); }
+.amap-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 10px 20px 0; font-size: 0.75rem; color: rgb(255 255 255 / 55%); }
 .amap-legend li { display: inline-flex; align-items: center; gap: 6px; }
 .amap-legend li::before { content: ""; width: 10px; height: 10px; border-radius: 3px; box-shadow: inset 0 0 0 1.5px var(--k); background: color-mix(in srgb, var(--k) 18%, transparent); }
 .amap-legend [data-k="issue"] { --k: #ff5a46; }
@@ -1712,7 +1616,7 @@ body:has(.commit-stage) main { color: #fff; }
 .net-track-item[data-who="attacker"][data-out] .net-track-dot { background: none; box-shadow: inset 0 0 0 1.5px rgb(255 247 242 / 40%); }
 .net-status-note { fill: rgb(255 247 242 / 45%); }
 .network-defender[data-before] { opacity: 0.6; }
-.lab-now-moment-when { margin-right: 8px; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.02em; color: var(--color-faint); }
+.lab-now-moment-when { margin-right: 8px; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.02em; color: var(--color-faint); }
 
 :root:not(:has(.hero-full)) .net-node .network-card { --net-outline: color-mix(in srgb, var(--color-brand) 70%, transparent); --net-glow: rgb(194 69 45 / 45%); fill: rgb(255 247 242 / 3%); stroke: var(--net-outline); stroke-width: 1; transition: stroke 250ms, fill 250ms, filter 250ms, stroke-width 250ms; }
 :root:not(:has(.hero-full)) .net-node[data-tone="compromised"] .network-card { --net-outline: #ff5a46; --net-glow: rgb(255 90 70 / 48%); fill: rgb(255 90 70 / 7%); stroke: var(--net-outline); stroke-width: 1.6; }
@@ -1722,8 +1626,8 @@ body:has(.commit-stage) main { color: #fff; }
 :root:not(:has(.hero-full)) .net-node[data-tone="isolated"] .network-card { --net-outline: rgb(255 247 242 / 45%); --net-glow: rgb(255 247 242 / 28%); stroke: var(--net-outline); stroke-dasharray: 6 4; }
 :root:not(:has(.hero-full)) .net-node[data-tone="false-alarm"][data-isolated] .network-card { stroke-dasharray: 6 4; }
 :root:not(:has(.hero-full)) .net-node[data-selected] .network-card,
-:root:not(:has(.hero-full)) .net-node:hover .network-card { stroke: color-mix(in srgb, var(--net-outline) 65%, #fff); stroke-width: 2; filter: drop-shadow(0 0 6px var(--net-glow)); }
-:root:not(:has(.hero-full)) .net-node:focus-visible .network-card { stroke: #fff; stroke-width: 2.5; filter: drop-shadow(0 0 5px var(--net-glow)); }
+:root:not(:has(.hero-full)) .net-node:hover .network-card { stroke: color-mix(in srgb, var(--net-outline) 65%, #fff); stroke-width: 2; }
+:root:not(:has(.hero-full)) .net-node:focus-visible .network-card { stroke: #fff; stroke-width: 2.5; }
 :root:not(:has(.hero-full)) .net-internet .network-card { --net-outline: color-mix(in srgb, var(--color-brand) 70%, transparent); --net-glow: rgb(194 69 45 / 45%); fill: rgb(255 247 242 / 3%); stroke: var(--net-outline); }
 :root:not(:has(.hero-full)) .net-map .net-label { fill: #fff7f2; font: 600 14px var(--font-sans); }
 :root:not(:has(.hero-full)) .net-map .net-sub { fill: rgb(255 247 242 / 45%); font: 400 10.5px var(--font-sans); letter-spacing: 0; text-transform: none; }
@@ -1810,7 +1714,7 @@ body:has(.commit-stage) main { color: #fff; }
   .landing-footer { padding: 32px 24px 16px; }
   .footer-top { grid-template-columns: 1fr; gap: 28px; }
   .footer-links { grid-template-columns: 1fr 1fr; gap: 24px; padding-top: 0; }
-  .footer-links h2 { margin-bottom: 10px; font-size: 9px; }
+  .footer-links h2 { margin-bottom: 10px; font-size: 12px; }
   .footer-links a { font-size: 12px; }
   .footer-bottom { margin-top: 24px; padding-top: 12px; }
 }
@@ -1847,7 +1751,7 @@ body:has(.project-shell) .site-header { position: sticky; top: 0; z-index: 60; b
 body:has(.project-shell) .site-header-inner,
 body:has(.setup-layout) .site-header-inner { max-width: 100rem; padding-inline: 1rem; }
 .project-head { margin-inline: -1rem; padding-inline: 1rem; background: rgb(18 12 11); border-image: linear-gradient(rgb(18 12 11), rgb(18 12 11)) fill 0 / 0 / 0 100vw; }
-.project-tabbar { position: sticky; top: var(--project-site-header-height); z-index: 50; display: flex; min-width: 0; align-items: stretch; margin-inline: -1rem; padding: 0 1rem 1px; border-bottom: 0; background: rgb(18 12 11); border-image: linear-gradient(to top, var(--color-line) 1px, rgb(18 12 11) 1px) fill 0 / 0 / 0 100vw; }
+.project-tabbar { position: sticky; top: var(--project-site-header-height); z-index: 50; display: flex; min-width: 0; align-items: stretch; margin-inline: -1rem; padding: 0 1rem 1px; border-bottom: 0; background: var(--color-bg); border-image: linear-gradient(to top, var(--color-line) 1px, var(--color-bg) 1px) fill 0 / 0 / 0 100vw; }
 .project-tab-scroll { display: flex; min-width: 0; flex: 1; align-items: stretch; overflow-x: auto; scrollbar-width: none; }
 .project-tab-scroll::-webkit-scrollbar { display: none; }
 .project-tab { display: inline-flex; min-height: 44px; min-width: 44px; flex: none; align-items: center; gap: 8px; padding: 13px 15px 11px; font-size: 15px; font-weight: 500; white-space: nowrap; text-decoration: none; }
@@ -1857,7 +1761,7 @@ body:has(.setup-layout) .site-header-inner { max-width: 100rem; padding-inline: 
 .project-tab[aria-current="page"]::after { transform: scaleX(1); }
 .project-more { position: relative; flex: none; }
 .project-more-button { height: 100%; border: 0; cursor: pointer; background: transparent; }
-.project-more-chevron { margin-left: 2px; font-size: 11px; }
+.project-more-chevron { margin-left: 2px; font-size: 12px; }
 .project-more-menu { position: absolute; top: calc(100% + 1px); right: 0; z-index: 50; display: flex; width: max-content; max-width: min(18rem, calc(100vw - 2rem)); flex-direction: column; border: 1px solid var(--color-line); background: var(--color-panel); padding: 5px; box-shadow: 0 12px 32px -12px rgb(0 0 0 / 22%); }
 .project-more-menu a { padding: 8px 10px; color: var(--color-muted); font-size: 0.875rem; }
 .project-more-menu a:hover { background: var(--color-panel-2); color: var(--color-ink); }
@@ -1900,29 +1804,7 @@ body:has(.setup-layout) .site-header-inner { max-width: 100rem; padding-inline: 
 
 /* ARI motion layer. Transform and opacity only, so nothing repaints while scrolling.
    Disabled for prefers-reduced-motion. */
-@keyframes grain-drift {
-  0% { transform: translate3d(0, 0, 0); }
-  25% { transform: translate3d(-3%, 2%, 0); }
-  50% { transform: translate3d(2%, -3%, 0); }
-  75% { transform: translate3d(-2%, -1%, 0); }
-  100% { transform: translate3d(0, 0, 0); }
-}
-@keyframes btn-sheen {
-  from { transform: translateX(-120%) skewX(-18deg); }
-  to { transform: translateX(260%) skewX(-18deg); }
-}
-.ambient-grain { will-change: transform; animation: grain-drift 9s steps(4, end) infinite; }
-.btn[data-variant="primary"] { position: relative; overflow: hidden; isolation: isolate; }
-.btn[data-variant="primary"]::after {
-  content: ""; position: absolute; inset: 0; z-index: -1; width: 40%; pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.28), transparent);
-  transform: translateX(-120%) skewX(-18deg); opacity: 0;
-}
-.btn[data-variant="primary"]:not(:disabled):hover::after { opacity: 1; animation: btn-sheen 700ms var(--ease-smooth) both; }
 .hero-stage[data-fx="on"] .hero-headline .hero-line { will-change: transform, opacity; }
-@media (prefers-reduced-motion: reduce) {
-  .ambient-grain, .btn[data-variant="primary"]::after { animation: none; }
-}
 
 /* ================= Home landing polish (.home-deep) =================
    Kairo-inspired restraint on the homepage only, in ARI's own warm palette:
@@ -1930,7 +1812,7 @@ body:has(.setup-layout) .site-header-inner { max-width: 100rem; padding-inline: 
    scroll-driven. The console is untouched. */
 
 /* Mono eyebrow marker — square dot + tracked caps. */
-.kicker { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--color-brand-deep); }
+.kicker { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.22em; color: var(--color-brand-deep); }
 .kicker::before { content: ""; width: 6px; height: 6px; background: var(--color-brand); box-shadow: 0 0 10px color-mix(in srgb, var(--color-brand) 80%, transparent); }
 .kicker-ghost { color: #ff9b78; }
 .kicker-dark { color: #ffb89d; }
@@ -2005,3 +1887,51 @@ body:has(.setup-layout) .site-header-inner { max-width: 100rem; padding-inline: 
   .hero-orb { animation: none; }
   .hero-stage[data-fx="on"] .hero-headline .hero-line::before { animation: none; }
 }
+
+/* Console type: sentence case, no tracked labels, one interface family with mono only where a value is code. */
+:root:not(:has(.hero-full)) body *:not(.ari-wordmark-text) { text-transform: none; letter-spacing: 0; }
+:root:not(:has(.hero-full)) body h1:not(.ari-wordmark-text) { font-weight: 500; letter-spacing: -0.02em; }
+:root:not(:has(.hero-full)) :is(.font-semibold, .font-bold, strong, b, h2, h3, h4) { font-weight: 500; }
+:root:not(:has(.hero-full)) .label-mono { font-family: var(--font-sans); font-size: 13px; }
+:root:not(:has(.hero-full)) .site-header nav a { font-size: 13px; }
+:root:not(:has(.hero-full)) .night-footer > p { font-size: 12px; }
+
+/* Console surfaces that were drawn as lit stages: flat, with motion only where work is actually running. */
+:root:not(:has(.hero-full)) .commit-stage { background: var(--color-bg); box-shadow: none; }
+:root:not(:has(.hero-full)) :is(.dm-flow, .dm-scan, .dm-blink, .graph-edge[data-flow], .graph-truth) { animation: none; }
+:root:not(:has(.hero-full)) .roll > span + span { display: none; }
+:root:not(:has(.hero-full)) .group:is(:hover, :focus-visible) .roll > span:first-child { transform: none; }
+:root:not(:has(.hero-full)) :is(.auth-btn, .auth-btn-light, .auth-btn-brand) { box-shadow: none; }
+
+/* Remaining lit bands, marketing wash and pill-shaped labels on console pages. */
+:root:not(:has(.hero-full)) :is(.lab-best, .lab-outcome, .pricing-badge, .net-truth-chip, .lab-mode, .monitor-chips li, .ld-stat-row li) { border-radius: 6px; }
+:root:not(:has(.hero-full)) :is(.demo-chip, .demo-marker) { border-radius: 0; padding: 0; background: none; box-shadow: none; font-family: var(--font-sans); }
+:root:not(:has(.hero-full)) :is(.demo-chip-ok, .demo-chip-warn, .demo-chip-bad, .demo-chip-info) { background: none; box-shadow: none; }
+:root:not(:has(.hero-full)) .amap-phases-compact { border-radius: 8px; }
+:root:not(:has(.hero-full)) .demo-tabs { border-radius: 10px; background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--glass-line); }
+:root:not(:has(.hero-full)) .demo-tab { border-radius: 8px; padding: 4px 12px; font-size: 13px; color: var(--color-muted); transition: background-color 150ms var(--ease-out), color 150ms var(--ease-out); }
+:root:not(:has(.hero-full)) .demo-tab:hover { color: var(--color-ink); }
+:root:not(:has(.hero-full)) .demo-tab[aria-selected="true"] { background: var(--color-panel-2); color: var(--color-ink); }
+:root:not(:has(.hero-full)) .demo-ink .demo-tab[aria-selected="true"] span { color: var(--color-ink); }
+
+/* Small labels that set their size in a shorthand or a shared rule. */
+:root:not(:has(.hero-full)) :is(.faq-num, .lab-time, .amap-count, .network-legend) { font-size: 12px; }
+:root:not(:has(.hero-full)) .pipeline-number { font-size: 12px; font-family: var(--font-sans); }
+:root:not(:has(.hero-full)) main .auth-stage { display: grid; min-height: 100vh; place-items: center; margin-inline: calc(50% - 50vw); margin-top: -32px; box-shadow: none; }
+:root:not(:has(.hero-full)) body:has(.auth-stage) .site-header { border-bottom: 0; }
+
+:root:not(:has(.hero-full)) .auth-btn { font-family: var(--font-sans); font-size: 14px; }
+
+/* Ember layer: slow grain over the drifting light (components/ambient.tsx). */
+@keyframes grain-drift {
+  0% { transform: translate3d(0, 0, 0); }
+  25% { transform: translate3d(-3%, 2%, 0); }
+  50% { transform: translate3d(2%, -3%, 0); }
+  75% { transform: translate3d(-2%, -1%, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+.ambient-grain { will-change: transform; animation: grain-drift 9s steps(4, end) infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .ambient-grain { animation: none; }
+}
+:root:not(:has(.hero-full)) .bleed-hero { -webkit-mask-image: linear-gradient(180deg, transparent, #000 14%, #000 72%, transparent); mask-image: linear-gradient(180deg, transparent, #000 14%, #000 72%, transparent); }

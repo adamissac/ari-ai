@@ -37,7 +37,6 @@ export default function SettingsPage() {
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <PageTitle
-        eyebrow="Configure"
         title="Settings"
         subtitle={selectedRepo
           ? <>Settings for <span className="font-mono text-ink">{selectedRepo.full_name}</span>. Changes below apply to all repositories in this project.</>

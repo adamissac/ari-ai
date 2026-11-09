@@ -42,8 +42,8 @@ test('the access-code demo walks the real signed-in flow on simulated, offline d
   await expect(page.locator('[data-testid^="connect-repo-lumen-pay/"]')).toHaveCount(5);
   await page.getByTestId('connect-repo-lumen-pay/checkout-web').getByRole('button').click();
   await expect(page).toHaveURL(/\/setup\?repo=rep_demo_checkout-web/);
-  await expect(page.getByRole('heading', { name: /set up Ari for checkout-web/ })).toBeVisible();
-  await expect(page.getByText('PR OPENED')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Set up Ari for checkout-web/ })).toBeVisible();
+  await expect(page.getByText('PR opened')).toBeVisible();
   for (let step = 1; step <= 5; step++) {
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.getByTestId(`setup-step-${step + 1}`)).toBeVisible();
