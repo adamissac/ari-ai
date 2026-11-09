@@ -64,11 +64,12 @@ function RepoExpectations({ repo }: { repo: Repository }) {
 }
 
 function SnapshotPicker({ snapshots, selected, onSelect }: { snapshots: Snapshot[]; selected: string; onSelect: (id: string) => void }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? snapshots : snapshots.filter((s, i) => i < 6 || s.id === selected);
   return (
-    <Panel title="Snapshot">
-      <p className="mb-2 text-sm text-muted">Expectations and decisions are pinned to one commit. A decision on an older snapshot does not silently carry forward.</p>
+    <Panel title="Snapshot" actions={snapshots.length > 6 ? <button type="button" className="text-xs text-accent hover:underline" onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${snapshots.length}`}</button> : undefined}>
       <ul className="flex flex-wrap gap-2">
-        {snapshots.map((s, index) => (
+        {shown.map((s, index) => (
           <li key={`${s.id}:${s.commit_sha}:${s.created_at}:${index}`}>
             <button type="button" disabled={s.status !== 'ready'} onClick={() => onSelect(s.id)} aria-pressed={s.id === selected}
               className={`flex min-w-0 flex-wrap items-center gap-2 border-b-2 px-2.5 py-2 text-xs disabled:opacity-50 ${s.id === selected ? 'border-brand text-ink' : 'border-transparent text-muted hover:text-ink'}`}>
@@ -79,6 +80,7 @@ function SnapshotPicker({ snapshots, selected, onSelect }: { snapshots: Snapshot
           </li>
         ))}
       </ul>
+      <p className="mt-2 text-xs text-faint">Decisions are pinned to the selected commit.</p>
     </Panel>
   );
 }

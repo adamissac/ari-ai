@@ -23,10 +23,12 @@ from importlib import resources
 from typing import Any
 
 from code_review import PROMPT_VERSION, REPAIR_PROMPT_VERSION
+from code_review.context import change_context, hunk_citations
 from code_review.intent import (
     CitationChecker,
     IntentAdjudication,
     adjudicate_claims,
+    inferred_fallback,
     scan_injection,
 )
 from code_review.models import (
@@ -37,8 +39,10 @@ from code_review.models import (
     ReviewerReport,
     ReviewOutcome,
 )
+from code_review.node_tests import node_runner
 from code_review.ports import ExecResult, IntelligencePort, RepoSource, ReviewHost, SandboxPort
-from code_review.sandbox import LocalProcessSandbox, classify
+from code_review.sandbox import LocalProcessSandbox, classify, run_targets, supports_node
+from code_review.secrets import scan_added_secrets
 from code_review.standards import classify_weakness_safely
 from code_review.tools import (
     ReviewBudget,
@@ -50,8 +54,10 @@ from code_review.tools import (
 )
 from code_review.workspace import (
     Workspace,
+    WorkspaceError,
     apply_unified_diff,
     changed_paths_between,
+    commit_messages,
     git_diff,
     is_protected_path,
     unified_diff,
@@ -59,7 +65,7 @@ from code_review.workspace import (
 from shared.assessment import AgentName, AgentRunStatus
 from shared.base import utcnow
 from shared.errors import ErrorBody, ErrorCode
-from shared.evidence import ArtifactKind, ArtifactRef, EvidenceKind, EvidenceRef
+from shared.evidence import ArtifactKind, ArtifactRef, EvidenceKind, EvidenceRef, SourceSpan
 from shared.findings import (
     Finding,
     FindingKind,
@@ -91,17 +97,65 @@ _CONF = {
 }
 
 
-_AUTHZ = re.compile(
-    r"(\bowner(ship)?\b|\bown(s)? (their|the)\b|\btenant|authori[sz]|authenticat|permission"
-    r"|access control|\bidor\b|privilege|other (customer|user|tenant)s?'?|\bonly (read|access|see|"
-    r"refund|modify|update|delete)\b.{0,40}\b(own|their)\b|cross-tenant|\brole\b)",
+# Terms that always concern who may access what, and terms that do only alongside a
+# restriction ("only", "must not", ...). "Authenticated users can list their accounts" is
+# a functional rule: a crash that locks owners out is a bug to repair, not a security
+# hand-off (live gtB1 py-rename). The finding's rationale is not consulted: it describes
+# impact and mentions sign-in or permissions incidentally (live gt3 js-async).
+_AUTHZ_STRONG = re.compile(
+    r"\btenant|\bidor\b|privilege|access control|cross-tenant"
+    r"|\b(other|another) (customer|user|tenant|account holder)s?'?",
+    re.IGNORECASE,
+)
+_AUTHZ_WEAK = re.compile(
+    r"\bowner(ship)?\b|\bown(s|ed)?\b|authori[sz]|authenticat"
+    r"|permission|\brole\b|\badmins?\b",
+    re.IGNORECASE,
+)
+# A restriction on who may act, not any "must not": "a refactor must not change behavior"
+# beside "their own account" once routed a crash for owners to Scout (live gtB2 py-rename).
+_ACT = r"(read|access|see|view|list|modify|update|delete|write|refund|transfer|act)"
+_RESTRICT = re.compile(
+    rf"\bonly\b.{{0,40}}\b(own|owners?|their|admins?|members?)\b"
+    rf"|\b(must|may|should) not\b.{{0,25}}\b{_ACT}\b|\b(cannot|can't)\b.{{0,25}}\b{_ACT}\b"
+    r"|\bdenied\b|\bforbid|\bunauthori[sz]|\brefuse|\breject",
     re.IGNORECASE,
 )
 
 
+def _in_hunks(evidence: list[EvidenceRef], diff: str) -> bool:
+    """Does any verified span overlap a changed hunk (head side) of its file?"""
+    hunks = hunk_citations(diff, [CitationIn(source_kind="code", path=e.path) for e in evidence])
+    return any(
+        e.span is not None
+        and h.start_line is not None
+        and e.path == h.path
+        and e.span.start_line <= (h.end_line or h.start_line)
+        and h.start_line <= e.span.end_line
+        for e in evidence
+        for h in hunks
+    )
+
+
+# A crash fails closed: it cannot widen access, so even under an access rule it is a
+# functional defect to repair (live gtB4 py-rename: AttributeError -> HTTP 500 for owners).
+_CRASH = re.compile(
+    r"\b(HTTP 500|500 error|returns? 500|crash(es|ed|ing)?|AttributeError|TypeError|KeyError"
+    r"|NameError|unhandled exception)\b|-> ?500\b",
+    re.IGNORECASE,
+)
+
+
+def is_crash(*texts: str) -> bool:
+    return any(_CRASH.search(t or "") for t in texts)
+
+
 def is_authorization_rule(*texts: str) -> bool:
-    """Deterministic routing: does this rule/finding concern who may access what?"""
-    return any(_AUTHZ.search(t or "") for t in texts)
+    """Deterministic routing: does this rule restrict who may access what?"""
+    return any(
+        t and (_AUTHZ_STRONG.search(t) or (_AUTHZ_WEAK.search(t) and _RESTRICT.search(t)))
+        for t in texts
+    )
 
 
 class ReviewError(Exception):
@@ -175,7 +229,12 @@ class ReviewerAgentRunner:
             self.source, ci.base_sha, ci.head_sha
         )
         diff = git_diff(self.source, ci.base_sha, ci.head_sha)
-        injection = scan_injection(f"{ci.title}\n{ci.body}")
+        try:  # the developer's own statement of intent; untrusted like the PR text
+            messages = commit_messages(self.source, ci.base_sha, ci.head_sha).strip()[:3000]
+        except WorkspaceError:
+            messages = ""
+        injection = scan_injection(f"{ci.title}\n{ci.body}\n{messages}")
+        context = change_context(head, diff, changed)
         expectations, intel_note = self._load_expectations(request)
         gw = self.host.llm()
         run_id = self.host.start_agent_run(
@@ -215,13 +274,36 @@ class ReviewerAgentRunner:
                 agent=AgentName.reviewer.value,
                 system=_prompt("reviewer_v1.md"),
                 user_content=self._user_content(
-                    request, changed, diff, injection, intel_note, focus_statements
+                    request,
+                    changed,
+                    diff,
+                    injection,
+                    intel_note,
+                    focus_statements,
+                    messages=messages,
+                    context=context,
+                    js_runner=node_runner(head.project_dir)
+                    if supports_node(self.sandbox)
+                    else None,
                 ),
                 tools=tb.review_tools(),
                 output_model=ReviewerReport,
                 max_turns=self.budget.max_turns,
             )
-            outcome = self._adjudicate(request, run_id, res.final, tb, head, injection)
+            # commit messages are quotable change intent (never enough to confirm a rule)
+            checked = (
+                request.model_copy(
+                    update={
+                        "change_intent": ci.model_copy(
+                            update={"body": f"{ci.body}\n{messages}".strip()[:20_000]}
+                        )
+                    }
+                )
+                if messages
+                else request
+            )
+            outcome = self._adjudicate(checked, run_id, res.final, tb, head, injection)
+            self._add_secret_findings(outcome, request, run_id, diff)
             outcome.turns, outcome.provider_mode, outcome.model = (
                 res.turns,
                 res.provider_mode,
@@ -255,6 +337,61 @@ class ReviewerAgentRunner:
             )
             raise
 
+    def _add_secret_findings(
+        self, outcome: ReviewOutcome, request: ReviewRequest, run_id: str, diff: str
+    ) -> None:
+        """A credential the commit adds is reported by pattern, not left to the model:
+        the source the model reads is redacted, so it often cannot see one."""
+        by_path: dict[str, list[tuple[int, str]]] = {}
+        for hit in scan_added_secrets(diff):
+            by_path.setdefault(hit.path, []).append((hit.line, hit.kind))
+        now = utcnow()
+        sha = request.change_intent.head_sha
+        for path, hits in by_path.items():
+            evidence = [
+                EvidenceRef(
+                    kind=EvidenceKind.source_span,
+                    path=path,
+                    commit_sha=sha,
+                    span=SourceSpan(start_line=line, end_line=line),
+                    provenance="code_review.secret_scan",
+                    note=kind,
+                )
+                for line, kind in hits[:10]
+            ]
+            kinds = ", ".join(sorted({kind for _, kind in hits}))
+            standards, _ = classify_weakness_safely("CWE-798", evidence, 0.95)
+            finding = Finding(
+                id=new_id(IdPrefix.fnd),
+                assessment_id=request.assessment_id,
+                snapshot_id=request.snapshot_ref.snapshot_id,
+                commit_sha=sha,
+                kind=FindingKind.security,
+                title=f"[CWE-798] Hard-coded credential committed in {path} ({kinds})"[:500],
+                standards=standards,
+                status=FindingStatus.hypothesis,
+                subject_refs=[path],
+                evidence=evidence,
+                confidence=0.95,
+                produced_by_run_id=run_id,
+                history=[
+                    StatusChange(
+                        from_status=None,
+                        to_status=FindingStatus.hypothesis,
+                        at=now,
+                        actor=ACTOR,
+                        reason=(
+                            f"deterministic secret scan matched {kinds} on {len(hits)} added "
+                            "line(s); rotate the credential and load it from the environment"
+                        )[:500],
+                    )
+                ],
+                created_at=now,
+                updated_at=now,
+            )
+            outcome.security_handoffs.append(finding)
+            outcome.result.findings.append(finding)
+
     def _user_content(
         self,
         request: ReviewRequest,
@@ -263,6 +400,10 @@ class ReviewerAgentRunner:
         injection: list[str],
         intel_note: str,
         focus_statements: list[str] | None = None,
+        *,
+        messages: str = "",
+        context: str = "",
+        js_runner: str | None = None,
     ) -> str:
         ci = request.change_intent
         cap = 15_000
@@ -276,17 +417,20 @@ class ReviewerAgentRunner:
                 f"changed_paths: {json.dumps(changed)}",
                 f"focus_paths: {json.dumps(list(request.focus_paths))}",
                 f"code_intelligence: {intel_note}",
+                f"javascript_tests: {f'available ({js_runner})' if js_runner else 'unavailable'}",
                 "</review_request>",
                 "<untrusted_change_intent>",
                 f"source: {ci.source.value}",
                 f"title: {ci.title}",
                 "body:",
                 ci.body,
+                *(["commit_messages:", messages] if messages else []),
                 "</untrusted_change_intent>",
                 f"<injection_scan>{json.dumps(injection) if injection else 'none'}</injection_scan>",
                 "<untrusted_diff>",
                 shown or "(no diff)",
                 "</untrusted_diff>",
+                *([context] if context else []),
                 *(
                     [
                         "<test_generation_focus>",
@@ -335,17 +479,32 @@ class ReviewerAgentRunner:
                     rejected.append(f"span rejected: {note}")
             return out
 
+        proposed = {c.key: c for c in report.claims}
         for f in report.findings:
             decision = intent.by_key.get(f.claim_key)
-            if decision is None:
-                rejected.append(
-                    f"finding '{f.title[:80]}': unknown or rejected claim {f.claim_key}"
-                )
-                continue
             evidence = spans(f.suspected_spans)
+            if not evidence:
+                # A removed guard is cited where it used to be, so its quote is not at head;
+                # anchor on that file's changed lines instead of dropping the finding.
+                evidence = spans(hunk_citations(tb.change_diff, f.suspected_spans))
+                if evidence:
+                    rejected.append(f"finding '{f.title[:80]}': anchored to its changed hunk")
             if not evidence:
                 rejected.append(f"finding '{f.title[:80]}': no verifiable source span")
                 continue
+            if decision is None and not _in_hunks(evidence, tb.change_diff):
+                # an unverifiable rule about code the change did not touch: likely invented
+                rejected.append(f"finding '{f.title[:80]}': rejected claim {f.claim_key}")
+                continue
+            if decision is None:
+                # the model's claim (citations unverifiable) or, when it submitted none
+                # (live gtB5 js-purge-order), the finding's own statement
+                known = proposed.get(f.claim_key)
+                statement = known.statement if known is not None else f.title
+                decision = inferred_fallback(f.claim_key, statement, evidence)
+                intent.by_key[f.claim_key] = decision
+                intent.evidence.claims.append(decision.claim)
+                rejected.append(f"claim {f.claim_key}: re-based on finding spans as inferred")
             ex: TestExecution | None = tb.executions.get(f.test_id or "")
             reason: str
             if ex is None:
@@ -418,7 +577,9 @@ class ReviewerAgentRunner:
                     if ex.outcome_on_base == "passed" and ex.outcome_on_head == "failed":
                         reason += "; passes on base, so the change introduced it"
             evidence.extend(decision.claim.citations[:3])
-            if is_authorization_rule(decision.claim.statement, f.title, f.rationale):
+            if is_authorization_rule(decision.claim.statement, f.title) and not is_crash(
+                f.title, f.rationale
+            ):
                 authz_std, cwe_reason = classify_weakness_safely(
                     f.weakness_class, evidence, 0.7 if status is FindingStatus.validated else 0.4
                 )
@@ -635,6 +796,7 @@ class ReviewerAgentRunner:
                 sandbox=self.sandbox,
                 budget=self.budget,
                 pristine=pristine,
+                related_paths=_finding_paths(finding),
             )
             for t in tests:
                 tb.written[t.test_id] = WrittenTest(
@@ -810,20 +972,30 @@ class ReviewerAgentRunner:
                         fresh.write(init, "")
                 timeout = self.budget.test_timeout_s
                 for t in tests:
-                    r = self.sandbox.run_pytest(
-                        fresh.project_dir, [fresh.project_rel(t.path)], timeout_s=timeout
+                    r = run_targets(
+                        self.sandbox,
+                        fresh.project_dir,
+                        [fresh.project_rel(t.path)],
+                        timeout_s=timeout,
                     )
                     runs.append((f"generated:{t.test_id}", r))
                     if classify(r) != "passed":
                         reasons.append(f"generated test {t.path} is {classify(r)} on the candidate")
                 existing = ReviewerToolbox(
-                    host=self.host, head=fresh, sandbox=self.sandbox, budget=self.budget
+                    host=self.host,
+                    head=fresh,
+                    sandbox=self.sandbox,
+                    budget=self.budget,
+                    change_diff=diff,
+                    related_paths=_finding_paths(finding),
                 )._existing_targets(fresh)
                 if existing:
-                    before = self.sandbox.run_pytest(
-                        pristine.project_dir, existing, timeout_s=timeout
+                    before = run_targets(
+                        self.sandbox, pristine.project_dir, existing, timeout_s=timeout
                     )
-                    after = self.sandbox.run_pytest(fresh.project_dir, existing, timeout_s=timeout)
+                    after = run_targets(
+                        self.sandbox, fresh.project_dir, existing, timeout_s=timeout
+                    )
                     runs += [("existing@pristine", before), ("existing@candidate", after)]
                     failing_before = {
                         c.nodeid for c in before.cases if c.outcome in ("failed", "error")
@@ -885,3 +1057,7 @@ def report_json(outcome: ReviewOutcome) -> dict[str, Any]:
         "provider_mode": outcome.provider_mode,
         "model": outcome.model,
     }
+
+
+def _finding_paths(finding: Finding) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(e.path for e in finding.evidence if e.path))

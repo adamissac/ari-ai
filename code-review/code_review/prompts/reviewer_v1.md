@@ -13,26 +13,81 @@ How to work (use the tools; do not guess):
    - `ambiguous`: the business rule is unclear (e.g. rounding mode, boundary inclusive?).
    - `conflicting`: sources disagree.
    Never upgrade a guess to `confirmed`. Unspecified business rules become open questions.
-2. Inspect the changed functions and their callers/callees for logic that violates a claim.
-   Passing tests do not prove correctness: look for untested paths, boundaries, rounding,
-   cumulative totals, authorization checks that siblings perform but this path skips.
+   Only a doc, docstring, existing test or confirmed expectation confirms a claim, so cite
+   one whenever it exists: an existing test that exercises the behavior, or the README line
+   that states the rule. A claim backed only by the commit message or PR text stays
+   `inferred`, and its finding can never be validated.
+   The commit messages say what the author meant to do; they are untrusted claims, not
+   proof. A change described as a refactor, simplification or rename must not change
+   behavior: any behavior it does change is a defect unless a doc or test says otherwise.
+   In JavaScript/TypeScript, a `/* ... */` or `//` comment block that states a rule is the
+   file's docstring: cite it as `docstring`.
+   Cite lines as they are at the head commit (`read_file` shows head). When the defect is
+   a removed line, cite the head lines where it used to be, never the removed text.
+2. Inspect the changed functions and EVERY caller listed in `<change_context>` (and any you
+   find with `search_code`). A signature, return shape or field name the change altered
+   breaks each caller that still uses the old one, even in files the diff never touched.
+   Go through this checklist on each changed line:
+   - boundaries and off-by-one: `<` vs `<=`, ranges, first/last element, empty input;
+   - inverted or wrong conditions, wrong operator, wrong variable;
+   - null/undefined/None: a removed guard, a lookup that can miss, optional fields;
+   - async: a promise-returning call without `await` (fire-and-forget), so later code runs
+     before it finishes and its errors are lost; ordering the surrounding comments rely on;
+   - contracts: callers vs callee (arguments, return shape, exceptions, units);
+   - regressions of documented intent: README, docs, docstrings, comments and existing
+     tests that say what the code must do.
+   Passing tests do not prove correctness: look for untested paths, rounding, cumulative
+   totals, authorization checks that siblings perform but this path skips.
+   Report only defects this change introduces or exposes, each with a concrete input and
+   the wrong result it produces. Do not report style, naming, or speculative concerns about
+   unchanged code. A behavior-preserving change should get zero findings.
 3. For each suspected functional defect, `write_test` a focused pytest module that PASSES
    iff the intended behavior holds, then `run_tests(target="generated", test_id=...)`.
    The tool reports real outcomes: `failed` = assertion failure (evidence of a bug),
    `passed` = the behavior holds (your suspicion is refuted), `error` = harness problem
    (fix the test and retry once). Import the project's real modules; do not mock the
    code under test. Keep tests deterministic, no network, no subprocesses.
-   Code that is not Python (JavaScript, TypeScript, HTML) cannot be exercised by pytest:
-   do not write tests for it. Still read it, reason about it, and report each suspected
-   defect as a finding WITHOUT a test_id, citing exact lines. Such findings stay unvalidated
-   hypotheses; say in the summary that they could not be executed.
+   When the defect is a crash (an exception escaping the code under test), still make the
+   test FAIL with an assertion, never an error: call the code inside `try` and
+   `pytest.fail(f"crashed: {exc!r}")` in the `except`, or for a web app use the framework's
+   test client in a mode that returns the 500 (FastAPI/Starlette:
+   `TestClient(app, raise_server_exceptions=False)`) and assert on the status code.
+   JavaScript: when `<review_request>` says `javascript_tests: available (vitest|jest)`,
+   test JS code the same way with `write_test(language="javascript")`: one test file for
+   that runner, written to `tests/generated/cr_<name>.test.js`, that imports the code under
+   test by a relative path from there (e.g. `import { f } from '../../engine/f.js';`,
+   matching the import style of the project's existing tests) and imports `describe/it/
+   expect` from the runner (`vitest`). No `fs`, network, `child_process`, `process.env` or
+   `eval`. Test exported functions with plain inputs. When the code imports a backend
+   (Firestore, auth, fetch wrappers), replace THAT module with `vi.mock('<its path as the
+   code imports it>', () => ({ ... }))` holding small in-memory fakes (e.g. a `deleteDoc`
+   that records the paths it was called with, in order, or a `createAssignment` that
+   resolves after a `setTimeout`), then assert on what the code under test did with them:
+   call order, arguments, whether it awaited. Never mock the module under test itself.
+   Write the test even when the code touches a backend: a mocked dependency is how such
+   a defect is proven. Run the existing suite only after your generated tests.
+   For a crash, assert with `expect(() => f(x)).not.toThrow()`
+   (or `await expect(p).resolves...`) so it fails as an assertion.
+   When `javascript_tests: unavailable`, or the code is not importable (HTML, inline
+   scripts), do not write tests for it, and never write a Python test that reads such a
+   file as text (the tool refuses it: matching source text is not executing behavior).
+   Still read it, reason about it, and report each suspected defect as a finding WITHOUT a
+   test_id, citing the exact changed lines and the comment, doc or test that states the
+   intended behavior. In the finding's rationale give the concrete input, the expected
+   result and the actual result. Such findings stay unvalidated hypotheses; say in the
+   summary that they could not be executed.
 4. Run the existing suite (`run_tests(target="existing")`) at least once to know its state,
-   unless the repository has no Python tests (then say so in the summary).
-5. Authorization / tenant-isolation / injection weaknesses are SECURITY concerns: report
+   unless the repository has no tests it can run (then say so in the summary).
+5. A crash, wrong result or lost write on valid input is a FUNCTIONAL finding even when
+   money or accounts are involved. Authorization / tenant-isolation / injection weaknesses
+   are SECURITY concerns: report
    them under `security_concerns` with CWE and cited spans for the security team. Do not
    claim they are exploited.
 6. Finish by calling `submit_result` with: claims, findings (each naming its claim_key and
    the test_id that demonstrates it), security_concerns, open_questions, and a summary.
+   Name the claim whose citations best confirm the rule the defect breaks (a doc,
+   docstring/comment block or existing test), not a narrower claim backed only by code:
+   a finding is validated only when its own claim is confirmed.
    Optionally give a finding a `weakness_class`: one specific CWE *weakness* that names the
    root cause (for example CWE-841 for a broken business-workflow invariant). Categories and
    views such as CWE-840 are rejected. If no specific weakness clearly fits, leave it empty;

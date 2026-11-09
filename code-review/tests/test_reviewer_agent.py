@@ -138,6 +138,9 @@ def test_discount_rounding_defect_validated_with_multi_turn_trace(tmp_path: Path
     assert "edit_file" not in names and "apply_patch" not in names and "write_test" in names
     assert "<untrusted_change_intent>" in first["messages"][0]["content"]
     assert "Ignore previous instructions" in first["messages"][0]["content"]
+    # the author's commit message and the callers/tests of the changed code arrive up front
+    assert "commit_messages:\nAdd percentage promo discount" in first["messages"][0]["content"]
+    assert "<change_context" in first["messages"][0]["content"]
 
     # tool outputs the model saw are the real executions
     seen = all_tool_results(transport.requests[-1])
@@ -662,6 +665,20 @@ def test_authorization_finding_is_handed_to_scout_with_test_evidence(tmp_path: P
         ("Discounted totals are rounded half-up to cents", False),
         ("Total refunds never exceed the payment amount", False),
         ("Payroll rounding uses cents", False),
+        ("Unauthorized callers are rejected with 401", True),
+        ("Bob must not read another customer's account", True),
+        # live gtB1 py-rename: owners locked out by a crash is a functional bug
+        ("Authenticated customers can list their accounts", False),
+        (
+            "Customer.id renamed but app.py still reads customer.id for authenticated requests",
+            False,
+        ),
+        (  # live gtB2 py-rename claim
+            "An authenticated customer can read their own account and list their own accounts;"
+            " a refactor must not change that behavior.",
+            False,
+        ),
+        ("Customers must not read accounts they do not own", True),
     ],
 )
 def test_authorization_rule_routing(text: str, authz: bool) -> None:
@@ -955,3 +972,98 @@ def test_generated_test_paths_are_repo_relative_contract(tmp_path: Path) -> None
     inp = functional_verification_inputs(host, rep.patch)
     assert [t.path for t in inp.generated_tests] == [gt.path]
     assert "a/target/payments_lite/app.py" in inp.diff_text
+
+
+def test_finding_citing_text_absent_at_head_is_anchored_to_its_hunk(tmp_path: Path) -> None:
+    """Production gt2/py-null-dest: the model cited the guard the change removed, every span
+    was rejected, and a finding with a failing test was dropped."""
+    script = _discount_script()
+    submit = script[-1]
+
+    def cite_removed_text(req):  # type: ignore[no-untyped-def]
+        out = submit(req)
+        for block in out["content"]:
+            if block.get("type") == "tool_use":
+                span = block["input"]["findings"][0]["suspected_spans"][0]
+                span["quote"] = "return discounted.quantize(CENT, rounding=ROUND_HALF_UP)"
+        return out
+
+    script[-1] = cite_removed_text
+    sc = discount_rounding(tmp_path)
+    host = InMemoryHost(fake(script))
+    outcome = ReviewerAgentRunner(host, RepoSource(sc.repo)).review(make_request(host, sc))
+    (f,) = outcome.result.findings
+    assert f.status is FindingStatus.validated
+    assert any("anchored to its changed hunk" in r for r in outcome.rejected)
+    (span,) = [
+        e
+        for e in f.evidence
+        if e.kind is EvidenceKind.source_span and e.path == "billing/invoice.py"
+    ]
+    bug_line = line_of(INVOICE_HEAD, "return discounted.quantize(CENT)")
+    assert span.span is not None
+    assert span.span.start_line <= bug_line <= span.span.end_line
+
+
+def test_finding_whose_claim_citations_all_fail_stays_a_hypothesis(tmp_path: Path) -> None:
+    """Live gtB3 js-batch-obo/js-foreach-async/py-test-weakened: every claim citation failed
+    to verify, the claim was dropped, and correct findings went with it."""
+    script = _discount_script()
+    submit = script[-1]
+
+    def bad_claim_citations(req):  # type: ignore[no-untyped-def]
+        out = submit(req)
+        for block in out["content"]:
+            if block.get("type") == "tool_use":
+                for cit in block["input"]["claims"][0]["citations"]:
+                    cit["quote"] = "a sentence that appears nowhere in the repository"
+        return out
+
+    script[-1] = bad_claim_citations
+    sc = discount_rounding(tmp_path)
+    host = InMemoryHost(fake(script))
+    outcome = ReviewerAgentRunner(host, RepoSource(sc.repo)).review(make_request(host, sc))
+    (f,) = outcome.result.findings
+    # a failing test against a rule only the code supports: never validated, never dropped
+    assert f.status is FindingStatus.hypothesis
+    assert any("re-based on finding spans" in r for r in outcome.rejected)
+    assert outcome.result.status is ReviewStatus.needs_clarification
+
+
+@pytest.mark.parametrize(
+    "text,crash",
+    [
+        ("Customer.id rename breaks ownership checks in app.py (AttributeError -> HTTP 500)", True),
+        ("Valid transfers crash with 500 after amount typed as float", True),
+        ("GET /payments/{payment_id} returns other customers' payments", False),
+        ("no require_owner call unlike sibling routes", False),
+    ],
+)
+def test_crash_findings_are_not_access_widening(text: str, crash: bool) -> None:
+    from code_review.agent import is_crash
+
+    assert is_crash(text) is crash
+
+
+def test_finding_for_a_claim_never_submitted_stays_a_hypothesis(tmp_path: Path) -> None:
+    """Live gtB5 js-purge-order: the finding named claim c1 but the report had no claims, so
+    a correct finding on the changed lines was dropped as an unknown claim."""
+    script = _discount_script()
+    submit = script[-1]
+
+    def no_claims(req):  # type: ignore[no-untyped-def]
+        out = submit(req)
+        for block in out["content"]:
+            if block.get("type") == "tool_use":
+                block["input"]["claims"] = []
+        return out
+
+    script[-1] = no_claims
+    sc = discount_rounding(tmp_path)
+    host = InMemoryHost(fake(script))
+    outcome = ReviewerAgentRunner(host, RepoSource(sc.repo)).review(make_request(host, sc))
+    (f,) = outcome.result.findings
+    assert f.status is FindingStatus.hypothesis
+    (claim,) = outcome.result.intent_evidence.claims
+    assert claim.status is IntentClaimStatus.inferred
+    assert claim.statement == "apply_discount rounds half-even instead of half-up"

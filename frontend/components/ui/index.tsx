@@ -78,17 +78,27 @@ export function RollText({ children }: { children: string }) {
 
 export function ErrorState({ error, onRetry, context }: { error: unknown; onRetry?: () => void; context?: string }) {
   const e = describeError(error);
+  const signedOut = e.status === 401 || e.code === 'UNAUTHENTICATED' || e.code === 'CSRF_FAILED';
   return (
     <div role="alert" data-testid="error-state" className="rounded-md border border-bad/40 bg-bad/5 p-3 text-sm shadow-sm hover:shadow-md transition-shadow duration-300">
       <p className="font-semibold text-bad"><span aria-hidden="true">× </span>{context ? `${context}: ` : ''}{e.title}</p>
       <p className="mt-1 text-muted">{e.detail}</p>
+      {e.recovery && <p className="mt-1 text-ink" data-testid="error-recovery"><span className="font-semibold">What to do: </span>{e.recovery}</p>}
       {(e.code || e.requestId) && (
         <p className="mt-1 font-mono text-xs text-faint">
           {e.code && <>code {e.code}</>}{e.requestId && <> · request {e.requestId}</>}
         </p>
       )}
       {e.kind === 'protocol' && <ContractSkewHint />}
-      {onRetry && <Button className="mt-2" onClick={onRetry}>Retry</Button>}
+      {(onRetry || e.status === 403 || e.status === 404 || signedOut) && (
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          {/* Retrying an expired session only fails again; a full navigation re-runs the session check and shows sign-in. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          {signedOut && <a className="text-sm font-semibold text-brand hover:underline" href="/connect" data-testid="sign-in-again">Sign in again</a>}
+          {onRetry && !signedOut && <Button onClick={onRetry}>Retry</Button>}
+          {(e.status === 403 || e.status === 404) && <Link className="text-sm font-semibold text-brand hover:underline" href="/connect">Back to projects</Link>}
+        </div>
+      )}
     </div>
   );
 }
@@ -150,6 +160,30 @@ export function Stat({ label, value, hint }: { label: string; value: ReactNode; 
       <p className="mt-2 font-display text-2xl font-semibold tabular-nums tracking-tight text-ink">{value}</p>
       {hint && <p className="text-xs text-muted">{hint}</p>}
     </div>
+  );
+}
+
+/** Analytics-style stat row: one bordered panel, cells split by hairlines. */
+export function StatGrid({ items, testId }: { items: Array<{ label: string; value: ReactNode }>; testId?: string }) {
+  return (
+    <div data-testid={testId} className="grid grid-cols-2 rounded-lg border border-line bg-panel sm:grid-flow-col sm:auto-cols-fr sm:grid-cols-none">
+      {items.map((it, i) => (
+        <div key={it.label} className={`min-w-0 px-4 py-3 ${i % 2 ? 'border-l border-line' : ''} ${i > 1 ? 'border-t border-line sm:border-t-0' : ''} ${i > 0 ? 'sm:border-l' : ''}`}>
+          <p className="font-mono text-2xl font-semibold text-ink">{typeof it.value === 'number' ? it.value.toLocaleString() : it.value}</p>
+          <p className="mt-1 text-xs text-muted">{it.label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Explanations stay available but collapsed, so the page reads like a dashboard. */
+export function Details({ summary = 'How this works', children, testId }: { summary?: string; children: ReactNode; testId?: string }) {
+  return (
+    <details className="project-detail rounded-lg border border-line bg-panel px-4 py-3 text-sm text-muted" data-testid={testId}>
+      <summary className="label-mono text-muted">{summary}</summary>
+      <div className="flex flex-col gap-3">{children}</div>
+    </details>
   );
 }
 

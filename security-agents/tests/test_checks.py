@@ -12,8 +12,12 @@ import pytest
 from security_agents.checks.library import (
     AUTHENTICATION,
     BOUNDS,
+    CONCURRENT_BOUND,
+    DESTINATION,
     OWNERSHIP,
+    PATH_TRAVERSAL,
     ROLE,
+    SQL_INJECTION,
     default_library,
     empty_library,
 )
@@ -46,13 +50,27 @@ def probe_ctx(intel, scope=None):
 
 def test_library_lists_runnable_templates(library):
     refs = {t["ref"] for t in library.list_public()}
-    assert refs == {OWNERSHIP.ref, BOUNDS.ref, AUTHENTICATION.ref, ROLE.ref}
+    assert refs == {
+        OWNERSHIP.ref,
+        BOUNDS.ref,
+        AUTHENTICATION.ref,
+        ROLE.ref,
+        "firestore.owner_isolation@1",
+        "firestore.unauthenticated_denied@1",
+        "firestore.collection_enumeration@1",
+        CONCURRENT_BOUND.ref,
+        DESTINATION.ref,
+        SQL_INJECTION.ref,
+        PATH_TRAVERSAL.ref,
+    }
     assert all(t["runnable"] for t in library.list_public())
     assert library.categories() == {
         "access_control.ownership",
         "access_control.authentication",
         "access_control.role",
         "input_validation.bounds",
+        "input_validation.injection",
+        "input_validation.path",
     }
 
 

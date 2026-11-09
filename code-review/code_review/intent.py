@@ -18,9 +18,11 @@ from pathlib import PurePosixPath
 
 from code_review.models import CitationIn, ClaimIn, SourceKind
 from code_review.workspace import (
+    COMMENT_DOC_SUFFIXES,
     GENERATED_TEST_DIR,
     Workspace,
     WorkspaceError,
+    comment_ranges,
     docstring_ranges,
     is_test_path,
 )
@@ -60,6 +62,7 @@ def _norm(s: str) -> str:
 QUOTE_SLACK = 3
 _LINE_NO = re.compile(r"^\s*\d+(?:\s{2,}|\s*[:|]\s*)")
 _ELLIPSIS = re.compile(r"\.\.\.|\u2026")
+_COMMENT_MARK = re.compile(r"^\s*(?:#+|//+|/\*+|\*+/?)\s?|\s*\*+/\s*$")
 
 
 def clean_quote(quote: str) -> str:
@@ -76,7 +79,9 @@ def locate_quote(quote: str, lines: list[str], start: int, end: int) -> tuple[in
     # Each quoted line (and each piece around "...") must appear, in order, near the citation;
     # models often skip lines without marking the elision.
     fragments = [
-        _norm(f) for line in clean_quote(quote).splitlines() for f in _ELLIPSIS.split(line)
+        _norm(_COMMENT_MARK.sub("", f))
+        for line in clean_quote(quote).splitlines()
+        for f in _ELLIPSIS.split(line)
     ]
     fragments = [f for f in fragments if f]
     if not fragments:
@@ -85,7 +90,8 @@ def locate_quote(quote: str, lines: list[str], start: int, end: int) -> tuple[in
     hi = min(len(lines), end + QUOTE_SLACK)
     text, owner = "", []  # normalized window text and the source line of every character
     for n in range(lo, hi + 1):
-        piece = _norm(lines[n - 1])
+        # comment markers ("//", " * ") wrap a quoted sentence across lines
+        piece = _norm(_COMMENT_MARK.sub("", lines[n - 1]))
         if not piece:
             continue
         if text:
@@ -121,6 +127,13 @@ class IntentAdjudication:
     evidence: IntentEvidence
     by_key: dict[str, ClaimDecision]
     rejected: list[str]
+
+
+_TEST_NAME = re.compile(r"\btest_\w+")
+_JS_TEST = re.compile(r"\s*(it|test)(\.\w+)?\(\s*['\"`](.+?)['\"`]")
+
+
+COMMENT_AS_DOC = "comment cited as code reclassified as docstring"
 
 
 class CitationChecker:
@@ -166,6 +179,14 @@ class CitationChecker:
             if exp.status is ExpectationStatus.conflicting:
                 return ev, kind, CONFLICT_NOTE
             return ev, kind, "" if kind is SourceKind.expectation else "expectation not confirmed"
+        if c.path and c.start_line is None and c.source_kind is SourceKind.test:
+            # "tests/test_api.py::test_x" style: resolve the test by name to its def line
+            test_def = self._test_def(c.path, (c.quote or "") + " " + c.path)
+            if test_def is not None:
+                line, text = test_def
+                return self.check(
+                    c.model_copy(update={"start_line": line, "end_line": line, "quote": text})
+                )
         if not c.path or c.start_line is None:
             return None, c.source_kind, "file citation needs path and start_line"
         try:
@@ -181,6 +202,15 @@ class CitationChecker:
         if quote:
             located = locate_quote(quote, lines, start, end)
             if located is None:
+                # "test_x asserts 201": a paraphrase that names an existing test resolves to it
+                test_def = (
+                    self._test_def(c.path, quote) if c.source_kind is SourceKind.test else None
+                )
+                if test_def is not None and _norm(test_def[1]) != _norm(quote):
+                    line, text = test_def
+                    return self.check(
+                        c.model_copy(update={"start_line": line, "end_line": line, "quote": text})
+                    )
                 return (
                     None,
                     c.source_kind,
@@ -201,10 +231,34 @@ class CitationChecker:
         )
         notes = [
             n
-            for n in (anchor_note, "" if kind is c.source_kind else f"reclassified as {kind.value}")
+            for n in (
+                anchor_note,
+                ""
+                if kind is c.source_kind
+                else COMMENT_AS_DOC
+                if c.source_kind is SourceKind.code
+                else f"reclassified as {kind.value}",
+            )
             if n
         ]
         return ev, kind, "; ".join(notes)
+
+    def _test_def(self, path: str, text: str) -> tuple[int, str] | None:
+        """(line, source) of the first ``def test_*`` named in ``text`` that ``path`` defines."""
+        try:
+            lines = self.ws.read(path).splitlines()
+        except WorkspaceError:
+            return None
+        for name in dict.fromkeys(_TEST_NAME.findall(text)):
+            for n, line in enumerate(lines, 1):
+                if re.match(rf"\s*(async\s+)?def\s+{name}\s*\(", line):
+                    return n, line.strip()
+        said = _norm(text)
+        for n, line in enumerate(lines, 1):  # JS: it('title', ...) / test("title", ...)
+            m = _JS_TEST.match(line)
+            if m and len(m.group(3)) >= 12 and _norm(m.group(3)) in said:
+                return n, line.strip()
+        return None
 
     @staticmethod
     def _effective_kind(kind: SourceKind, path: str, text: str, start: int, end: int) -> SourceKind:
@@ -212,6 +266,9 @@ class CitationChecker:
         if kind is SourceKind.doc:
             return kind if suffix in _DOC_SUFFIXES else SourceKind.code
         if kind is SourceKind.docstring:
+            if suffix in COMMENT_DOC_SUFFIXES:
+                inside = any(a <= start and end <= b for a, b in comment_ranges(text))
+                return kind if inside else SourceKind.code
             if suffix != ".py":
                 return SourceKind.doc if suffix in _DOC_SUFFIXES else SourceKind.code
             inside = any(a <= start and end <= b for a, b in docstring_ranges(text))
@@ -219,7 +276,31 @@ class CitationChecker:
         if kind is SourceKind.test:
             generated = path.startswith(GENERATED_TEST_DIR) or f"/{GENERATED_TEST_DIR}/" in path
             return kind if is_test_path(path) and not generated else SourceKind.code
+        if suffix in COMMENT_DOC_SUFFIXES and any(
+            a <= start and end <= b for a, b in comment_ranges(text)
+        ):
+            # A JS comment block cited as code is still the language's docstring
+            # (live gtB7 js-batch-obo cited "Loop because a batch caps at 500 writes" as code).
+            return SourceKind.docstring
         return SourceKind.code
+
+
+def inferred_fallback(key: str, statement: str, evidence: list[EvidenceRef]) -> ClaimDecision:
+    """A claim whose citations all failed to verify, re-based on the finding's own verified
+    spans. Implementation code only ever infers a rule, so the finding can at most be a
+    hypothesis; dropping it instead lost correct findings (live gtB3 js-batch-obo)."""
+    ic = IntentClaim(
+        statement=statement,
+        status=IntentClaimStatus.inferred,
+        citations=evidence[:3],
+        confidence=_CONFIDENCE[IntentClaimStatus.inferred],
+    )
+    return ClaimDecision(
+        claim=ic,
+        key=key,
+        supported_by={SourceKind.code},
+        notes=["no claim citation verified; re-based on the finding's spans"],
+    )
 
 
 def adjudicate_claims(
@@ -257,6 +338,11 @@ def adjudicate_claims(
         status = IntentClaimStatus(claim.proposed_status.value)
         if CONFLICT_NOTE in notes:  # a human/index decision says sources disagree: never confirm
             status = IntentClaimStatus.conflicting
+        if status is IntentClaimStatus.inferred and any(COMMENT_AS_DOC in n for n in notes):
+            # The model rated it inferred because it filed the comment as code; the
+            # comment is a docstring, the same source that confirms when labelled as one.
+            status = IntentClaimStatus.confirmed
+            notes.append("confirmed: a cited comment block states the rule")
         if status is IntentClaimStatus.confirmed and not kinds & _SUPPORTING:
             status = IntentClaimStatus.inferred
             notes.append("downgraded to inferred: only PR text or implementation code supports it")

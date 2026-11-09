@@ -128,6 +128,12 @@ def test_sandbox_refuses_option_injection(target: str) -> None:
         ("def helper():\n    pass\n", False),
         ("def test_x(:\n", False),
         ("def test_x():\n    items = [1]\n    items.remove(1)\n", True),
+        # reading JavaScript source as text is not a behavioral test (gt4 js-wrong-cond)
+        (
+            "from pathlib import Path\n\ndef test_x():\n    assert 'x' in Path('a/read-counter.js').read_text()\n",
+            False,
+        ),
+        ("def test_x():\n    assert 'index.html'\n", False),
     ],
 )
 @pytest.mark.owasp_llm("LLM06:2025")
@@ -152,7 +158,10 @@ def test_write_protection_and_budgets(billing) -> None:
         tb.read_file(ReadFileIn(path=".env"))
     msg = tb.write_test(
         WriteTestIn(
-            name="one", content="def test_one():\n    assert True\n", claim_key="c", rationale="r"
+            name="one",
+            content="import billing\n\ndef test_one():\n    assert True\n",
+            claim_key="c",
+            rationale="r",
         )
     )
     assert "tests/generated/test_cr_one.py" in msg
@@ -160,7 +169,7 @@ def test_write_protection_and_budgets(billing) -> None:
         tb.write_test(
             WriteTestIn(
                 name="two",
-                content="def test_two():\n    assert True\n",
+                content="import billing\n\ndef test_two():\n    assert True\n",
                 claim_key="c",
                 rationale="r",
             )
@@ -295,7 +304,7 @@ def test_generated_tests_cannot_introduce_new_credentials(billing) -> None:
         tb.write_test(
             WriteTestIn(
                 name="leak",
-                content=f"def test_leak():\n    assert {token!r}\n",
+                content=f"import billing\n\ndef test_leak():\n    assert {token!r}\n",
                 claim_key="c",
                 rationale="r",
             )
@@ -304,7 +313,7 @@ def test_generated_tests_cannot_introduce_new_credentials(billing) -> None:
     assert "test_id=" in tb.write_test(
         WriteTestIn(
             name="fixture_ok",
-            content=f"def test_ok():\n    assert {token!r}\n",
+            content=f"import billing\n\ndef test_ok():\n    assert {token!r}\n",
             claim_key="c",
             rationale="r",
         )
@@ -449,7 +458,7 @@ def test_speculative_repeat_is_only_charged_when_the_head_run_fails(billing) -> 
         ok_msg = tb.write_test(
             WriteTestIn(
                 name="holds",
-                content="def test_ok():\n    assert True\n",
+                content="import billing\n\ndef test_ok():\n    assert True\n",
                 claim_key="c",
                 rationale="r",
             )
@@ -457,7 +466,7 @@ def test_speculative_repeat_is_only_charged_when_the_head_run_fails(billing) -> 
         bad_msg = tb.write_test(
             WriteTestIn(
                 name="broken",
-                content="def test_bad():\n    assert False\n",
+                content="import billing\n\ndef test_bad():\n    assert False\n",
                 claim_key="c",
                 rationale="r",
             )
@@ -470,3 +479,18 @@ def test_speculative_repeat_is_only_charged_when_the_head_run_fails(billing) -> 
         assert tb.test_runs == 5  # head + repeat + base
     finally:
         base.close()
+
+
+@pytest.mark.owasp_llm("LLM09:2025")
+def test_generated_test_must_import_the_project(billing) -> None:
+    """Live gtB3 js-lessonkey: a Python transcription of a JS function "validated" a finding
+    without running any repository code."""
+    _, ws = billing
+    tb = _toolbox(ws)
+    copy = "def key(p):\n    return p.replace('/', '__')\n\ndef test_x():\n    assert key('a/b') != key('a__b')\n"
+    with pytest.raises(ToolDenied, match="must import the code under test"):
+        tb.write_test(WriteTestIn(name="copy", content=copy, claim_key="c", rationale="r"))
+    real = "from billing.invoice import line_total\n\ndef test_x():\n    assert line_total\n"
+    assert "test_id=" in tb.write_test(
+        WriteTestIn(name="real", content=real, claim_key="c", rationale="r")
+    )

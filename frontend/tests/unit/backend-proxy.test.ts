@@ -1,11 +1,30 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
-const { backendOrigin, proxy } = await import('@/lib/backend-proxy');
+const { backendOrigin, proxy, RETRY_DELAYS_MS } = await import('@/lib/backend-proxy');
+RETRY_DELAYS_MS.fill(0); // retry instantly in tests
 
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe('backend proxy', () => {
+  it('retries a read through a deploy rollover and returns the recovered answer', async () => {
+    const gateway = () => Response.json({ status: 'error', code: 502, message: 'Application failed to respond' }, { status: 502 });
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new TypeError('connect ECONNREFUSED'))
+      .mockResolvedValueOnce(gateway())
+      .mockResolvedValueOnce(Response.json({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    const res = await proxy(new Request('http://web/api/v1/me'));
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+  it('never replays a write', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('connect ECONNREFUSED'));
+    vi.stubGlobal('fetch', fetchMock);
+    const res = await proxy(new Request('http://web/api/v1/projects', { method: 'POST', body: '{}' }));
+    expect(res.status).toBe(502);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
   it('tolerates one trailing slash and rejects paths or credentials', () => {
     expect(backendOrigin('http://api:8000/')).toBe('http://api:8000');
     expect(() => backendOrigin('http://api:8000/v1')).toThrow();
@@ -43,10 +62,29 @@ describe('backend proxy', () => {
   it('a 5xx that is not an API error (gateway page during a deploy) becomes a 503 envelope', async () => {
     vi.stubEnv('BACKEND_ORIGIN', 'http://api:8000');
     const railway = { status: 'error', code: 502, message: 'Application failed to respond', request_id: 'x' };
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(railway, { status: 502 })));
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => Response.json(railway, { status: 502 })));
     const res = await proxy(new Request('http://web/api/v1/me'));
     expect(res.status).toBe(503);
     expect((await res.json()).error.code).toBe('SUBSYSTEM_UNAVAILABLE');
+  });
+  it('a platform fallback (no running deployment) is an outage, not a 404 or a contract error', async () => {
+    vi.stubEnv('BACKEND_ORIGIN', 'http://api:8000');
+    // The body and headers Railway returned for /api/v1/me on 2026-10-31 while the service had no deployment.
+    const railway = Response.json({ status: 'error', code: 404, message: 'Application not found', request_id: 'r' }, { status: 404, headers: { 'x-railway-fallback': 'true' } });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(railway));
+    const res = await proxy(new Request('http://web/api/v1/me'));
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error.code).toBe('SUBSYSTEM_UNAVAILABLE');
+    expect(body.error.message).toMatch(/not running.*Nothing was started/);
+  });
+  it('an API 404 passes through unchanged', async () => {
+    vi.stubEnv('BACKEND_ORIGIN', 'http://api:8000');
+    const api = { error: { code: 'NOT_FOUND', message: 'project not found', details: {}, request_id: 'req_2' } };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(api, { status: 404 })));
+    const res = await proxy(new Request('http://web/api/v1/projects/p_x'));
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.code).toBe('NOT_FOUND');
   });
   it('an API 5xx error passes through unchanged', async () => {
     vi.stubEnv('BACKEND_ORIGIN', 'http://api:8000');

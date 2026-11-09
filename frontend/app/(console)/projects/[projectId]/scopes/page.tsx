@@ -5,7 +5,7 @@ import { useState, type FormEvent } from 'react';
 import { useProject } from '@/components/project';
 import { Term } from '@/components/term';
 import { useSession } from '@/components/session';
-import { Async, Badge, Button, Empty, ErrorState, Field, inputClass, Mono, PageTitle, Panel, Time } from '@/components/ui';
+import { Async, Badge, Button, Details, Empty, ErrorState, Field, inputClass, Mono, PageTitle, Panel, StatGrid, Time } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useActionKeys } from '@/lib/action-key';
 import { REQUEST_SCOPE_NOTE, SCOPE_CHECK_CATEGORIES, SCOPE_SANDBOX_EXPLANATION } from '@/lib/scope';
@@ -18,16 +18,19 @@ export default function ScopesPage() {
   const scopes = useResource(`scopes:${project.id}`, s => api().scopes(project.id, { signal: s }));
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <PageTitle eyebrow="Defend" title="Authorized scopes" subtitle={selectedRepo
-        ? <>Approved sandbox targets for <span className="font-mono text-ink">{selectedRepo.full_name}</span>.</>
-        : 'Select a connected repository to review its authorized sandbox targets.'} />
-      <p className="text-sm text-muted" data-testid="scope-sandbox-explanation">{SCOPE_SANDBOX_EXPLANATION}</p>
+      <PageTitle eyebrow="Defend" title="Authorized scopes" subtitle={selectedRepo ? <span className="font-mono text-ink">{selectedRepo.full_name}</span> : 'Select a connected repository.'} />
+      <Async resource={scopes} label="scope counts">
+        {page => {
+          const mine = page.items.filter(scope => selectedRepo && scope.targets.some(target => target.repo_id === selectedRepo.id));
+          return <StatGrid testId="scope-stats" items={[
+            { label: 'Active', value: mine.filter(scope => effectiveScopeStatus(scope) === 'active').length },
+            { label: 'Pending approval', value: mine.filter(scope => effectiveScopeStatus(scope) === 'pending').length },
+            { label: 'Total', value: mine.length },
+          ]} />;
+        }}
+      </Async>
       <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[3fr_2fr]">
       <Panel title="Authorized test scopes">
-        <p className="mb-3 text-sm text-muted">
-          A <Term t="scope">scope</Term> lists the only <Term t="sandbox">sandbox</Term> targets agents may build and test, and the only check categories Probe may run. It becomes
-          active after a project owner explicitly approves it. Owners may approve their own sandbox-only scopes; other scopes require a different owner. The backend enforces this.
-        </p>
         <Async resource={scopes} label="scopes">
           {page => {
             const items = page.items.flatMap(scope => {
@@ -42,6 +45,11 @@ export default function ScopesPage() {
       </Panel>
       <RequestScope onCreated={scopes.reload} />
     </div>
+      <Details summary="How scopes work">
+        <p data-testid="scope-sandbox-explanation">{SCOPE_SANDBOX_EXPLANATION}</p>
+        <p>A <Term t="scope">scope</Term> lists the only <Term t="sandbox">sandbox</Term> targets agents may build and test, and the only check categories Probe may run. It becomes active after a project owner explicitly approves it. Owners may approve their own sandbox-only scopes; other scopes require a different owner. The backend enforces this.</p>
+        <p data-testid="request-scope-note">{REQUEST_SCOPE_NOTE}</p>
+      </Details>
     </div>
   );
 }
@@ -126,7 +134,6 @@ function RequestScope({ onCreated }: { onCreated: () => void }) {
   };
   return (
     <Panel title="Request a scope">
-      <p className="mb-3 text-sm text-muted" data-testid="request-scope-note">{REQUEST_SCOPE_NOTE}</p>
       {!selectedRepo ? <Empty>Connect a repository first.</Empty> : (
         <form onSubmit={submit} className="flex flex-col gap-3">
           <Field label="Name"><input className={inputClass} value={name} onChange={e => setName(e.target.value)} required name="scope_name" /></Field>

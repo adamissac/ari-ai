@@ -8,6 +8,7 @@ import { AgentTeam } from '@/components/agent-team';
 import { Term } from '@/components/term';
 import { useParam, useProject } from '@/components/project';
 import { ApprovalGate } from '@/components/assessment-approval-gate';
+import { AssessmentOutcome } from '@/components/assessment-outcome';
 import { Badge, Empty, ErrorState, Loading, Mono, PageTitle, Panel, Stat, Tag, Time } from '@/components/ui';
 import { api } from '@/lib/api';
 import { CancelButton } from '@/components/assessment-cancel';
@@ -17,7 +18,7 @@ import { currentPhaseSentence } from '@/lib/phase';
 import { agentRelay, earlyEndNote, providerNote } from '@/lib/relay';
 import { useResource } from '@/lib/use-resource';
 import {
-  agentRole, ASSESSMENT_STATE, FINDING_STATUS, providerLabel,
+  agentRole, ASSESSMENT_STATE, FINDING_STATUS, hasNonLiveModelTurns, providerLabel,
   railSteps, SEVERITY, TERMINAL_STATES,
 } from '@/lib/status';
 
@@ -43,6 +44,7 @@ export default function AssessmentPage() {
   const [technicalOpen, setTechnicalOpen] = useState(false);
   const [approvals, setApprovals] = useState<Approval[] | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const reloadPhaseLog = useRef<() => void>(() => {});
   const approvalsReq = useRef(0);
   const detailReq = useRef(0);
   const projectId = project.id;
@@ -74,10 +76,17 @@ export default function AssessmentPage() {
   // Records change only when an event says so; coalesce bursts into one refetch.
   const scheduleRefresh = useCallback(() => {
     if (refreshTimer.current) clearTimeout(refreshTimer.current);
-    refreshTimer.current = setTimeout(() => loadDetail(), 250);
+    // The phase list reads the persisted log too; refresh it with the record so a phase
+    // the run already finished is never shown as skipped until the next poll.
+    refreshTimer.current = setTimeout(() => { loadDetail(); reloadPhaseLog.current(); }, 250);
   }, [loadDetail]);
 
+  const assessmentState = detail?.assessment.state;
+  const demoView = typeof document !== 'undefined'
+    && document.cookie.split(';').some(cookie => cookie.trim() === 'ari_demo_view=1');
+
   useEffect(() => {
+    if (!assessmentState || (demoView && assessmentState === 'AWAITING_APPROVAL')) return;
     const controller = new AbortController();
     let cursor = 0;
     (async () => {
@@ -91,17 +100,22 @@ export default function AssessmentPage() {
       if (!controller.signal.aborted) setStreamError(err);
     });
     return () => controller.abort();
-  }, [id, streamNonce, scheduleRefresh]);
+  }, [assessmentState, demoView, id, streamNonce, scheduleRefresh]);
 
   useEffect(() => () => { if (refreshTimer.current) clearTimeout(refreshTimer.current); }, []);
 
   // Polling fallback: persisted records stay current even if an intermediary buffers SSE.
-  const running = detail !== null && !TERMINAL_STATES.has(detail.assessment.state);
+  const running = detail !== null
+    && assessmentState !== undefined
+    && !(demoView && assessmentState === 'AWAITING_APPROVAL')
+    && !TERMINAL_STATES.has(assessmentState);
   const phaseLog = useResource(
     `phase-log:${id}`,
     signal => fullEventLog(after => api().eventsLog(id, after, { signal })),
     running ? 5000 : undefined,
   );
+  const phaseLogReload = phaseLog.reload;
+  useEffect(() => { reloadPhaseLog.current = phaseLogReload; }, [phaseLogReload]);
   useEffect(() => {
     if (!running) return;
     const t = setInterval(() => loadDetail(), 5000);
@@ -118,6 +132,7 @@ export default function AssessmentPage() {
   if (!detail) return <Loading label="Loading assessment" />;
   const a = detail.assessment;
   const terminal = TERMINAL_STATES.has(a.state);
+  const relay = agentRelay({ runs: detail.agent_runs, findings: detail.findings, state: a.state, approvals: relayApprovals, skipNote });
 
   return (
     <>
@@ -128,22 +143,30 @@ export default function AssessmentPage() {
       />
       {detailError !== null && <p role="status" className="mb-2 text-xs text-warn" data-testid="detail-stale">Could not refresh this assessment. Showing the last successfully loaded records, which may be out of date.</p>}
       <p className="mb-4 text-base text-ink" data-testid="assessment-phase">{currentPhaseSentence(a.state)}</p>
+      {!terminal && a.state !== 'AWAITING_APPROVAL' && (
+        <p className="-mt-2 mb-4 text-sm text-muted" data-testid="assessment-running-note">
+          Running for <Elapsed since={a.created_at} />. Safe to leave this page.
+        </p>
+      )}
       {a.error && (
         <div role="alert" className="mb-4 rounded-md border border-bad/40 bg-bad/5 p-3 text-sm">
-          <p className="font-semibold text-bad">Assessment error · {a.error.code}</p>
+          <p className="font-semibold text-bad">Recorded error · <span className="font-mono text-xs">{a.error.code}</span></p>
           <p className="text-muted">{a.error.message}</p>
         </div>
       )}
+      <AssessmentOutcome assessment={a} findings={detail.findings} runs={detail.agent_runs} approvals={relayApprovals} relay={relay} skipNote={skipNote} projectId={project.id} />
       <ProviderSummary runs={detail.agent_runs} />
       {a.state === 'AWAITING_APPROVAL' && <ApprovalGate projectId={project.id} events={events} findings={detail?.findings ?? []} onDecided={() => loadDetail()} />}
-      <div className="mt-4 rounded-xl border border-line bg-panel p-5">
+      <div className="mt-4">
         <AgentRelay
-          items={agentRelay({ runs: detail.agent_runs, findings: detail.findings, state: a.state, approvals: relayApprovals, skipNote })}
+          items={relay}
           selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'}
           onSelect={setSelectedAgent}
+          findings={detail.findings}
+          skipNote={skipNote}
         />
       </div>
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[2fr_3fr]">
+      <div className="mt-4">
         <Panel title={`What this check found (${detail.findings.length})`}>
           {detail.findings.length === 0 ? <Empty>{terminal ? 'No findings were recorded by this run.' : 'No findings recorded yet.'}</Empty> : (
             <ul className="divide-y divide-line">
@@ -163,14 +186,6 @@ export default function AssessmentPage() {
             </ul>
           )}
         </Panel>
-        <section aria-label="Phases of this check">
-          <h2 className="mb-2 text-sm font-semibold">Progress through the six phases</h2>
-          <AssessmentPhases
-            state={a.state}
-            findingStatuses={detail.findings.map(finding => finding.status)}
-            log={phaseLog}
-          />
-        </section>
       </div>
       <div className="mt-4">
         <h2 className="mb-2 text-sm font-semibold">What the selected agent did, step by step</h2>
@@ -179,9 +194,17 @@ export default function AssessmentPage() {
       <details className="group mt-4 rounded-xl border border-line bg-panel" data-testid="technical-details" open={technicalOpen} onToggle={e => setTechnicalOpen((e.currentTarget as HTMLDetailsElement).open)}>
         <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:hidden">
           <span aria-hidden="true" className="mr-1 inline-block transition-transform group-open:rotate-90">▸</span>
-          Technical details: live connection, orchestrator states, usage and the full event log
+          Technical details
         </summary>
         <div className="border-t border-line p-4">
+          <section aria-label="Phases of this check" className="mb-4">
+            <h2 className="mb-2 text-sm font-semibold">Progress through each phase</h2>
+            <AssessmentPhases
+              state={a.state}
+              findingStatuses={detail.findings.map(finding => finding.status)}
+              log={phaseLog}
+            />
+          </section>
           <ConnectionBar state={connection} error={streamError} onReconnect={() => { setStreamError(null); setStreamNonce(n => n + 1); }} />
           <StateRail state={a.state} events={events} />
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
@@ -192,7 +215,7 @@ export default function AssessmentPage() {
           </div>
           <BudgetMeter used={a.usage.usd} cap={a.budget.max_usd} />
           <div className="mt-4">
-            <Panel title={`Event log (${events.length})`} actions={<a className="text-xs text-accent hover:underline" href={`/api/v1/assessments/${a.id}/report`} target="_blank" rel="noreferrer">JSON report</a>}>
+            <Panel title={`Event log (${events.length})`} actions={demoView ? undefined : <a className="text-xs text-accent hover:underline" href={`/api/v1/assessments/${a.id}/report`} target="_blank" rel="noreferrer">JSON report</a>}>
               <EventLog events={events} />
             </Panel>
           </div>
@@ -246,7 +269,7 @@ function ProviderSummary({ runs }: { runs: AgentRun[] }) {
   const modes = new Map<string, number>();
   for (const r of runs) modes.set(r.provider_mode, (modes.get(r.provider_mode) ?? 0) + 1);
   if (modes.size === 0) return null;
-  const notLive = [...modes.keys()].some(m => m !== 'live');
+  const notLive = hasNonLiveModelTurns(modes.keys());
   return (
     <div className={`mb-4 rounded-md border px-3 py-2 text-sm ${notLive ? 'border-warn/50 bg-warn/10' : 'border-ok/40 bg-ok/5'}`} data-testid="provider-summary">
       <span className="font-semibold">{notLive ? 'Not a live-provider run. ' : 'Live provider run. '}</span>
@@ -313,4 +336,15 @@ function EventLog({ events }: { events: StreamEvent[] }) {
       ))}
     </ol>
   );
+}
+
+/** Wall-clock time since the run was created, ticking each second while mounted. */
+function Elapsed({ since }: { since: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const s = Math.max(0, Math.floor((now - Date.parse(since)) / 1000));
+  return <span data-testid="assessment-elapsed">{s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`}</span>;
 }

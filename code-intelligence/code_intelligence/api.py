@@ -46,6 +46,7 @@ from shared.intelligence_memory import (
 from code_intelligence.extract import PythonExtractor, dependencies
 from code_intelligence.inference import ExpectationProvider, validate_proposals
 from code_intelligence.ingest import GitReader, Limits, ingestion_version
+from code_intelligence.js_routes import JsRouteExtractor
 from code_intelligence.memory import MemoryStore, SQLiteMemoryStore, apply_decisions
 from code_intelligence.models import IntelligenceError, StoredIndex, stable_id
 from code_intelligence.persistence import PayloadIndexStore, PayloadStore
@@ -154,6 +155,11 @@ class IntelligenceService:
         parser = PythonExtractor(ref, files)
         parser.extract()
         issues.extend(parser.issues)
+        js = JsRouteExtractor(ref, files)
+        js.extract()
+        issues.extend(js.issues)
+        parser.symbols.extend(js.symbols)
+        parser.entries.extend(js.entries)
         finished = Snapshot(
             id=snapshot.id,
             repo_id=snapshot.repo_id,

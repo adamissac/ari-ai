@@ -11,16 +11,20 @@ afterEach(() => vi.unstubAllEnvs());
 describe('demo access proxy', () => {
   it('without the access cookie, /demo goes to the code page and the console is untouched', () => {
     vi.stubEnv('DEMO_ACCESS_CODE', 'test');
-    expect(proxy(req('/demo/lumen-pay')).headers.get('location')).toBe('https://ari.test/access?next=%2Fdemo%2Flumen-pay');
+    expect(proxy(req('/demo/lumen-pay')).headers.get('location')).toBe('https://ari.test/access');
     expect(proxy(req('/projects')).headers.get('location')).toBeNull();
   });
 
-  it('with the access cookie, sign-in routes open the Lumen Pay account instead', () => {
+  it('with the access cookie, the console opens in place and legacy demo routes open the organization picker', () => {
     vi.stubEnv('DEMO_ACCESS_CODE', 'test');
     const token = demoAccessToken()!;
-    expect(proxy(req('/demo/lumen-pay', token)).headers.get('location')).toBeNull();
-    for (const path of ['/projects', '/projects/p1', '/connect', '/access']) {
-      expect(proxy(req(path, token)).headers.get('location')).toBe('https://ari.test/demo/lumen-pay');
-    }
+    expect(proxy(req('/demo/lumen-pay', token)).headers.get('location')).toBe('https://ari.test/connect');
+    expect(proxy(req('/access', token)).headers.get('location')).toBe('https://ari.test/connect');
+    for (const path of ['/projects', '/projects/p1', '/connect', '/connect/lumen-pay', '/access/github']) expect(proxy(req(path, token)).headers.get('location')).toBeNull();
+  });
+
+  it('the simulated GitHub step needs the access cookie', () => {
+    vi.stubEnv('DEMO_ACCESS_CODE', 'test');
+    expect(proxy(req('/access/github')).headers.get('location')).toBe('https://ari.test/access');
   });
 });

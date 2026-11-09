@@ -59,7 +59,8 @@ jobs:
     # Real FastAPI + PostgreSQL + worker + next start + Playwright. Model replies are
     # the backend's TEST-ONLY scripted transports (provider_mode=fake); no API key.
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    # The serial browser suite takes ~26 minutes before dependency setup.
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:16

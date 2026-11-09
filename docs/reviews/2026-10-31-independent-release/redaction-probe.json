@@ -1,0 +1,44 @@
+[
+  {
+    "ref": "canonical/main",
+    "path": "app/settings.py",
+    "input": "diff --git a/app/settings.py b/app/settings.py\n--- a/app/settings.py\n+++ b/app/settings.py\n@@ -0,0 +1 @@\n+password = r\"synthetic-audit-canary\"\n",
+    "output": "diff --git a/app/settings.py b/app/settings.py\n--- a/app/settings.py\n+++ b/app/settings.py\n@@ -0,0 +1 @@\n+password = r\"synthetic-audit-canary\"\n",
+    "canary_exposed": true
+  },
+  {
+    "ref": "canonical/main",
+    "path": "app/settings.py",
+    "input": "diff --git a/app/settings.py b/app/settings.py\n--- a/app/settings.py\n+++ b/app/settings.py\n@@ -0,0 +1 @@\n+token = \"\"\"synthetic-audit-canary\"\"\"\n",
+    "output": "diff --git a/app/settings.py b/app/settings.py\n--- a/app/settings.py\n+++ b/app/settings.py\n@@ -0,0 +1 @@\n+token = \"\"\"synthetic-audit-canary\"\"\"\n",
+    "canary_exposed": true
+  },
+  {
+    "ref": "canonical/main",
+    "path": "deploy/values.yaml",
+    "input": "diff --git a/deploy/values.yaml b/deploy/values.yaml\n--- a/deploy/values.yaml\n+++ b/deploy/values.yaml\n@@ -0,0 +1 @@\n+  password: synthetic-audit-canary\n",
+    "output": "diff --git a/deploy/values.yaml b/deploy/values.yaml\n--- a/deploy/values.yaml\n+++ b/deploy/values.yaml\n@@ -0,0 +1 @@\n+  password: synthetic-audit-canary\n",
+    "canary_exposed": true
+  },
+  {
+    "ref": "audit/694",
+    "path": "app/settings.py",
+    "input": "diff --git a/app/settings.py b/app/settings.py\n--- a/app/settings.py\n+++ b/app/settings.py\n@@ -0,0 +1 @@\n+password = r\"synthetic-audit-canary\"\n",
+    "output": "diff --git a/app/settings.py b/app/settings.py\n--- a/app/settings.py\n+++ b/app/settings.py\n@@ -0,0 +1 @@\n+password = r\"[REDACTED:kv]\"\n",
+    "canary_exposed": false
+  },
+  {
+    "ref": "audit/694",
+    "path": "app/settings.py",
+    "input": "diff --git a/app/settings.py b/app/settings.py\n--- a/app/settings.py\n+++ b/app/settings.py\n@@ -0,0 +1 @@\n+token = \"\"\"synthetic-audit-canary\"\"\"\n",
+    "output": "diff --git a/app/settings.py b/app/settings.py\n--- a/app/settings.py\n+++ b/app/settings.py\n@@ -0,0 +1 @@\n+token = \"\"\"[REDACTED:kv]\"\"\"\n",
+    "canary_exposed": false
+  },
+  {
+    "ref": "audit/694",
+    "path": "deploy/values.yaml",
+    "input": "diff --git a/deploy/values.yaml b/deploy/values.yaml\n--- a/deploy/values.yaml\n+++ b/deploy/values.yaml\n@@ -0,0 +1 @@\n+  password: synthetic-audit-canary\n",
+    "output": "diff --git a/deploy/values.yaml b/deploy/values.yaml\n--- a/deploy/values.yaml\n+++ b/deploy/values.yaml\n@@ -0,0 +1 @@\n+  password: [REDACTED:kv]\n",
+    "canary_exposed": false
+  }
+]

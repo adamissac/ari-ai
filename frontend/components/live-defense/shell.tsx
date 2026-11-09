@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { EnforcementNote, PreviewBanner, SourceTag } from '@/components/live-defense/common';
+import { Details } from '@/components/ui';
 import { liveDefenseHref, liveDefenseMode, liveDefenseTab, SHADOW_VS_CONTROLS_COPY, withLiveDefenseMode, type LiveDefenseMode } from '@/lib/live-defense';
 
 const TABS = [
@@ -42,11 +43,8 @@ export function LiveDefenseShell({
       <header className="monitor-head" data-testid="live-defense-head">
         <div>
           <p className="label-mono text-white/70">Ari Live Defense · shadow-pilot (recommendation-only)</p>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">Review, authorize, execute, and verify as distinct operations</h2>
-          <p className="mt-1 max-w-2xl text-sm text-white/80">
-            Shadow recommendations stay NOT EXECUTED. A separate owner authorization can apply a temporary control only on a registered owned-test loopback app after the deterministic gate.
-            Production is not granted. RL cannot execute without that authorization.
-          </p>
+          <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">Review, authorize, execute, and verify</h2>
+          <p className="mt-1 max-w-2xl text-sm text-white/80">Recommendations are never executed without a separate owner authorization.</p>
         </div>
         <div className="flex flex-col items-start gap-3 lg:items-end">
           <SourceTag mode={mode} />
@@ -64,10 +62,6 @@ export function LiveDefenseShell({
         </div>
       </header>
       {mode === 'layout-preview' && <PreviewBanner />}
-      <p data-testid="live-defense-shadow-vs-controls" className="rounded-xl border border-line bg-panel-2 px-4 py-3 text-sm text-ink">
-        {SHADOW_VS_CONTROLS_COPY}
-      </p>
-      <EnforcementNote />
       <nav aria-label="Live Defense" className="ld-tabs">
         {TABS.map(item => {
           const href = liveDefenseHref(standalone ? null : projectId, item.id, mode);
@@ -80,6 +74,11 @@ export function LiveDefenseShell({
         })}
       </nav>
       {children}
+      <Details summary="Safety boundaries">
+        <p data-testid="live-defense-shadow-vs-controls">{SHADOW_VS_CONTROLS_COPY}</p>
+        <EnforcementNote />
+        <p>Shadow recommendations stay NOT EXECUTED. A separate owner authorization can apply a temporary control only on a registered owned-test loopback app after the deterministic gate. Production is not granted. RL cannot execute without that authorization.</p>
+      </Details>
     </div>
   );
 }

@@ -3193,7 +3193,9 @@
         "authorization.role",
         "access_control.mutation",
         "access_control.rbac",
-        "input.bounds"
+        "input.bounds",
+        "input_validation.injection",
+        "input_validation.path"
       ],
       "title": "CheckCategory",
       "type": "string"

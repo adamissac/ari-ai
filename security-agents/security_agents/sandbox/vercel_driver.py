@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Protocol
 
 from ..contracts import ErrorCode, PlatformError, new_id
+from . import node
 from .driver import (
     SandboxResult,
     SandboxSpec,
@@ -58,6 +59,31 @@ RUNNER_WHEELS = (
     "pydantic==2.14.1",
 )
 OUT_MARKER = "\n@@SANDBOX_OUT@@"
+
+# node_http targets (ADR-0023). Node is the official tarball pinned by sha256; the platform
+# packages come from security-agents/sandbox/node's lockfile; firebase-tools itself checks
+# the emulator JAR it fetches. None of it is derived from the repository under test.
+NODE_VERSION = "v22.23.4"
+NODE_SHA256 = {
+    "x86_64": "1805bcd35e6815559bd2eb97db438d3fdb0eb3a5e6a977b7c1badca76337e9ce",
+    "aarch64": "6287aa46b6c375d816e63ae66d024fbbfd70404825aabdfdf898a970871d2f4b",
+}
+NODE_DOMAINS = ("nodejs.org", "registry.npmjs.org", "storage.googleapis.com")
+NPM_DOMAINS = ("registry.npmjs.org",)
+JRE_APT = ("openjdk-21-jre-headless", "xz-utils", "curl", "ca-certificates")
+ARI_NODE = "/opt/ari-node"
+ARI_DEPS = "/opt/ari-deps"
+EMULATORS_PATH = f"{ARI_NODE}/emulators"
+NODE_PORTS = {"auth": 9099, "firestore": 8080, "ws": 9150, "hub": 4400, "logging": 4500, "app": 8000}
+NODE_LOG = "/tmp/node_stack.log"
+NODE_OUT = "/tmp/node_stack.out"
+NODE_INSTALL = (
+    'set -e; arch=$(uname -m); case "$arch" in x86_64) a=x64;; aarch64) a=arm64;; *) exit 3;; esac; '
+    "f=node-$1-linux-$a.tar.xz; cd /tmp && curl -fsSLO https://nodejs.org/dist/$1/$f && "
+    'echo "$( [ $arch = x86_64 ] && echo $2 || echo $3 )  $f" | sha256sum -c - && '
+    "mkdir -p /opt/node && tar -xJf $f -C /opt/node --strip-components=1 && "
+    "ln -sf /opt/node/bin/node /opt/node/bin/npm /opt/node/bin/npx /usr/local/bin/"
+)
 
 
 class VercelBox(Protocol):
@@ -97,12 +123,24 @@ class VercelSandboxDriver:
         needs_target = spec.target_workspace is not None
         if needs_target and spec.target_app is None:
             raise PlatformError(ErrorCode.SANDBOX_POLICY_VIOLATION, "served target needs a target app")
+        has_lock = spec.node_stack is not None and (spec.workspace / "package-lock.json").is_file()
+        if has_lock and (problems := node.lockfile_problems(spec.workspace)):
+            raise PlatformError(ErrorCode.SANDBOX_POLICY_VIOLATION, "; ".join(problems))
         root = Path(tempfile.mkdtemp(prefix=f"{run_id}-"))
         box: VercelBox | None = None
         target_log = ""
         t0 = time.monotonic()
         try:
             ws = _stage_workspace(spec, root)
+            if spec.node_stack is not None:
+                config = {
+                    **spec.node_stack,
+                    "node_dir": ARI_NODE,
+                    "ports": NODE_PORTS,
+                    "emulators_path": EMULATORS_PATH,
+                }
+                (ws / ".sandbox" / "node_stack.json").write_text(json.dumps(config), encoding="utf-8")
+                (ws / ".sandbox" / "node_stack.mjs").write_bytes(node.LAUNCHER.read_bytes())
             ws_tar = _tar(ws)
             box = self._factory(spec, run_id, needs_target)
             box.put_archive(ws_tar, WORKDIR)
@@ -133,6 +171,8 @@ class VercelSandboxDriver:
                 )
                 _await_ready(box)
                 env["SANDBOX_TARGET_URL"] = "http://127.0.0.1:8000"
+            if spec.node_stack is not None:
+                env.update(_start_node_stack(box, spec, has_lock))
 
             exit_code, stdout, stderr, timed_out = box.run(
                 ["python", "-I", "-B", ".sandbox/entry.py", spec.mode, *spec.args],
@@ -142,6 +182,8 @@ class VercelSandboxDriver:
             )
             if needs_target:
                 target_log = _cap(box.logs())
+            if spec.node_stack is not None:
+                target_log = _cap(box.run(["cat", NODE_LOG], cwd=WORKDIR, env={}, timeout=10)[1])
             out_files, stdout = _split_out(stdout)
             return SandboxResult(
                 run_id=run_id,
@@ -204,6 +246,37 @@ def _await_ready(box: VercelBox, attempts: int = 40) -> None:
     raise PlatformError(ErrorCode.SANDBOX_START_FAILED, "served target did not become ready")
 
 
+def _start_node_stack(box: VercelBox, spec: SandboxSpec, has_lock: bool) -> dict[str, str]:
+    """Start the launcher in the run box and wait for it; returns the entry's extra env."""
+    assert spec.node_stack is not None
+    if has_lock:
+        box.run(["ln", "-s", f"{ARI_DEPS}/node_modules", "node_modules"], cwd=WORKDIR, env={}, timeout=10)
+    box.start(
+        ["sh", "-c", f"exec node .sandbox/node_stack.mjs .sandbox/node_stack.json >{NODE_OUT} 2>{NODE_LOG}"],
+        cwd=WORKDIR,
+        env={"NODE_ENV": "production"},
+    )
+    for _ in range(240):  # emulators take ~10-30 s to boot
+        code, _out, _err, _timed = box.run(
+            ["grep", "-q", node.READY, NODE_OUT], cwd=WORKDIR, env={}, timeout=5
+        )
+        if code == 0:
+            break
+        time.sleep(0.5)
+    else:
+        log = box.run(["tail", "-c", "800", NODE_LOG], cwd=WORKDIR, env={}, timeout=5)[1]
+        raise PlatformError(ErrorCode.SANDBOX_START_FAILED, "node target did not start: " + log)
+    emulators = spec.node_stack.get("emulators") or []
+    env = {"ARI_NODE_DIR": ARI_NODE}
+    if "firestore" in emulators:  # type: ignore[operator]
+        env["FIRESTORE_EMULATOR_HOST"] = f"127.0.0.1:{NODE_PORTS['firestore']}"
+    if "auth" in emulators:  # type: ignore[operator]
+        env["FIREBASE_AUTH_EMULATOR_HOST"] = f"127.0.0.1:{NODE_PORTS['auth']}"
+    if spec.node_stack.get("serve"):
+        env["SANDBOX_TARGET_URL"] = f"http://127.0.0.1:{NODE_PORTS['app']}"
+    return env
+
+
 def _split_out(stdout: str) -> tuple[dict[str, bytes], str]:
     if OUT_MARKER not in stdout:
         return {}, stdout
@@ -252,8 +325,14 @@ def _merged_pip(runner: tuple[str, ...], extra: Iterable[str]) -> list[str]:
     return [r for r in runner if _req_name(r) not in overridden] + kept
 
 
+def _platform_node_lock() -> str:
+    return hashlib.sha256((node.NODE_DIR / "package-lock.json").read_bytes()).hexdigest()
+
+
 def _base_key(spec: SandboxSpec) -> str:
     material = json.dumps([RUNNER_WHEELS, sorted(spec.pip), sorted(spec.apt), APT_HTTPS])
+    if getattr(spec, "node_stack", None) is not None:
+        material += json.dumps([NODE_VERSION, NODE_SHA256, JRE_APT, _platform_node_lock()])
     return hashlib.sha256(material.encode()).hexdigest()[:24]
 
 
@@ -309,21 +388,23 @@ def _base_snapshot(spec: SandboxSpec, *, rebuild: bool = False) -> str:  # pragm
 
 def _build_base(spec: SandboxSpec, key: str) -> str:  # pragma: no cover - live
     """Install packages in a throwaway builder with egress limited to PyPI (and the HTTPS
-    Ubuntu mirrors when apt is needed), snapshot it, destroy the builder. No repository code
-    is ever present in it."""
+    Ubuntu mirrors when apt is needed; nodejs.org, the npm registry and the emulator host
+    for node targets), snapshot it, destroy the builder. No repository code is ever in it."""
     from vercel.sandbox import NetworkPolicy
     from vercel.sandbox import sync as vsandbox
 
-    domains = PYPI_DOMAINS + (UBUNTU_DOMAINS if spec.apt else ())
+    wants_node = getattr(spec, "node_stack", None) is not None
+    apt = (*spec.apt, *(JRE_APT if wants_node else ()))
+    domains = PYPI_DOMAINS + (UBUNTU_DOMAINS if apt else ()) + (NODE_DOMAINS if wants_node else ())
     box = vsandbox.create_sandbox(
         name=f"ari-base-{key}-{int(time.time())}",
-        execution_time_limit=900,
+        execution_time_limit=1500 if wants_node else 900,
         network_policy=NetworkPolicy.custom(dict.fromkeys(domains, ())),
         persistent=False,
         destroy=False,
     )
     try:
-        if spec.apt:
+        if apt:
             env = {"DEBIAN_FRONTEND": "noninteractive"}
             # The egress allowlist passes TLS only: use the HTTPS Ubuntu mirrors and drop
             # third-party lists (e.g. cli.github.com) that are not allowed.
@@ -331,7 +412,7 @@ def _build_base(spec: SandboxSpec, key: str) -> str:  # pragma: no cover - live
             box.run_process("apt-get", ["update", "-qq"], sudo=True, env=env, check=True, capture_output=True)
             box.run_process(
                 "apt-get",
-                ["install", "-y", "-qq", "--no-install-recommends", *spec.apt],
+                ["install", "-y", "-qq", "--no-install-recommends", *apt],
                 sudo=True,
                 env=env,
                 check=True,
@@ -352,12 +433,95 @@ def _build_base(spec: SandboxSpec, key: str) -> str:  # pragma: no cover - live
             check=True,
             capture_output=True,
         )
+        if wants_node:
+            box.run_process(
+                "sh",
+                ["-c", NODE_INSTALL, "sh", NODE_VERSION, NODE_SHA256["x86_64"], NODE_SHA256["aarch64"]],
+                sudo=True,
+                check=True,
+                capture_output=True,
+            )
+            box.run_process(
+                "sh", ["-c", f"mkdir -p {ARI_NODE} && chmod 777 {ARI_NODE}"], sudo=True, check=True
+            )
+            for name in ("package.json", "package-lock.json"):
+                box.fs.write_bytes(f"{ARI_NODE}/{name}", (node.NODE_DIR / name).read_bytes())
+            box.run_process(
+                "npm",
+                ["ci", "--ignore-scripts", "--no-audit", "--no-fund"],
+                cwd=ARI_NODE,
+                check=True,
+                capture_output=True,
+            )
+            box.run_process(
+                "node",
+                [f"{ARI_NODE}/node_modules/firebase-tools/lib/bin/firebase.js", "setup:emulators:firestore"],
+                cwd=ARI_NODE,
+                env={"FIREBASE_EMULATORS_PATH": EMULATORS_PATH, "FIREBASE_CLI_DISABLE_UPDATE_CHECK": "true"},
+                check=True,
+                capture_output=True,
+            )
         return str(box.snapshot(expiration=BASE_SNAPSHOT_TTL).id)
     finally:
         with _suppress():
             box.stop()
         with _suppress():
             box.destroy(delete_orphan_snapshots=False)
+
+
+def _deps_snapshot(
+    spec: SandboxSpec, base_id: str, *, rebuild: bool = False
+) -> str:  # pragma: no cover - live
+    """Snapshot of the base plus the target's node_modules, one per lockfile. The builder
+    receives only package.json and package-lock.json and installs with --ignore-scripts,
+    egress limited to the npm registry: no repository code runs while egress is open."""
+    import fcntl
+
+    from vercel.sandbox import NetworkPolicy, SnapshotSource
+    from vercel.sandbox import sync as vsandbox
+
+    key, index = f"deps-{base_id}-{node.lock_key(spec.workspace)}", _base_index()
+    with open(index.with_suffix(".lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        known = json.loads(index.read_text()) if index.is_file() else {}
+        if key in known and not rebuild:
+            return str(known[key])
+        box = vsandbox.create_sandbox(
+            name=f"ari-deps-{node.lock_key(spec.workspace)}-{int(time.time())}",
+            source=SnapshotSource(snapshot_id=base_id),
+            execution_time_limit=900,
+            network_policy=NetworkPolicy.custom(dict.fromkeys(NPM_DOMAINS, ())),
+            persistent=False,
+            destroy=False,
+        )
+        try:
+            box.run_process(
+                "sh", ["-c", f"mkdir -p {ARI_DEPS} && chmod 777 {ARI_DEPS}"], sudo=True, check=True
+            )
+            for name in ("package.json", "package-lock.json"):
+                box.fs.write_bytes(f"{ARI_DEPS}/{name}", (spec.workspace / name).read_bytes())
+            box.run_process(
+                "npm",
+                ["ci", "--ignore-scripts", "--no-audit", "--no-fund", f"--registry={node.REGISTRY}"],
+                cwd=ARI_DEPS,
+                check=True,
+                capture_output=True,
+            )
+            known[key] = str(box.snapshot(expiration=BASE_SNAPSHOT_TTL).id)
+        finally:
+            with _suppress():
+                box.stop()
+            with _suppress():
+                box.destroy(delete_orphan_snapshots=False)
+        index.write_text(json.dumps(known))
+        return str(known[key])
+
+
+def _run_snapshot(spec: SandboxSpec, *, rebuild: bool = False) -> str:  # pragma: no cover - live
+    base = _base_snapshot(spec, rebuild=rebuild)
+    if getattr(spec, "node_stack", None) is not None and (spec.workspace / "package-lock.json").is_file():
+        return _deps_snapshot(spec, base, rebuild=rebuild)
+    return base
 
 
 class _VercelSdkBox:  # pragma: no cover - requires live Vercel credentials
@@ -381,13 +545,13 @@ class _VercelSdkBox:  # pragma: no cover - requires live Vercel credentials
         # packages: no install window, and deny-all egress from the first instant.
         try:
             self._box = vsandbox.create_sandbox(
-                source=SnapshotSource(snapshot_id=_base_snapshot(spec)),
+                source=SnapshotSource(snapshot_id=_run_snapshot(spec)),
                 network_policy=NetworkPolicy.deny_all(),
                 **common,
             )
         except Exception:  # the base expired or was removed: build a new one, once
             self._box = vsandbox.create_sandbox(
-                source=SnapshotSource(snapshot_id=_base_snapshot(spec, rebuild=True)),
+                source=SnapshotSource(snapshot_id=_run_snapshot(spec, rebuild=True)),
                 network_policy=NetworkPolicy.deny_all(),
                 **common,
             )

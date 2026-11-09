@@ -551,3 +551,48 @@ Owner requested AI automation and Defense Lab OFF until explicitly enabled. Bran
 - Synced origin/main (4271503e). No new messages addressed to Adam. Only change since run 32 is its own ADAM.md entry; rl-defense/, examples/payments-lite and Adam's CI/docs unchanged. `gh` not authenticated (GraphQL 403); used git only.
 - Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 739 files, 0 problems. rl-defense suite NOT re-run (unchanged since run 30's 569 passed). No live-LLM tests, no training/eval.
 - No-op. Open: none.
+
+### 2026-11-01 — scheduled cloud health run (34)
+- Synced origin/main (d2de9ddd). No new messages addressed to Adam. rl-defense/, examples/payments-lite and Adam's CI/docs unchanged since run 33. `gh` not authenticated (GraphQL 403); used git only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 739 files, 0 problems. rl-defense suite NOT re-run (unchanged since run 30's 569 passed). No live-LLM tests, no training/eval.
+- No-op. Open: none.
+
+### 2026-11-02 — scheduled cloud health run (35)
+- Synced origin/main (93ce4210). No new messages addressed to Adam. rl-defense/, examples/payments-lite and Adam's CI/docs unchanged since run 34. `gh` not authenticated (GraphQL 403); used git only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 739 files, 0 problems. rl-defense suite NOT re-run (unchanged since run 30's 569 passed). No live-LLM tests, no training/eval.
+- No-op. Open: none.
+
+### 2026-11-03 — scheduled cloud health run (36)
+- Synced origin/main (353730af). No new messages addressed to Adam. Since run 35 only code-review/ (Adam's own reviewer PRs #781/#785), Alan's pilot reliability, frontend and handoff docs changed; rl-defense/, examples/payments-lite and Adam's CI/docs unchanged. `gh` not used; git only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 739 files, 0 problems. rl-defense suite NOT re-run (unchanged since run 30's 569 passed). No live-LLM tests, no training/eval.
+- No-op. Open: none.
+
+### 2026-11-03 — scheduled cloud health run (37)
+- Synced origin/main (eac412ad). No new messages addressed to Adam. rl-defense/, shared/, examples/payments-lite and Adam's CI/docs unchanged since run 36 (only security-agents, scripts/ops, scripts/pilot, examples/notes-firebase-lite changed). `gh` not authenticated (GraphQL 403); git only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 773 files, 0 problems. rl-defense contract/env subset (test_shared_contract, test_platform_mapping, test_standards, test_env) 37 passed; full suite NOT re-run (last full pass run 30's 569). No live-LLM tests, no training/eval.
+- No-op. Open: none.
+
+### 2026-11-04 — scheduled cloud health run (38)
+- Synced origin/main (eb0bb004). No new messages addressed to Adam. rl-defense/ and examples/payments-lite unchanged since run 37; shared/ gained a small AuthorizedScope/ScopeCreate field (regenerated contracts). `gh` not authenticated (GraphQL 403); git only.
+- Health: rl-defense contract/env subset (test_shared_contract, test_platform_mapping, test_standards, test_env) 37 passed against the new shared/; full suite NOT re-run (last full pass run 30's 569). payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 776 files, 0 problems. No live-LLM tests, no training/eval.
+- No-op. Open: none.
+
+### 2026-11-05 — scheduled cloud health run (39)
+- Synced origin/main (729dd03c). No new messages addressed to Adam. Only change since run 38 is its own ADAM.md entry; rl-defense/, shared/, examples/payments-lite and Adam's CI/docs unchanged. `gh` not authenticated (GH_TOKEN rejected); git only.
+- Health: payments-lite target 13 passed, label_checks 11 passed. rl-defense suite NOT re-run (unchanged since run 30's 569 passed). No live-LLM tests, no training/eval.
+- No-op. Open: none.
+
+### 2026-11-05 — scheduled cloud health run (40)
+- Synced origin/main (76a96067). No new messages addressed to Adam. Only change since run 39 is its own ADAM.md entry; rl-defense/, shared/, examples/payments-lite and Adam's CI/docs unchanged. `gh` not used; git only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 775 files, 0 problems. rl-defense suite NOT re-run (unchanged since run 30's 569 passed). No live-LLM tests, no training/eval.
+- No-op. Open: none.
+
+### 2026-11-04 — run 38 addendum (not a no-op)
+- Found: with the unpinned CI install, pydantic resolves to 2.14.2 and `rl-defense/tests/test_duration_screen.py` fails (frozen evidence verifies only against pydantic==2.14.1). Fix: `.github/workflows/rl.yml` now also installs `results/duration-screen/frozen/requirements.txt` after the editable installs.
+- Verified locally with pydantic 2.14.1: rl-defense full suite 569 passed (16 min); test_duration_screen 17 passed. The CI workflow edit itself is untested until CI runs. Run 38's "full suite not re-run" line above is superseded by this.
+- Follow-up (2026-11-05): conflict resolved against current main; all 17 duration-screen tests passed again with the recorded dependencies. PR #817 retains this CI reproducibility fix.
+
+### 2026-11-07 — scheduled cloud health run (41)
+- Synced origin/main (aae53435). No new messages addressed to Adam. rl-defense/, shared/, examples/payments-lite unchanged since run 40; only change in Adam's CI is the rl.yml duration-screen pin install (PR #817, already recorded). `gh` not authenticated (GraphQL 403); git only.
+- Health: payments-lite target 13 passed, label_checks 11 passed; scripts/check_links.py 776 files, 0 problems. rl-defense suite NOT re-run (unchanged since run 30/38's 569 passed). No live-LLM tests, no training/eval.
+- No-op. Open: none.

@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { DEMO_HOME } from './access-paths';
 
 /**
  * Server-only access gate for the demo account (/demo). The access code lives in the
@@ -8,8 +9,9 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
  * Unset DEMO_ACCESS_CODE = the demo account is closed.
  */
 export const DEMO_COOKIE = 'ari_demo_access';
+export const DEMO_VIEW_COOKIE = 'ari_demo_view';
 export const DEMO_COOKIE_MAX_AGE_S = 12 * 60 * 60;
-export const DEMO_HOME = '/demo/lumen-pay';
+export { DEMO_GITHUB_STEP, DEMO_HOME } from './access-paths';
 
 function secret(): string | null {
   const code = process.env.DEMO_ACCESS_CODE?.trim();
@@ -42,7 +44,7 @@ export function cookieGrantsAccess(value: string | undefined): boolean {
   return token !== null && typeof value === 'string' && same(value, token);
 }
 
-/** Only same-site paths under /demo may be a post-sign-in destination. */
+/** Only same-site console paths may be a post-sign-in destination. */
 export function safeNext(next: string | null | undefined): string {
-  return next && /^\/demo(\/[A-Za-z0-9._~\-/]*)?$/.test(next) ? next : DEMO_HOME;
+  return next && /^\/(?:demo|connect|projects)(\/[A-Za-z0-9._~\-/]*)?$/.test(next) && !next.includes('//') ? next : DEMO_HOME;
 }

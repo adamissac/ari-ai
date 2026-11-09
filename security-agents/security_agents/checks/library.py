@@ -37,6 +37,7 @@ class CheckTemplateMeta:
     expectation_kinds: tuple[str, ...]
     parameters: tuple[str, ...]
     reviewed_by: str | None = None  # security-owner sign-off; None => not runnable
+    support_files: tuple[str, ...] = ()  # reviewed files beside this module, copied into .sandbox/
 
     @property
     def ref(self) -> str:
@@ -521,11 +522,571 @@ ROLE = CheckTemplateMeta(
     reviewed_by="security-owner:pending-human-signoff",
 )
 
+# --------------------------------------------------------------------------- Firestore rules (ADR-0023)
+
+_FIRESTORE_PREAMBLE = '''"""Generated check: {ref}
+Rendered by security_agents.checks.library from reviewed template parameters.
+Runs the reviewed .sandbox/firestore_harness.mjs against the run's Firestore emulator,
+which loads this workspace's own rules file. Only rules denials count as "denied".
+"""
+
+import json
+import os
+import pathlib
+import subprocess
+import tempfile
+
+import pytest
+
+PARAMS = {params}
+RESULT = {{}}
+
+
+@pytest.fixture(scope="module")
+def outcomes():
+    here, work = pathlib.Path(__file__).parent, pathlib.Path(tempfile.mkdtemp())
+    params, out = work / "firestore_params.json", work / "firestore_out.json"
+    params.write_text(json.dumps({{**PARAMS, "out": str(out)}}))
+    subprocess.run(
+        ["node", str(here / "firestore_harness.mjs"), str(params)],
+        check=True, timeout=120, cwd=os.getcwd(),
+    )
+    rows = {{o["name"]: o for o in json.loads(out.read_text())["outcomes"]}}
+    RESULT["outcomes"] = rows
+    broken = [r for r in rows.values() if r["allowed"] is None]
+    if broken:  # an error is not evidence either way: fail the fixture, not the assertion
+        raise RuntimeError(f"emulator errors, no verdict: {{broken}}")
+    if rows["owner_get"]["allowed"] is not True:
+        # Positive control: if the owner cannot read either, the path is server-only or does
+        # not fit this template. Inconclusive, never a finding.
+        raise RuntimeError("positive control failed: the owner cannot read this document; no verdict")
+    return rows
+'''
+
+
+def _firestore_path(recipe: dict[str, Any], path_id: str, uid: str) -> str:
+    for fp in recipe.get("firestore_paths") or []:
+        if isinstance(fp, dict) and fp.get("id") == path_id:
+            filled = str(fp["path_template"]).replace("{uid}", uid)
+            return _PATH_PARAM.sub("sbx-doc", filled)
+    raise PlatformError(ErrorCode.SCHEMA_INVALID, f"unknown firestore path {path_id!r}")
+
+
+def _firestore_identity(recipe: dict[str, Any], name: str) -> tuple[str, dict[str, Any]]:
+    spec = (recipe.get("identities") or {}).get(name)
+    if not isinstance(spec, dict) or not spec.get("uid"):
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, f"unknown fixture identity {name!r}")
+    claims = dict(spec.get("claims") or {})
+    if spec.get("email"):
+        claims.update(email=spec["email"], email_verified=bool(spec.get("email_verified", False)))
+    return str(spec["uid"]), claims
+
+
+def _firestore_params(recipe: dict[str, Any], doc: str, ops: list[dict[str, Any]]) -> dict[str, Any]:
+    firebase = recipe.get("firebase") or {}
+    seeded = next(
+        (s["data"] for s in recipe.get("seed") or [] if isinstance(s, dict) and s.get("path") == doc),
+        {"sbx_seed": True},
+    )
+    return {
+        "project_id": str(firebase.get("project_id", "demo-ari-sandbox")),
+        "rules_path": str(firebase.get("rules", "firestore.rules")),
+        "seed": [{"path": doc, "data": seeded}],
+        "ops": ops,
+    }
+
+
+def _render_firestore_owner(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    owner, other = str(params["owner_identity"]), str(params["other_identity"])
+    if owner == other:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "owner_identity and other_identity must differ")
+    owner_uid, owner_claims = _firestore_identity(recipe, owner)
+    other_uid, other_claims = _firestore_identity(recipe, other)
+    doc = _firestore_path(recipe, str(params["path_id"]), owner_uid)
+    ops = [
+        {"name": "owner_get", "op": "get", "path": doc, "as": owner_uid, "claims": owner_claims},
+        {"name": "other_get", "op": "get", "path": doc, "as": other_uid, "claims": other_claims},
+        {
+            "name": "other_set",
+            "op": "set",
+            "path": doc,
+            "as": other_uid,
+            "claims": other_claims,
+            "data": {"sbx_probe": True},
+        },
+    ]
+    return (
+        _FIRESTORE_PREAMBLE.format(ref=params["_ref"], params=repr(_firestore_params(recipe, doc, ops)))
+        + """
+
+def test_other_identity_is_denied(outcomes):
+    leaked = [n for n in ("other_get", "other_set") if outcomes[n]["allowed"]]
+    RESULT["other_leaked"] = leaked
+    assert not leaked, f"rules allowed a different identity to {leaked} the owner's document"
+"""
+    )
+
+
+def _render_firestore_unauthenticated(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    owner_uid, owner_claims = _firestore_identity(recipe, str(params["owner_identity"]))
+    doc = _firestore_path(recipe, str(params["path_id"]), owner_uid)
+    ops = [
+        {"name": "owner_get", "op": "get", "path": doc, "as": owner_uid, "claims": owner_claims},
+        {"name": "anon_get", "op": "get", "path": doc, "as": None},
+        {"name": "anon_list", "op": "list", "path": doc.rsplit("/", 1)[0], "as": None},
+    ]
+    return (
+        _FIRESTORE_PREAMBLE.format(ref=params["_ref"], params=repr(_firestore_params(recipe, doc, ops)))
+        + """
+
+def test_unauthenticated_request_is_denied(outcomes):
+    leaked = [n for n in ("anon_get", "anon_list") if outcomes[n]["allowed"]]
+    RESULT["anon_leaked"] = leaked
+    assert not leaked, f"rules allowed an unauthenticated client to {leaked}"
+"""
+    )
+
+
+def _render_firestore_enumeration(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    owner, other = str(params["owner_identity"]), str(params["other_identity"])
+    if owner == other:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "owner_identity and other_identity must differ")
+    owner_uid, owner_claims = _firestore_identity(recipe, owner)
+    other_uid, other_claims = _firestore_identity(recipe, other)
+    doc = _firestore_path(recipe, str(params["path_id"]), owner_uid)
+    ops = [
+        {"name": "owner_get", "op": "get", "path": doc, "as": owner_uid, "claims": owner_claims},
+        {
+            "name": "other_list",
+            "op": "list",
+            "path": doc.rsplit("/", 1)[0],
+            "as": other_uid,
+            "claims": other_claims,
+        },
+    ]
+    return (
+        _FIRESTORE_PREAMBLE.format(ref=params["_ref"], params=repr(_firestore_params(recipe, doc, ops)))
+        + """
+
+def test_collection_cannot_be_enumerated(outcomes):
+    RESULT["other_listed"] = outcomes["other_list"]["allowed"]
+    assert outcomes["other_list"]["allowed"] is False, "rules let another identity list the collection"
+"""
+    )
+
+
+_FIRESTORE_PARAMS = ("path_id", "owner_identity", "other_identity")
+
+FIRESTORE_OWNER = CheckTemplateMeta(
+    template_id="firestore.owner_isolation",
+    version="1",
+    category="access_control.ownership",
+    description=(
+        "Firestore rules: the owner can read their document at a firestore_paths entry; a "
+        "different fixture identity can neither read nor write it. Runs against the run's "
+        "emulator with the workspace's rules. Parameters: path_id, owner_identity, other_identity."
+    ),
+    side_effect_class="ephemeral_target_only",
+    expectation_kinds=("access_control", "authorization", "ownership"),
+    parameters=_FIRESTORE_PARAMS,
+    reviewed_by="security-owner:pending-human-signoff",
+    support_files=("firestore_harness.mjs",),
+)
+FIRESTORE_UNAUTHENTICATED = CheckTemplateMeta(
+    template_id="firestore.unauthenticated_denied",
+    version="1",
+    category="access_control.authentication",
+    description=(
+        "Firestore rules: an unauthenticated client can neither get a document at a "
+        "firestore_paths entry nor list its collection; the owner keeps read access. "
+        "Parameters: path_id, owner_identity."
+    ),
+    side_effect_class="ephemeral_target_only",
+    expectation_kinds=("access_control", "authentication"),
+    parameters=("path_id", "owner_identity"),
+    reviewed_by="security-owner:pending-human-signoff",
+    support_files=("firestore_harness.mjs",),
+)
+FIRESTORE_ENUMERATION = CheckTemplateMeta(
+    template_id="firestore.collection_enumeration",
+    version="1",
+    category="access_control.ownership",
+    description=(
+        "Firestore rules: a different fixture identity cannot list the collection that holds "
+        "the owner's document. Parameters: path_id, owner_identity, other_identity."
+    ),
+    side_effect_class="ephemeral_target_only",
+    expectation_kinds=("access_control", "authorization", "ownership"),
+    parameters=_FIRESTORE_PARAMS,
+    reviewed_by="security-owner:pending-human-signoff",
+    support_files=("firestore_harness.mjs",),
+)
+
+
+def _value_field(route: dict[str, Any]) -> tuple[str, str]:
+    """(kind, field) of the value a create route moves: the source's remaining
+    ``balance_field`` or its consumed ``accumulated_field``, read via the read route."""
+    for kind in ("balance_field", "accumulated_field"):
+        if route.get(kind):
+            return kind, str(route[kind])
+    raise PlatformError(
+        ErrorCode.SCHEMA_INVALID, "create route declares neither balance_field nor accumulated_field"
+    )
+
+
+def _create_and_read(recipe: dict[str, Any], params: dict[str, Any]) -> tuple[dict, dict, str]:
+    create = _route(recipe, str(params["route_id"]))
+    read = _route(recipe, str(params["read_route_id"]))
+    if str(create.get("method", "")).upper() != "POST":
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "template needs a POST create route")
+    if not isinstance(create.get("body_template"), dict):
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "create route has no body_template")
+    return create, read, str(params["owner_identity"])
+
+
+def _body_src(body_template: dict[str, Any], values: dict[str, str]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key, value in body_template.items():
+        out[key] = values.get(value, value) if isinstance(value, str) else value
+    return out
+
+
+def _render_concurrent_bound(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    """The amount bound holds when the same create request arrives concurrently: no more
+    value moves than the source holds, and the read-back value matches the accepted
+    requests (no lost update). Covers check-then-act races (CWE-362/CWE-367)."""
+    create, read, owner = _create_and_read(recipe, params)
+    kind = str(create["resource"])
+    resource_id = _resource_id(recipe, kind, owner)
+    bound = Decimal(_resource_amount(recipe, kind, owner))
+    field_kind, field_name = _value_field(create)
+    try:
+        parallel = int(params.get("parallel", 8))
+    except (TypeError, ValueError) as exc:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "parallel must be an integer") from exc
+    if not 2 <= parallel <= 16:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "parallel must be between 2 and 16")
+    # Each request is 60% of the source: a serial implementation accepts exactly one.
+    amount = (bound * Decimal("0.6")).quantize(Decimal("0.01"))
+    if amount <= 0:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "resource amount is too small")
+    values = {"{resource_id}": resource_id, "{amount}": str(amount)}
+    if "{destination}" in create["body_template"].values():
+        dest_kind = str(create.get("destination_resource") or kind)
+        others = [o for o in sorted(recipe.get("resources", {}).get(dest_kind, {})) if o != owner]
+        if not others:
+            raise PlatformError(ErrorCode.SCHEMA_INVALID, f"no other identity owns a {dest_kind}")
+        values["{destination}"] = _resource_id(recipe, dest_kind, others[0])
+    body = _body_src(create["body_template"], values)
+    read_path = _fill_path(str(read["path_template"]), resource_id)
+    return (
+        _inprocess_preamble(str(params["_ref"]), recipe)
+        + f"""
+import threading
+
+import pytest
+from concurrent.futures import ThreadPoolExecutor
+
+CREATE_PATH = {str(create["path_template"])!r}
+READ_PATH = {read_path!r}
+HEADERS = {{"Authorization": {_identity(recipe, owner)!r}}}
+BODY = {body!r}
+BOUND = Decimal({str(bound)!r})
+AMOUNT = Decimal({str(amount)!r})
+PARALLEL = {parallel}
+FIELD_KIND = {field_kind!r}
+FIELD = {field_name!r}
+
+
+def _read_value(client):
+    resp = client.get(READ_PATH, headers=HEADERS)
+    if resp.status_code != 200 or FIELD not in resp.json():
+        # The owner cannot read its own resource: a setup problem, not evidence.
+        pytest.skip(f"read-back failed: {{resp.status_code}}")
+    return Decimal(str(resp.json()[FIELD]))
+
+
+def test_bound_holds_under_concurrent_requests():
+    client = _client()
+    barrier = threading.Barrier(PARALLEL)
+
+    def one(_):
+        barrier.wait(timeout=30)
+        return client.post(CREATE_PATH, json=BODY, headers=HEADERS).status_code
+
+    with ThreadPoolExecutor(PARALLEL) as pool:
+        statuses = list(pool.map(one, range(PARALLEL)))
+    accepted = sum(1 for s in statuses if s < 400)
+    value = _read_value(client)
+    moved = accepted * AMOUNT
+    expected = BOUND - moved if FIELD_KIND == "balance_field" else moved
+    RESULT.update(statuses=statuses, accepted=accepted, moved=str(moved), value=str(value))
+    if accepted == 0:
+        # Not evidence either way: the request itself is rejected (wrong body, auth, amount).
+        pytest.skip(f"no concurrent request was accepted: {{statuses}}")
+    assert moved <= BOUND, (
+        f"{{accepted}} concurrent requests of {{AMOUNT}} accepted against a bound of {{BOUND}}"
+    )
+    assert value == expected, (
+        f"lost update: {{accepted}} accepted requests should leave {{FIELD}}={{expected}}, "
+        f"observed {{value}}"
+    )
+"""
+    )
+
+
+CONCURRENT_BOUND = CheckTemplateMeta(
+    template_id="input_validation.concurrent_bound",
+    version="1",
+    category="input_validation.bounds",
+    description=(
+        "Race-condition check (CWE-362): send the same create request (60% of the source "
+        "amount each) `parallel` times at once (2-16, default 8). Fails if more value moves "
+        "than the source holds or the read-back value disagrees with the accepted requests "
+        "(lost update). Needs a POST create route with body_template and balance_field or "
+        "accumulated_field. Parameters: route_id, read_route_id, owner_identity, parallel."
+    ),
+    side_effect_class="ephemeral_target_only",
+    expectation_kinds=("business_rule", "invariant", "input_validation", "concurrency"),
+    parameters=("route_id", "read_route_id", "owner_identity", "parallel"),
+    reviewed_by="security-owner:pending-human-signoff",
+)
+
+NONEXISTENT_DESTINATION = "ari-probe-nonexistent-destination"
+
+
+def _render_destination(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    """A create request naming an invalid destination is rejected and moves no value.
+    The destination is either an id that does not exist or, when the API requires the
+    caller to own the destination, another fixture identity's resource."""
+    create, read, owner = _create_and_read(recipe, params)
+    if "{destination}" not in create["body_template"].values():
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "create route body_template has no {destination}")
+    kind = str(create["resource"])
+    resource_id = _resource_id(recipe, kind, owner)
+    bound = Decimal(_resource_amount(recipe, kind, owner))
+    _, field_name = _value_field(create)
+    other = params.get("destination_identity")
+    if other is None:
+        destination = NONEXISTENT_DESTINATION
+    else:
+        if str(other) == owner:
+            raise PlatformError(ErrorCode.SCHEMA_INVALID, "destination_identity must differ from owner")
+        destination = _resource_id(recipe, str(create.get("destination_resource") or kind), str(other))
+    amount = min(Decimal("1.00"), bound)
+    body = _body_src(
+        create["body_template"],
+        {"{resource_id}": resource_id, "{amount}": str(amount), "{destination}": destination},
+    )
+    read_path = _fill_path(str(read["path_template"]), resource_id)
+    return (
+        _inprocess_preamble(str(params["_ref"]), recipe)
+        + f"""
+import pytest
+
+CREATE_PATH = {str(create["path_template"])!r}
+READ_PATH = {read_path!r}
+HEADERS = {{"Authorization": {_identity(recipe, owner)!r}}}
+BODY = {body!r}
+FIELD = {field_name!r}
+
+
+def _read_value(client):
+    resp = client.get(READ_PATH, headers=HEADERS)
+    if resp.status_code != 200 or FIELD not in resp.json():
+        # The owner cannot read its own resource: a setup problem, not evidence.
+        pytest.skip(f"read-back failed: {{resp.status_code}}")
+    return Decimal(str(resp.json()[FIELD]))
+
+
+def test_invalid_destination_is_rejected_and_moves_nothing():
+    client = _client()
+    before = _read_value(client)
+    resp = client.post(CREATE_PATH, json=BODY, headers=HEADERS)
+    after = _read_value(client)
+    RESULT.update(status=resp.status_code, before=str(before), after=str(after))
+    assert after == before, f"{{FIELD}} changed from {{before}} to {{after}} for an invalid destination"
+    assert 400 <= resp.status_code < 500, (
+        f"expected 4xx for an invalid destination, observed {{resp.status_code}}"
+    )
+"""
+    )
+
+
+DESTINATION = CheckTemplateMeta(
+    template_id="input_validation.destination",
+    version="1",
+    category="input_validation.bounds",
+    description=(
+        "Destination-reference check (CWE-1284/CWE-639): a create request whose {destination} "
+        "does not exist (default) or, with destination_identity, belongs to another fixture "
+        "identity, must be rejected 4xx and leave the source value unchanged. Use "
+        "destination_identity only when the API requires the caller to own the destination. "
+        "Parameters: route_id, read_route_id, owner_identity, destination_identity."
+    ),
+    side_effect_class="ephemeral_target_only",
+    expectation_kinds=("business_rule", "invariant", "input_validation", "access_control"),
+    parameters=("route_id", "read_route_id", "owner_identity", "destination_identity"),
+    reviewed_by="security-owner:pending-human-signoff",
+)
+
+
+_SQLI_PAYLOADS = ("' OR '1'='1' --", "' OR 1=1 --", '" OR "1"="1" --')
+
+
+def _render_sql_injection(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    """A search/filter route must parameterise its query: an injection payload sent by
+    one identity cannot widen the query to return a row owned only by another identity
+    (CWE-89). The owner sends classic tautology payloads; the other identity's resource
+    id is the canary that must never appear in the response."""
+    route = _route(recipe, str(params["route_id"]))
+    if str(route.get("method", "GET")).upper() != "GET":
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "sql_injection template covers GET search routes only")
+    owner, other = str(params["owner_identity"]), str(params["other_identity"])
+    if owner == other:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "owner_identity and other_identity must differ")
+    path = str(route["path_template"])
+    if _PATH_PARAM.findall(path):
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "search route must not take a path parameter")
+    query_param = str(route.get("query_param") or "q")
+    canary = _resource_id(recipe, str(route["resource"]), other)
+    return (
+        _inprocess_preamble(str(params["_ref"]), recipe)
+        + f"""
+import pytest
+
+PATH = {path!r}
+QUERY_PARAM = {query_param!r}
+HEADERS = {{"Authorization": {_identity(recipe, owner)!r}}}
+CANARY = {canary!r}
+PAYLOADS = {list(_SQLI_PAYLOADS)!r}
+
+
+def test_injection_cannot_leak_another_identitys_rows():
+    client = _client()
+    # Baseline: a benign owner query must not already surface the other identity's row;
+    # if it does, that is a data-isolation problem for another check, not a SQLi signal.
+    benign = client.get(PATH, params={{QUERY_PARAM: "ari-probe-no-such-term"}}, headers=HEADERS)
+    if benign.status_code != 200:
+        pytest.skip(f"search route did not answer a benign query: {{benign.status_code}}")
+    if CANARY in benign.text:
+        pytest.skip("another identity's row is visible without injection; not a SQLi signal")
+    for payload in PAYLOADS:
+        resp = client.get(PATH, params={{QUERY_PARAM: payload}}, headers=HEADERS)
+        RESULT.setdefault("statuses", []).append(resp.status_code)
+        assert CANARY not in resp.text, (
+            f"injection payload {{payload!r}} leaked another identity's row ({{CANARY}})"
+        )
+"""
+    )
+
+
+SQL_INJECTION = CheckTemplateMeta(
+    template_id="input_validation.sql_injection",
+    version="1",
+    category="input_validation.injection",
+    description=(
+        "SQL-injection check (CWE-89): a GET search/filter route must parameterise its query. "
+        "The owner sends classic tautology payloads (' OR '1'='1' --); none may return a row "
+        "owned only by another fixture identity. Skips when the benign query already surfaces "
+        "that row (a data-isolation problem for another check). Needs a GET route with a "
+        "resource kind and an optional query_param (default q). Parameters: route_id, "
+        "owner_identity, other_identity."
+    ),
+    side_effect_class="read_only",
+    expectation_kinds=("input_validation", "injection"),
+    parameters=("route_id", "owner_identity", "other_identity"),
+    reviewed_by="security-owner:pending-human-signoff",
+)
+
+
+_TRAVERSAL_PAYLOADS = (
+    "../../../../../../../../etc/passwd",
+    "....//....//....//....//etc/passwd",
+    "/etc/passwd",
+)
+_TRAVERSAL_MARKER = "root:"
+
+
+def _render_path_traversal(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    """A route that serves a file named by a query parameter must confine reads to its
+    base directory: a traversal payload cannot return a file outside it (CWE-22).
+    /etc/passwd (universal, no secrets) is the canary; its ``root:`` line must never
+    appear in a response."""
+    route = _route(recipe, str(params["route_id"]))
+    if str(route.get("method", "GET")).upper() != "GET":
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "path_traversal template covers GET file routes only")
+    path = str(route["path_template"])
+    if _PATH_PARAM.findall(path):
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "file route must not take a path parameter")
+    query_param = str(route.get("query_param") or "file")
+    sample_file = route.get("sample_file")
+    if not sample_file:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "file route has no sample_file (an in-scope filename)")
+    identity = str(params["identity"])
+    return (
+        _inprocess_preamble(str(params["_ref"]), recipe)
+        + f"""
+import pytest
+
+PATH = {path!r}
+QUERY_PARAM = {query_param!r}
+HEADERS = {{"Authorization": {_identity(recipe, identity)!r}}}
+SAMPLE_FILE = {str(sample_file)!r}
+MARKER = {_TRAVERSAL_MARKER!r}
+PAYLOADS = {list(_TRAVERSAL_PAYLOADS)!r}
+
+
+def test_traversal_cannot_escape_the_base_directory():
+    client = _client()
+    # Baseline: a legitimate in-scope file must be served, and must not itself look like
+    # /etc/passwd; otherwise the route is broken or misconfigured and proves nothing.
+    benign = client.get(PATH, params={{QUERY_PARAM: SAMPLE_FILE}}, headers=HEADERS)
+    if benign.status_code != 200:
+        pytest.skip(f"route did not serve the in-scope sample file: {{benign.status_code}}")
+    if MARKER in benign.text:
+        pytest.skip("in-scope file already contains the canary marker; not a traversal signal")
+    for payload in PAYLOADS:
+        resp = client.get(PATH, params={{QUERY_PARAM: payload}}, headers=HEADERS)
+        RESULT.setdefault("statuses", []).append(resp.status_code)
+        assert MARKER not in resp.text, (
+            f"traversal payload {{payload!r}} returned a file outside the base directory"
+        )
+"""
+    )
+
+
+PATH_TRAVERSAL = CheckTemplateMeta(
+    template_id="input_validation.path_traversal",
+    version="1",
+    category="input_validation.path",
+    description=(
+        "Path-traversal check (CWE-22): a GET route that serves a file named by a query "
+        "parameter must confine reads to its base directory. Traversal payloads "
+        "(../../etc/passwd, a ....// bypass, an absolute path) must not return a file outside "
+        "it; the canary is /etc/passwd's `root:` line. Skips when the in-scope sample file is "
+        "not served. Needs a GET route with a sample_file and an optional query_param "
+        "(default file). Parameters: route_id, identity."
+    ),
+    side_effect_class="read_only",
+    expectation_kinds=("input_validation", "path_traversal"),
+    parameters=("route_id", "identity"),
+    reviewed_by="security-owner:pending-human-signoff",
+)
+
+
 _RENDERERS = {
     OWNERSHIP.ref: _render_ownership,
     BOUNDS.ref: _render_bounds,
     AUTHENTICATION.ref: _render_authentication,
     ROLE.ref: _render_role,
+    FIRESTORE_OWNER.ref: _render_firestore_owner,
+    FIRESTORE_UNAUTHENTICATED.ref: _render_firestore_unauthenticated,
+    FIRESTORE_ENUMERATION.ref: _render_firestore_enumeration,
+    CONCURRENT_BOUND.ref: _render_concurrent_bound,
+    DESTINATION.ref: _render_destination,
+    SQL_INJECTION.ref: _render_sql_injection,
+    PATH_TRAVERSAL.ref: _render_path_traversal,
 }
 
 
@@ -565,10 +1126,12 @@ class CheckLibrary:
         unknown = set(params) - set(meta.parameters)
         if unknown:
             raise PlatformError(ErrorCode.SCHEMA_INVALID, f"unknown parameters {sorted(unknown)}")
-        optional = {"over_by", "expected_denied_status"}
+        optional = {"over_by", "expected_denied_status", "parallel", "destination_identity"}
         missing = [p for p in meta.parameters if p not in params and p not in optional]
         if missing:
             raise PlatformError(ErrorCode.SCHEMA_INVALID, f"missing parameters {missing}")
+        if meta.support_files:  # self-contained harness checks: no HTTP target involved
+            transport = "inprocess"
         if transport == "http" and meta.side_effect_class != "read_only":
             raise PlatformError(
                 ErrorCode.SANDBOX_POLICY_VIOLATION,
@@ -577,12 +1140,19 @@ class CheckLibrary:
         enriched = dict(params)
         enriched["_ref"] = ref
         rendered = _RENDERERS[ref](recipe, enriched)
-        if transport == "http":
+        if transport == "http" and not meta.support_files:
             inprocess = _inprocess_preamble(ref, recipe)
             if not rendered.startswith(inprocess):
                 raise PlatformError(ErrorCode.SANDBOX_POLICY_VIOLATION, f"{ref} cannot be rendered for http")
             rendered = _PREAMBLE_HTTP.format(ref=ref) + rendered[len(inprocess) :]
         return rendered
+
+    def applicable(self, ref: str, recipe: dict[str, Any]) -> bool:
+        """Harness (Firestore) templates need firestore_paths; HTTP templates need routes."""
+        meta = self.get(ref)
+        if meta is None:
+            return False
+        return bool(recipe.get("firestore_paths" if meta.support_files else "routes"))
 
     def parameter_values(self, ref: str, recipe: dict[str, Any]) -> dict[str, Any]:
         meta = self.get(ref)
@@ -629,12 +1199,32 @@ class CheckLibrary:
                 name == "route_id" and meta.template_id == OWNERSHIP.template_id
             ):
                 values[name] = [describe(r) for r in routes if single_param_get(r)]
+            elif name == "route_id" and meta.template_id in (
+                SQL_INJECTION.template_id,
+                PATH_TRAVERSAL.template_id,
+            ):
+                values[name] = [
+                    describe(r)
+                    for r in routes
+                    if str(r.get("method", "GET")).upper() == "GET"
+                    and not _PATH_PARAM.findall(str(r.get("path_template", "")))
+                ]
             elif name == "route_id":
                 values[name] = [
                     describe(r)
                     for r in routes
                     if str(r.get("method", "")).upper() == "POST" and isinstance(r.get("body_template"), dict)
                 ]
+            elif name == "path_id":
+                values[name] = [
+                    {"id": fp.get("id"), "path_template": fp.get("path_template")}
+                    for fp in recipe.get("firestore_paths") or []
+                    if isinstance(fp, dict)
+                ]
+            elif name == "destination_identity":
+                values[name] = ["omit for a nonexistent destination", *identities]
+            elif name == "parallel":
+                values[name] = "optional integer 2-16, default 8"
             elif name == "over_by":
                 values[name] = "optional positive decimal string, default 1.00"
         return values
@@ -652,6 +1242,13 @@ def default_library() -> CheckLibrary:
     lib.register(BOUNDS)
     lib.register(AUTHENTICATION)
     lib.register(ROLE)
+    lib.register(FIRESTORE_OWNER)
+    lib.register(FIRESTORE_UNAUTHENTICATED)
+    lib.register(FIRESTORE_ENUMERATION)
+    lib.register(CONCURRENT_BOUND)
+    lib.register(DESTINATION)
+    lib.register(SQL_INJECTION)
+    lib.register(PATH_TRAVERSAL)
     return lib
 
 

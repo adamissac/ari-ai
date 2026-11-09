@@ -2,7 +2,7 @@
 
 import { ApiError } from '@hackatl/frontend-transport';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { useProject } from '@/components/project';
 import { Button, Empty, ErrorState, Field, inputClass, Mono, Panel } from '@/components/ui';
@@ -17,9 +17,17 @@ const SHA = /^[0-9a-f]{7,40}$/;
 export function StartAssessment({ onStarted }: { onStarted: () => void }) {
   const { project, selectedRepo } = useProject();
   const router = useRouter();
+  // A commit chosen elsewhere (Commits list, a failed run's "start a new check") prefills the field.
+  const commit = useSearchParams().get('commit')?.toLowerCase() ?? '';
   const scopes = useResource(`scopes:${project.id}`, signal => api().scopes(project.id, { signal }));
   const [scopeId, setScopeId] = useState('');
-  const [sha, setSha] = useState('');
+  const [sha, setSha] = useState(() => (SHA.test(commit) ? commit : ''));
+  // Selecting another commit on the same page changes ?commit= without remounting this form.
+  const [seenCommit, setSeenCommit] = useState(commit);
+  if (commit !== seenCommit) {
+    setSeenCommit(commit);
+    setSha(SHA.test(commit) ? commit : '');
+  }
   const [key, setKey] = useState<{ sig: string; value: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -60,7 +68,7 @@ export function StartAssessment({ onStarted }: { onStarted: () => void }) {
               : undefined}>
               <select className={inputClass} value={selection.scopeId} onChange={event => setScopeId(event.target.value)} required name="scope">
                 <option value="">Select…</option>
-                {selection.scopes.map(scope => <option key={scope.id} value={scope.id}>{scope.name}</option>)}
+                {selection.scopes.map(scope => <option key={scope.id} value={scope.id}>{scopeLabel(scope.name, selectedRepo)}</option>)}
               </select>
             </Field>
             {scopes.status === 'ready' && selection.scopes.length === 0 && (
@@ -87,4 +95,9 @@ export function StartAssessment({ onStarted }: { onStarted: () => void }) {
       )}
     </Panel>
   );
+}
+
+/** Scopes created from Setup are named after the repository ID; show its name instead. */
+function scopeLabel(name: string, repo: { id: string; full_name: string }): string {
+  return name === `Authorize ${repo.id}` ? `Sandbox testing for ${repo.full_name}` : name;
 }

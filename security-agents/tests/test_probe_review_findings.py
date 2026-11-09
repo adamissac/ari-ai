@@ -103,7 +103,7 @@ def _listing(intel, scope, roe=None):
 
 
 def test_f2_recipe_values_need_an_active_scope_and_issued_roe(intel):
-    scope = make_scope()
+    scope = make_scope(categories=sorted(default_library().categories()))
     roe = build_roe(scope, default_library().list_public())
     granted = _listing(intel, scope, roe)
     assert all("parameter_values" in t for t in granted["templates"])
@@ -137,7 +137,11 @@ def test_f4_list_templates_accepts_a_legacy_category_alias(intel):
         .invoke(ctx, wire_name("checks.list_templates"), {"category": "authorization.ownership"})
         .payload
     )
-    assert [t["ref"] for t in listing["templates"]] == [OWNERSHIP]
+    assert [t["ref"] for t in listing["templates"]] == [
+        OWNERSHIP,
+        "firestore.owner_isolation@1",
+        "firestore.collection_enumeration@1",
+    ]
 
 
 def test_f4_scout_is_told_the_canonical_categories_of_an_aliased_scope(intel, driver, library, tmp_path):

@@ -21,8 +21,26 @@ export function backendOrigin(value: string | undefined = process.env.BACKEND_OR
   return origin;
 }
 
-const envelope = (code: string, message: string, status: number): Response =>
-  Response.json({ error: { code, message, details: {}, request_id: null } }, { status });
+const OUTAGE = 'The Ari service is not running right now. Nothing was started, and no repository was read or changed. Try again later.';
+const NO_ANSWER = 'The Ari service did not respond. Nothing was started, and no repository was read or changed. Try again in a few minutes.';
+
+const envelope = (code: string, message: string, status: number, details: Record<string, string> = {}): Response =>
+  Response.json({ error: { code, message, details, request_id: null } }, { status });
+
+/**
+ * The API itself never answered. `details.origin` lets the client say "Ari is down"
+ * instead of blaming GitHub or the repository; API-raised SUBSYSTEM_UNAVAILABLE never carries it.
+ */
+const outage = (message: string, status: number): Response =>
+  envelope('SUBSYSTEM_UNAVAILABLE', message, status, { origin: 'proxy' });
+
+/** Delays before each retry of a read; exported for tests. */
+export const RETRY_DELAYS_MS = [1000, 3000];
+
+const sleep = (ms: number, signal: AbortSignal): Promise<void> => new Promise(resolve => {
+  const timer = setTimeout(resolve, ms);
+  signal.addEventListener('abort', () => { clearTimeout(timer); resolve(); }, { once: true });
+});
 
 export async function proxy(request: Request): Promise<Response> {
   const url = new URL(request.url);
@@ -40,26 +58,48 @@ export async function proxy(request: Request): Promise<Response> {
   // A bad configuration is the frontend's fault, not an outage: report it as such.
   let origin: string;
   try { origin = backendOrigin(); } catch { return envelope('INTERNAL', 'frontend misconfigured: BACKEND_ORIGIN', 500); }
-  let upstream: Response;
-  try {
-    upstream = await fetch(`${origin}${url.pathname}${url.search}`, {
-      method: request.method,
-      headers,
-      redirect: 'manual',
-      signal: request.signal,
-      cache: 'no-store',
-      ...(hasBody ? { body: request.body, duplex: 'half' } : {}),
-    } as RequestInit);
-  } catch (error) {
-    if (request.signal.aborted) throw error;
-    return envelope('SUBSYSTEM_UNAVAILABLE', 'control-plane API unreachable', 502);
+  // Reads are retried through a deploy rollover (the backend restarts in place, so Railway
+  // briefly cannot reach it); writes are never replayed.
+  const attempts = hasBody ? 1 : RETRY_DELAYS_MS.length + 1;
+  let upstream: Response | null = null;
+  let failure = 502; // no answer at all; a gateway page is 503
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (attempt > 0) {
+      await sleep(RETRY_DELAYS_MS[attempt - 1]!, request.signal);
+      if (request.signal.aborted) throw request.signal.reason;
+    }
+    try {
+      upstream = await fetch(`${origin}${url.pathname}${url.search}`, {
+        method: request.method,
+        headers,
+        redirect: 'manual',
+        signal: request.signal,
+        cache: 'no-store',
+        ...(hasBody ? { body: request.body, duplex: 'half' } : {}),
+      } as RequestInit);
+    } catch (error) {
+      if (request.signal.aborted) throw error;
+      upstream = null;
+      failure = 502;
+      continue;
+    }
+    // A 5xx that did not come from the API itself (Railway's "application failed to respond"
+    // while a deploy rolls over, an HTML gateway page) is reported in the API's own error shape,
+    // so the app shows "temporarily unavailable" instead of rejecting a malformed response.
+    if (upstream.status >= 500 && !(await isApiError(upstream.clone()))) {
+      await upstream.body?.cancel();
+      upstream = null;
+      failure = 503;
+      continue;
+    }
+    break;
   }
-  // A 5xx that did not come from the API itself (Railway's "application failed to respond"
-  // while a deploy rolls over, an HTML gateway page) is reported in the API's own error shape,
-  // so the app shows "temporarily unavailable" instead of rejecting a malformed response.
-  if (upstream.status >= 500 && !(await isApiError(upstream.clone()))) {
+  if (upstream === null) return outage(NO_ANSWER, failure);
+  // Railway answers for a service with no running deployment itself ("Application not found",
+  // 404, x-railway-fallback). That is an outage, not a missing resource or a contract break.
+  if (upstream.headers.get('x-railway-fallback') === 'true') {
     await upstream.body?.cancel();
-    return envelope('SUBSYSTEM_UNAVAILABLE', 'The API is restarting. Try again in a moment.', 503);
+    return outage(OUTAGE, 503);
   }
   const out = new Headers();
   for (const name of RESPONSE_HEADERS) {

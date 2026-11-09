@@ -21,6 +21,8 @@
   box-shadow: 0 1px 0 rgb(255 247 242 / 3%) inset;
 }
 :root:not(:has(.hero-full)) .panel > header { min-height: 52px; padding: 16px 20px; }
+:root:not(:has(.hero-full)) .panel > header { border-bottom-color: transparent; }
+:root:not(:has(.hero-full)) .panel > header + div { padding-top: 4px; }
 :root:not(:has(.hero-full)) .panel > header h2 { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; }
 :root:not(:has(.hero-full)) .demo-card:is(:hover, :focus-visible) { border-color: #b96652; box-shadow: 0 12px 30px -24px #c2452d; }
 :root:not(:has(.hero-full)) .page-title { padding-bottom: 28px; margin-bottom: 28px; }
@@ -33,7 +35,7 @@
 .night-footer > p { font-size: 9px; letter-spacing: .08em; max-width: 65ch; }
 
 /* Project tabs scroll independently on narrow screens; the More menu stays in the viewport. */
-.project-tabbar { display: flex; min-width: 0; align-items: stretch; border-bottom: 1px solid var(--color-line); }
+.project-tabbar { display: flex; min-width: 0; align-items: stretch; border-bottom: 0; }
 .project-tab-scroll { display: flex; min-width: 0; flex: 1; overflow-x: auto; scrollbar-width: none; }
 .project-tab-scroll::-webkit-scrollbar { display: none; }
 .project-tab { display: inline-flex; min-height: 44px; flex: none; align-items: center; gap: 8px; border: 0; border-bottom: 2px solid transparent;

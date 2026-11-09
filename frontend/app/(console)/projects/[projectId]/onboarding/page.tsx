@@ -8,7 +8,7 @@ import type {
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { useProject } from '@/components/project';
-import { Async, Button, Mono, Panel, Tag } from '@/components/ui';
+import { Async, Button, Details, Mono, Panel, StatGrid, Tag } from '@/components/ui';
 import { api } from '@/lib/api';
 import type { Tone } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
@@ -95,20 +95,24 @@ export default function OnboardingPage() {
           Set up {project.name} for its first investigation
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-muted" data-testid="onboarding-progress">
-          Each step below is read from what is actually configured — nothing is marked done
-          until the backend sees it. Code review: {done} of {total} steps. Defense Lab steps are optional.
+          Code review: {done} of {total} steps. Defense Lab steps are optional.
         </p>
       </header>
-      <Panel title="What Ari asks for — and why" actions={<Tag tone="info">read-only by default</Tag>}>
+      <StatGrid items={[
+        { label: 'Steps done', value: done },
+        { label: 'Steps left', value: Math.max(0, total - done) },
+        { label: 'Progress', value: `${total ? Math.round(done / total * 100) : 0}%` },
+      ]} />
+      <Details summary="What Ari asks for and why">
         <ul className="flex flex-col gap-2" data-testid="permission-list">
           {PERMISSIONS.map(p => (
-            <li key={p.name} className="text-sm">
-              <span className="font-medium">{p.name}</span>
-              <span className="text-muted"> — {p.why}</span>
+            <li key={p.name}>
+              <span className="font-medium text-ink">{p.name}</span> — {p.why}
             </li>
           ))}
         </ul>
-      </Panel>
+        <p>Each step is read from what is actually configured; nothing is marked done until the backend sees it.</p>
+      </Details>
       <Async resource={status} label="onboarding status">
         {data => {
           const optional = data.steps.filter(step => !CORE_STEPS.has(step.id));

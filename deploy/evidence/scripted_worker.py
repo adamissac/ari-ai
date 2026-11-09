@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -21,6 +22,32 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 REPO = Path(os.environ["EVIDENCE_REPO_DIR"])  # owned-repo root; its target/ drives tools
 TARGET = REPO / "target"
+HOLD = os.environ.get("EVIDENCE_HOLD_FILE")  # set only for the worker a scenario must interrupt
+
+
+class _HoldAtModelCall:
+    """Deterministic interruption point: while the hold file exists, every model call
+    touches ``<hold>.reached`` and blocks, so the controller can SIGKILL this worker
+    mid-attempt instead of racing it to the approval pause."""
+
+    mode = "fake"
+
+    def __init__(self, inner: Any, hold: Path) -> None:
+        self.inner = inner
+        self.hold = hold
+
+    def create(self, request: dict) -> Any:
+        while self.hold.exists():
+            Path(f"{self.hold}.reached").touch()
+            time.sleep(0.1)
+        return self.inner.create(request)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.inner, name)
+
+
+def _held(transport: Any) -> Any:
+    return _HoldAtModelCall(transport, Path(HOLD)) if HOLD else transport
 
 
 def _install_scripted_transports() -> None:
@@ -38,7 +65,8 @@ def _install_scripted_transports() -> None:
     from backend import llm
 
     review_script = list(pl_review_script(SimpleNamespace(repo=REPO)))
-    repair = fake(list(pl_repair_script("tests/test_refund_total_bound.py")))
+    repair_script = list(pl_repair_script("tests/test_refund_total_bound.py"))
+    repair = fake(list(repair_script))
 
     class _ReviewThenRepair:
         """Reviewer repair turns take the repair script; all else the review script.
@@ -56,7 +84,7 @@ def _install_scripted_transports() -> None:
             return self.review.create(request)
 
     fallback = _ReviewThenRepair(fake(review_script), repair)
-    bridge = AlanScriptTransport(TARGET, fallback=fallback)
+    bridge = _held(AlanScriptTransport(TARGET, fallback=fallback))
     llm.TRANSPORT_OVERRIDE = lambda: bridge
 
     original_build_gateway = llm.build_gateway
@@ -68,8 +96,11 @@ def _install_scripted_transports() -> None:
         if assessment_id and kwargs.get("transport") is None:
             per_assessment.setdefault(
                 assessment_id,
-                AlanScriptTransport(
-                    TARGET, fallback=_ReviewThenRepair(fake(review_script), repair)
+                _held(
+                    AlanScriptTransport(
+                        TARGET,
+                        fallback=_ReviewThenRepair(fake(review_script), fake(list(repair_script))),
+                    )
                 ),
             )
             kwargs["transport"] = per_assessment[assessment_id]

@@ -6,11 +6,12 @@ A human security owner signs off by replacing `reviewed_by` in
 
 Checklist for each template:
 
-- [ ] The rendered module imports only json, decimal, datetime, fastapi and the package named by the recipe's app_factory (validated as package.module:callable).
+- [ ] The rendered module imports only json, decimal, datetime, fastapi, pytest (to report a setup problem as skipped, never as a finding), threading and concurrent.futures (the race template) and the package named by the recipe's app_factory (validated as package.module:callable).
 - [ ] It uses only fixture identities and resource ids declared in the build recipe.
 - [ ] It opens no sockets, spawns no processes and reads no environment or files outside the workspace.
 - [ ] Its assertions state the expectation, so a failure means the expectation did not hold.
 - [ ] Its side effects match the declared side_effect_class.
+- [ ] Harness templates only: the module starts the listed support file with `node` (no shell) and reads its JSON output; the support file reaches only the loopback Firestore emulator.
 - [ ] The renderer rejects unknown or missing parameters and identical owner and other identities.
 
 ## access_control.ownership@1
@@ -240,4 +241,601 @@ def test_permitted_identity_retains_access():
     assert resp.status_code < 400, (
         f"permitted identity lost legitimate access: {resp.status_code}"
     )
+```
+
+## firestore.owner_isolation@1
+
+- category: `access_control.ownership`; side effects: `ephemeral_target_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: path_id, owner_identity, other_identity
+- renderer_sha256: `53bb3f10ddb6fb870f9e5250407c9aa04769d7829000bde22c0651461811e1b6`
+- sample parameters: `{"other_identity": "bob", "owner_identity": "alice", "path_id": "user_doc"}`
+- rendered_sha256 (sample): `00c68e9e4f63512f4be64acd86e84d65d3f443ca76382fa6724b0ac4694e5d01`
+- imports: json, os, pathlib, pytest, subprocess, tempfile (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: firestore.owner_isolation@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Runs the reviewed .sandbox/firestore_harness.mjs against the run's Firestore emulator,
+which loads this workspace's own rules file. Only rules denials count as "denied".
+"""
+
+import json
+import os
+import pathlib
+import subprocess
+import tempfile
+
+import pytest
+
+PARAMS = {'project_id': 'demo-ari-sample', 'rules_path': 'firestore.rules', 'seed': [{'path': 'users/sbx-alice', 'data': {'sbx_seed': True}}], 'ops': [{'name': 'owner_get', 'op': 'get', 'path': 'users/sbx-alice', 'as': 'sbx-alice', 'claims': {}}, {'name': 'other_get', 'op': 'get', 'path': 'users/sbx-alice', 'as': 'sbx-bob', 'claims': {}}, {'name': 'other_set', 'op': 'set', 'path': 'users/sbx-alice', 'as': 'sbx-bob', 'claims': {}, 'data': {'sbx_probe': True}}]}
+RESULT = {}
+
+
+@pytest.fixture(scope="module")
+def outcomes():
+    here, work = pathlib.Path(__file__).parent, pathlib.Path(tempfile.mkdtemp())
+    params, out = work / "firestore_params.json", work / "firestore_out.json"
+    params.write_text(json.dumps({**PARAMS, "out": str(out)}))
+    subprocess.run(
+        ["node", str(here / "firestore_harness.mjs"), str(params)],
+        check=True, timeout=120, cwd=os.getcwd(),
+    )
+    rows = {o["name"]: o for o in json.loads(out.read_text())["outcomes"]}
+    RESULT["outcomes"] = rows
+    broken = [r for r in rows.values() if r["allowed"] is None]
+    if broken:  # an error is not evidence either way: fail the fixture, not the assertion
+        raise RuntimeError(f"emulator errors, no verdict: {broken}")
+    if rows["owner_get"]["allowed"] is not True:
+        # Positive control: if the owner cannot read either, the path is server-only or does
+        # not fit this template. Inconclusive, never a finding.
+        raise RuntimeError("positive control failed: the owner cannot read this document; no verdict")
+    return rows
+
+
+def test_other_identity_is_denied(outcomes):
+    leaked = [n for n in ("other_get", "other_set") if outcomes[n]["allowed"]]
+    RESULT["other_leaked"] = leaked
+    assert not leaked, f"rules allowed a different identity to {leaked} the owner's document"
+```
+
+Support file `firestore_harness.mjs` (reviewed with this template):
+
+```js
+// Reviewed Firestore-rules check harness (ADR-0023). Platform-owned, copied into the
+// sandbox as `.sandbox/firestore_harness.mjs`; never generated, never model-authored.
+//
+//   node firestore_harness.mjs <params.json>
+//
+// Loads the workspace's own rules file into the run's Firestore emulator
+// (FIRESTORE_EMULATOR_HOST) and records, for each operation in `ops`, whether the rules
+// allowed it. The caller compares the outcomes with the expectation; this file decides
+// nothing. Packages come from the platform directory ARI_NODE_DIR, not from the target.
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+
+const params = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+const require = createRequire(join(process.env.ARI_NODE_DIR, 'package.json'));
+const { initializeTestEnvironment } = require('@firebase/rules-unit-testing');
+const { doc, getDoc, setDoc, collection, getDocs, limit, query } = require('firebase/firestore');
+
+const [host, port] = (process.env.FIRESTORE_EMULATOR_HOST || '').split(':');
+if (host !== '127.0.0.1' && host !== 'localhost') throw new Error('emulator must be on loopback');
+
+const env = await initializeTestEnvironment({
+  projectId: params.project_id,
+  firestore: { host, port: Number(port), rules: readFileSync(params.rules_path, 'utf8') },
+});
+const outcomes = [];
+try {
+  await env.clearFirestore();
+  // Seed with rules disabled: the documents a real owner would already have.
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    for (const s of params.seed) await setDoc(doc(ctx.firestore(), s.path), s.data);
+  });
+  for (const op of params.ops) {
+    const db = (op.as === null ? env.unauthenticatedContext() : env.authenticatedContext(op.as, op.claims || {})).firestore();
+    let allowed;
+    let error = null;
+    try {
+      if (op.op === 'get') await getDoc(doc(db, op.path));
+      else if (op.op === 'set') await setDoc(doc(db, op.path), op.data, { merge: true });
+      else if (op.op === 'list') await getDocs(query(collection(db, op.path), limit(5)));
+      else throw new Error(`unknown op ${op.op}`);
+      allowed = true;
+    } catch (e) {
+      // Only a rules denial counts as "denied"; anything else is an error, not evidence.
+      if (e && e.code === 'permission-denied') allowed = false;
+      else { allowed = null; error = String(e && e.message || e).slice(0, 300); }
+    }
+    outcomes.push({ name: op.name, op: op.op, path: op.path, as: op.as, allowed, error });
+  }
+} finally {
+  await env.cleanup();
+}
+writeFileSync(params.out, JSON.stringify({ outcomes }, null, 2));
+```
+
+## firestore.unauthenticated_denied@1
+
+- category: `access_control.authentication`; side effects: `ephemeral_target_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: path_id, owner_identity
+- renderer_sha256: `60780821f8a3c0a72df435532d5c932b3e2e747935e341d506a66053a90b000b`
+- sample parameters: `{"owner_identity": "alice", "path_id": "user_doc"}`
+- rendered_sha256 (sample): `1082b4fe40ee580088909ea264122d8d34eef109fce7cbad68ece4aa9d0a4e85`
+- imports: json, os, pathlib, pytest, subprocess, tempfile (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: firestore.unauthenticated_denied@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Runs the reviewed .sandbox/firestore_harness.mjs against the run's Firestore emulator,
+which loads this workspace's own rules file. Only rules denials count as "denied".
+"""
+
+import json
+import os
+import pathlib
+import subprocess
+import tempfile
+
+import pytest
+
+PARAMS = {'project_id': 'demo-ari-sample', 'rules_path': 'firestore.rules', 'seed': [{'path': 'users/sbx-alice', 'data': {'sbx_seed': True}}], 'ops': [{'name': 'owner_get', 'op': 'get', 'path': 'users/sbx-alice', 'as': 'sbx-alice', 'claims': {}}, {'name': 'anon_get', 'op': 'get', 'path': 'users/sbx-alice', 'as': None}, {'name': 'anon_list', 'op': 'list', 'path': 'users', 'as': None}]}
+RESULT = {}
+
+
+@pytest.fixture(scope="module")
+def outcomes():
+    here, work = pathlib.Path(__file__).parent, pathlib.Path(tempfile.mkdtemp())
+    params, out = work / "firestore_params.json", work / "firestore_out.json"
+    params.write_text(json.dumps({**PARAMS, "out": str(out)}))
+    subprocess.run(
+        ["node", str(here / "firestore_harness.mjs"), str(params)],
+        check=True, timeout=120, cwd=os.getcwd(),
+    )
+    rows = {o["name"]: o for o in json.loads(out.read_text())["outcomes"]}
+    RESULT["outcomes"] = rows
+    broken = [r for r in rows.values() if r["allowed"] is None]
+    if broken:  # an error is not evidence either way: fail the fixture, not the assertion
+        raise RuntimeError(f"emulator errors, no verdict: {broken}")
+    if rows["owner_get"]["allowed"] is not True:
+        # Positive control: if the owner cannot read either, the path is server-only or does
+        # not fit this template. Inconclusive, never a finding.
+        raise RuntimeError("positive control failed: the owner cannot read this document; no verdict")
+    return rows
+
+
+def test_unauthenticated_request_is_denied(outcomes):
+    leaked = [n for n in ("anon_get", "anon_list") if outcomes[n]["allowed"]]
+    RESULT["anon_leaked"] = leaked
+    assert not leaked, f"rules allowed an unauthenticated client to {leaked}"
+```
+
+Support file `firestore_harness.mjs` (reviewed with this template):
+
+```js
+// Reviewed Firestore-rules check harness (ADR-0023). Platform-owned, copied into the
+// sandbox as `.sandbox/firestore_harness.mjs`; never generated, never model-authored.
+//
+//   node firestore_harness.mjs <params.json>
+//
+// Loads the workspace's own rules file into the run's Firestore emulator
+// (FIRESTORE_EMULATOR_HOST) and records, for each operation in `ops`, whether the rules
+// allowed it. The caller compares the outcomes with the expectation; this file decides
+// nothing. Packages come from the platform directory ARI_NODE_DIR, not from the target.
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+
+const params = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+const require = createRequire(join(process.env.ARI_NODE_DIR, 'package.json'));
+const { initializeTestEnvironment } = require('@firebase/rules-unit-testing');
+const { doc, getDoc, setDoc, collection, getDocs, limit, query } = require('firebase/firestore');
+
+const [host, port] = (process.env.FIRESTORE_EMULATOR_HOST || '').split(':');
+if (host !== '127.0.0.1' && host !== 'localhost') throw new Error('emulator must be on loopback');
+
+const env = await initializeTestEnvironment({
+  projectId: params.project_id,
+  firestore: { host, port: Number(port), rules: readFileSync(params.rules_path, 'utf8') },
+});
+const outcomes = [];
+try {
+  await env.clearFirestore();
+  // Seed with rules disabled: the documents a real owner would already have.
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    for (const s of params.seed) await setDoc(doc(ctx.firestore(), s.path), s.data);
+  });
+  for (const op of params.ops) {
+    const db = (op.as === null ? env.unauthenticatedContext() : env.authenticatedContext(op.as, op.claims || {})).firestore();
+    let allowed;
+    let error = null;
+    try {
+      if (op.op === 'get') await getDoc(doc(db, op.path));
+      else if (op.op === 'set') await setDoc(doc(db, op.path), op.data, { merge: true });
+      else if (op.op === 'list') await getDocs(query(collection(db, op.path), limit(5)));
+      else throw new Error(`unknown op ${op.op}`);
+      allowed = true;
+    } catch (e) {
+      // Only a rules denial counts as "denied"; anything else is an error, not evidence.
+      if (e && e.code === 'permission-denied') allowed = false;
+      else { allowed = null; error = String(e && e.message || e).slice(0, 300); }
+    }
+    outcomes.push({ name: op.name, op: op.op, path: op.path, as: op.as, allowed, error });
+  }
+} finally {
+  await env.cleanup();
+}
+writeFileSync(params.out, JSON.stringify({ outcomes }, null, 2));
+```
+
+## firestore.collection_enumeration@1
+
+- category: `access_control.ownership`; side effects: `ephemeral_target_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: path_id, owner_identity, other_identity
+- renderer_sha256: `0c52171f74f5ea4df8d7453b854eec032e8947583201dab27904057f3f78f657`
+- sample parameters: `{"other_identity": "bob", "owner_identity": "alice", "path_id": "user_doc"}`
+- rendered_sha256 (sample): `edfb51a961abe1b2c1362528bc1297c268e9241b66a7db96c4f9ef8495709fa1`
+- imports: json, os, pathlib, pytest, subprocess, tempfile (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: firestore.collection_enumeration@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Runs the reviewed .sandbox/firestore_harness.mjs against the run's Firestore emulator,
+which loads this workspace's own rules file. Only rules denials count as "denied".
+"""
+
+import json
+import os
+import pathlib
+import subprocess
+import tempfile
+
+import pytest
+
+PARAMS = {'project_id': 'demo-ari-sample', 'rules_path': 'firestore.rules', 'seed': [{'path': 'users/sbx-alice', 'data': {'sbx_seed': True}}], 'ops': [{'name': 'owner_get', 'op': 'get', 'path': 'users/sbx-alice', 'as': 'sbx-alice', 'claims': {}}, {'name': 'other_list', 'op': 'list', 'path': 'users', 'as': 'sbx-bob', 'claims': {}}]}
+RESULT = {}
+
+
+@pytest.fixture(scope="module")
+def outcomes():
+    here, work = pathlib.Path(__file__).parent, pathlib.Path(tempfile.mkdtemp())
+    params, out = work / "firestore_params.json", work / "firestore_out.json"
+    params.write_text(json.dumps({**PARAMS, "out": str(out)}))
+    subprocess.run(
+        ["node", str(here / "firestore_harness.mjs"), str(params)],
+        check=True, timeout=120, cwd=os.getcwd(),
+    )
+    rows = {o["name"]: o for o in json.loads(out.read_text())["outcomes"]}
+    RESULT["outcomes"] = rows
+    broken = [r for r in rows.values() if r["allowed"] is None]
+    if broken:  # an error is not evidence either way: fail the fixture, not the assertion
+        raise RuntimeError(f"emulator errors, no verdict: {broken}")
+    if rows["owner_get"]["allowed"] is not True:
+        # Positive control: if the owner cannot read either, the path is server-only or does
+        # not fit this template. Inconclusive, never a finding.
+        raise RuntimeError("positive control failed: the owner cannot read this document; no verdict")
+    return rows
+
+
+def test_collection_cannot_be_enumerated(outcomes):
+    RESULT["other_listed"] = outcomes["other_list"]["allowed"]
+    assert outcomes["other_list"]["allowed"] is False, "rules let another identity list the collection"
+```
+
+Support file `firestore_harness.mjs` (reviewed with this template):
+
+```js
+// Reviewed Firestore-rules check harness (ADR-0023). Platform-owned, copied into the
+// sandbox as `.sandbox/firestore_harness.mjs`; never generated, never model-authored.
+//
+//   node firestore_harness.mjs <params.json>
+//
+// Loads the workspace's own rules file into the run's Firestore emulator
+// (FIRESTORE_EMULATOR_HOST) and records, for each operation in `ops`, whether the rules
+// allowed it. The caller compares the outcomes with the expectation; this file decides
+// nothing. Packages come from the platform directory ARI_NODE_DIR, not from the target.
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+
+const params = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+const require = createRequire(join(process.env.ARI_NODE_DIR, 'package.json'));
+const { initializeTestEnvironment } = require('@firebase/rules-unit-testing');
+const { doc, getDoc, setDoc, collection, getDocs, limit, query } = require('firebase/firestore');
+
+const [host, port] = (process.env.FIRESTORE_EMULATOR_HOST || '').split(':');
+if (host !== '127.0.0.1' && host !== 'localhost') throw new Error('emulator must be on loopback');
+
+const env = await initializeTestEnvironment({
+  projectId: params.project_id,
+  firestore: { host, port: Number(port), rules: readFileSync(params.rules_path, 'utf8') },
+});
+const outcomes = [];
+try {
+  await env.clearFirestore();
+  // Seed with rules disabled: the documents a real owner would already have.
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    for (const s of params.seed) await setDoc(doc(ctx.firestore(), s.path), s.data);
+  });
+  for (const op of params.ops) {
+    const db = (op.as === null ? env.unauthenticatedContext() : env.authenticatedContext(op.as, op.claims || {})).firestore();
+    let allowed;
+    let error = null;
+    try {
+      if (op.op === 'get') await getDoc(doc(db, op.path));
+      else if (op.op === 'set') await setDoc(doc(db, op.path), op.data, { merge: true });
+      else if (op.op === 'list') await getDocs(query(collection(db, op.path), limit(5)));
+      else throw new Error(`unknown op ${op.op}`);
+      allowed = true;
+    } catch (e) {
+      // Only a rules denial counts as "denied"; anything else is an error, not evidence.
+      if (e && e.code === 'permission-denied') allowed = false;
+      else { allowed = null; error = String(e && e.message || e).slice(0, 300); }
+    }
+    outcomes.push({ name: op.name, op: op.op, path: op.path, as: op.as, allowed, error });
+  }
+} finally {
+  await env.cleanup();
+}
+writeFileSync(params.out, JSON.stringify({ outcomes }, null, 2));
+```
+
+## input_validation.concurrent_bound@1
+
+- category: `input_validation.bounds`; side effects: `ephemeral_target_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: route_id, read_route_id, owner_identity, parallel
+- renderer_sha256: `9a3f425f549940429aefb72ea395885b6d6dca762ca94e46ec851c35f3239a06`
+- sample parameters: `{"owner_identity": "alice", "parallel": 8, "read_route_id": "payment_detail", "route_id": "create_refund"}`
+- rendered_sha256 (sample): `7be1a03f1e2890bf2575350d052fed6a9c3927dec198a80f77ba15d31e90b6c0`
+- imports: concurrent, decimal, fastapi, json, payments_lite, pytest, threading (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: input_validation.concurrent_bound@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Target is driven in-process through its own app factory; no sockets are opened.
+"""
+
+import json
+from decimal import Decimal
+
+from fastapi.testclient import TestClient
+
+from payments_lite.app import create_app
+
+RESULT = {}
+
+
+def _client():
+    return TestClient(create_app())
+
+import threading
+
+import pytest
+from concurrent.futures import ThreadPoolExecutor
+
+CREATE_PATH = '/refunds'
+READ_PATH = '/payments/pay_a1'
+HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
+BODY = {'payment_id': 'pay_a1', 'amount': '72.00'}
+BOUND = Decimal('120.00')
+AMOUNT = Decimal('72.00')
+PARALLEL = 8
+FIELD_KIND = 'accumulated_field'
+FIELD = 'refunded'
+
+
+def _read_value(client):
+    resp = client.get(READ_PATH, headers=HEADERS)
+    if resp.status_code != 200 or FIELD not in resp.json():
+        # The owner cannot read its own resource: a setup problem, not evidence.
+        pytest.skip(f"read-back failed: {resp.status_code}")
+    return Decimal(str(resp.json()[FIELD]))
+
+
+def test_bound_holds_under_concurrent_requests():
+    client = _client()
+    barrier = threading.Barrier(PARALLEL)
+
+    def one(_):
+        barrier.wait(timeout=30)
+        return client.post(CREATE_PATH, json=BODY, headers=HEADERS).status_code
+
+    with ThreadPoolExecutor(PARALLEL) as pool:
+        statuses = list(pool.map(one, range(PARALLEL)))
+    accepted = sum(1 for s in statuses if s < 400)
+    value = _read_value(client)
+    moved = accepted * AMOUNT
+    expected = BOUND - moved if FIELD_KIND == "balance_field" else moved
+    RESULT.update(statuses=statuses, accepted=accepted, moved=str(moved), value=str(value))
+    if accepted == 0:
+        # Not evidence either way: the request itself is rejected (wrong body, auth, amount).
+        pytest.skip(f"no concurrent request was accepted: {statuses}")
+    assert moved <= BOUND, (
+        f"{accepted} concurrent requests of {AMOUNT} accepted against a bound of {BOUND}"
+    )
+    assert value == expected, (
+        f"lost update: {accepted} accepted requests should leave {FIELD}={expected}, "
+        f"observed {value}"
+    )
+```
+
+## input_validation.destination@1
+
+- category: `input_validation.bounds`; side effects: `ephemeral_target_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: route_id, read_route_id, owner_identity, destination_identity
+- renderer_sha256: `1754a23332fbb085b7a31d013179f75d82d843831b4f800fba8149e21bd924ac`
+- sample parameters: `{"owner_identity": "alice", "read_route_id": "payment_detail", "route_id": "sample_payout"}`
+- rendered_sha256 (sample): `c599f9a0c4f16f8cd3b32481b34a49840e5c318a98ccaa5aff7b3cdad10a0fd5`
+- imports: decimal, fastapi, json, payments_lite, pytest (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: input_validation.destination@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Target is driven in-process through its own app factory; no sockets are opened.
+"""
+
+import json
+from decimal import Decimal
+
+from fastapi.testclient import TestClient
+
+from payments_lite.app import create_app
+
+RESULT = {}
+
+
+def _client():
+    return TestClient(create_app())
+
+import pytest
+
+CREATE_PATH = '/payouts'
+READ_PATH = '/payments/pay_a1'
+HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
+BODY = {'payment_id': 'pay_a1', 'to': 'ari-probe-nonexistent-destination', 'amount': '1.00'}
+FIELD = 'refunded'
+
+
+def _read_value(client):
+    resp = client.get(READ_PATH, headers=HEADERS)
+    if resp.status_code != 200 or FIELD not in resp.json():
+        # The owner cannot read its own resource: a setup problem, not evidence.
+        pytest.skip(f"read-back failed: {resp.status_code}")
+    return Decimal(str(resp.json()[FIELD]))
+
+
+def test_invalid_destination_is_rejected_and_moves_nothing():
+    client = _client()
+    before = _read_value(client)
+    resp = client.post(CREATE_PATH, json=BODY, headers=HEADERS)
+    after = _read_value(client)
+    RESULT.update(status=resp.status_code, before=str(before), after=str(after))
+    assert after == before, f"{FIELD} changed from {before} to {after} for an invalid destination"
+    assert 400 <= resp.status_code < 500, (
+        f"expected 4xx for an invalid destination, observed {resp.status_code}"
+    )
+```
+
+## input_validation.sql_injection@1
+
+- category: `input_validation.injection`; side effects: `read_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: route_id, owner_identity, other_identity
+- renderer_sha256: `7cbc8debff12ff9d1634a80fcc592b97b72270805e4c27206b343ead60c60287`
+- sample parameters: `{"other_identity": "bob", "owner_identity": "alice", "route_id": "sample_search"}`
+- rendered_sha256 (sample): `2faf119e6b023489d112954b12357f2d4be2516c6d23720a16aa5cc909187c2a`
+- imports: decimal, fastapi, json, payments_lite, pytest (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: input_validation.sql_injection@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Target is driven in-process through its own app factory; no sockets are opened.
+"""
+
+import json
+from decimal import Decimal
+
+from fastapi.testclient import TestClient
+
+from payments_lite.app import create_app
+
+RESULT = {}
+
+
+def _client():
+    return TestClient(create_app())
+
+import pytest
+
+PATH = '/payments/search'
+QUERY_PARAM = 'q'
+HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
+CANARY = 'pay_b1'
+PAYLOADS = ["' OR '1'='1' --", "' OR 1=1 --", '" OR "1"="1" --']
+
+
+def test_injection_cannot_leak_another_identitys_rows():
+    client = _client()
+    # Baseline: a benign owner query must not already surface the other identity's row;
+    # if it does, that is a data-isolation problem for another check, not a SQLi signal.
+    benign = client.get(PATH, params={QUERY_PARAM: "ari-probe-no-such-term"}, headers=HEADERS)
+    if benign.status_code != 200:
+        pytest.skip(f"search route did not answer a benign query: {benign.status_code}")
+    if CANARY in benign.text:
+        pytest.skip("another identity's row is visible without injection; not a SQLi signal")
+    for payload in PAYLOADS:
+        resp = client.get(PATH, params={QUERY_PARAM: payload}, headers=HEADERS)
+        RESULT.setdefault("statuses", []).append(resp.status_code)
+        assert CANARY not in resp.text, (
+            f"injection payload {payload!r} leaked another identity's row ({CANARY})"
+        )
+```
+
+## input_validation.path_traversal@1
+
+- category: `input_validation.path`; side effects: `read_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: route_id, identity
+- renderer_sha256: `9af8f8dca248b6815d82ebc11ad2f1a8d5ca4da41c5c8c0512ff7c9ea3c0cad6`
+- sample parameters: `{"identity": "alice", "route_id": "sample_statement"}`
+- rendered_sha256 (sample): `ecd5f81a41773f91bc34b0a574e386df0b8f84e172e1eed350531c088eda0a32`
+- imports: decimal, fastapi, json, payments_lite, pytest (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: input_validation.path_traversal@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Target is driven in-process through its own app factory; no sockets are opened.
+"""
+
+import json
+from decimal import Decimal
+
+from fastapi.testclient import TestClient
+
+from payments_lite.app import create_app
+
+RESULT = {}
+
+
+def _client():
+    return TestClient(create_app())
+
+import pytest
+
+PATH = '/statements'
+QUERY_PARAM = 'file'
+HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
+SAMPLE_FILE = '2024-01.pdf'
+MARKER = 'root:'
+PAYLOADS = ['../../../../../../../../etc/passwd', '....//....//....//....//etc/passwd', '/etc/passwd']
+
+
+def test_traversal_cannot_escape_the_base_directory():
+    client = _client()
+    # Baseline: a legitimate in-scope file must be served, and must not itself look like
+    # /etc/passwd; otherwise the route is broken or misconfigured and proves nothing.
+    benign = client.get(PATH, params={QUERY_PARAM: SAMPLE_FILE}, headers=HEADERS)
+    if benign.status_code != 200:
+        pytest.skip(f"route did not serve the in-scope sample file: {benign.status_code}")
+    if MARKER in benign.text:
+        pytest.skip("in-scope file already contains the canary marker; not a traversal signal")
+    for payload in PAYLOADS:
+        resp = client.get(PATH, params={QUERY_PARAM: payload}, headers=HEADERS)
+        RESULT.setdefault("statuses", []).append(resp.status_code)
+        assert MARKER not in resp.text, (
+            f"traversal payload {payload!r} returned a file outside the base directory"
+        )
 ```

@@ -38,6 +38,8 @@ jobs:
           uv venv --python 3.12 .venv
           uv pip install --python .venv/bin/python --index-url https://download.pytorch.org/whl/cpu torch
           uv pip install --python .venv/bin/python -e ../standards -e ../shared -e ".[dev]"
+          # frozen duration-screen evidence verifies only against its recorded pins
+          uv pip install --python .venv/bin/python -r results/duration-screen/frozen/requirements.txt
       - name: Lint
         if: steps.gate.outputs.run == 'true'
         run: |

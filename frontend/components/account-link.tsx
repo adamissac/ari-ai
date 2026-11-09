@@ -1,20 +1,31 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { MeResponse } from '@hackatl/frontend-transport';
 import { RollText } from '@/components/ui';
 import { api } from '@/lib/api';
-import { DEMO_USER } from '@/lib/demo/data';
 import { DEMO_ONLY } from '@/lib/deployment';
+import { resetDemoSimulation } from '@/lib/demo/console/state';
 import { notifySessionChanged, SESSION_CHANGED_EVENT, type SessionChangedEventDetail } from '@/lib/session-events';
 
-const DEMO_HOME_PATH = '/demo/lumen-pay';
+const DEMO_HOME_PATH = '/connect';
+const subscribeDemoSession = (onChange: () => void) => {
+  window.addEventListener('ari-demo-session-changed', onChange);
+  return () => window.removeEventListener('ari-demo-session-changed', onChange);
+};
+const demoCookie = () => document.cookie.split(';').some(cookie => cookie.trim() === 'ari_demo_view=1');
 
-/** Header account entry; real sessions use an accessible menu, demo sessions remain links. */
+/** Header account entry; real and demo sessions use the accessible account menu. */
 export function AccountLink() {
   const pathname = usePathname();
+  const router = useRouter();
+  const subscribe = useCallback((onChange: () => void) => {
+    void pathname;
+    return subscribeDemoSession(onChange);
+  }, [pathname]);
+  const demoMode = useSyncExternalStore(subscribe, demoCookie, () => false);
   const [login, setLogin] = useState<string | null>(null);
   const [realAccount, setRealAccount] = useState(false);
   const [href, setHref] = useState('/projects');
@@ -28,17 +39,18 @@ export function AccountLink() {
 
   useEffect(() => {
     const controller = new AbortController();
+    const demo = document.cookie.split(';').some(cookie => cookie.trim() === 'ari_demo_view=1');
     const demoAccount = () =>
       fetch('/api/demo-session', { signal: controller.signal, cache: 'no-store' })
         .then(response => response.json() as Promise<{ signedIn?: boolean }>)
         .then(body => {
           if (controller.signal.aborted) return;
-          setLogin(body.signedIn ? DEMO_USER.login : null);
+          setLogin(body.signedIn ? 'akshar-koth' : null);
           setRealAccount(false);
           setMembership(null);
           setHref(DEMO_HOME_PATH);
         });
-    const backend = DEMO_ONLY ? Promise.reject(new Error('no backend')) : api().session({ signal: controller.signal });
+    const backend = DEMO_ONLY && !demo ? Promise.reject(new Error('no backend')) : api().session({ signal: controller.signal });
     backend.then(
       me => {
         if (controller.signal.aborted) return;
@@ -116,6 +128,12 @@ export function AccountLink() {
     setBusy(true);
     setSignOutFailed(false);
     try {
+      if (demoMode) {
+        await fetch('/api/demo-session', { method: 'DELETE', cache: 'no-store' });
+        resetDemoSimulation();
+        router.push('/');
+        return;
+      }
       await api().logout();
       notifySessionChanged(null);
       setLogin(null);
@@ -164,7 +182,7 @@ export function AccountLink() {
               {membership && <p className="mt-1">{membership.organization.name} · {membership.role}</p>}
             </div>
             <Link role="menuitem" tabIndex={-1} href="/projects" className="account-menu-item" onClick={() => setMenuOpen(false)}>Projects</Link>
-            <button role="menuitem" type="button" className="account-menu-item" disabled={busy} onClick={() => void signOut()}>{busy ? 'Signing out…' : 'Sign out'}</button>
+            <button role="menuitem" type="button" className="account-menu-item" disabled={busy} onClick={() => void signOut()}>{busy ? 'Signing out…' : demoMode ? 'Exit demo' : 'Sign out'}</button>
             {signOutFailed && <p role="alert" className="px-3 py-2 text-xs text-bad">Sign out failed; you are still signed in</p>}
           </div>
         )}
