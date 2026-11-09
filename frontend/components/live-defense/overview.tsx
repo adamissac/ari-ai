@@ -254,7 +254,7 @@ function LiveOverviewRecords({
                         <p className="font-medium">{item.action ? actionInWords(item.action, item.node) : 'Abstained'}</p>
                         <p className="mt-1 flex flex-wrap gap-1 text-xs">
                           <Tag>{item.producer.replaceAll('_', ' ')}</Tag>
-                          <Tag tone="info">NOT EXECUTED</Tag>
+                          <Tag tone="info">Not executed</Tag>
                           {item.simulated ? <Tag tone="warn">simulated source</Tag> : <Tag tone="ok">authenticated</Tag>}
                           {!item.inference_ran && <Tag>inference not run</Tag>}
                         </p>
@@ -332,7 +332,7 @@ function PreviewOverview({ projectId }: { projectId: string | null }) {
         links={PREVIEW_LINKS}
         states={PREVIEW_STATES}
         title="Illustrative components (sample layout)"
-        footnote="SAMPLE LAYOUT. States are drawn so the map chrome can be reviewed. They are not recorded health checks."
+        footnote="Sample layout. States are drawn so the map chrome can be reviewed. They are not recorded health checks."
       />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Panel title="Example event feed" actions={<SourceTag mode="layout-preview" />}>

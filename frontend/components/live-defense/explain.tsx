@@ -158,7 +158,7 @@ function LiveShadowDecision({ decision, reviews, onReview }: { decision: LivePol
       <p className="flex flex-wrap items-center gap-2 text-sm text-ink">
         <span className="font-semibold">{decision.action ? actionInWords(decision.action, decision.node) : 'Abstained'}</span>
         {decision.node && <Tag>{decision.node}</Tag>}
-        <Tag tone="info">NOT EXECUTED</Tag>
+        <Tag tone="info">Not executed</Tag>
         <Tag>{decision.producer.replaceAll('_', ' ')}</Tag>
         {decision.simulated ? <Tag tone="warn">simulated source</Tag> : <Tag tone="ok">authenticated</Tag>}
       </p>

@@ -93,7 +93,7 @@ function ReviewPanel({ detail, liveView, liveState }: { detail: AssessmentDetail
         ) : (
           <p role="alert" className="mt-2 text-sm">{liveState.error}</p>
         )}
-        <button type="button" className="mt-3 rounded-full bg-white/10 px-4 py-2 text-sm" onClick={liveState.retry}>Try again</button>
+        <button type="button" className="mt-3 rounded-lg bg-white/10 px-4 py-2 text-sm" onClick={liveState.retry}>Try again</button>
       </section>
     )}
     {liveView && (
@@ -219,7 +219,7 @@ function ReviewFinding({ finding, projectId }: { finding: AssessmentDetail['find
   const path = (evidence?.path ?? finding.subject_refs[0])?.replace(/^target\//, '');
   const where = path && evidence?.span ? `${path}:${evidence.span.start_line}–${evidence.span.end_line}` : path;
   const verificationLabel = latest?.verification
-    ? latest.verification.verdict === 'accepted' ? 'Verified ✓' : 'Not verified'
+    ? latest.verification.verdict === 'accepted' ? 'Verified' : 'Not verified'
     : 'Pending';
   return <article className="py-4" data-testid="commit-finding">
     <p className="flex flex-wrap items-center gap-2">
@@ -259,7 +259,7 @@ function AgentSummaryRows({ rows }: { rows: { agent: AgentId; name: string; stat
     {rows.map(row => (
       <li key={row.agent} className="grid min-w-0 grid-cols-[5rem_4.5rem_minmax(0,1fr)] items-start gap-2 py-2 text-xs sm:grid-cols-[7rem_5rem_minmax(0,1fr)]">
         <span>{row.name}</span>
-        <span className="font-mono text-[10px] uppercase text-white/45">{row.status}</span>
+        <span className="font-mono text-xs text-white/45">{row.status}</span>
         <span className="min-w-0 truncate text-white/60" title={row.outcome}>{row.outcome}</span>
       </li>
     ))}

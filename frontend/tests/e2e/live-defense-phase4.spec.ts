@@ -54,7 +54,7 @@ test('Live Defense Phase 4: authorize owned-test control, verify, rollback', asy
   const controlCard = page.locator('[data-testid^="live-defense-control-"]').first();
   await expect(controlCard).toContainText('OWNED TEST ENVIRONMENT');
   await expect(controlCard).toContainText('HTTP 200 is not effectiveness');
-  await expect(controlCard).not.toContainText('SAMPLE LAYOUT');
+  await expect(controlCard).not.toContainText('Sample layout');
   await evidenceShot(page, 'live-defense-phase4-verified');
 
   await controlCard.getByRole('button', { name: 'Request rollback' }).click();

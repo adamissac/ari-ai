@@ -249,7 +249,7 @@ function SystemMap({ repo, commitSha, states, touched, current, analysis, select
         <div className="amap-hub" data-active={current ? true : undefined} style={current ? { ['--beam' as string]: color } : undefined}>
           <span className="amap-hub-label">This commit</span>
           <span className="mt-1.5 block font-mono text-base text-white">{commitSha.slice(0, 7)}</span>
-          <span className="mt-1 block text-[0.72rem] text-white/50">{files > 0 ? `${files} file${files === 1 ? '' : 's'} · ` : ''}{touched.size} of {repo.components.length} parts</span>
+          <span className="mt-1 block text-xs text-white/50">{files > 0 ? `${files} file${files === 1 ? '' : 's'} · ` : ''}{touched.size} of {repo.components.length} parts</span>
         </div>
       </div>
       <ul className="amap-col">{right.map(card)}</ul>

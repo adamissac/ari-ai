@@ -280,7 +280,7 @@ export function NodeGraph({ scenario, states, action = 'noop', t = 0, lastAction
         </defs>
         <rect width={W} height={H} fill="url(#net-dots)" />
         <rect width={W} height={H} fill="url(#net-hot)" opacity="0.55" />
-        <text x="28" y="30" className="network-zone">OUTSIDE</text><text x="260" y="30" className="network-zone">YOUR APPLICATION</text>
+        <text x="28" y="30" className="network-zone">Outside</text><text x="260" y="30" className="network-zone">YOUR APPLICATION</text>
         <line x1="205" x2="205" y1="48" y2={H - 20} className="network-boundary" />
         <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
           {edges.map(([a, b]) => {

@@ -35,8 +35,8 @@ export function ControlsDashboard({
     return (
       <Panel title="Sample controls chrome" actions={<SourceTag mode="layout-preview" />}>
         <p className="text-sm text-ink" data-testid="live-defense-preview-controls">
-          SAMPLE LAYOUT. This is not an active control, not a verified owned-test enforcement, and not live telemetry.
-          Shadow recommendations stay on Explainability and remain NOT EXECUTED.
+          Sample layout. This is not an active control, not a verified owned-test enforcement, and not live telemetry.
+          Shadow recommendations stay on Explainability and remain Not executed.
         </p>
       </Panel>
     );
@@ -211,7 +211,7 @@ function EmergencyStopPanel({
                   verified cleared: {item.verified_cleared ? 'yes' : 'not claimed'} ·
                   <Time iso={item.requested_at} />
                   {item.active && (
-                    <Button className="ml-2 !h-6 !px-2 !py-0 text-[11px]" onClick={() => void clear(item.id)}>Clear kill switch</Button>
+                    <Button className="ml-2 !h-6 !px-2 !py-0 text-xs" onClick={() => void clear(item.id)}>Clear kill switch</Button>
                   )}
                 </li>
               ))}

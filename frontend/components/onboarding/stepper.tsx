@@ -33,9 +33,9 @@ export function SetupSteps({
     }`;
     const content = (
       <>
-        <span aria-hidden="true" className="w-6 shrink-0 font-mono text-[10px] tabular-nums">{String(step).padStart(2, '0')}</span>
+        <span aria-hidden="true" className="w-6 shrink-0 font-mono text-xs tabular-nums">{step}</span>
         <span>{STEPS[step - 1]}</span>
-        {state === 'done' && <span className="ml-auto font-mono text-[10px] text-muted">DONE</span>}
+        {state === 'done' && <span className="ml-auto font-mono text-xs text-muted">Done</span>}
       </>
     );
     return (

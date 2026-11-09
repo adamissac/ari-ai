@@ -51,7 +51,7 @@ export function LiveDefenseShell({
           {!standalone && (
             <button
               type="button"
-              className="rounded-full border border-white/25 bg-white/10 px-3.5 py-2 text-sm text-white hover:bg-white/20"
+              className="rounded-lg border border-white/25 bg-white/10 px-3.5 py-2 text-sm text-white hover:bg-white/20"
               data-testid="live-defense-preview-toggle"
               aria-pressed={mode === 'layout-preview'}
               onClick={toggle}
@@ -77,7 +77,7 @@ export function LiveDefenseShell({
       <Details summary="Safety boundaries">
         <p data-testid="live-defense-shadow-vs-controls">{SHADOW_VS_CONTROLS_COPY}</p>
         <EnforcementNote />
-        <p>Shadow recommendations stay NOT EXECUTED. A separate owner authorization can apply a temporary control only on a registered owned-test loopback app after the deterministic gate. Production is not granted. RL cannot execute without that authorization.</p>
+        <p>Shadow recommendations stay Not executed. A separate owner authorization can apply a temporary control only on a registered owned-test loopback app after the deterministic gate. Production is not granted. RL cannot execute without that authorization.</p>
       </Details>
     </div>
   );

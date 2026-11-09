@@ -26,7 +26,7 @@ export function ReadinessDashboard({
     return (
       <Panel title="Sample readiness chrome" actions={<SourceTag mode="layout-preview" />}>
         <p className="text-sm text-ink" data-testid="live-defense-preview-readiness">
-          SAMPLE LAYOUT. This panel does not compute readiness. The live tab reads GET /rl-readiness from the backend.
+          Sample layout. This panel does not compute readiness. The live tab reads GET /rl-readiness from the backend.
         </p>
       </Panel>
     );

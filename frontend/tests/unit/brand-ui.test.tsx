@@ -11,10 +11,10 @@ afterEach(() => {
 });
 
 describe('ARI brand and interactive UI', () => {
-  it('keeps one accessible name when the button label is duplicated for the hover roll', () => {
+  it('keeps one accessible name with no duplicated button label', () => {
     render(<Button>Development sign-in</Button>);
     const btn = screen.getByRole('button', { name: 'Development sign-in' });
-    expect(btn.querySelectorAll('[aria-hidden="true"]').length).toBe(1);
+    expect(btn.querySelectorAll('[aria-hidden="true"]').length).toBe(0);
   });
 
   it('renders non-string button children untouched', () => {

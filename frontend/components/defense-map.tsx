@@ -129,7 +129,7 @@ export function DefenseMap({
                 {node.critical && (
                   <g transform={`translate(${NODE_W - 58} -8)`}>
                     <rect width={52} height={15} rx={7.5} className="dm-critical-bg" />
-                    <text x={26} y={10.5} textAnchor="middle" className="dm-critical">CRITICAL</text>
+                    <text x={26} y={10.5} textAnchor="middle" className="dm-critical">Critical</text>
                   </g>
                 )}
               </g>

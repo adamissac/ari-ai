@@ -189,7 +189,7 @@ function RepoScope({ assessmentId, projectId, repos, children }: {
 function Step({ n, title, who, children, empty }: { n: number; title: string; who: string; children?: ReactNode; empty?: string }) {
   return (
     <li className="relative border-l border-line pb-5 pl-5 last:pb-0">
-      <span aria-hidden="true" className="absolute -left-[0.55rem] top-0 grid h-4 w-4 place-items-center rounded-full border border-line bg-panel text-[0.6rem] text-muted">{n}</span>
+      <span aria-hidden="true" className="absolute -left-[0.55rem] top-0 grid h-4 w-4 place-items-center rounded-full border border-line bg-panel text-xs text-muted">{n}</span>
       <p className="text-sm font-semibold">{title} <span className="ml-1 text-xs font-normal text-faint">{who}</span></p>
       <div className="mt-1.5">{children ?? <p className="text-xs text-faint">{empty ?? 'Not recorded.'}</p>}</div>
     </li>

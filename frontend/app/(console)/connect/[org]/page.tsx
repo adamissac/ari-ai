@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Avatar } from '@/components/demo/ui';
-import { Empty, ErrorState, Field, Loading, PageTitle, Tag, inputClass } from '@/components/ui';
+import { Empty, ErrorState, Loading, PageTitle, inputClass } from '@/components/ui';
 import { SetupLayout } from '@/components/onboarding/stepper';
 import { api } from '@/lib/api';
 import { claimRepo, connectRepo, projectForRepository, takenElsewhere } from '@/lib/github-connect';
@@ -47,7 +47,7 @@ export default function ConnectReposPage() {
         <nav aria-label="Breadcrumb" className="mb-5 text-sm text-muted">
           <Link href="/connect" className="hover:text-ink">Organizations</Link><span aria-hidden="true" className="mx-2">/</span><span className="text-ink">{login}</span>
         </nav>
-        <PageTitle eyebrow="Repositories / 02" title={<span className="flex items-center gap-4"><Avatar login={login} size={40} /><span>{login}</span></span>} subtitle="Select a repository. No check runs until you approve sandbox testing." />
+        <PageTitle title={<span className="flex items-center gap-3"><Avatar login={login} size={32} /><span>{login}</span></span>} subtitle="Select a repository. No check runs until you approve sandbox testing." />
         {error !== null && <div className="mb-4" data-testid="connect-repo-error"><ErrorState error={error} context="Could not connect the repository" /></div>}
         {failed && takenElsewhere(error) && (
           <div className="mb-4 rounded-xl border border-line bg-panel p-4 text-sm" data-testid="claim-repo">
@@ -62,29 +62,36 @@ export default function ConnectReposPage() {
         )}
         {org && (
           <>
-            <div className="mb-4 max-w-xl">
-              <Field label="Filter repositories">
-                <input className={inputClass} value={filter} onChange={event => setFilter(event.target.value)} />
-              </Field>
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <input aria-label="Filter repositories" placeholder="Filter repositories" className={`${inputClass} w-full sm:max-w-xs`} value={filter} onChange={event => setFilter(event.target.value)} />
+              <p className="shrink-0 font-mono text-xs tabular-nums text-muted" data-testid="connect-repo-count">{query ? `${repos.length} of ${org.repos.length}` : `${org.repos.length} ${org.repos.length === 1 ? 'repository' : 'repositories'}`}</p>
             </div>
             {repos.length === 0 ? (
               <Empty>No repositories match &quot;{filter}&quot;</Empty>
             ) : (
-              <ul className="flex min-w-0 flex-col divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel">
+              <ul className="flex min-w-0 flex-col divide-y divide-line overflow-hidden rounded-xl border border-line bg-panel">
                 {repos.map(repo => {
                   const name = repoName(repo.full_name);
                   return (
                     <li key={repo.full_name} data-testid={`connect-repo-${repo.full_name}`}>
-                      <button type="button" className="group flex w-full min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-4 text-left transition-colors hover:bg-panel-2 disabled:opacity-60 sm:px-5" disabled={busy !== null} onClick={() => void open(repo)}>
-                        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                          <span className="min-w-0 max-w-[min(54vw,32rem)] truncate font-semibold group-hover:text-brand" title={name.length > 32 ? repo.full_name : undefined}>{name}</span>
-                          <Tag>{repo.private ? 'private' : 'public'}</Tag>
-                          {repo.connected_repo_id && (repo.disconnected ? <Tag>Disconnected</Tag> : <Tag tone="info">Connected</Tag>)}
+                      <button type="button" className="group grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 px-4 py-3 text-left transition-colors hover:bg-panel-2 disabled:opacity-60 xl:grid-cols-[minmax(0,1fr)_7rem_4rem_9rem_9rem] sm:px-5 xl:py-4" disabled={busy !== null} onClick={() => void open(repo)}>
+                        {/* One row of aligned columns on desktop; name over a meta line on phones, so every row is the same height. */}
+                        <span className="min-w-0 xl:contents">
+                          <span className="block min-w-0 truncate font-medium xl:col-start-1" title={name.length > 32 ? repo.full_name : undefined}>{name}</span>
+                          <span className="mt-1 flex min-w-0 items-center gap-3 text-xs text-muted xl:contents">
+                            {repo.connected_repo_id && (
+                              <span className={`flex items-center gap-2 xl:col-start-2 ${repo.disconnected ? '' : 'text-ink'}`}>
+                                <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full ${repo.disconnected ? 'border border-faint' : 'bg-ok'}`} />
+                                <span>{repo.disconnected ? 'Disconnected' : 'Connected'}</span>
+                              </span>
+                            )}
+                            <span className="xl:col-start-3">{repo.private ? 'private' : 'public'}</span>
+                            <span className="min-w-0 truncate font-mono xl:col-start-4">{repo.default_branch}</span>
+                          </span>
                         </span>
-                        <span className="flex shrink-0 items-center gap-2 text-sm text-muted">
-                          <span className="font-mono text-xs">{repo.default_branch}</span>
+                        <span className="flex items-center justify-end gap-2 whitespace-nowrap text-sm text-muted transition-colors group-hover:text-ink xl:col-start-5">
                           <span>{busy === repo.full_name ? 'Connecting…' : !repo.connected_repo_id ? 'Connect' : repo.disconnected ? 'Reconnect' : 'Continue setup'}</span>
-                          <span aria-hidden="true">→</span>
+                          <span aria-hidden="true" className="transition-colors group-hover:text-brand">→</span>
                         </span>
                       </button>
                     </li>
@@ -94,7 +101,7 @@ export default function ConnectReposPage() {
             )}
           </>
         )}
-        {list.status === 'ready' && list.data.live_checked === false && (<p className="mt-2 text-xs text-muted" data-testid="repo-access-unverified">Access shown is from your last GitHub sign-in. Ari confirms access with GitHub when you connect.</p>)}
+        {list.status === 'ready' && list.data.live_checked === false && (<p className="mt-3 text-xs text-muted" data-testid="repo-access-unverified">Access shown is from your last GitHub sign-in. Ari confirms access with GitHub when you connect.</p>)}
       </div>
     </SetupLayout>
   );

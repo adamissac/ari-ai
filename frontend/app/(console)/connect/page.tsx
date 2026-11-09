@@ -17,7 +17,7 @@ export default function ConnectOrgsPage() {
   return (
     <SetupLayout current={1}>
       <div className="min-w-0" data-testid="connect-orgs">
-        <PageTitle eyebrow="Your workspace / 01" title="Organizations" subtitle="Choose an organization to see its repositories." actions={<RefreshFromGitHub />} />
+        <PageTitle title="Organizations" subtitle="Choose an organization to see its repositories" actions={<RefreshFromGitHub />} />
         <section aria-label="GitHub App permissions" className="mb-6 flex flex-wrap items-center gap-2 text-xs text-muted">
           <span className="label-mono text-faint">GitHub App</span>
           {['Contents: read & write', 'Pull requests: read & write', 'Metadata: read-only', 'Events: push, pull request, repository'].map(p => <span key={p} className="rounded-md border border-line bg-panel px-2 py-1 text-ink">{p}</span>)}
@@ -41,7 +41,7 @@ export default function ConnectOrgsPage() {
                   {orgs.map((org, i) => (
                     <li key={org.login}>
                       <Link href={`/connect/${encodeURIComponent(org.login)}`} className="group flex h-full min-w-0 flex-col gap-4 rounded-2xl border border-line bg-panel p-5 transition-colors hover:bg-panel-2" data-testid={`connect-org-${org.login}`}>
-                        <span className="flex w-full items-center justify-between gap-4"><span className="label-mono text-muted">{String(i + 1).padStart(2, '0')} / ORGANIZATION</span><span aria-hidden="true" className="text-2xl text-muted transition-transform group-hover:translate-x-1">↗</span></span>
+                        <span className="flex w-full items-center justify-between gap-4"><span className="label-mono text-muted">Organization {i + 1}</span><span aria-hidden="true" className="text-2xl text-muted transition-transform group-hover:translate-x-1">↗</span></span>
                         <span className="flex items-center gap-3">
                           <Avatar login={org.login} size={40} />
                           <span className="min-w-0 truncate font-semibold">{org.login}</span>

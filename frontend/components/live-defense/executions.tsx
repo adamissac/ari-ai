@@ -213,7 +213,7 @@ function InvestigationList({
 function Section({ title, children, testId }: { title: string; children: React.ReactNode; testId?: string }) {
   return (
     <section data-testid={testId} className="rounded-lg border border-line bg-panel-2 px-3 py-2">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">{title}</h3>
+      <h3 className="text-xs font-semibold tracking-wide text-faint">{title}</h3>
       <div className="mt-2">{children}</div>
     </section>
   );
@@ -428,7 +428,7 @@ function DiagnosticsPanel({ diagnostics }: { diagnostics?: Resource<FirstRespond
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-faint">Invocations by status</h4>
+                <h4 className="text-xs font-semibold tracking-wide text-faint">Invocations by status</h4>
                 {Object.keys(d.invocations_by_status).length === 0 ? (
                   <p className="mt-1 text-xs text-faint">No invocations persisted.</p>
                 ) : (
@@ -440,7 +440,7 @@ function DiagnosticsPanel({ diagnostics }: { diagnostics?: Resource<FirstRespond
                 )}
                 {Object.keys(d.missing_prerequisites).length > 0 && (
                   <>
-                    <h4 className="mt-2 text-xs font-semibold uppercase tracking-wide text-faint">Missing prerequisites</h4>
+                    <h4 className="mt-2 text-xs font-semibold tracking-wide text-faint">Missing prerequisites</h4>
                     <ul className="mt-1 flex flex-wrap gap-1.5" data-testid="ld-diag-prereqs">
                       {Object.entries(d.missing_prerequisites).map(([k, n]) => (
                         <li key={k}><Tag tone="warn">{k.replace(/^skipped_/, '').replace(/_/g, ' ')}: {n}</Tag></li>
@@ -450,7 +450,7 @@ function DiagnosticsPanel({ diagnostics }: { diagnostics?: Resource<FirstRespond
                 )}
                 {Object.keys(d.failures_by_agent).length > 0 && (
                   <>
-                    <h4 className="mt-2 text-xs font-semibold uppercase tracking-wide text-faint">Failures by agent</h4>
+                    <h4 className="mt-2 text-xs font-semibold tracking-wide text-faint">Failures by agent</h4>
                     <ul className="mt-1 flex flex-wrap gap-1.5" data-testid="ld-diag-agent-failures">
                       {Object.entries(d.failures_by_agent).map(([agent, n]) => (
                         <li key={agent}><Tag tone="bad">{agent}: {n}</Tag></li>
@@ -460,7 +460,7 @@ function DiagnosticsPanel({ diagnostics }: { diagnostics?: Resource<FirstRespond
                 )}
               </div>
               <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-faint">Latency (job wall time)</h4>
+                <h4 className="text-xs font-semibold tracking-wide text-faint">Latency (job wall time)</h4>
                 {d.agent_step_latency ? (
                   <p className="mt-1 text-xs text-muted" data-testid="ld-diag-latency">
                     agent steps: {d.agent_step_latency.samples} samples · avg <Ms ms={d.agent_step_latency.avg_ms} /> · max <Ms ms={d.agent_step_latency.max_ms} />
@@ -468,14 +468,14 @@ function DiagnosticsPanel({ diagnostics }: { diagnostics?: Resource<FirstRespond
                 ) : (
                   <p className="mt-1 text-xs text-faint">No finished agent-step jobs to measure.</p>
                 )}
-                <h4 className="mt-2 text-xs font-semibold uppercase tracking-wide text-faint">Cost</h4>
+                <h4 className="mt-2 text-xs font-semibold tracking-wide text-faint">Cost</h4>
                 <p className="mt-1 text-xs text-muted" data-testid="ld-diag-cost">
                   {d.cost_usd_total !== null ? `$${d.cost_usd_total.toFixed(4)}` : UNAVAILABLE}
                 </p>
                 <p className="text-xs text-faint">{d.cost_note}</p>
                 {d.waiting_jobs.length > 0 && (
                   <>
-                    <h4 className="mt-2 text-xs font-semibold uppercase tracking-wide text-faint">Waiting jobs</h4>
+                    <h4 className="mt-2 text-xs font-semibold tracking-wide text-faint">Waiting jobs</h4>
                     <ul className="mt-1 flex flex-col gap-1" data-testid="ld-diag-waiting">
                       {d.waiting_jobs.map(w => (
                         <li key={w.job_id} className="text-xs text-muted">
@@ -489,7 +489,7 @@ function DiagnosticsPanel({ diagnostics }: { diagnostics?: Resource<FirstRespond
             </div>
             {d.recent_errors.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wide text-faint">Recent errors</h4>
+                <h4 className="text-xs font-semibold tracking-wide text-faint">Recent errors</h4>
                 <ul className="mt-1 flex flex-col gap-1" data-testid="ld-diag-errors">
                   {d.recent_errors.map(e => (
                     <li key={e.job_id} className="rounded border border-line bg-bg px-2 py-1 text-xs">

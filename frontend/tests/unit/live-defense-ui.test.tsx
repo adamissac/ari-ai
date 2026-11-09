@@ -40,7 +40,7 @@ it('labels sample layout, lists missing APIs, and has no enforcement buttons', (
   expect(screen.getByTestId('live-defense-api-coverage').textContent).toContain('/control-authorizations');
   expect(screen.getByRole('link', { name: 'Controls' }).getAttribute('href')).toContain('/live-defense/controls');
   expect(screen.getByRole('link', { name: 'Readiness' }).getAttribute('href')).toContain('/live-defense/readiness');
-  expect(screen.getByTestId('defense-map').textContent).toMatch(/SAMPLE LAYOUT/);
+  expect(screen.getByTestId('defense-map').textContent).toMatch(/Sample layout/);
   expect(screen.queryByRole('button', { name: /^(apply|isolate|rate-limit|block source)$/i })).toBeNull();
 });
 
@@ -126,9 +126,9 @@ it('shows authenticated shadow decisions as NOT EXECUTED, not sample layout', ()
   render(<LiveOverview mode="live" projectId="prj_1" decisions={readyDecisions} />);
   expect(screen.getByTestId('live-defense-summary').textContent).toContain('none executed');
   const card = screen.getByTestId('live-defense-decision-lpd_12345678');
-  expect(card.textContent).toMatch(/NOT EXECUTED/);
+  expect(card.textContent).toMatch(/Not executed/);
   expect(card.textContent).toMatch(/authenticated/);
-  expect(card.textContent).not.toMatch(/SAMPLE LAYOUT/i);
+  expect(card.textContent).not.toMatch(/sample layout/i);
   expect(screen.queryByRole('button', { name: /^(apply|isolate|rate-limit|block)$/i })).toBeNull();
 });
 
@@ -140,7 +140,7 @@ it('keeps sample controls distinct from owned-test enforcement', () => {
       <ControlsDashboard mode="layout-preview" projectId="prj_1" />
     </LiveDefenseShell>,
   );
-  expect(screen.getByTestId('live-defense-preview-controls').textContent).toMatch(/SAMPLE LAYOUT/);
+  expect(screen.getByTestId('live-defense-preview-controls').textContent).toMatch(/Sample layout/);
   expect(screen.queryByTestId('live-defense-authorize')).toBeNull();
   expect(screen.queryByRole('button', { name: /^(apply|isolate|rate-limit|block source)$/i })).toBeNull();
 });
@@ -222,7 +222,7 @@ it('labels verified owned-test controls and does not offer isolate', () => {
   const card = screen.getByTestId('live-defense-control-lct_12345678');
   expect(card.textContent).toContain(OWNED_TEST_LABEL);
   expect(card.textContent).toMatch(/HTTP 200 is not effectiveness/);
-  expect(card.textContent).not.toMatch(/SAMPLE LAYOUT/i);
+  expect(card.textContent).not.toMatch(/sample layout/i);
   expect(screen.getByTestId('live-defense-authorize').textContent).toMatch(/control-authorizations/);
   expect(screen.queryByRole('button', { name: /^(apply|isolate|rate-limit|block)$/i })).toBeNull();
   expect(screen.getByRole('button', { name: 'Authorize owned-test control' })).toBeTruthy();
@@ -331,7 +331,7 @@ it('renders backend RL readiness as BLOCKED and not a frontend flag', () => {
 it('explains a live shadow decision without synthesizing Q-values', () => {
   render(<Explainability mode="live" decisions={readyDecisions} />);
   const card = screen.getByTestId('live-defense-decision-lpd_12345678');
-  expect(card.textContent).toMatch(/NOT EXECUTED/);
+  expect(card.textContent).toMatch(/Not executed/);
   expect(card.textContent).toMatch(/unavailable \(inference not run\)/);
   expect(card.textContent).toMatch(/Q-values were not synthesized/);
   expect(screen.getByTestId('live-defense-review-lpd_12345678').textContent).toMatch(/does not apply a control/);

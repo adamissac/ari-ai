@@ -51,7 +51,7 @@ export function CommitAssessmentChip({ repoId, sha }: { repoId: string; sha: str
     .filter(assessment => assessment.repo_id === repoId && assessment.commit_sha === sha)
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
   const newest = matches[0];
-  if (!newest) return <span data-testid="not-reviewed" className="font-mono text-[10px] uppercase tracking-[0.06em] text-faint">NOT REVIEWED</span>;
+  if (!newest) return <span data-testid="not-reviewed" className="font-mono text-xs text-faint">Not reviewed</span>;
   const status = ASSESSMENT_STATE[newest.state];
   if (!status) return null;
   const additionalCount = matches.length - 1;
@@ -68,7 +68,7 @@ export function CommitAssessmentChip({ repoId, sha }: { repoId: string; sha: str
       </Link>
       {additionalCount > 0 && (
         <span
-          className="font-mono text-[10px] text-muted"
+          className="font-mono text-xs text-muted"
           data-testid="other-assessments"
           title={additionalDescription}
           aria-label={additionalDescription}

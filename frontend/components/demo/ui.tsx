@@ -78,8 +78,8 @@ export function DemoDiff({ file, comments = [], label }: { file: DiffFile; comme
       <div className="overflow-x-auto">
         {file.hunks.map((hunk, h) => (
           <div key={h}>
-            <p className="px-4 py-1.5 font-mono text-[0.72rem] text-white/45">{hunk.header}</p>
-            <table className="w-full font-mono text-[0.76rem] leading-relaxed">
+            <p className="px-4 py-1.5 font-mono text-xs text-white/45">{hunk.header}</p>
+            <table className="w-full font-mono text-xs leading-relaxed">
               <tbody>
                 {hunk.lines.map((line, i) => (
                   <tr key={i} className={line.kind === '+' ? 'demo-add' : line.kind === '-' ? 'demo-del' : ''}>

@@ -19,7 +19,7 @@ export default function IncidentsPage() {
   const [selected, setSelected] = useState<string | null>(null);
   return (
     <>
-      <PageTitle eyebrow="Defend" title="Incidents" subtitle="Project-wide incident records." />
+      <PageTitle title="Incidents" subtitle="Project-wide incident records" />
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_3fr]">
       <div className="flex flex-col gap-4">
         <Panel title="Incidents">

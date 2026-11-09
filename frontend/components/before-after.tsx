@@ -95,7 +95,7 @@ function CodeChange({ view }: { view: PatchView }) {
         <figure key={i} className="mt-2 overflow-hidden rounded-lg border border-line">
           <figcaption className="bg-panel-2 px-3 py-1.5 font-mono text-xs">{f.newPath === '/dev/null' ? f.oldPath : f.newPath} {f.oldPath === '/dev/null' && <span className="text-faint">(new file)</span>}</figcaption>
           <div className="overflow-x-auto">
-            <table className="w-full table-fixed font-mono text-[0.75rem]">
+            <table className="w-full table-fixed font-mono text-xs">
               <thead className="text-left text-faint">
                 <tr><th className="w-1/2 px-2 py-1 font-sans font-semibold">Before</th><th className="w-1/2 border-l border-line px-2 py-1 font-sans font-semibold">After</th></tr>
               </thead>

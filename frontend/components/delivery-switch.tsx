@@ -69,7 +69,7 @@ export function DeliverySwitch({
         data-testid="delivery-switch"
         disabled={busy}
         onClick={() => void toggle()}
-        className={`inline-flex items-center gap-3 rounded-full border px-3.5 py-2 text-sm transition disabled:cursor-wait disabled:opacity-70 ${buttonTone}`}
+        className={`inline-flex items-center gap-3 rounded-lg border px-3 py-2 text-sm transition-colors disabled:cursor-wait disabled:opacity-70 ${buttonTone}`}
       >
         <span>Auto-open fix PRs</span>
         <span className={`inline-flex items-center gap-1.5 text-xs ${statusTone}`}>

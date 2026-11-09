@@ -269,7 +269,7 @@ function Lifecycle({ state }: { state: Incident['state'] }) {
         const current = step === state;
         const past = LIFECYCLE.indexOf(step) < LIFECYCLE.indexOf(state);
         return (
-          <li key={step} className={`rounded-full border px-2 py-0.5 text-[11px] ${current ? 'border-brand bg-brand/10 text-ink' : past ? 'border-line text-muted' : 'border-dashed border-line text-faint'}`}>
+          <li key={step} className={`rounded-md border px-2 py-0.5 text-xs ${current ? 'border-brand bg-brand/10 text-ink' : past ? 'border-line text-muted' : 'border-dashed border-line text-faint'}`}>
             {STATE_LABEL[step]}
           </li>
         );

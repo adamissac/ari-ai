@@ -67,7 +67,7 @@ it('resumes from the server copy in a browser that never saw setup', async () =>
   render(<SetupPage />);
   expect(await screen.findByTestId('setup-step-3')).toBeTruthy();
   expect(screen.getByRole('progressbar', { name: 'Question 3 of 8' })).toBeTruthy();
-  expect(screen.getAllByText('SAVED')).toHaveLength(2);
+  expect(screen.getAllByText('Saved')).toHaveLength(2);
   expect(mocks.saveRepositorySetup).not.toHaveBeenCalled();
 });
 

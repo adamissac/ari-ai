@@ -157,7 +157,7 @@ it('shows a flat quick glance of every finding with locations and patch verifica
   expect(rowText(0)).toContain('SQL injection');
   expect(rowText(0)).toContain('src/payments.py:4–9');
   expect(rowText(0)).toContain('src/payments.py, src/query.py');
-  expect(rowText(0)).toContain('Verified ✓');
+  expect(rowText(0)).toContain('Verified');
   expect(rowText(1)).toContain('Refund total mismatch');
   expect(rowText(1)).toContain('Not verified');
   expect(rowText(2)).toContain('Pending');

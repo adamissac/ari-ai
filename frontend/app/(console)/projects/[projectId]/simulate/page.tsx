@@ -27,14 +27,14 @@ function Simulation() {
   const sim = useMemo(() => (repo ? simulatedAttack(repo.full_name, repo.default_branch, real) : null), [repo, real]);
   if (!repo || !sim) return (
     <div className="flex flex-col gap-6">
-      <PageTitle eyebrow="Configure" title="Simulate" subtitle="An illustrative replay of the seven agents and Defense Lab for the selected repository." />
+      <PageTitle title="Simulate" subtitle="An illustrative replay of the seven agents and Defense Lab for the selected repository" />
       <Empty><Link href="/connect" className="text-brand hover:underline">Connect a repository</Link> to open an illustrative attack walkthrough.</Empty>
     </div>
   );
   if (sha && commits.status === 'loading') return <Loading label="Loading the commit" />;
   return (
     <div data-testid="simulated-attack" className="commit-stage">
-      <PageTitle eyebrow="Configure" title="Simulate" subtitle={<>Illustrative seven-agent replay for <span className="font-mono text-ink">{repo.full_name}</span>.</>} />
+      <PageTitle title="Simulate" subtitle={<>Illustrative seven-agent replay for <span className="font-mono text-ink">{repo.full_name}</span>.</>} />
       <p className="mb-6 border-y border-line py-3 text-sm" data-testid="simulated-attack-note">
         <DemoMarker />
         <span className="min-w-0 text-muted">
