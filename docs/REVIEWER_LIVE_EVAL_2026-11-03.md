@@ -111,11 +111,11 @@ Delivery behaved correctly for the branch-only bugs: "main already contains this
 
 ## What still falls short
 
-- **No JavaScript execution.** Fixed since (#830–#832, JavaScript section below). Functional Verify still cannot replay JS tests, so JS fixes are not delivered.
+- **No JavaScript execution.** Fixed since (#830–#832, JavaScript section below). Functional Verify now replays generated JS tests (#869; see the end of this report).
 - **"Refactor must not change behavior" never confirms on its own.** For `py-null-dest`, the test fails on head and passes on base, but the only rule is the commit message, so the finding stays a hypothesis with `needs_clarification`. This is deliberate: auto-repairing on an untrusted message could revert intended behavior.
 - **Haiku only.** Production forces `claude-haiku-5-5` for every agent (`Settings.model_for`). Every number here is Haiku's. A stronger reviewer model is an owner cost decision and was not changed.
 - **Classification noise.** Keyword rules sometimes file a functional bug as a security hand-off (gt3 `js-async`). Duplicate findings for one root cause appear on JS contract breaks.
-- **Delivery target.** A fix for a commit on a feature branch is delivered as a PR against the default branch. It should target the pushed branch (`backend/delivery.py`).
+- **Delivery target.** Fixed since: a verified fix now opens against the branch the assessed commit was pushed to (`backend/delivery.py`).
 - **Scout false positives.** Scout, not the reviewer, raised `inconclusive` security hypotheses on clean commits (for example 2 on gt1 `py-clean-helper`). These are out of the reviewer's scope.
 - **Small set.** 9 bugs and 4 clean commits per round, in 2 repositories. These are point estimates, not intervals.
 
@@ -197,7 +197,7 @@ gtC (the defects among the 4 commits are test-weakened, buried and rename): flag
 - **#812:** a finding that names a claim the model never submitted keeps an `inferred` claim built from the finding, when its spans are in the change (gtB5 js-purge-order).
 
 ### Still short (in addition to the list above)
-- **JavaScript tests.** Superseded: see the JavaScript section below. The remaining JS gap is functional Verify, which replays generated tests with pytest only.
+- **JavaScript tests.** Superseded: see the JavaScript section below. Functional Verify, then limited to pytest, was the remaining JS gap until #869.
 - **Model variance.** With Haiku, the same change can land as fixed in one round and as a hypothesis in the next (py-async-audit, py-float, py-rename).
 
 ## JavaScript tests in production (gtB6–gtB8, gtC5–gtC7), 2026-11-05
@@ -234,3 +234,18 @@ Every validated finding has the same evidence chain. The generated test failed t
 js-arg-swap stays a hypothesis by design. Its generated test fails, but its only evidence for the rule is the unchanged caller's code, and code never confirms a rule.
 
 **Not delivered.** Functional Verify in the security agents rejected every one of these fixes (`patch_rejected`). It replays generated tests with pytest only, so it cannot run a `.test.js`. Making Verify run them through the same `nodetest` mode is security-agents work and was not done here. Until then, JS fixes stop at "accepted on fresh replay by the reviewer". The demo branches (27) are deleted, and no delivery PRs were opened.
+
+## JavaScript delivery, 2026-11-10
+
+#869 made functional Verify replay generated `.test.js` tests through the sandbox `nodetest` mode. One live push of the `js-lessonkey` case then went through production at deployed main `44f303ae`.
+
+| Step | Result |
+|---|---|
+| Push | `ari-demo/gtV1/js-lessonkey`, commit `dc734545`, 02:38:00Z |
+| Verification | `ver_01M71N9BRZ5SDGTXJJA8MY5SXK` recorded for patch `pat_01M71N82JK09ZN6E2WWAAK9KXX` |
+| Delivery | `adamissac/mypypath#44` opened at 02:41:58Z against the pushed branch |
+| Diff | One line in `assets/js/roster-summary.js`, the exact inverse of the planted swap |
+
+This is one case on one commit, about four minutes from push to PR. The result was read from the Railway logs and the delivery PR. Verify's check-by-check report was not read, because the production console needs a signed-in session. The demo branch and fix branch are deleted, and #44 is closed unmerged.
+
+Known limit: the JS suite check runs at most 12 related test files, not the whole suite, because the full jsdom suite is killed in the 2 GB microVM. A regression in an unrelated JS test passes Verify, and the report marks this with `related_tests_only`.
