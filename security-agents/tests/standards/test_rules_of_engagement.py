@@ -41,6 +41,7 @@ def test_roe_is_built_from_the_active_scope():
         "access_control.authentication@1",
         "access_control.ownership@1",
         "access_control.role@1",
+        "access_control.write_ownership@1",
         "firestore.collection_enumeration@1",
         "firestore.owner_isolation@1",
         "firestore.unauthenticated_denied@1",
@@ -63,6 +64,7 @@ def test_roe_lists_only_runnable_templates_in_scope_categories():
     narrow = make_scope(categories=["access_control.ownership"])
     assert roe_for(narrow).permitted_check_templates == [
         OWNERSHIP,
+        "access_control.write_ownership@1",
         "firestore.collection_enumeration@1",
         "firestore.owner_isolation@1",
     ]

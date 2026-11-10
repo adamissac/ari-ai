@@ -141,6 +141,7 @@ def test_f4_list_templates_accepts_a_legacy_category_alias(intel):
         OWNERSHIP,
         "firestore.owner_isolation@1",
         "firestore.collection_enumeration@1",
+        "access_control.write_ownership@1",
     ]
 
 

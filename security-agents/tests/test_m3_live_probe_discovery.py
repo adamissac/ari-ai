@@ -152,12 +152,14 @@ def test_rules_of_engagement_honour_check_category_aliases_without_widening_scop
     aliased = build_roe(make_scope(categories=["authorization.ownership"]), templates)
     assert aliased.permitted_check_templates == [
         "access_control.ownership@1",
+        "access_control.write_ownership@1",
         "firestore.collection_enumeration@1",
         "firestore.owner_isolation@1",
     ]
     both = build_roe(make_scope(categories=["authorization.ownership", "input.bounds"]), templates)
     assert both.permitted_check_templates == [
         "access_control.ownership@1",
+        "access_control.write_ownership@1",
         "firestore.collection_enumeration@1",
         "firestore.owner_isolation@1",
         "input_validation.bounds@1",

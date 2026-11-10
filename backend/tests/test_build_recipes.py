@@ -194,6 +194,36 @@ def test_problems_requires_seeded_identities_for_every_route(tmp_path) -> None:
     )
 
 
+def test_write_routes_are_offered_and_must_name_the_resource_once(tmp_path) -> None:
+    files = SHOP | {
+        "src/shop/orders.py": SHOP["src/shop/orders.py"] + '\n\n@router.post("/transfer")\n'
+        "def transfer_order(body: dict, user=Depends(current_user)):\n    return body\n"
+    }
+    repo, sha = _repo(tmp_path / "shop", files)
+    facts = recipes.inspect(repo, sha)
+    write = {
+        "id": "transfer_order",
+        "method": "POST",
+        "path_template": "/api/orders/transfer",
+        "resource": "order",
+        "body_template": {"order_id": "{resource_id}", "to": "{destination}"},
+    }
+    transport = llm.FakeTransport([_submit(GOOD | {"routes": [*GOOD["routes"], write]}, 1)])
+    d = recipes.draft(facts, llm.build_gateway(transport=transport))
+    assert d.author == "claude" and d.recipe["routes"][1] == write
+    assert "body_template" not in d.recipe["routes"][0]
+    assert "POST" in json.dumps(transport.requests[0]["messages"])
+
+    def errors(route: dict) -> list[str]:
+        return recipes.problems(d.recipe | {"routes": [route]}, d.harness, facts)
+
+    assert any(
+        "name the resource once" in e for e in errors(write | {"body_template": {"to": "x"}})
+    )
+    assert any("short strings" in e for e in errors(write | {"body_template": {"order_id": 1}}))
+    assert any("no body" in e for e in errors(d.recipe["routes"][0] | {"body_template": {}}))
+
+
 # --------------------------------------------------------------------------- job + triggers
 
 

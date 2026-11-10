@@ -249,7 +249,7 @@ def test_listing_shows_recipe_values_only_for_templates_the_roe_permits(intel):
     by_ref = {t["ref"]: t for t in listing["templates"]}
     assert "parameter_values" in by_ref[OWNERSHIP]
     assert "parameter_values" not in by_ref[BOUNDS], by_ref[BOUNDS]
-    assert list(listing["parameter_index"]) == [OWNERSHIP]
+    assert list(listing["parameter_index"]) == [OWNERSHIP, "access_control.write_ownership@1"]
 
 
 def test_scout_cannot_use_the_listing_tool(intel):
