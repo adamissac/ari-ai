@@ -2937,4 +2937,4 @@ Canonical main 9437e217d65aa1be22fa7b4f54f723200cd428c8; external pilot NO-GO. S
 
 - `_JsVerifyRunner` in `security-agents/security_agents/host_adapter.py` runs `.test.js` generated tests through `nodetest`; `related_js_tests` moved to `code_review.node_tests`. Owner approved this edit beyond the reviewer handoff.
 - Gap: the JS `functional_suite_passes` check covers related tests only (at most 12). A regression in an unrelated JS test passes Verify. The Verify report records `related_tests_only`.
-- Verified: fake-driver accept/reject tests; real `LocalProcessDriver` run on a mypypath checkout (real fix accepted, 71 tests; non-fix rejected). Live push result: see the PR.
+- Verified: fake-driver accept/reject tests; real `LocalProcessDriver` run on a mypypath checkout (real fix accepted, 71 tests; non-fix rejected). Live push 2026-11-10: `js-lessonkey` fix passed Verify and opened `adamissac/mypypath#44` against the pushed branch; demo branches deleted, #44 closed (`docs/REVIEWER_LIVE_EVAL_2026-11-03.md`).
