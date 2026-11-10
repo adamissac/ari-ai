@@ -134,22 +134,57 @@ class GitHubApp:
         return str(r.json()["html_url"])
 
     def post_pull_request_review(
-        self, installation_id: int, full_name: str, number: int, body: str
+        self,
+        installation_id: int,
+        full_name: str,
+        number: int,
+        body: str,
+        comments: list[dict[str, Any]] | None = None,
+        commit_id: str | None = None,
     ) -> None:
-        """Post one top-level review comment without inline review comments."""
+        """Post one review: a top-level comment and, when given, inline comments anchored to
+        ``commit_id``. GitHub rejects the whole review when one anchor is outside the diff,
+        so a 422 is retried once without them: the summary must not be lost to a stale line."""
         token = self.installation_token(
             installation_id, write=True, repository=full_name.split("/", 1)[1]
         )
-        r = self._client.post(
-            f"/repos/{full_name}/pulls/{number}/reviews",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
-            },
-            json={"event": "COMMENT", "body": body},
-        )
+
+        def post(payload: dict[str, Any]) -> httpx.Response:
+            return self._client.post(
+                f"/repos/{full_name}/pulls/{number}/reviews",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+                json=payload,
+            )
+
+        summary = {"event": "COMMENT", "body": body}
+        if not comments:
+            r = post(summary)
+        else:
+            r = post(summary | {"comments": comments, "commit_id": commit_id})
+            if r.status_code == 422:
+                r = post(summary)
         r.raise_for_status()
+
+    def pull_request_diff(
+        self, installation_id: int, full_name: str, number: int
+    ) -> tuple[str, list[dict[str, Any]]]:
+        """(head commit sha, changed files with their patches) of a pull request."""
+        head = self._get(installation_id, f"/repos/{full_name}/pulls/{number}")["head"]["sha"]
+        files: list[dict[str, Any]] = []
+        for page in range(
+            1, 4
+        ):  # shortcut: first 300 files; a larger PR gets fewer inline comments
+            batch = self._get(
+                installation_id, f"/repos/{full_name}/pulls/{number}/files", per_page=100, page=page
+            )
+            files += batch
+            if len(batch) < 100:
+                break
+        return str(head), files
 
     def pull_request_review_has_marker(
         self, installation_id: int, full_name: str, number: int, marker: str
