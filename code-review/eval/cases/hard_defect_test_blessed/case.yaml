@@ -1,0 +1,9 @@
+category: functional_defect
+title: "Add express shipping"
+body: |
+  Adds express shipping: a flat 14.99 that is never free. Standard shipping is
+  unchanged. Also tidies the threshold test.
+expected:
+  defect: true
+  kind: functional
+  root_cause: {path: shipping/fees.py, symbol: qualifies_for_free_shipping}

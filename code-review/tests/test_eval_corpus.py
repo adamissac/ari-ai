@@ -104,7 +104,7 @@ def test_a_flag_in_the_wrong_place_is_a_miss_and_failed_runs_never_help() -> Non
     assert "defect_tax_rounding" in rep.fn and rep.mislocated == ["defect_tax_rounding"]
     assert "sec_export_path" in rep.fn
     assert "clean_slugify" in rep.fp
-    assert rep.by_category["security_regression"] == {"tp": 1, "fp": 0, "tn": 0, "fn": 1}
+    assert rep.by_category["security_regression"] == {"tp": 3, "fp": 0, "tn": 0, "fn": 1}
 
 
 def _outcome(findings: list[Any], handoffs: list[Any] | None = None) -> Any:

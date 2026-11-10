@@ -1,0 +1,9 @@
+category: functional_defect
+title: "Refactor: one place for the availability calculation"
+body: |
+  reserve() and report_line() each computed how many units are free. Both now
+  call inventory.levels.available(). No behavior change.
+expected:
+  defect: true
+  kind: functional
+  root_cause: {path: inventory/levels.py, symbol: available}
