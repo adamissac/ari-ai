@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Accepted (implemented in #340) |
+| Status | Accepted (implemented in #340); amended for the code reviewer by ADR-0025 |
 | Date | 2026-10-19 |
 | Deciders | Adam (product owner) |
 | Related | ADR-0007 (Claude LLM gateway), #340, #341, `backend/backend/settings.py`, `security-agents/security_agents/llm/gateway.py`, `frontend/lib/live-analysis.ts` |

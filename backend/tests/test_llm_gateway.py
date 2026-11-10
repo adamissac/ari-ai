@@ -374,18 +374,19 @@ def test_server_fallback_is_kept_for_models_that_support_it() -> None:
     assert kind == "beta" and kw["extra_body"] == {"fallbacks": "default"}
 
 
-def test_production_uses_only_haiku_despite_stale_environment_overrides():
+def test_production_models_are_fixed_despite_stale_environment_overrides():
     settings = _settings(
         app_env="production",
         anthropic_model="claude-opus-5-5",
-        agent_model_overrides="scout=claude-sonnet-5-5,patch=claude-opus-5-5",
+        agent_model_overrides="scout=claude-sonnet-5-5,patch=claude-opus-5-5,reviewer=claude-opus-5-5",
     )
     transport = FakeTransport(
         [{"content": [{"type": "text", "text": "ok"}], "stop_reason": "end_turn"}] * 8
     )
     gw = build_gateway(settings=settings, transport=transport, charge=lambda usage: None)
-    for role in ("reviewer", "scout", "probe", "trace", "diagnose", "patch", "verify", "fortify"):
+    for role in ("scout", "probe", "trace", "diagnose", "patch", "verify", "fortify", "recipe"):
         assert gw.model_for(role) == "claude-haiku-5-5"
+    assert gw.model_for("reviewer") == "claude-sonnet-5-5"
 
 
 def test_signed_assistant_turns_are_sent_back_unchanged() -> None:

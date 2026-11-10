@@ -37,7 +37,7 @@ All config via environment variables, documented in [`.env.example`](../.env.exa
 | Group | Variables |
 |---|---|
 | Environment | `APP_ENV`, `LOG_LEVEL` |
-| LLM | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_MODEL_FAST`, `AGENT_MODEL_OVERRIDES` (development/test only; production/staging ARI and web quick reads enforce `claude-haiku-5-5` per #380 and [ADR-0015](decisions/0015-haiku-default-model.md)), `LLM_MAX_TOKENS_PER_ASSESSMENT`, `LLM_MAX_USD_PER_ASSESSMENT` |
+| LLM | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `ANTHROPIC_MODEL_FAST`, `AGENT_MODEL_OVERRIDES` (development/test only; production/staging ARI and web quick reads enforce `claude-haiku-5-5` per #380 and [ADR-0015](decisions/0015-haiku-default-model.md), except the code reviewer, fixed to `claude-sonnet-5-5` by [ADR-0025](decisions/0025-sonnet-for-the-reviewer.md)), `LLM_MAX_TOKENS_PER_ASSESSMENT`, `LLM_MAX_USD_PER_ASSESSMENT` |
 | Backend | `API_BASE_URL`, `DATABASE_URL`, `ARTIFACT_STORE_URI` |
 | GitHub | `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY_PATH`, `GITHUB_WEBHOOK_SECRET`, `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET` |
 | Sandbox | `SANDBOX_RUNTIME`, `SANDBOX_DEFAULT_TIMEOUT_SECONDS`, `SANDBOX_MAX_MEMORY_MB`, `SANDBOX_NETWORK_MODE` |
