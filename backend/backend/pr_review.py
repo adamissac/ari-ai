@@ -239,3 +239,18 @@ def inline_comments(
         if len(comments) == MAX_INLINE:
             break
     return comments
+
+
+def finding_brief(finding: dict[str, Any], records: dict[str, Any]) -> dict[str, Any]:
+    """What a reply may say about one finding: its recorded facts, nothing inferred."""
+    return {
+        "title": finding.get("title", "Untitled finding"),
+        "severity": _level(finding) or "unrated",
+        "status": finding.get("status", "unknown"),
+        "status_meaning": _status(finding),
+        "executed_check": _check_ref(records),
+        "cwe": _cwe(finding),
+        "location": _location(finding),
+        "why": _clip(_why(records), _TEXT_LIMIT),
+        "suggested_fix": _clip(_fix(records), _TEXT_LIMIT),
+    }

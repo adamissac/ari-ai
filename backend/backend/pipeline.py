@@ -10,7 +10,7 @@ from typing import Any
 
 import sqlalchemy as sa
 
-from backend import audit, auto_commits
+from backend import audit, auto_commits, pr_replies
 from backend.artifacts import ArtifactStore
 from backend.db import (
     defense_recommendations,
@@ -103,6 +103,9 @@ def process_github_delivery(ctx: JobContext) -> dict[str, Any]:
             applied = apply_lifecycle(conn, d["event_name"], payload)
             queued = enqueue_for_installation(conn, d["event_name"], payload, delivery_id)
         return {"build_recipes_for": queued, "lifecycle": applied}
+    if d["event_name"] in pr_replies.EVENTS:
+        with transaction() as conn:
+            return pr_replies.enqueue_for_comment(conn, d["event_name"], payload)
     change = normalize_github(d["event_name"], payload)
     if isinstance(change, Ignored):
         return {"ignored": change.reason}

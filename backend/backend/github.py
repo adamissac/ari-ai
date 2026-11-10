@@ -169,6 +169,35 @@ class GitHubApp:
                 r = post(summary)
         r.raise_for_status()
 
+    def post_pull_request_reply(
+        self,
+        installation_id: int,
+        full_name: str,
+        number: int,
+        body: str,
+        in_reply_to: int | None = None,
+    ) -> None:
+        """Reply in a pull request: inside a review comment's thread when ``in_reply_to`` is
+        given, otherwise as a conversation comment."""
+        token = self.installation_token(
+            installation_id, write=True, repository=full_name.split("/", 1)[1]
+        )
+        path = (
+            f"/repos/{full_name}/pulls/{number}/comments/{in_reply_to}/replies"
+            if in_reply_to
+            else f"/repos/{full_name}/issues/{number}/comments"
+        )
+        r = self._client.post(
+            path,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+            json={"body": body},
+        )
+        r.raise_for_status()
+
     def pull_request_diff(
         self, installation_id: int, full_name: str, number: int
     ) -> tuple[str, list[dict[str, Any]]]:
