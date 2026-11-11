@@ -1,0 +1,10 @@
+category: functional_defect
+title: "Enforce the daily sending limit on transfers"
+body: |
+  Adds accounts.limits: each account may send at most 1,000.00 per day.
+  transfer() records every transfer against the sender's daily total and raises
+  LimitExceeded when the limit would be passed.
+expected:
+  defect: true
+  kind: functional
+  root_cause: {path: accounts/transfer.py, symbol: transfer}

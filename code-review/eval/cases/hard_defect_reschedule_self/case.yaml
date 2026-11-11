@@ -1,0 +1,9 @@
+category: functional_defect
+title: "Add reschedule() for existing bookings"
+body: |
+  Customers can move a booking. reschedule() checks the new slot against the
+  calendar with the same overlap rule as book() and raises Conflict when it is taken.
+expected:
+  defect: true
+  kind: functional
+  root_cause: {path: booking/changes.py, symbol: reschedule}

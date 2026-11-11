@@ -1,0 +1,9 @@
+category: functional_defect
+title: "Cache quotes; add the silver tier"
+body: |
+  Quotes are recomputed on every cart render. quote() now keeps results in an
+  in-process cache (clear_cache() resets it). Also adds the silver tier (5% off).
+expected:
+  defect: true
+  kind: functional
+  root_cause: {path: pricing/quotes.py, symbol: quote}

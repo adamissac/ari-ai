@@ -1,0 +1,9 @@
+category: bad_patch
+title: "Fix: redelivered webhook events are handled twice"
+body: |
+  The provider redelivers events it thinks we missed, and we handled them
+  again. handle_batch() now remembers the event ids it has handled and skips repeats.
+expected:
+  defect: true
+  kind: functional
+  root_cause: {path: webhooks/consumer.py, symbol: handle_batch}

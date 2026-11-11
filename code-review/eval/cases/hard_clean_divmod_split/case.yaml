@@ -1,0 +1,7 @@
+category: clean
+title: "Simplify split() with divmod"
+body: |
+  split() built the list and then looped to hand out the leftover cents. Uses
+  divmod and builds the list once. Same results.
+expected:
+  defect: false
