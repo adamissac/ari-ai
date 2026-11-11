@@ -1,0 +1,91 @@
+# Ground-truth labels for evaluating the platform on helpdesk-lite (answer key).
+# Kept OUTSIDE target/ on purpose: the platform must index and build only target/,
+# so it finds these from intent, tests and conventions, not from labels.
+# Class-level descriptions only (docs/15): what invariant is broken, not attack steps.
+# The expectations restate the target README's rules, one per area, for correct and
+# defective areas alike, so they do not point at the defects.
+target_dir: target
+schema_version: 1
+expectations:
+  - id: exp_token_required
+    subject: "every endpoint except GET /health"
+    statement: "Every endpoint except /health requires a valid agent token."
+    kind: authentication
+    data_sensitivity: internal
+    sources:
+      - {path: target/README.md, note: "Behavior section"}
+      - {path: target/helpdesk_lite/auth.py, symbol: current_agent}
+  - id: exp_own_org_only
+    subject: "tickets, attachments and customers"
+    statement: "An agent can only read tickets, attachments and customers of their own organization."
+    kind: authorization
+    data_sensitivity: personal
+    sources:
+      - {path: target/README.md, note: "Behavior section"}
+      - {path: target/helpdesk_lite/access.py, symbol: require_org}
+  - id: exp_search_own_org_only
+    subject: "search endpoints"
+    statement: "Search returns only records of the caller's organization, whatever the search text is."
+    kind: authorization
+    data_sensitivity: personal
+    sources:
+      - {path: target/README.md, note: "Behavior section"}
+  - id: exp_files_stay_in_their_folder
+    subject: "article and export downloads"
+    statement: "A download endpoint serves files from its own folder and nothing else."
+    kind: invariant
+    data_sensitivity: internal
+    sources:
+      - {path: target/README.md, note: "Behavior section"}
+      - {path: target/helpdesk_lite/files.py, symbol: export_path}
+  - id: exp_admins_list_agents
+    subject: "GET /admin/agents"
+    statement: "Only admins can list an organization's agents."
+    kind: authorization
+    data_sensitivity: internal
+    sources:
+      - {path: target/README.md, note: "Behavior section"}
+planted_findings:
+  - id: fnd_planted_closed_ticket_visibility
+    kind: security
+    weakness_class: CWE-639
+    subject: "GET /tickets/{ticket_id}"
+    also_affects: ["GET /attachments/{attachment_id}"]
+    violated_expectation: exp_own_org_only
+    root_cause_span: {path: target/helpdesk_lite/access.py, symbol: visible, note: "a closed ticket is readable by any organization"}
+    expected_check_category: access_control.ownership
+    severity_expected: high
+  - id: fnd_planted_unauthenticated_report
+    kind: security
+    weakness_class: CWE-306
+    subject: "GET /reports/sla"
+    violated_expectation: exp_token_required
+    root_cause_span: {path: target/helpdesk_lite/app.py, symbol: create_app, note: "the reports router is mounted without the sign-in dependency"}
+    expected_check_category: access_control.authentication
+    severity_expected: medium
+  - id: fnd_planted_search_injection
+    kind: security
+    weakness_class: CWE-89
+    subject: "GET /tickets/search"
+    violated_expectation: exp_search_own_org_only
+    root_cause_span: {path: target/helpdesk_lite/sqlutil.py, symbol: like_clause, note: "the term is placed in the SQL text"}
+    expected_check_category: input_validation.injection
+    severity_expected: high
+  - id: fnd_planted_article_path
+    kind: security
+    weakness_class: CWE-22
+    subject: "GET /help/articles"
+    violated_expectation: exp_files_stay_in_their_folder
+    root_cause_span: {path: target/helpdesk_lite/files.py, symbol: article_path, note: "an absolute name replaces the folder"}
+    expected_check_category: input_validation.path
+    severity_expected: high
+negatives:
+  # Lookalikes that must NOT be confirmed (precision check).
+  - {subject: "GET /customers/{customer_id}", hypothesis_class: CWE-639}
+  - {subject: "GET /customers/search", hypothesis_class: CWE-89, note: "the SQL text is built with an f-string but every value is bound"}
+  - {subject: "GET /exports/download", hypothesis_class: CWE-22}
+  - {subject: "GET /help/articles/index", hypothesis_class: CWE-306, note: "no handler parameter for the caller; the router mount requires sign-in"}
+  - {subject: "GET /admin/agents", hypothesis_class: CWE-862}
+fixture_identities:
+  - {agent: agt_alice, org: org_alice, token: fixture-token-alice, owns: [tkt_a1, tkt_a2, cus_a1, att_a1]}
+  - {agent: agt_bob, org: org_bob, token: fixture-token-bob, owns: [tkt_b1, tkt_b2, cus_b1, att_b1]}

@@ -1,0 +1,121 @@
+{
+  "_comment": [
+    "Sandbox build recipe for the helpdesk-lite evaluation target, consumed by",
+    "security_agents (ScopeTarget.build_recipe_ref). Operator-provided config an",
+    "AuthorizedScope approves: entry points, synthetic fixture identities, and",
+    "fixture resources a reviewed check template may reference. Not an answer key."
+  ],
+  "recipe_version": 1,
+  "kind": "python_asgi",
+  "target_dir": "target",
+  "app_factory": "helpdesk_lite.app:create_app",
+  "test_command": [
+    "-q",
+    "tests"
+  ],
+  "identities": {
+    "alice": {
+      "auth_header": "Bearer fixture-token-alice",
+      "agent_id": "agt_alice"
+    },
+    "bob": {
+      "auth_header": "Bearer fixture-token-bob",
+      "agent_id": "agt_bob"
+    }
+  },
+  "resources": {
+    "ticket": {
+      "alice": {
+        "id": "tkt_a1"
+      },
+      "bob": {
+        "id": "tkt_b1"
+      }
+    },
+    "customer": {
+      "alice": {
+        "id": "cus_a1"
+      },
+      "bob": {
+        "id": "cus_b1"
+      }
+    },
+    "attachment": {
+      "alice": {
+        "id": "att_a1"
+      },
+      "bob": {
+        "id": "att_b1"
+      }
+    }
+  },
+  "routes": [
+    {
+      "id": "ticket_list",
+      "method": "GET",
+      "path_template": "/tickets",
+      "resource": "ticket"
+    },
+    {
+      "id": "ticket_detail",
+      "method": "GET",
+      "path_template": "/tickets/{ticket_id}",
+      "resource": "ticket"
+    },
+    {
+      "id": "ticket_search",
+      "method": "GET",
+      "path_template": "/tickets/search",
+      "resource": "ticket",
+      "query_param": "q"
+    },
+    {
+      "id": "customer_detail",
+      "method": "GET",
+      "path_template": "/customers/{customer_id}",
+      "resource": "customer"
+    },
+    {
+      "id": "customer_search",
+      "method": "GET",
+      "path_template": "/customers/search",
+      "resource": "customer",
+      "query_param": "q"
+    },
+    {
+      "id": "attachment_detail",
+      "method": "GET",
+      "path_template": "/attachments/{attachment_id}",
+      "resource": "attachment"
+    },
+    {
+      "id": "article_index",
+      "method": "GET",
+      "path_template": "/help/articles/index"
+    },
+    {
+      "id": "article",
+      "method": "GET",
+      "path_template": "/help/articles",
+      "query_param": "file",
+      "sample_file": "getting-started.md"
+    },
+    {
+      "id": "export_download",
+      "method": "GET",
+      "path_template": "/exports/download",
+      "query_param": "file",
+      "sample_file": "2026-10-tickets.csv"
+    },
+    {
+      "id": "sla_targets",
+      "method": "GET",
+      "path_template": "/reports/sla"
+    },
+    {
+      "id": "agent_list",
+      "method": "GET",
+      "path_template": "/admin/agents"
+    }
+  ]
+}
