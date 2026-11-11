@@ -28,7 +28,7 @@ from helpers import setup_project  # noqa: E402
 from backend import worker  # noqa: E402
 from backend.checkouts import register_binding  # noqa: E402
 
-TARGET = Path("/Users/devin/repos/pilot-rehearsal-target")
+TARGET = Path(os.environ.get("REHEARSAL_TARGET", "/Users/devin/repos/pilot-rehearsal-target"))
 
 
 @pytest.fixture
@@ -41,7 +41,7 @@ def live(settings_override, tmp_path):
     settings_override(
         security_workdir=str(tmp_path / "work"),
         repository_bindings_file=str(bindings),
-        security_sandbox="vercel",
+        security_sandbox=os.environ.get("REHEARSAL_SANDBOX", "vercel"),
         anthropic_api_key=os.environ.get("HACKATL_LIVE_ANTHROPIC_API_KEY", ""),
     )
     return {"sha": sha, "bindings": bindings}
@@ -63,17 +63,30 @@ def test_live_provider_assessment_two_orgs(client_factory, live) -> None:
     assert r.status_code == 202, r.text
     asm_id = r.json()["assessment"]["id"]
 
-    worker.drain(kinds=["run_assessment"])
+    worker.drain()  # indexing and other prerequisite jobs run before run_assessment
     detail = alice.get(f"/api/v1/assessments/{asm_id}").json()
     state = detail["assessment"]["state"]
     runs = detail["agent_runs"]
-    assert runs, "no agent steps ran"
+    assert runs, f"no agent steps ran: {state} {detail['assessment'].get('error')}"
     assert all(x["provider_mode"] == "live" for x in runs), [
         (x["agent"], x["provider_mode"], x["status"]) for x in runs
     ]
     assert state in ("AWAITING_APPROVAL", "COMPLETED", "FAILED"), state
     print("LIVE-STATE", state, "USAGE", detail["assessment"]["usage"])
     print("LIVE-FINDINGS", json.dumps(detail["findings"], indent=1)[:3000])
+    for f in detail["findings"]:
+        h = f["history"]
+        print("LIVE-FINDING", f["id"], f["kind"], f["status"], h[0]["actor"], "|", f["title"][:70])
+        print("   last:", h[-1]["actor"], (h[-1].get("reason") or "")[:160])
+        spans = [
+            (
+                e.get("path"),
+                (e.get("span") or {}).get("start_line"),
+                (e.get("span") or {}).get("end_line"),
+            )
+            for e in f["evidence"]
+        ]
+        print("   spans:", spans, "cwe:", ((f.get("standards") or {}).get("cwe") or {}).get("id"))
 
     # eve still gets 404 on the live run's artifacts.
     if detail["findings"]:

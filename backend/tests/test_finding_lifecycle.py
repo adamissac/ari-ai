@@ -100,7 +100,11 @@ def test_illegal_edges_and_unbacked_claims_are_refused(host_and_finding) -> None
 def test_a_reviewer_concern_the_agents_already_cover_is_closed_as_a_duplicate(
     host_and_finding,
 ) -> None:
+    from security_agents.contracts import Confidence, Hypothesis
+    from security_agents.contracts import EvidenceRef as AgentSpan
+    from security_agents.contracts import SourceSpan as AgentLines
     from security_agents.host_adapter import HostSink
+    from security_agents.workflow.orchestrator import FindingRecord
     from shared.findings import StatusChange
 
     alice, host, fid = host_and_finding
@@ -122,7 +126,18 @@ def test_a_reviewer_concern_the_agents_already_cover_is_closed_as_a_duplicate(
     )
     host.record_finding(concern, actor="agent:reviewer")
 
-    HostSink(host, "b" * 40).settle([], 0.0)
+    scout = FindingRecord(
+        finding_id=fid,
+        hypothesis=Hypothesis(
+            weakness_class="CWE-639",
+            title="ownership check missing",
+            rationale="r",
+            cited_spans=[AgentSpan(path="app.py", span=AgentLines(start_line=1, end_line=2))],
+            confidence=Confidence.MEDIUM,
+            suggested_check_category="access_control.ownership",
+        ),
+    )
+    HostSink(host, "b" * 40).settle([scout], 0.0)
 
     closed = alice.get(f"/api/v1/findings/{concern.id}").json()["finding"]
     assert closed["status"] == "closed"

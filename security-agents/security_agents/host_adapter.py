@@ -446,8 +446,9 @@ _HANDOFF_CATEGORY = {
     "CWE-862": "access_control.ownership",
     "CWE-306": "access_control.authentication",
     "CWE-287": "access_control.authentication",
-    "CWE-863": "access_control.role",
-    "CWE-285": "access_control.role",
+    "CWE-863": "access_control.ownership",
+    "CWE-285": "access_control.ownership",
+    "CWE-284": "access_control.ownership",
     "CWE-269": "access_control.role",
     "CWE-89": "input_validation.injection",
     "CWE-22": "input_validation.path",
@@ -460,8 +461,9 @@ def reviewer_hypotheses(sink: HostSink, intel: CodeIntel, allowed: list[str]) ->
     """Hypotheses for the reviewer's security concerns that no agent finding covers.
 
     Waits for the reviewer. Each becomes a new agent finding that Probe checks; `settle`
-    then closes the reviewer's own copy as its duplicate. Concerns without a routable CWE,
-    outside the scope's check categories or citing lines the snapshot lacks stay as they are."""
+    then closes the reviewer's own copy as its duplicate. A concern without a routable CWE,
+    outside the scope's check categories, not located in a route handler, or touching code an
+    agent hypothesis already cites stays as it is."""
     from shared.scope import check_category_allowed
     from standards.owasp_api import owasp_api_tag
 
@@ -470,7 +472,9 @@ def reviewer_hypotheses(sink: HostSink, intel: CodeIntel, allowed: list[str]) ->
     sink.join_review()
     finder = getattr(sink.host, "findings", None)
     findings = finder() if callable(finder) else []
-    covered = {duplicate for duplicate, _ in reviewer_duplicates(findings)}
+    records = list(getattr(sink.result, "findings", None) or [])
+    # A concern that touches a tested location at all is left as it is, not tested twice.
+    covered = {d for d, _ in reviewer_duplicates(findings, records, intel, any_span=True)}
     runnable = default_library().categories()
     out: list[Hypothesis] = []
     for f in findings:
@@ -499,6 +503,23 @@ def reviewer_hypotheses(sink: HostSink, intel: CodeIntel, allowed: list[str]) ->
         ]
         if not spans:
             continue
+        first = spans[0]
+        if not any(  # Probe tests routes: a concern located in a test or helper cannot be checked
+            e.kind == "http_route"
+            and e.path == first.path
+            and e.span.start_line <= first.span.end_line
+            and first.span.start_line <= e.span.end_line
+            for e in intel.entry_points()
+        ):
+            continue
+        if any(  # the reviewer often reports one defect twice; `settle` closes both copies
+            _same_weakness(weakness, h.weakness_class)
+            and h.cited_spans[0].path == first.path
+            and h.cited_spans[0].span.start_line <= first.span.end_line
+            and first.span.start_line <= h.cited_spans[0].span.end_line
+            for h in out
+        ):
+            continue
         cwe, owasp = cwe_entry(str(weakness)), owasp_api_tag(str(weakness))
         try:
             out.append(
@@ -524,37 +545,65 @@ def reviewer_hypotheses(sink: HostSink, intel: CodeIntel, allowed: list[str]) ->
     return out
 
 
-def reviewer_duplicates(findings: list[Any]) -> list[tuple[str, str]]:
+def _subject(hypothesis: Any, intel: Any) -> tuple[str, int, int] | None:
+    """Where the hypothesis says the defect is: its designated entry point's handler when
+    that resolves (the route Probe tests, as in `probe.subject_routes`), else its first span."""
+    entry_id = getattr(hypothesis, "entry_point_id", None)
+    if entry_id and intel is not None:
+        for entry in intel.entry_points():
+            if entry.id == entry_id and entry.path and entry.span is not None:
+                return str(entry.path), int(entry.span.start_line), int(entry.span.end_line)
+    first = hypothesis.cited_spans[0]
+    if first.path and first.span is not None:
+        return str(first.path), int(first.span.start_line), int(first.span.end_line)
+    return None
+
+
+def _same_weakness(cwe: str | None, theirs: str | None) -> bool:
+    return cwe is None or cwe == theirs or (cwe in _ACCESS_CONTROL_CWES and theirs in _ACCESS_CONTROL_CWES)
+
+
+def reviewer_duplicates(
+    findings: list[Any], records: list[Any], intel: Any = None, *, any_span: bool = False
+) -> list[tuple[str, str]]:
     """(reviewer finding id, agent finding id) for each untested reviewer security concern
-    that a security-agent finding already covers: overlapping source lines and the same
-    weakness (equal CWE, both access-control CWEs, or no CWE on the reviewer's). The reviewer
-    runs beside Scout, so both can report one defect; a concern with a different weakness or
-    location is a separate suspicion and is left alone."""
-
-    def by_reviewer(f: Any) -> bool:
-        history = getattr(f, "history", None) or []
-        return bool(history) and getattr(history[0], "actor", None) == _REVIEWER
-
-    security = [f for f in findings if _enum_value(getattr(f, "kind", "")) == "security"]
-    agent = [f for f in security if not by_reviewer(f) and _enum_value(f.status) != "closed"]
+    that an agent hypothesis in this run already covers: the concern's first span (the defect
+    itself) overlaps the hypothesis's subject, and the weakness is the same (equal CWE, both
+    access-control CWEs, or no CWE on the reviewer's). Other spans are context such as a
+    shared auth dependency or a sibling handler, and a stored agent finding also gains
+    Trace's spans, so they are not compared: matching on them closed a concern about a
+    different route. `any_span` compares every span on both sides instead: the looser test
+    for "an agent may already be on this", used to decide what is not worth routing."""
+    agents = []
+    for record in records:
+        subject = _subject(record.hypothesis, intel)
+        theirs = [subject] if subject is not None else []
+        if any_span:
+            theirs += [
+                (str(c.path), int(c.span.start_line), int(c.span.end_line))
+                for c in record.hypothesis.cited_spans
+                if c.path and c.span is not None
+            ]
+        agents.append((str(record.finding_id), str(record.hypothesis.weakness_class), theirs))
     pairs = []
-    for mine in security:
-        if not by_reviewer(mine) or _enum_value(mine.status) != "hypothesis":
+    for mine in findings:
+        history = getattr(mine, "history", None) or []
+        spans = _spans(mine)
+        if (
+            _enum_value(getattr(mine, "kind", "")) != "security"
+            or _enum_value(getattr(mine, "status", "")) != "hypothesis"
+            or not history
+            or getattr(history[0], "actor", None) != _REVIEWER
+        ):
             continue
         cwe = _cwe(mine)
-        for other in agent:
-            theirs = _cwe(other)
-            same_weakness = (
-                cwe is None
-                or cwe == theirs
-                or (cwe in _ACCESS_CONTROL_CWES and theirs in _ACCESS_CONTROL_CWES)
-            )
-            if same_weakness and any(
-                p == q and lo <= q_hi and q_lo <= hi
-                for p, lo, hi in _spans(mine)
-                for q, q_lo, q_hi in _spans(other)
+        for finding_id, their_cwe, theirs in agents:
+            if _same_weakness(cwe, their_cwe) and any(
+                path == their_path and lo <= their_hi and their_lo <= hi
+                for path, lo, hi in (spans if any_span else spans[:1])
+                for their_path, their_lo, their_hi in theirs
             ):
-                pairs.append((str(mine.id), str(other.id)))
+                pairs.append((str(mine.id), finding_id))
                 break
     return pairs
 
@@ -582,6 +631,7 @@ class HostSink(AssessmentSink):
     stored_diffs: dict[str, tuple[str, str | None, str, str | None]] = field(default_factory=dict)
     regression_artifact_ids: dict[str, str] = field(default_factory=dict)
     result: Any = None
+    intel: Any = None  # resolves a hypothesis's entry point when matching reviewer duplicates
     # The functional reviewer runs beside Scout/Probe (they share nothing) and is joined
     # before the run waits for approval or finishes, so its findings and approvals land first.
     _review: threading.Thread | None = None
@@ -644,7 +694,8 @@ class HostSink(AssessmentSink):
         for finding in findings:
             self.set_status(finding.finding_id, finding.status)
         finder = getattr(self.host, "findings", None)
-        for duplicate, original in reviewer_duplicates(finder() if callable(finder) else []):
+        stored = finder() if callable(finder) else []
+        for duplicate, original in reviewer_duplicates(stored, findings, self.intel):
             self.set_status(
                 duplicate,
                 "closed",
@@ -1084,7 +1135,7 @@ class HostOrchestrator:
             **_commit_change(host),
         )
         registry = self.registry or default_registry()
-        sink = HostSink(host=host, commit_sha=intel.snapshot.commit_sha)
+        sink = HostSink(host=host, commit_sha=intel.snapshot.commit_sha, intel=intel)
         orchestrator = Orchestrator(
             config,
             intel=intel,

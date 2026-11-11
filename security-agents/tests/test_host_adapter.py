@@ -1094,24 +1094,56 @@ def _stored(fid, actor, status, path, lo, hi, cwe=None, kind="security"):
     )
 
 
-def test_reviewer_concern_covered_by_an_agent_finding_is_a_duplicate():
+def _record(fid, path, lo, hi, cwe, *context, status="validated"):
+    spans = [(path, lo, hi), *context]
+    return SimpleNamespace(
+        finding_id=fid,
+        status=status,
+        hypothesis=SimpleNamespace(
+            weakness_class=cwe,
+            cited_spans=[
+                SimpleNamespace(path=p, span=SimpleNamespace(start_line=a, end_line=b)) for p, a, b in spans
+            ],
+        ),
+    )
+
+
+def test_reviewer_concern_covered_by_an_agent_hypothesis_is_a_duplicate():
     from security_agents.host_adapter import reviewer_duplicates
 
-    agent = _stored("fnd_agent", "agent:orchestrator", "hardened", "app.py", 70, 82, "CWE-639")
+    # The agent's hypothesis is about lines 70-82 and cites a sibling handler for comparison.
+    records = [_record("fnd_agent", "app.py", 70, 82, "CWE-639", ("app.py", 100, 120))]
+    sibling = _stored("fnd_sibling", "agent:reviewer", "hypothesis", "app.py", 105, 110, "CWE-862")
+    shared = _stored("fnd_shared", "agent:reviewer", "hypothesis", "app.py", 105, 110, "CWE-862")
+    shared.evidence.append(SimpleNamespace(path="app.py", span=SimpleNamespace(start_line=70, end_line=82)))
     findings = [
-        agent,
         _stored("fnd_same", "agent:reviewer", "hypothesis", "app.py", 75, 78, "CWE-862"),
         _stored("fnd_no_cwe", "agent:reviewer", "hypothesis", "app.py", 82, 90),
-        # left alone: another weakness, another place, another file, already tested, functional
+        # left alone: only context spans meet, another weakness, place or file, tested, functional
+        sibling,
+        shared,
         _stored("fnd_sqli", "agent:reviewer", "hypothesis", "app.py", 75, 78, "CWE-89"),
         _stored("fnd_below", "agent:reviewer", "hypothesis", "app.py", 83, 90, "CWE-639"),
         _stored("fnd_file", "agent:reviewer", "hypothesis", "store.py", 75, 78, "CWE-639"),
         _stored("fnd_done", "agent:reviewer", "inconclusive", "app.py", 75, 78, "CWE-639"),
         _stored("fnd_func", "agent:reviewer", "hypothesis", "app.py", 75, 78, kind="functional"),
     ]
-    assert reviewer_duplicates(findings) == [("fnd_same", "fnd_agent"), ("fnd_no_cwe", "fnd_agent")]
-    agent.status = "closed"
-    assert reviewer_duplicates(findings) == []
+    assert reviewer_duplicates(findings, records) == [
+        ("fnd_same", "fnd_agent"),
+        ("fnd_no_cwe", "fnd_agent"),
+    ]
+    assert reviewer_duplicates(findings, []) == []
+    assert ("fnd_shared", "fnd_agent") in reviewer_duplicates(findings, records, any_span=True)
+
+    # A hypothesis that designates an entry point is about that handler, whatever it cites first.
+    designated = _record("fnd_route", "app.py", 1, 5, "CWE-639")
+    designated.hypothesis.entry_point_id = "ep_transfer"
+    route = SimpleNamespace(
+        id="ep_transfer", path="app.py", span=SimpleNamespace(start_line=100, end_line=120)
+    )
+    intel = SimpleNamespace(entry_points=lambda: [route])
+    assert reviewer_duplicates([sibling], [designated], intel) == [("fnd_sibling", "fnd_route")]
+    assert reviewer_duplicates([sibling], [designated]) == []
 
 
 def test_settle_closes_reviewer_duplicates_with_a_pointer_to_the_tested_finding():
@@ -1121,22 +1153,19 @@ def test_settle_closes_reviewer_duplicates_with_a_pointer_to_the_tested_finding(
 
     class Host:
         def findings(self):
-            return [
-                _stored("fnd_agent", "agent:orchestrator", "validated", "app.py", 70, 82, "CWE-639"),
-                _stored("fnd_dup", "agent:reviewer", "hypothesis", "app.py", 75, 78, "CWE-639"),
-            ]
+            return [_stored("fnd_dup", "agent:reviewer", "hypothesis", "app.py", 75, 78, "CWE-639")]
 
         def set_finding_status(self, finding_id, status, *, actor, reason=None):
-            calls.append((finding_id, status, actor, reason))
+            calls.append((finding_id, status, reason))
 
-    HostSink(Host(), "a" * 40).settle([], 0.0)
+    HostSink(Host(), "a" * 40).settle([_record("fnd_agent", "app.py", 70, 82, "CWE-639")], 0.0)
     assert calls == [
+        ("fnd_agent", "validated", None),
         (
             "fnd_dup",
             "closed",
-            "agent:orchestrator",
             "duplicate of fnd_agent: same weakness at the same code location, tested there",
-        )
+        ),
     ]
 
 
@@ -1154,24 +1183,31 @@ def test_untested_reviewer_concerns_become_probe_hypotheses(host_and_orchestrato
     workdir = tmp_path / "handoff"
     workdir.mkdir()
     intel = adapter._build_intel(adapter.target_dir, workdir, host)
-    app = "payments_lite/app.py"
+    app = "payments_lite/app.py"  # get_customer 99-110, create_payment 121-129, get_payment 131-141
+    both = _concern("fnd_both", app, 122, 125, "CWE-862")
+    both.evidence.append(SimpleNamespace(path=app, span=SimpleNamespace(start_line=132, end_line=136)))
     host.recorded_findings = [
-        _stored("fnd_agent", "agent:orchestrator", "validated", app, 130, 140, "CWE-639"),
-        _concern("fnd_new", app, 60, 64, "CWE-862"),
-        # not routed: already covered, no routable CWE, category outside the scope, no such file
+        _concern("fnd_new", app, 100, 105, "CWE-862"),
+        _concern("fnd_again", app, 102, 108, "CWE-639"),  # the same defect reported twice
+        both,  # also touches the tested handler: left alone rather than tested twice
+        # not routed: already covered, outside any route, no routable CWE, category outside
+        # the scope, no such file
         _concern("fnd_covered", app, 132, 136, "CWE-639"),
-        _concern("fnd_xss", app, 60, 64, "CWE-79"),
-        _concern("fnd_sqli", app, 60, 64, "CWE-89"),
+        _concern("fnd_helper", app, 60, 64, "CWE-639"),
+        _concern("fnd_xss", app, 100, 105, "CWE-79"),
+        _concern("fnd_sqli", app, 113, 118, "CWE-89"),
         _concern("fnd_gone", "payments_lite/missing.py", 1, 2, "CWE-639"),
     ]
     allowed = ["access_control.ownership", "input_validation.bounds"]
+    sink = HostSink(host, intel.snapshot.commit_sha)
+    sink.result = SimpleNamespace(findings=[_record("fnd_agent", app, 130, 140, "CWE-639")])
 
-    [h] = reviewer_hypotheses(HostSink(host, intel.snapshot.commit_sha), intel, allowed)
+    [h] = reviewer_hypotheses(sink, intel, allowed)
 
     assert h.weakness_class == "CWE-862" and h.suggested_check_category == "access_control.ownership"
     assert h.title == "refund lookup skips the owner check"
     assert h.rationale == "Raised by the code reviewer: refund reads any payment"
-    assert [(s.path, s.span.start_line, s.span.end_line) for s in h.cited_spans] == [(app, 60, 64)]
+    assert [(s.path, s.span.start_line, s.span.end_line) for s in h.cited_spans] == [(app, 100, 105)]
     assert h.cited_spans[0].sha == intel.snapshot.commit_sha and h.finding_id != "fnd_new"
 
 
