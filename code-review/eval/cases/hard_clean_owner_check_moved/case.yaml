@@ -1,0 +1,7 @@
+category: clean
+title: "Remove the duplicated ownership checks from note handlers"
+body: |
+  get_note and update_note each repeated the owner comparison. The handlers now
+  load notes through notes.access.load_owned(). Adds delete_note the same way.
+expected:
+  defect: false

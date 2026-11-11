@@ -60,6 +60,7 @@ def test_library_lists_runnable_templates(library):
         "firestore.collection_enumeration@1",
         CONCURRENT_BOUND.ref,
         DESTINATION.ref,
+        "access_control.write_ownership@1",
         SQL_INJECTION.ref,
         PATH_TRAVERSAL.ref,
     }

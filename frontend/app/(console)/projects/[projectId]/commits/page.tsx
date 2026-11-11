@@ -59,13 +59,13 @@ export default function CommitsPage() {
                       {commits.map(commit => (
                         <li key={commit.sha}>
                           <button type="button" onClick={() => { commitQuery(commit.sha); setRunId(''); }}
-                            className={`flex w-full min-w-0 items-center gap-3 border-l-2 px-3 py-3 text-left hover:bg-panel-2 ${selectedSha === commit.sha ? 'border-brand bg-brand/10' : 'border-transparent'}`}
+                            className={`flex w-full min-w-0 flex-col gap-1 border-l-2 px-3 py-3 text-left hover:bg-panel-2 ${selectedSha === commit.sha ? 'border-brand bg-brand/10' : 'border-transparent'}`}
                             aria-current={selectedSha === commit.sha ? 'true' : undefined} data-testid={`commit-row-${commit.sha}`}>
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm">{commit.message || `Commit ${shortSha(commit.sha)}`}</span>
-                              <span className="mt-1 flex flex-wrap gap-2 text-xs text-muted"><Mono>{shortSha(commit.sha)}</Mono>{commit.committed_at && <Time iso={commit.committed_at} />}</span>
+                            <span className="block truncate text-sm">{commit.message || `Commit ${shortSha(commit.sha)}`}</span>
+                            <span className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                              <span className="flex gap-2 text-xs text-muted"><Mono>{shortSha(commit.sha)}</Mono>{commit.committed_at && <Time iso={commit.committed_at} />}</span>
+                              <CommitAssessmentChip repoId={selectedRepo.id} sha={commit.sha} />
                             </span>
-                            <CommitAssessmentChip repoId={selectedRepo.id} sha={commit.sha} />
                           </button>
                         </li>
                       ))}

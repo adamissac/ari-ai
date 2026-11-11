@@ -90,8 +90,9 @@ from expectations) and is always labeled with its inputs.
 
 ## Model usage
 
-All production/staging ARI agents use `claude-haiku-5-5` only, per the owner’s
-2026-10-21 instruction ([ADR-0015](decisions/0015-haiku-default-model.md), #380).
+The seven production/staging ARI agents use `claude-haiku-5-5` only, per the owner’s
+2026-10-21 instruction ([ADR-0015](decisions/0015-haiku-default-model.md), #380); the code
+reviewer uses `claude-sonnet-5-5` ([ADR-0025](decisions/0025-sonnet-for-the-reviewer.md)).
 `ANTHROPIC_MODEL` and `AGENT_MODEL_OVERRIDES` apply only to development/test and
 standalone experiments; they cannot select another production model. Structured outputs
 are validated with Pydantic; invalid output = failed step with one retry

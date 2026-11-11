@@ -931,6 +931,85 @@ DESTINATION = CheckTemplateMeta(
 )
 
 
+def _render_write_ownership(recipe: dict[str, Any], params: dict[str, Any]) -> str:
+    """A different fixture identity cannot change the owner's resource through a mutating
+    route. The owner's own identical request is the control: when it is rejected too, the
+    denial says nothing about ownership and the check is inconclusive."""
+    route = _route(recipe, str(params["route_id"]))
+    method = str(route.get("method", "")).upper()
+    if method not in _MUTATING:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "write-ownership template needs a mutating route")
+    owner, other = str(params["owner_identity"]), str(params["other_identity"])
+    if owner == other:
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "owner_identity and other_identity must differ")
+    kind = str(route.get("resource") or "")
+    resource_id = _resource_id(recipe, kind, owner)
+    body_template = route.get("body_template") or {}
+    if not isinstance(body_template, dict):
+        raise PlatformError(ErrorCode.SCHEMA_INVALID, "route body_template must be an object")
+    path_template = str(route["path_template"])
+    in_path = bool(_PATH_PARAM.findall(path_template))
+    if not in_path and "{resource_id}" not in body_template.values():
+        raise PlatformError(
+            ErrorCode.SCHEMA_INVALID,
+            "route names the resource in neither its path nor a {resource_id} body field",
+        )
+    values = {"{resource_id}": resource_id}
+    if "{amount}" in body_template.values():
+        declared = recipe.get("resources", {}).get(kind, {}).get(owner, {}).get("amount")
+        bound = Decimal(_resource_amount(recipe, kind, owner)) if declared is not None else Decimal("1.00")
+        values["{amount}"] = str(min(Decimal("1.00"), bound))
+    if "{destination}" in body_template.values():
+        # The non-owner sends the owner's value to its own resource.
+        values["{destination}"] = _resource_id(recipe, str(route.get("destination_resource") or kind), other)
+    path = _fill_path(path_template, resource_id) if in_path else path_template
+    return (
+        _inprocess_preamble(str(params["_ref"]), recipe)
+        + f"""
+import pytest
+
+METHOD = {method!r}
+PATH = {path!r}
+BODY = {_body_src(body_template, values) or None!r}
+OWNER_HEADERS = {{"Authorization": {_identity(recipe, owner)!r}}}
+OTHER_HEADERS = {{"Authorization": {_identity(recipe, other)!r}}}
+
+
+def test_other_identity_cannot_change_owners_resource():
+    client = _client()
+    attempt = client.request(METHOD, PATH, json=BODY, headers=OTHER_HEADERS)
+    RESULT["other_status"] = attempt.status_code
+    assert attempt.status_code >= 400, (
+        f"a non-owner's {{METHOD}} on the owner's resource was accepted: {{attempt.status_code}}"
+    )
+    control = client.request(METHOD, PATH, json=BODY, headers=OWNER_HEADERS)
+    RESULT["owner_status"] = control.status_code
+    if control.status_code >= 400:
+        # The request is rejected for its owner too (wrong body, validation): not evidence.
+        pytest.skip(f"the owner's own request was rejected: {{control.status_code}}")
+    assert attempt.status_code < 500, f"expected 4xx for a non-owner, observed {{attempt.status_code}}"
+"""
+    )
+
+
+WRITE_OWNERSHIP = CheckTemplateMeta(
+    template_id="access_control.write_ownership",
+    version="1",
+    category="access_control.ownership",
+    description=(
+        "Ownership on a mutating route (CWE-639): a different fixture identity sends "
+        "POST/PUT/PATCH/DELETE naming the owner's resource (path parameter, or the "
+        "{resource_id} body field) and must be rejected 4xx. The owner's identical request is "
+        "the control; if it is rejected too the result is inconclusive. Parameters: route_id, "
+        "owner_identity, other_identity."
+    ),
+    side_effect_class="ephemeral_target_only",
+    expectation_kinds=("access_control", "authorization", "ownership"),
+    parameters=("route_id", "owner_identity", "other_identity"),
+    reviewed_by="security-owner:pending-human-signoff",
+)
+
+
 _SQLI_PAYLOADS = ("' OR '1'='1' --", "' OR 1=1 --", '" OR "1"="1" --')
 
 
@@ -1085,6 +1164,7 @@ _RENDERERS = {
     FIRESTORE_ENUMERATION.ref: _render_firestore_enumeration,
     CONCURRENT_BOUND.ref: _render_concurrent_bound,
     DESTINATION.ref: _render_destination,
+    WRITE_OWNERSHIP.ref: _render_write_ownership,
     SQL_INJECTION.ref: _render_sql_injection,
     PATH_TRAVERSAL.ref: _render_path_traversal,
 }
@@ -1195,6 +1275,19 @@ class CheckLibrary:
                     if str(r.get("method", "GET")).upper() == "GET"
                     and len(_PATH_PARAM.findall(str(r.get("path_template", "")))) <= 1
                 ]
+            elif name == "route_id" and meta.template_id == WRITE_OWNERSHIP.template_id:
+                values[name] = [
+                    describe(r)
+                    for r in routes
+                    if str(r.get("method", "")).upper() in _MUTATING
+                    and (
+                        len(_PATH_PARAM.findall(str(r.get("path_template", "")))) == 1
+                        or (
+                            isinstance(r.get("body_template"), dict)
+                            and "{resource_id}" in r["body_template"].values()
+                        )
+                    )
+                ]
             elif name == "read_route_id" or (
                 name == "route_id" and meta.template_id == OWNERSHIP.template_id
             ):
@@ -1247,6 +1340,7 @@ def default_library() -> CheckLibrary:
     lib.register(FIRESTORE_ENUMERATION)
     lib.register(CONCURRENT_BOUND)
     lib.register(DESTINATION)
+    lib.register(WRITE_OWNERSHIP)
     lib.register(SQL_INJECTION)
     lib.register(PATH_TRAVERSAL)
     return lib

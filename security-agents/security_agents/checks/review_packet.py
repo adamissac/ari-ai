@@ -42,6 +42,11 @@ SAMPLES: dict[str, dict[str, Any]] = {
         "restricted_identity": "bob",
         "permitted_identity": "alice",
     },
+    "access_control.write_ownership@1": {
+        "route_id": "sample_payout",
+        "owner_identity": "alice",
+        "other_identity": "bob",
+    },
     "firestore.owner_isolation@1": {
         "path_id": "user_doc",
         "owner_identity": "alice",
@@ -81,7 +86,7 @@ SAMPLES: dict[str, dict[str, Any]] = {
     },
 }
 # payments-lite has no route that names a destination; the packet renders the destination
-# template against this illustrative one, added to the recipe for the packet only.
+# and write-ownership templates against this illustrative one, added to the recipe for the packet only.
 SAMPLE_ROUTES = [
     {
         "id": "sample_payout",

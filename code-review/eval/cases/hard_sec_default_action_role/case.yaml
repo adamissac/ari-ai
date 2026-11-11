@@ -1,0 +1,9 @@
+category: security_regression
+title: "Add the viewer role and audit log export"
+body: |
+  Adds a read-only viewer role below member, and an export_audit_log handler
+  for owners. can() no longer needs a try/except for lookups.
+expected:
+  defect: true
+  kind: security
+  root_cause: {path: authz/roles.py, symbol: can}

@@ -1,0 +1,7 @@
+category: clean
+title: "Drop the duplicate quantity check in add_line"
+body: |
+  add_line() validated the quantity and then built a Line, which validates it
+  again. Removes the copy in add_line.
+expected:
+  defect: false

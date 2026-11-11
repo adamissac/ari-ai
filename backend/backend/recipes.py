@@ -534,8 +534,19 @@ def problems(recipe: dict[str, Any], harness: str | None, facts: Facts) -> list[
         seen.add(str(rid))
         if (str(route.get("method", "")).upper(), path) not in index:
             out.append(f"route {route.get('method')} {path} is not in the code-intelligence index")
-        if len(_PARAM.findall(path)) != 1:
-            out.append(f"route {rid!r} must have exactly one path parameter")
+        body = route.get("body_template")
+        if str(route.get("method", "")).upper() == "GET":
+            if len(_PARAM.findall(path)) != 1 or body is not None:
+                out.append(f"route {rid!r} must have exactly one path parameter and no body")
+        elif not isinstance(body or {}, dict) or not all(
+            isinstance(v, str) and len(v) <= 100 for v in (body or {}).values()
+        ):
+            out.append(f"route {rid!r}: body_template must map field names to short strings")
+        elif len(_PARAM.findall(path)) + list((body or {}).values()).count("{resource_id}") != 1:
+            out.append(
+                f"route {rid!r} must name the resource once: one path parameter, or one "
+                "body_template field set to {resource_id}"
+            )
         owned = resources.get(route.get("resource"), {})
         missing = sorted(
             set(identities) - {k for k, v in owned.items() if isinstance(v, dict) and v.get("id")}
@@ -556,16 +567,22 @@ def problems(recipe: dict[str, Any], harness: str | None, facts: Facts) -> list[
 
 SYSTEM = """You draft the sandbox build recipe for a Python web application so Ari's \
 security agents can start it in an isolated microVM (no network after package install) and \
-run ownership checks: identity A must read its own resource on a route, identity B must be \
-denied A's resource.
+run ownership checks: identity A must read (or change) its own resource on a route, \
+identity B must be denied A's resource.
 
 You receive the facts a deterministic pass found (app, routes from the code index, tests, \
 dependency pins). Read the code with the tools to learn how requests are authenticated and \
 how data is stored, then submit:
 
-- routes: 1-8 GET routes from the given list (exact method and path_template) whose single \
-path parameter names a resource that belongs to a user/tenant and that the handler scopes to \
-the caller. Give each a snake_case id and a resource kind.
+- routes: 1-8 routes from the given list (exact method and path_template) that act on a \
+resource belonging to a user/tenant and that the handler scopes to the caller. A GET route \
+names the resource in its single path parameter. A POST/PUT/PATCH/DELETE route names it \
+either in its single path parameter or in one request-body field; give such a route a \
+body_template: the JSON body of a request the owner may legitimately send, with the owner's \
+resource id written as "{resource_id}", a second resource of the same kind (e.g. a transfer \
+destination) as "{destination}", a money amount as "{amount}", and every other required \
+field as a fixed valid string. Prefer including the write routes that move or change a \
+user's data. Give each route a snake_case id and a resource kind.
 - identities: exactly two unrelated fixture users, e.g. alice and bob, each with the exact \
 `Authorization` header value the sandbox will send (e.g. "Bearer sbx-alice-session").
 - resources: for every route's resource kind, the id each identity owns.
@@ -587,9 +604,10 @@ Your result is validated deterministically; a rejected result comes back with th
 
 class ProposedRoute(BaseModel):
     id: str = Field(pattern=r"^[a-z][a-z0-9_]{0,31}$")
-    method: str = Field(pattern=r"^GET$")
+    method: str = Field(pattern=r"^(GET|POST|PUT|PATCH|DELETE)$")
     path_template: str = Field(max_length=300)
     resource: str = Field(pattern=r"^[a-z][a-z0-9_]{0,31}$")
+    body_template: dict[str, str] | None = Field(default=None, max_length=12)
 
 
 class Proposal(BaseModel):
@@ -614,7 +632,7 @@ def merge(base: Draft, p: Proposal) -> Draft:
     recipe["sandbox"]["pip"] = list(dict.fromkeys([*recipe["sandbox"]["pip"], *p.pip]))[:60]
     recipe["identities"] = {k: {"auth_header": v} for k, v in p.identities.items()}
     recipe["resources"] = {k: {o: {"id": i} for o, i in v.items()} for k, v in p.resources.items()}
-    recipe["routes"] = [r.model_dump() for r in p.routes]
+    recipe["routes"] = [r.model_dump(exclude_none=True) for r in p.routes]
     return Draft(recipe, p.harness_source, "claude", [*base.notes, *(n[:300] for n in p.notes)])
 
 
@@ -683,11 +701,12 @@ def draft(facts: Facts, gateway: Any | None = None) -> Draft:
     candidates = [
         r
         for r in facts.routes
-        if r["method"] == "GET" and len(_PARAM.findall(r["path_template"])) == 1
+        if len(_PARAM.findall(r["path_template"])) == 1
+        or (r["method"] != "GET" and not _PARAM.findall(r["path_template"]))
     ]
     candidates.sort(key=lambda r: (not r["ownership_signal"], r["path_template"]))
     if not candidates:
-        base.notes.append("No GET route with a single path parameter was found for Probe.")
+        base.notes.append("No route naming a single resource was found for Probe.")
         return base
 
     class Checked(Proposal):

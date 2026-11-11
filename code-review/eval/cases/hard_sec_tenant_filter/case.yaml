@@ -1,0 +1,9 @@
+category: security_regression
+title: "Move document filters into a query module; add title search"
+body: |
+  list_documents() built its filters inline. They now come from
+  docs.query.build_predicates(), which also adds a case-insensitive title search.
+expected:
+  defect: true
+  kind: security
+  root_cause: {path: docs/query.py, symbol: build_predicates}

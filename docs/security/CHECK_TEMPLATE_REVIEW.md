@@ -727,6 +727,60 @@ def test_invalid_destination_is_rejected_and_moves_nothing():
     )
 ```
 
+## access_control.write_ownership@1
+
+- category: `access_control.ownership`; side effects: `ephemeral_target_only`
+- current reviewed_by: `security-owner:pending-human-signoff`
+- parameters: route_id, owner_identity, other_identity
+- renderer_sha256: `b531354e6c88fb90666fc8386adaa067d1df1607e1410e1b7069afa9f0244eed`
+- sample parameters: `{"other_identity": "bob", "owner_identity": "alice", "route_id": "sample_payout"}`
+- rendered_sha256 (sample): `2d0e6a161aed022caa9343e54aca925fd4ab527f420d69f299cccd364aa453e5`
+- imports: decimal, fastapi, json, payments_lite, pytest (within allowlist: True)
+- forbidden tokens in code: none
+
+```python
+"""Generated check: access_control.write_ownership@1
+Rendered by security_agents.checks.library from reviewed template parameters.
+Target is driven in-process through its own app factory; no sockets are opened.
+"""
+
+import json
+from decimal import Decimal
+
+from fastapi.testclient import TestClient
+
+from payments_lite.app import create_app
+
+RESULT = {}
+
+
+def _client():
+    return TestClient(create_app())
+
+import pytest
+
+METHOD = 'POST'
+PATH = '/payouts'
+BODY = {'payment_id': 'pay_a1', 'to': 'pay_b1', 'amount': '1.00'}
+OWNER_HEADERS = {"Authorization": 'Bearer fixture-token-alice'}
+OTHER_HEADERS = {"Authorization": 'Bearer fixture-token-bob'}
+
+
+def test_other_identity_cannot_change_owners_resource():
+    client = _client()
+    attempt = client.request(METHOD, PATH, json=BODY, headers=OTHER_HEADERS)
+    RESULT["other_status"] = attempt.status_code
+    assert attempt.status_code >= 400, (
+        f"a non-owner's {METHOD} on the owner's resource was accepted: {attempt.status_code}"
+    )
+    control = client.request(METHOD, PATH, json=BODY, headers=OWNER_HEADERS)
+    RESULT["owner_status"] = control.status_code
+    if control.status_code >= 400:
+        # The request is rejected for its owner too (wrong body, validation): not evidence.
+        pytest.skip(f"the owner's own request was rejected: {control.status_code}")
+    assert attempt.status_code < 500, f"expected 4xx for a non-owner, observed {attempt.status_code}"
+```
+
 ## input_validation.sql_injection@1
 
 - category: `input_validation.injection`; side effects: `read_only`

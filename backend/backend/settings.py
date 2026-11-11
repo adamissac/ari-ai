@@ -250,7 +250,8 @@ class Settings(BaseSettings):
 
     def model_for(self, agent: str) -> str:
         if self.app_env in ("production", "staging"):
-            return "claude-haiku-5-5"
+            # Fixed per agent, never from the environment (ADR-0015, ADR-0025).
+            return "claude-sonnet-5-5" if agent == "reviewer" else "claude-haiku-5-5"
         for item in filter(None, (p.strip() for p in self.agent_model_overrides.split(","))):
             name, _, model = item.partition("=")
             if name.strip() == agent and model.strip():

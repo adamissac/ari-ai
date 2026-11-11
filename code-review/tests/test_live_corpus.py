@@ -6,6 +6,7 @@ and PR text, and the evaluator scores it afterwards. Caps: ``CODE_REVIEW_LIVE_MA
 per case (default 1.00) and ``CODE_REVIEW_CORPUS_MAX_USD`` overall (default 6.00); the run
 stops before a case that could exceed the overall cap. Writes the report JSON to
 ``CODE_REVIEW_CORPUS_REPORT`` (default ``code-review-corpus-report.json`` in the cwd).
+``CODE_REVIEW_CORPUS_PREFIX`` limits the run to case ids with that prefix (e.g. ``hard_``).
 """
 
 from __future__ import annotations
@@ -38,7 +39,8 @@ def test_live_reviewer_on_the_independent_corpus(tmp_path: Path) -> None:
     per_case = float(os.environ.get("CODE_REVIEW_LIVE_MAX_USD", "1.00"))
     overall = float(os.environ.get("CODE_REVIEW_CORPUS_MAX_USD", "6.00"))
     transport = AnthropicTransport(Settings(_env_file=None, anthropic_api_key=_key()))  # type: ignore[call-arg]
-    cases = ec.load_cases()
+    only = os.environ.get("CODE_REVIEW_CORPUS_PREFIX", "")
+    cases = [c for c in ec.load_cases() if c.id.startswith(only)]
     predictions: dict[str, ec.Prediction] = {}
     spent, rows = 0.0, []
     for case in cases:

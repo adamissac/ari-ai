@@ -30,6 +30,7 @@ before Phase 1 implementation relies on them.
 | [0016](0016-owner-sandbox-approval.md) | Explicit owner approval for sandbox-only scopes | Accepted |
 | [0017](0017-runtime-principal-detection.md) | Runtime principal detection feeds the RL defense (pseudonymous, aggregated) | Accepted |
 | [0024](0024-real-console-recorded-demo.md) | The access-code demo uses the real console with recorded fixtures | Proposed |
+| [0025](0025-sonnet-for-the-reviewer.md) | The code reviewer runs on Claude Sonnet 5.5 in production | Accepted |
 
 ## Process
 
