@@ -105,7 +105,9 @@ h1 { font-weight: 500; }
 .pv-note { margin-top: 12px; font-size: 12px; color: var(--color-faint); }
 
 /* Landing: the top bar sits on the page, not on a tinted band. */
-html[data-home-hero] .site-header { background: transparent; border-bottom: 0; }
+@media (min-width: 640px) { html[data-home-hero] .site-header { background: transparent; border-bottom: 0; } }
+/* Phones: content scrolls under the fixed bar, so it stays solid. */
+@media (max-width: 639px) { html[data-home-hero] .site-header { background: rgb(15 15 16 / 94%); border-bottom: 1px solid var(--glass-line); } }
 .page-title { border-color: var(--glass-line); }
 
 /* Panels and the sidebar: flat graphite, hairline only. */
@@ -119,3 +121,57 @@ html[data-home-hero] .site-header { background: transparent; border-bottom: 0; }
 .marketing-atmosphere::before, .story-rain::before, .footer-glow, .hero-ants { display: none !important; }
 .net-map, .graph-view, .lab-now, .monitor-head, .pricing-card-dark { background: var(--color-panel) !important; }
 .story-panel, .story-card, .story-stat { background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--glass-line); }
+
+/* Ember: static fades and trail lines. Colour sits at the edges and on lines, never under text blocks. */
+:root { --ember: 194 69 45; --ember-hi: 255 138 117; --trail: linear-gradient(90deg, rgb(var(--ember-hi) / 85%), rgb(var(--ember) / 35%) 28%, transparent 72%); }
+:root body, :root:has(.hero-full) body, :root:not(:has(.hero-full)) body {
+  background:
+    radial-gradient(52% 44% at 88% -8%, rgb(var(--ember) / 32%), transparent 72%),
+    radial-gradient(40% 36% at -6% 104%, rgb(var(--ember) / 18%), transparent 70%),
+    var(--color-bg);
+  background-attachment: fixed;
+}
+/* Landing hero: light pools behind the product view and falls away toward the text. */
+:root:has(.hero-full) .hero-stage.hero-full {
+  background:
+    radial-gradient(46% 62% at 76% 48%, rgb(var(--ember) / 46%), transparent 70%),
+    radial-gradient(60% 40% at 50% 112%, rgb(var(--ember) / 24%), transparent 72%),
+    var(--color-bg) !important;
+}
+.pv { position: relative; }
+.pv::before, .panel::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 1px; background: var(--trail); pointer-events: none; }
+:root:not(:has(.hero-full)) .panel { position: relative; overflow: hidden; }
+:root:not(:has(.hero-full)) .panel::before { display: block; opacity: 0.55; }
+/* A trail under each page title and across the top bar. */
+.page-title { border-bottom: 0 !important; background: var(--trail) left bottom / 100% 1px no-repeat; }
+:root:not(:has(.hero-full)) .site-header, body:has(.project-shell) .site-header { border-bottom: 0; background: linear-gradient(90deg, transparent 30%, rgb(var(--ember) / 45%) 78%, rgb(var(--ember-hi) / 70%)) left bottom / 100% 1px no-repeat, var(--color-night); }
+.hero-split h1 br + * , .hero-split h1 { background: none; }
+.hero-split h1::after { content: ""; display: block; width: 180px; height: 2px; margin-top: 24px; border-radius: 2px; background: var(--trail); }
+@media (min-width: 1024px) {
+  .project-shell { background:
+    linear-gradient(180deg, rgb(var(--ember) / 9%), transparent 220px) left top / 247px 100% no-repeat,
+    linear-gradient(90deg, var(--color-night) 0 247px, var(--glass-line) 247px 248px, transparent 248px); }
+  .project-tab[aria-current="page"] { background: linear-gradient(90deg, rgb(var(--ember) / 26%), rgb(var(--ember) / 6%) 60%, transparent), var(--color-panel-2); box-shadow: inset 2px 0 0 rgb(var(--ember-hi)); }
+  .project-shell > .project-body { background: radial-gradient(56% 360px at 100% 0, rgb(var(--ember) / 24%), transparent 100%); }
+}
+.btn-primary { background: rgb(var(--ember)); color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%); }
+.btn-primary:hover { background: #d0503a; }
+.evidence-tag { box-shadow: inset 0 0 0 1px rgb(var(--ember) / 30%); }
+tbody tr:hover, main :is(ol, ul).divide-y > li:hover { background: linear-gradient(90deg, rgb(var(--ember) / 9%), transparent 55%); }
+
+/* Trails across the hero: thin ember streaks that fade out, behind the content. */
+.hero-full { position: relative; }
+.hero-stage.hero-full::after { content: ""; display: block !important; opacity: 1 !important; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, rgb(var(--ember-hi) / 55%) 62%, transparent 96%) 0 31% / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent 18%, rgb(var(--ember) / 60%) 70%, transparent) 0 58% / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent 40%, rgb(var(--ember-hi) / 40%) 82%, transparent) 0 79% / 100% 1px no-repeat;
+  mask-image: linear-gradient(90deg, transparent, #000 45%); -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%); }
+.hero-full .hero-content { position: relative; z-index: 1; }
+/* With a banner above it (demo account), the landing top bar stays in flow instead of covering it. */
+body:has(.demo-banner) html[data-home-hero] .site-header, html[data-home-hero]:has(.demo-banner) .site-header { position: sticky; }
+.marketing-atmosphere { background: transparent !important; }
+.bleed::after, .hero-cover::after { background: transparent !important; }
+.bleed-hero::after { display: none !important; }
+.project-head, .project-tabbar { background: var(--color-night) !important; border-image-source: none !important; }
+@media (min-width: 1024px) { .project-shell > .project-head, .project-shell > .project-tabbar { background: none !important; } }
