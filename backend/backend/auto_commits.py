@@ -731,7 +731,11 @@ def _pr_review_body(
     included = [
         finding
         for finding in finding_docs
-        if strictness == 1 or (finding.get("severity") or {}).get("level") in thresholds[strictness]
+        if finding.get("status") != "closed"  # resolved, or a duplicate of a listed finding
+        and (
+            strictness == 1
+            or (finding.get("severity") or {}).get("level") in thresholds[strictness]
+        )
     ]
     origin = get_settings().frontend_origin.rstrip("/")
     lines = [

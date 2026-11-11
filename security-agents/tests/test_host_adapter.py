@@ -1081,3 +1081,60 @@ def test_only_read_and_sandboxed_run_tools_may_run_concurrently(intel, registry)
     assert flags["tests__run"] and flags["code__read_span"] and flags["worktree__diff"]
     assert not flags["worktree__edit_file"] and not flags["worktree__write_file"]
     assert not flags["patch__apply_fresh"]
+
+
+def _stored(fid, actor, status, path, lo, hi, cwe=None, kind="security"):
+    return SimpleNamespace(
+        id=fid,
+        kind=kind,
+        status=status,
+        history=[SimpleNamespace(actor=actor)],
+        evidence=[SimpleNamespace(path=path, span=SimpleNamespace(start_line=lo, end_line=hi))],
+        standards=SimpleNamespace(cwe=SimpleNamespace(id=cwe)) if cwe else None,
+    )
+
+
+def test_reviewer_concern_covered_by_an_agent_finding_is_a_duplicate():
+    from security_agents.host_adapter import reviewer_duplicates
+
+    agent = _stored("fnd_agent", "agent:orchestrator", "hardened", "app.py", 70, 82, "CWE-639")
+    findings = [
+        agent,
+        _stored("fnd_same", "agent:reviewer", "hypothesis", "app.py", 75, 78, "CWE-862"),
+        _stored("fnd_no_cwe", "agent:reviewer", "hypothesis", "app.py", 82, 90),
+        # left alone: another weakness, another place, another file, already tested, functional
+        _stored("fnd_sqli", "agent:reviewer", "hypothesis", "app.py", 75, 78, "CWE-89"),
+        _stored("fnd_below", "agent:reviewer", "hypothesis", "app.py", 83, 90, "CWE-639"),
+        _stored("fnd_file", "agent:reviewer", "hypothesis", "store.py", 75, 78, "CWE-639"),
+        _stored("fnd_done", "agent:reviewer", "inconclusive", "app.py", 75, 78, "CWE-639"),
+        _stored("fnd_func", "agent:reviewer", "hypothesis", "app.py", 75, 78, kind="functional"),
+    ]
+    assert reviewer_duplicates(findings) == [("fnd_same", "fnd_agent"), ("fnd_no_cwe", "fnd_agent")]
+    agent.status = "closed"
+    assert reviewer_duplicates(findings) == []
+
+
+def test_settle_closes_reviewer_duplicates_with_a_pointer_to_the_tested_finding():
+    from security_agents.host_adapter import HostSink
+
+    calls = []
+
+    class Host:
+        def findings(self):
+            return [
+                _stored("fnd_agent", "agent:orchestrator", "validated", "app.py", 70, 82, "CWE-639"),
+                _stored("fnd_dup", "agent:reviewer", "hypothesis", "app.py", 75, 78, "CWE-639"),
+            ]
+
+        def set_finding_status(self, finding_id, status, *, actor, reason=None):
+            calls.append((finding_id, status, actor, reason))
+
+    HostSink(Host(), "a" * 40).settle([], 0.0)
+    assert calls == [
+        (
+            "fnd_dup",
+            "closed",
+            "agent:orchestrator",
+            "duplicate of fnd_agent: same weakness at the same code location, tested there",
+        )
+    ]

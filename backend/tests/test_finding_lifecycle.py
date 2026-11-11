@@ -95,3 +95,36 @@ def test_illegal_edges_and_unbacked_claims_are_refused(host_and_finding) -> None
     host.set_finding_status(fid, "accepted_risk", actor="user:usr_reviewer1")  # human, any time
     with pytest.raises(HostError):
         host.set_finding_status("fnd_notmine000", "closed", actor="agent:orchestrator")
+
+
+def test_a_reviewer_concern_the_agents_already_cover_is_closed_as_a_duplicate(
+    host_and_finding,
+) -> None:
+    from security_agents.host_adapter import HostSink
+    from shared.findings import StatusChange
+
+    alice, host, fid = host_and_finding
+    now = utcnow()
+    concern = host.findings()[0].model_copy(
+        update={
+            "id": new_id(IdPrefix.fnd),
+            "title": "[CWE-862] account read without an owner check",
+            "history": [
+                StatusChange(
+                    from_status=None,
+                    to_status=FindingStatus.hypothesis,
+                    at=now,
+                    actor="agent:reviewer",
+                    reason="handoff to scout",
+                )
+            ],
+        }
+    )
+    host.record_finding(concern, actor="agent:reviewer")
+
+    HostSink(host, "b" * 40).settle([], 0.0)
+
+    closed = alice.get(f"/api/v1/findings/{concern.id}").json()["finding"]
+    assert closed["status"] == "closed"
+    assert closed["history"][-1]["reason"].startswith(f"duplicate of {fid}:")
+    assert alice.get(f"/api/v1/findings/{fid}").json()["finding"]["status"] == "hypothesis"

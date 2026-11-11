@@ -415,6 +415,60 @@ def _handler(ctx: ToolContext, registry: ToolRegistry, record: StepRecord, name:
 # --------------------------------------------------------------------------- sink
 
 
+_REVIEWER = "agent:reviewer"
+# CWEs the reviewer and Scout use interchangeably for one missing or wrong access check.
+_ACCESS_CONTROL_CWES = frozenset({"CWE-284", "CWE-285", "CWE-566", "CWE-639", "CWE-862", "CWE-863"})
+
+
+def _spans(finding: Any) -> list[tuple[str, int, int]]:
+    out = []
+    for e in getattr(finding, "evidence", None) or []:
+        span = getattr(e, "span", None)
+        if getattr(e, "path", None) and span is not None:
+            out.append((str(e.path), int(span.start_line), int(span.end_line)))
+    return out
+
+
+def _cwe(finding: Any) -> str | None:
+    cwe = getattr(getattr(finding, "standards", None), "cwe", None)
+    return str(cwe.id) if cwe is not None else None
+
+
+def reviewer_duplicates(findings: list[Any]) -> list[tuple[str, str]]:
+    """(reviewer finding id, agent finding id) for each untested reviewer security concern
+    that a security-agent finding already covers: overlapping source lines and the same
+    weakness (equal CWE, both access-control CWEs, or no CWE on the reviewer's). The reviewer
+    runs beside Scout, so both can report one defect; a concern with a different weakness or
+    location is a separate suspicion and is left alone."""
+
+    def by_reviewer(f: Any) -> bool:
+        history = getattr(f, "history", None) or []
+        return bool(history) and getattr(history[0], "actor", None) == _REVIEWER
+
+    security = [f for f in findings if _enum_value(getattr(f, "kind", "")) == "security"]
+    agent = [f for f in security if not by_reviewer(f) and _enum_value(f.status) != "closed"]
+    pairs = []
+    for mine in security:
+        if not by_reviewer(mine) or _enum_value(mine.status) != "hypothesis":
+            continue
+        cwe = _cwe(mine)
+        for other in agent:
+            theirs = _cwe(other)
+            same_weakness = (
+                cwe is None
+                or cwe == theirs
+                or (cwe in _ACCESS_CONTROL_CWES and theirs in _ACCESS_CONTROL_CWES)
+            )
+            if same_weakness and any(
+                p == q and lo <= q_hi and q_lo <= hi
+                for p, lo, hi in _spans(mine)
+                for q, q_lo, q_hi in _spans(other)
+            ):
+                pairs.append((str(mine.id), str(other.id)))
+                break
+    return pairs
+
+
 _REVIEW_JOIN_STATES = (
     AssessmentState.AWAITING_APPROVAL,
     AssessmentState.REPORTING,
@@ -499,6 +553,13 @@ class HostSink(AssessmentSink):
         self.join_review()
         for finding in findings:
             self.set_status(finding.finding_id, finding.status)
+        finder = getattr(self.host, "findings", None)
+        for duplicate, original in reviewer_duplicates(finder() if callable(finder) else []):
+            self.set_status(
+                duplicate,
+                "closed",
+                f"duplicate of {original}: same weakness at the same code location, tested there",
+            )
         delta = round(float(sandbox_seconds) - self.sandbox_charged, 3)
         charge = getattr(self.host, "charge", None)
         if delta > 0 and charge is not None:

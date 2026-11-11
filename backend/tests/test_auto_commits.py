@@ -1195,6 +1195,21 @@ def test_pr_review_body_reports_empty_strictness_match():
     assert "No findings at this strictness." in body
 
 
+def test_pr_review_body_leaves_out_closed_findings():
+    from backend.auto_commits import _pr_review_body
+
+    body, count = _pr_review_body(
+        "asm_test",
+        "prj_test",
+        [
+            {"title": "Tested", "status": "validated", "evidence": []},
+            {"title": "Reviewer copy", "status": "closed", "evidence": []},
+        ],
+        1,
+    )
+    assert count == 1 and "Tested" in body and "Reviewer copy" not in body
+
+
 def seed_pr_assessment(ids, bob):
     from shared.base import utcnow
     from shared.ids import IdPrefix, new_id
