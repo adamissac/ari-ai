@@ -56,27 +56,27 @@ coding agents (Claude Code etc.) that build this repository — see
 
 ```
 docs/               Specifications, architecture, agent contracts, planning, research
-frontend/           Next.js + TypeScript dashboard (not yet implemented)
-backend/            FastAPI control-plane API (not yet implemented)
-code-intelligence/  Repository indexing, symbol/call graphs, retrieval (not yet implemented)
-code-review/        Functional review + candidate repair engine (not yet implemented)
-security-agents/    Seven-agent runtime + orchestrator + tool registry (not yet implemented)
-rl-defense/         Gymnasium env, Double DQN, baselines, evaluation (not yet implemented)
-monitoring/         Event ingestion, correlation, scheduling (not yet implemented)
-shared/             Cross-subsystem contracts (Pydantic → JSON Schema → TS) (not yet implemented)
-tests/              Cross-subsystem integration / e2e suites (not yet implemented)
-scripts/            Developer tooling (not yet implemented)
-examples/           Deliberately vulnerable demo targets (not yet implemented)
+frontend/           Next.js + TypeScript console and landing page
+backend/            FastAPI control-plane API, worker, GitHub App integration
+code-intelligence/  Repository indexing, symbol/call graphs, retrieval
+code-review/        Functional review + candidate repair engine
+security-agents/    Seven-agent runtime + orchestrator + tool registry
+rl-defense/         Gymnasium env, Double DQN, baselines, evaluation
+monitoring/         Event ingestion, correlation, scheduling
+shared/             Cross-subsystem contracts (Pydantic → JSON Schema → TS)
+tests/              Cross-subsystem integration / e2e suites
+scripts/            Developer tooling
+examples/           Deliberately vulnerable demo targets
 ```
 
-Each directory's README defines its future responsibilities, interfaces, and dependencies.
+Each directory's README defines its responsibilities, interfaces, and dependencies.
 
-## Proposed stack (to be validated — see [ADRs](docs/decisions/README.md))
+## Stack (see [ADRs](docs/decisions/README.md))
 
 Next.js · React · TypeScript · Tailwind | Python · FastAPI · Pydantic v2 |
 Anthropic Claude (model id configurable, default `claude-haiku-5-5`) |
-Tree-sitter | PostgreSQL | Docker-isolated sandboxes | PyTorch · Gymnasium · Double DQN |
-Vercel (frontend) · Railway (backend) — not provisioned.
+Tree-sitter | PostgreSQL | Docker or Vercel Sandbox isolation | PyTorch · Gymnasium · Double DQN |
+Vercel (frontend) · Railway (backend + PostgreSQL).
 
 ## Current implementation status
 
@@ -89,7 +89,7 @@ Vercel (frontend) · Railway (backend) — not provisioned.
 | Frontend console (assessments, findings, approvals, scopes, expectations, monitoring, incidents, settings, Defense Lab) | ✅ implemented; browser e2e against the real local stack with scripted (non-live) model transports |
 | Functional remediation pause/resume, hardened Docker sandbox proof, unified M7 demo | 🚧 in progress (see [coordination/MILESTONES.md](coordination/MILESTONES.md)) |
 | CI | ✅ GitHub Actions workflows in [.github/workflows](.github/workflows) |
-| Infrastructure / deployment | ❌ Not provisioned |
+| Infrastructure / deployment | ✅ Hosted pilot: frontend on Vercel, backend and PostgreSQL on Railway ([runbook](docs/deploy/RAILWAY_AND_GITHUB_APP.md)) |
 | License | Proprietary, all rights reserved (interim) — [LICENSE](LICENSE), [LICENSE-DECISION.md](LICENSE-DECISION.md) |
 
 ## Contributing & security

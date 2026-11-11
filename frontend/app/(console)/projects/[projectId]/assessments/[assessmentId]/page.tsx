@@ -16,6 +16,7 @@ import { shortSha, usd } from '@/lib/format';
 import { assessmentPhases, EVENT_LOG_PAGE_NOTE, fullEventLog, JOURNEY_STATUS } from '@/lib/journey';
 import { currentPhaseSentence } from '@/lib/phase';
 import { agentRelay, earlyEndNote, providerNote } from '@/lib/relay';
+import { reportLinks } from '@/lib/reports';
 import { useResource } from '@/lib/use-resource';
 import {
   agentRole, ASSESSMENT_STATE, FINDING_STATUS, hasNonLiveModelTurns, providerLabel,
@@ -132,6 +133,7 @@ export default function AssessmentPage() {
   if (!detail) return <Loading label="Loading assessment" />;
   const a = detail.assessment;
   const terminal = TERMINAL_STATES.has(a.state);
+  const reports = reportLinks(events);
   const relay = agentRelay({ runs: detail.agent_runs, findings: detail.findings, state: a.state, approvals: relayApprovals, skipNote });
 
   return (
@@ -156,6 +158,11 @@ export default function AssessmentPage() {
       )}
       <AssessmentOutcome assessment={a} findings={detail.findings} runs={detail.agent_runs} approvals={relayApprovals} relay={relay} skipNote={skipNote} projectId={project.id} />
       <ProviderSummary runs={detail.agent_runs} />
+      {reports.length > 0 && (
+        <p className="mb-4 text-sm text-muted" data-testid="assessment-reports">
+          Reports: {reports.map((r, i) => <span key={r.href}>{i > 0 && ' · '}<a href={r.href} download className="text-brand hover:underline" data-testid={r.testid}>{r.label}</a></span>)}
+        </p>
+      )}
       {a.state === 'AWAITING_APPROVAL' && <ApprovalGate projectId={project.id} events={events} findings={detail?.findings ?? []} onDecided={() => loadDetail()} />}
       <div className="mt-4">
         <AgentRelay

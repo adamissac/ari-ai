@@ -62,8 +62,8 @@ function Cta({ href, children, tone }: { href: string; children: string; tone: '
 export default function PricingPage() {
   return (
     <div className="pricing marketing-atmosphere">
-      <header className="hero-ink bleed-hero -mt-6 px-6 pb-20 pt-16 md:px-12 md:pb-28 md:pt-24" aria-labelledby="pricing-title">
-        <div className="mx-auto max-w-7xl">
+      <header className="hero-ink bleed-hero -mt-6 pb-20 pt-16 md:pb-28 md:pt-24" aria-labelledby="pricing-title">
+        <div className="mx-auto max-w-7xl px-4">
           <h1 id="pricing-title" className="display text-5xl font-semibold md:text-7xl">{BRAND_NAME} pricing</h1>
           <p className="mt-4 max-w-xl text-sm text-white/70 md:text-base">Know what every change does, prove every fix, and keep checking as your code moves.</p>
           <p className="mt-3 text-xs text-white/60" data-testid="pricing-proposal">Hackathon preview: plans are proposals, nothing can be purchased.</p>

@@ -61,21 +61,23 @@ export default function ConnectOrgsPage() {
             </>
           );
         })()}
-        <Details summary="Permissions and what happens next">
-          <ul className="flex flex-col gap-1">
-            <li><strong className="font-medium text-ink">Contents</strong>: read code to review; write only to open the build-recipe PR and fix PRs you approve.</li>
-            <li><strong className="font-medium text-ink">Pull requests</strong>: open those PRs and leave review comments if you turn comments on.</li>
-            <li><strong className="font-medium text-ink">Events</strong>: used only for reviews you enable; automatic reviews are off by default.</li>
-          </ul>
-          <section aria-label="What happens next" data-testid="connect-next-steps">
-            <h2 className="label-mono mb-2 text-muted">What happens when you connect a repository</h2>
-            <ol className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-              <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">1 · No check runs yet</p><p className="mt-1 text-muted">Connecting records the repository. If it has no build recipe, Ari proposes one as a pull request on <code className="font-mono text-xs">ari/build-recipe</code> for you to merge or close. No tests run and nothing is pushed to your default branch.</p></li>
-              <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">2 · You answer eight setup questions</p><p className="mt-1 text-muted">Including whether to approve sandbox testing for 30 days and how verified fixes reach you. Automatic reviews stay off unless you turn them on.</p></li>
-              <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">3 · You start the first check</p><p className="mt-1 text-muted">The agents review one commit in an isolated copy and record findings with evidence. You approve any fix before it is built.</p></li>
-            </ol>
-          </section>
-        </Details>
+        <div className="mt-4">
+          <Details summary="Permissions and what happens next">
+            <ul className="flex flex-col gap-1">
+              <li><strong className="font-medium text-ink">Contents</strong>: read code to review; write only to open the build-recipe PR and fix PRs you approve.</li>
+              <li><strong className="font-medium text-ink">Pull requests</strong>: open those PRs and leave review comments if you turn comments on.</li>
+              <li><strong className="font-medium text-ink">Events</strong>: used only for reviews you enable; automatic reviews are off by default.</li>
+            </ul>
+            <section aria-label="What happens next" data-testid="connect-next-steps">
+              <h2 className="label-mono mb-2 text-muted">What happens when you connect a repository</h2>
+              <ol className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+                <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">1 · No check runs yet</p><p className="mt-1 text-muted">Connecting records the repository. If it has no build recipe, Ari proposes one as a pull request on <code className="font-mono text-xs">ari/build-recipe</code> for you to merge or close. No tests run and nothing is pushed to your default branch.</p></li>
+                <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">2 · You answer eight setup questions</p><p className="mt-1 text-muted">Including whether to approve sandbox testing for 30 days and how verified fixes reach you. Automatic reviews stay off unless you turn them on.</p></li>
+                <li className="rounded-lg border border-line p-3"><p className="font-medium text-ink">3 · You start the first check</p><p className="mt-1 text-muted">The agents review one commit in an isolated copy and record findings with evidence. You approve any fix before it is built.</p></li>
+              </ol>
+            </section>
+          </Details>
+        </div>
       </div>
     </SetupLayout>
   );
