@@ -12,6 +12,8 @@ for the HackATL demo, integration tests and evaluation
 | Path | What | Task |
 |---|---|---|
 | `payments-lite/` ✅ | Small FastAPI service (customers, payments, refunds) with seeded synthetic users; one planted functional bug (refund can exceed original amount) and one planted authorization weakness (a payment-detail route lacks the ownership check its siblings have); a passing but incomplete test suite; `labels.yaml`; sandbox build recipe | DEMO-001 |
+| `inventory-lite/` ✅ | Second small FastAPI fixture (workspaces, items, transfers); one planted ownership weakness | pilot rehearsal |
+| `helpdesk-lite/` ✅ | Harder fixture: eleven modules, four planted weaknesses (ownership, missing sign-in, SQL injection, path traversal), each with a correct lookalike | evaluation |
 | `fixtures/clean-*/` | Small apps without planted issues (negatives) | later |
 | `fixtures/bad-patches/` | Patches Verify must reject | SEC-010 |
 
