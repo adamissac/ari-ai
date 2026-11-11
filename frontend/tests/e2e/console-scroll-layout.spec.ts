@@ -3,7 +3,7 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { completeSetup, env, newUser } from './helpers';
 
-test('console header and tab band stay stacked while scrolling Analytics', async ({ browser }) => {
+test('console navigation stays in place while Analytics scrolls', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
   const projectId = env('E2E_PROJECT_ID');
   const repoId = env('E2E_REPO_ID');
@@ -17,6 +17,18 @@ test('console header and tab band stay stacked while scrolling Analytics', async
     await expect(page.getByRole('heading', { name: 'Analytics', exact: true })).toBeVisible();
     await expect(page.getByText('Checks run', { exact: true })).toBeVisible();
     await page.waitForTimeout(300);
+
+    if (width >= 1024) {
+      // Sidebar layout: the page itself never scrolls; the content column does.
+      const before = await page.locator('.project-tabbar').evaluate(el => Math.round(el.getBoundingClientRect().top));
+      await page.locator('.project-body').evaluate(el => el.scrollTo(0, 300));
+      await expect.poll(() => page.locator('.project-body').evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+      expect(await page.evaluate(() => window.scrollY)).toBe(0);
+      expect(await page.locator('.site-header').evaluate(el => Math.round(el.getBoundingClientRect().top))).toBe(0);
+      expect(await page.locator('.project-tabbar').evaluate(el => Math.round(el.getBoundingClientRect().top))).toBe(before);
+      if (captureDir) await page.screenshot({ path: path.join(captureDir, `analytics-${width}-scroll-300.png`), fullPage: false });
+      continue;
+    }
 
     for (const scrollY of [50, 300]) {
       await page.evaluate(y => window.scrollTo(0, y), scrollY);
@@ -56,7 +68,6 @@ test('console header and tab band stay stacked while scrolling Analytics', async
       expect(Number(layout.siteHeader?.zIndex)).toBeGreaterThan(Number(layout.tabBand?.zIndex));
       expect(layout.tabBand?.position).toBe('sticky');
       expect(layout.tabBand!.top).toBeGreaterThanOrEqual(layout.siteHeader!.bottom);
-      expect(layout.tabBand?.borderImageSource).not.toBe('none');
       expect(layout.tabBand?.backgroundAlpha).toBeGreaterThanOrEqual(0.95);
       expect(layout.tabBand?.backdropFilter).toBe('none');
       if (scrollY === 300) {

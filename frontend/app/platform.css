@@ -1,0 +1,178 @@
+/* Platform pass: graphite surfaces, one ember accent, an app shell with a sidebar.
+   Loaded last so it settles the look in one place.
+   shortcut: this overrides the older ember-wash rules in globals.css instead of deleting them;
+   delete those rules once this direction is approved. */
+
+:root:not(:has(.hero-full)), :root:has(.hero-full) {
+  --color-bg: #141415;
+  --color-panel: #19191b;
+  --color-panel-2: #232325;
+  --color-line: #2b2b2e;
+  --color-control: #6f6f76;
+  --color-ink: #ededed;
+  --color-ink-2: #dededf;
+  --color-muted: #a1a1a6;
+  --color-faint: #85858b;
+  --color-night: #0f0f10;
+  --color-brand-soft: #2a1c19;
+  --glass: rgb(255 255 255 / 3%);
+  --glass-line: rgb(255 255 255 / 8%);
+  --font-display: var(--font-sans);
+  --ui-radius: 10px;
+}
+:root body, :root:has(.hero-full) body, :root:not(:has(.hero-full)) body { background: var(--color-bg); }
+
+/* Nothing drifts, glows or blurs behind the content. */
+.ambient, .hero-orbs, .hero-glow, .hero-colony, .route-veil, .intro { display: none !important; }
+body * { text-transform: none !important; text-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.hero-headline .hero-line::before { display: none !important; }
+:root:has(.hero-full) .hero-ink, :root:not(:has(.hero-full)) .hero-ink { background: var(--color-bg); }
+:root:not(:has(.hero-full)) main .hero-ink { box-shadow: inset 0 0 0 1px var(--glass-line); background: var(--color-panel); }
+:root:not(:has(.hero-full)) main a:is(.rounded-xl, .rounded-2xl).border,
+:root:not(:has(.hero-full)) .demo-card,
+:root:not(:has(.hero-full)) main .bg-white:not(a, button) { background: var(--color-panel); }
+:root:not(:has(.hero-full)) :is(input, select, textarea):not([type="checkbox"], [type="radio"], [type="range"]) { background-color: var(--color-night); }
+
+/* Type: one family, sentence case, weight carries less than size. */
+.label-mono, .kicker, .site-header nav a, .hx-tag, .hx-stages, .story-pill { letter-spacing: 0 !important; }
+h1, h2, h3, .display { letter-spacing: -0.01em; }
+h1 { font-weight: 500; }
+.tabular-nums, table td, .font-mono { font-variant-numeric: tabular-nums; }
+
+/* Top bar: dense and flat. */
+:root:not(:has(.hero-full)) .site-header, body:has(.project-shell) .site-header { background: var(--color-night); border-bottom: 1px solid var(--glass-line); }
+/* Below 1024px the sticky tab band is positioned from the old bar height, so the bar keeps it there. */
+@media (min-width: 1024px) { .site-header-inner { min-height: 56px; padding-block: 0; } }
+.site-header nav a { font-size: 13px; border-radius: 8px; }
+.site-header nav a[aria-current="page"] { box-shadow: none; background: var(--color-panel-2); text-decoration: none; }
+
+/* Console shell: fixed sidebar, content scrolls beside it. */
+@media (min-width: 1024px) {
+  body:has(.project-shell) { display: flex; height: 100vh; flex-direction: column; overflow: hidden; }
+  body:has(.project-shell) .site-header { position: static; flex: none; }
+  body:has(.project-shell) .site-header-inner { max-width: none; }
+  body:has(.project-shell) .site-main { display: block; min-height: 0; max-width: none; flex: 1; padding: 0; margin: 0; width: 100%; }
+  body:has(.project-shell) :is(.night-footer, footer) { display: none; }
+  .project-shell { display: grid; height: 100%; grid-template-columns: 248px minmax(0, 1fr); grid-template-rows: auto auto 1fr;
+    background: linear-gradient(90deg, var(--color-night) 0 247px, var(--glass-line) 247px 248px, transparent 248px); }
+  .project-shell > * { grid-column: 2; }
+  .project-shell > .project-head { grid-column: 1; grid-row: 1; flex-direction: column; align-items: flex-start; gap: 12px; margin: 0; padding: 20px 16px 12px; background: none !important; border-image-source: none !important; border-image-outset: 0 !important; z-index: auto; }
+  .project-shell > .project-head > div { flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; }
+  .project-shell > .project-head select { width: 100%; }
+  .project-shell > .project-tabbar { grid-column: 1; grid-row: 2 / -1; position: static; flex-direction: column; align-items: stretch; align-self: start; margin: 0; padding: 4px 8px 16px; background: none !important; border-image-source: none !important; border-image-outset: 0 !important; z-index: auto; }
+  .project-tab-scroll { flex-direction: column; gap: 2px; overflow: visible; }
+  .project-tab { position: relative; min-height: 34px; width: 100%; padding: 0 10px; border-radius: 8px; font-size: 14px; font-weight: 400; color: var(--color-muted); }
+  .project-tab::after { display: none; }
+  .project-tab:hover { background: var(--color-panel); }
+  .project-tab[aria-current="page"] { background: var(--color-panel-2); color: var(--color-ink); box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%); }
+  .project-more { margin-top: 2px; }
+  .project-more-button { height: 34px; }
+  .project-more-chevron { margin-left: auto; }
+  .project-more-menu { position: static; width: auto; max-width: none; border: 0; background: none; box-shadow: none; padding: 2px 0 0 26px; }
+  .project-more-menu a { padding: 6px 10px; border-radius: 8px; }
+  .project-shell > .project-body { grid-column: 2; grid-row: 1 / -1; overflow-y: auto; padding: 28px 32px 64px; }
+  .project-shell > .project-body > * { max-width: 1240px; }
+}
+
+/* Landing hero: text beside a real product view. */
+.hero-split { display: grid; gap: 48px; align-items: center; text-align: left; }
+@media (min-width: 1024px) { .hero-split { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 64px; } }
+.hero-split h1 { font-size: clamp(2.25rem, 4.6vw, 4rem); line-height: 1.04; font-weight: 500; letter-spacing: -0.03em; color: var(--color-ink); }
+.hero-split .hero-sub { margin-top: 20px; max-width: 34rem; font-size: 18px; line-height: 28px; color: var(--color-muted); }
+.btn-primary, .btn-quiet { display: inline-flex; height: 44px; align-items: center; border-radius: 10px; padding: 0 18px; font-size: 15px; font-weight: 500; transition: background-color 150ms var(--ease-out); }
+.btn-primary { background: #ededed; color: #141415; box-shadow: inset 0 1px 0 rgb(255 255 255 / 40%); }
+.btn-primary:hover { background: #fff; }
+.btn-quiet { background: var(--color-panel-2); color: var(--color-ink); box-shadow: inset 0 0 0 1px var(--glass-line); }
+.btn-quiet:hover { background: #2b2b2e; }
+
+.pv { overflow: hidden; border-radius: 16px; background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--glass-line), 0 32px 64px -40px rgb(0 0 0 / 80%); font-size: 13px; color: var(--color-ink); }
+.pv-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--glass-line); color: var(--color-muted); }
+.pv-bar b { font-weight: 500; color: var(--color-ink); }
+.pv-steps { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 12px 16px; border-bottom: 1px solid var(--glass-line); color: var(--color-muted); }
+.pv-steps span::before { content: "✓"; margin-right: 6px; color: var(--color-ok); }
+.pv-body { padding: 16px; }
+.pv-title { font-size: 15px; line-height: 22px; font-weight: 500; }
+.pv-meta { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 12px; color: var(--color-muted); }
+.pv-meta .pv-high { color: var(--color-ember); }
+.pv-diff { margin-top: 14px; overflow-x: auto; border-radius: 8px; background: var(--color-night); box-shadow: inset 0 0 0 1px var(--glass-line); font-family: var(--font-mono); font-size: 12px; line-height: 20px; }
+.pv-diff div { padding: 0 12px; white-space: pre; }
+.pv-diff .pv-del { background: rgb(229 72 77 / 12%); color: #f1a5a7; }
+.pv-diff .pv-add { background: rgb(76 195 138 / 12%); color: #9fe0bf; }
+.pv-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--glass-line); }
+.pv-ok { color: var(--color-ok); font-weight: 500; }
+/* Signature: a claim carries the test that proved it. */
+.evidence-tag { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 2px 8px; background: var(--color-panel-2); box-shadow: inset 0 0 0 1px var(--glass-line); font-family: var(--font-mono); font-size: 12px; line-height: 18px; color: var(--color-muted); }
+.evidence-tag::before { content: "✓"; color: var(--color-ok); }
+.pv-note { margin-top: 12px; font-size: 12px; color: var(--color-faint); }
+
+/* Landing: the top bar sits on the page, not on a tinted band. */
+@media (min-width: 640px) { html[data-home-hero] .site-header { background: transparent; border-bottom: 0; } }
+/* Phones: content scrolls under the fixed bar, so it stays solid. */
+@media (max-width: 639px) { html[data-home-hero] .site-header { background: rgb(15 15 16 / 94%); border-bottom: 1px solid var(--glass-line); } }
+.page-title { border-color: var(--glass-line); }
+
+/* Panels and the sidebar: flat graphite, hairline only. */
+:root:not(:has(.hero-full)) .panel { background: var(--color-panel); background-image: none; border-color: var(--glass-line); }
+:root:not(:has(.hero-full)) .panel::before, :root:not(:has(.hero-full)) .panel::after { display: none; }
+.project-shell > .project-head { box-shadow: none; }
+@media (min-width: 1024px) { .project-tab, .project-tab[aria-current="page"] { border: 0; } }
+:root:not(:has(.hero-full)) .bg-brand { background-color: var(--color-brand); }
+
+/* Marketing and lab surfaces: same graphite, no atmosphere layers. */
+.marketing-atmosphere::before, .story-rain::before, .footer-glow, .hero-ants { display: none !important; }
+.net-map, .graph-view, .lab-now, .monitor-head, .pricing-card-dark { background: var(--color-panel) !important; }
+.story-panel, .story-card, .story-stat { background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--glass-line); }
+
+/* Ember: static fades and trail lines. Colour sits at the edges and on lines, never under text blocks. */
+:root { --ember: 194 69 45; --ember-hi: 255 138 117; --trail: linear-gradient(90deg, rgb(var(--ember-hi) / 85%), rgb(var(--ember) / 35%) 28%, transparent 72%); }
+:root body, :root:has(.hero-full) body, :root:not(:has(.hero-full)) body {
+  background:
+    radial-gradient(52% 44% at 88% -8%, rgb(var(--ember) / 32%), transparent 72%),
+    radial-gradient(40% 36% at -6% 104%, rgb(var(--ember) / 18%), transparent 70%),
+    var(--color-bg);
+  background-attachment: fixed;
+}
+/* Landing hero: light pools behind the product view and falls away toward the text. */
+:root:has(.hero-full) .hero-stage.hero-full {
+  background:
+    radial-gradient(46% 62% at 76% 48%, rgb(var(--ember) / 46%), transparent 70%),
+    radial-gradient(60% 40% at 50% 112%, rgb(var(--ember) / 24%), transparent 72%),
+    var(--color-bg) !important;
+}
+.pv { position: relative; }
+.pv::before, .panel::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 1px; background: var(--trail); pointer-events: none; }
+:root:not(:has(.hero-full)) .panel { position: relative; overflow: hidden; }
+:root:not(:has(.hero-full)) .panel::before { display: block; opacity: 0.55; }
+/* A trail under each page title and across the top bar. */
+.page-title { border-bottom: 0 !important; background: var(--trail) left bottom / 100% 1px no-repeat; }
+:root:not(:has(.hero-full)) .site-header, body:has(.project-shell) .site-header { border-bottom: 0; background: linear-gradient(90deg, transparent 30%, rgb(var(--ember) / 45%) 78%, rgb(var(--ember-hi) / 70%)) left bottom / 100% 1px no-repeat, var(--color-night); }
+.hero-split h1 br + * , .hero-split h1 { background: none; }
+.hero-split h1::after { content: ""; display: block; width: 180px; height: 2px; margin-top: 24px; border-radius: 2px; background: var(--trail); }
+@media (min-width: 1024px) {
+  .project-shell { background:
+    linear-gradient(180deg, rgb(var(--ember) / 9%), transparent 220px) left top / 247px 100% no-repeat,
+    linear-gradient(90deg, var(--color-night) 0 247px, var(--glass-line) 247px 248px, transparent 248px); }
+  .project-tab[aria-current="page"] { background: linear-gradient(90deg, rgb(var(--ember) / 26%), rgb(var(--ember) / 6%) 60%, transparent), var(--color-panel-2); box-shadow: inset 2px 0 0 rgb(var(--ember-hi)); }
+  .project-shell > .project-body { background: radial-gradient(56% 360px at 100% 0, rgb(var(--ember) / 24%), transparent 100%); }
+}
+.btn-primary { background: rgb(var(--ember)); color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%); }
+.btn-primary:hover { background: #d0503a; }
+.evidence-tag { box-shadow: inset 0 0 0 1px rgb(var(--ember) / 30%); }
+tbody tr:hover, main :is(ol, ul).divide-y > li:hover { background: linear-gradient(90deg, rgb(var(--ember) / 9%), transparent 55%); }
+
+/* Trails across the hero: thin ember streaks that fade out, behind the content. */
+.hero-full { position: relative; }
+.hero-stage.hero-full::after { content: ""; display: block !important; opacity: 1 !important; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, rgb(var(--ember-hi) / 55%) 62%, transparent 96%) 0 31% / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent 18%, rgb(var(--ember) / 60%) 70%, transparent) 0 58% / 100% 1px no-repeat,
+    linear-gradient(90deg, transparent 40%, rgb(var(--ember-hi) / 40%) 82%, transparent) 0 79% / 100% 1px no-repeat;
+  mask-image: linear-gradient(90deg, transparent, #000 45%); -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%); }
+.hero-full .hero-content { position: relative; z-index: 1; }
+/* With a banner above it (demo account), the landing top bar stays in flow instead of covering it. */
+body:has(.demo-banner) html[data-home-hero] .site-header, html[data-home-hero]:has(.demo-banner) .site-header { position: sticky; }
+.marketing-atmosphere { background: transparent !important; }
+.bleed::after, .hero-cover::after { background: transparent !important; }
+.bleed-hero::after { display: none !important; }
+.project-head, .project-tabbar { background: var(--color-night) !important; border-image-source: none !important; }
+@media (min-width: 1024px) { .project-shell > .project-head, .project-shell > .project-tabbar { background: none !important; } }

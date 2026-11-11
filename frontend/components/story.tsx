@@ -124,7 +124,7 @@ const SNAPSHOT_CAUGHT = new Set([1, 6, 7]); // a PR review and a periodic scan e
 const PROBLEM_LINES = [
   { title: 'Code changes every day.', body: 'Developers and AI agents ship new behaviour with every merge, and each one can change what the software does.' },
   { title: 'Reviews see a diff. Scans see a snapshot.', body: 'A reviewer reads the lines that changed. A scanner checks a moment in time. Intent and real exploitability go unchecked.' },
-  { title: 'CHANGES. CHECKED.', body: 'A commit is tested against what the software is supposed to do and probed like an attacker would, inside a sandbox you approve. Turn on automatic reviews and each push is re-checked.' },
+  { title: 'Changes, checked', body: 'A commit is tested against what the software is supposed to do and probed like an attacker would, inside a sandbox you approve. Turn on automatic reviews and each push is re-checked.' },
 ];
 
 export function ProblemScene() {
