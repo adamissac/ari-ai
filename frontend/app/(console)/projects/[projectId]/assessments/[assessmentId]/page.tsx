@@ -140,7 +140,7 @@ export default function AssessmentPage() {
     <>
       <PageTitle
         title={<span className="flex flex-wrap items-center gap-2">Assessment <Badge view={ASSESSMENT_STATE[a.state]} /></span>}
-        subtitle={<span className="grid gap-1"><span className="font-mono text-xs text-muted">ID <Mono className="text-xs">{a.id}</Mono></span><span>Commit <Mono>{shortSha(a.commit_sha)}</Mono> · {a.trigger} trigger · scope <Mono>{a.scope_id}</Mono> · started <Time iso={a.created_at} />{a.completed_at && <> · ended <Time iso={a.completed_at} /></>}</span></span>}
+        subtitle={<span>Commit <Mono>{shortSha(a.commit_sha)}</Mono> · started <Time iso={a.created_at} />{a.completed_at && <> · ended <Time iso={a.completed_at} /></>}</span>}
         actions={!terminal && <CancelButton id={a.id} onDone={() => loadDetail()} />}
       />
       {detailError !== null && <p role="status" className="mb-2 text-xs text-warn" data-testid="detail-stale">Could not refresh this assessment. Showing the last successfully loaded records, which may be out of date.</p>}
@@ -168,7 +168,7 @@ export default function AssessmentPage() {
         <AgentRelay
           items={relay}
           selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'}
-          onSelect={setSelectedAgent}
+          onSelect={agent => { setSelectedAgent(agent); setTechnicalOpen(true); }}
           findings={detail.findings}
           skipNote={skipNote}
         />
@@ -194,16 +194,16 @@ export default function AssessmentPage() {
           )}
         </Panel>
       </div>
-      <div className="mt-4">
-        <h2 className="mb-2 text-sm font-semibold">What the selected agent did, step by step</h2>
-        <AgentTeam runs={detail.agent_runs} selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'} onSelect={setSelectedAgent} hideList state={a.state} skipNote={skipNote} />
-      </div>
       <details className="group mt-4 rounded-xl border border-line bg-panel" data-testid="technical-details" open={technicalOpen} onToggle={e => setTechnicalOpen((e.currentTarget as HTMLDetailsElement).open)}>
         <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold marker:hidden">
           <span aria-hidden="true" className="mr-1 inline-block transition-transform group-open:rotate-90">▸</span>
           Technical details
         </summary>
         <div className="border-t border-line p-4">
+        <p className="mb-3 font-mono text-xs text-muted">ID {a.id} · {a.trigger} trigger · scope {a.scope_id}</p>
+        <h2 className="mb-2 text-sm font-semibold">What the selected agent did, step by step</h2>
+        <AgentTeam runs={detail.agent_runs} selected={selectedAgent ?? detail.agent_runs[0]?.agent ?? 'reviewer'} onSelect={setSelectedAgent} hideList state={a.state} skipNote={skipNote} />
+        <div className="mt-4" />
           <section aria-label="Phases of this check" className="mb-4">
             <h2 className="mb-2 text-sm font-semibold">Progress through each phase</h2>
             <AssessmentPhases

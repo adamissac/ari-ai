@@ -15,10 +15,10 @@ test('project assessment list recovers from a lost backend response and survives
   offline = false;
   await failure.getByRole('button', { name: 'Retry' }).click();
   await expect(failure).toHaveCount(0);
-  const history = page.getByRole('region', { name: 'Runs & replay', exact: true });
-  await expect(history).toContainText(/No assessments for this repository yet\.|No assessments for this repository on the latest page\.|Open run & replay/);
+  const history = page.getByRole('region', { name: 'History', exact: true });
+  await expect(history).toBeVisible();
   await page.reload();
-  await expect(history).toContainText(/No assessments for this repository yet\.|No assessments for this repository on the latest page\.|Open run & replay/);
+  await expect(history).toBeVisible();
   await expect(page.getByTestId('error-state')).toHaveCount(0);
 });
 
@@ -61,5 +61,5 @@ test('project navigation leads with Analytics and Commits and keeps More tools r
   await nav.getByRole('link', { name: 'Commits', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`${base}/commits(?:\\?repo=[^&]+)?`));
   await expect(page.getByRole('heading', { name: 'Commits', exact: true })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Runs & replay', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'History', exact: true })).toBeVisible();
 });

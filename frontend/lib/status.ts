@@ -10,19 +10,20 @@ export interface StatusView { label: string; tone: Tone; glyph: string }
 const v = (label: string, tone: Tone, glyph: string): StatusView => ({ label, tone, glyph });
 
 export const FINDING_STATUS: Record<FindingStatus, StatusView> = {
-  hypothesis: v('Hypothesis', 'info', '?'),
-  validated: v('Validated', 'warn', '!'),
-  refuted: v('Refuted', 'neutral', '×'),
-  inconclusive: v('Inconclusive', 'neutral', '~'),
-  diagnosed: v('Diagnosed', 'warn', '!'),
-  patch_proposed: v('Patch proposed', 'accent', '±'),
-  verified: v('Verified fix', 'ok', '✓'),
-  patch_rejected: v('Patch rejected', 'bad', '×'),
-  unresolved: v('Unresolved', 'bad', '!'),
-  hardened: v('Hardened', 'ok', '✓'),
+  hypothesis: v('Suspected', 'info', '?'),
+  validated: v('Confirmed', 'warn', '!'),
+  refuted: v('Ruled out', 'neutral', '×'),
+  inconclusive: v('Not confirmed', 'neutral', '~'),
+  diagnosed: v('Cause found', 'warn', '!'),
+  patch_proposed: v('Fix proposed', 'accent', '±'),
+  verified: v('Fixed', 'ok', '✓'),
+  // Ari withheld its own fix: the problem is still confirmed, the product did not fail.
+  patch_rejected: v('Needs a manual fix', 'warn', '!'),
+  unresolved: v('Needs a manual fix', 'warn', '!'),
+  hardened: v('Fixed and hardened', 'ok', '✓'),
   accepted_risk: v('Accepted risk', 'neutral', '◇'),
   closed: v('Closed', 'neutral', '—'),
-  needs_recheck: v('Stale — needs recheck', 'warn', '↻'),
+  needs_recheck: v('Needs recheck', 'warn', '↻'),
 };
 
 export const ASSESSMENT_STATE: Record<AssessmentState, StatusView> = {
@@ -41,7 +42,7 @@ export const ASSESSMENT_STATE: Record<AssessmentState, StatusView> = {
   COMPLETED: v('Completed', 'ok', '✓'),
   FAILED: v('Failed', 'bad', '×'),
   CANCELLED: v('Cancelled', 'neutral', '■'),
-  BUDGET_EXHAUSTED: v('Budget exhausted', 'bad', '$'),
+  BUDGET_EXHAUSTED: v('Stopped at spend limit', 'warn', '$'),
 };
 
 export const AGENT_RUN_STATUS: Record<AgentRunStatus, StatusView> = {
@@ -55,7 +56,7 @@ export const AGENT_RUN_STATUS: Record<AgentRunStatus, StatusView> = {
 export const VALIDATION_OUTCOME: Record<ValidationOutcome, StatusView> = {
   confirmed: v('Confirmed by Probe', 'warn', '!'),
   refuted: v('Ruled out by Probe', 'ok', '×'),
-  inconclusive: v('Inconclusive', 'neutral', '~'),
+  inconclusive: v('Not confirmed', 'neutral', '~'),
 };
 
 export const VERDICT: Record<VerificationVerdict, StatusView> = {
