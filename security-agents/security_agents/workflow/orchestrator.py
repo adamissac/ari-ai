@@ -298,6 +298,7 @@ class Orchestrator:
         now: Callable[[], datetime] = utcnow,
         external_pending: Callable[[], bool] | None = None,
         specialists: Any | None = None,
+        handed_off: Callable[[], list[Hypothesis]] | None = None,
     ) -> None:
         self.config = config
         # Trained specialist models (advisory). None → the agents run without them.
@@ -318,6 +319,8 @@ class Orchestrator:
         self.cancelled = cancelled
         self.now = now
         self.external_pending = external_pending
+        # Security concerns another reviewer raised that no Scout hypothesis covers.
+        self.handed_off = handed_off
 
         self.state = AssessmentState.CREATED
         self.state_log = StateLog()
@@ -580,12 +583,21 @@ class Orchestrator:
         # ---- RECON (Scout)
         self._goto(AssessmentState.RECON)
         hypotheses = self._run_scout()
-        if not hypotheses:
-            return self._report_or_wait("no hypotheses")
 
         # ---- VALIDATION (Probe, one step per hypothesis, capped)
-        self._goto(AssessmentState.VALIDATION)
-        confirmed = self._run_validation(hypotheses)
+        confirmed: list[FindingRecord] = []
+        if hypotheses:
+            self._goto(AssessmentState.VALIDATION)
+            confirmed = self._run_validation(hypotheses)
+        # Concerns handed off by the functional reviewer get the same executed check, after
+        # Scout's own, so a slow review never delays them.
+        handed_off = self._handed_off_hypotheses()
+        if handed_off:
+            if not hypotheses:
+                self._goto(AssessmentState.VALIDATION)
+            confirmed += self._run_validation(handed_off)
+        if not hypotheses and not handed_off:
+            return self._report_or_wait("no hypotheses")
         if not confirmed:
             return self._report_or_wait("no confirmed findings")
 
@@ -964,7 +976,11 @@ class Orchestrator:
                 self.intel.snapshot.snapshot_id,
                 detail=signal[:300],
             )
-        for h in ranked:
+        self._adopt(ranked, "scout")
+        return ranked
+
+    def _adopt(self, hypotheses: list[Hypothesis], source: str) -> None:
+        for h in hypotheses:
             record = FindingRecord(finding_id=h.finding_id, hypothesis=h)
             self.result.findings.append(record)
             self.sink.on_finding(record)
@@ -974,8 +990,20 @@ class Orchestrator:
                 h.finding_id,
                 weakness_class=h.weakness_class,
                 confidence=h.confidence.value,
+                source=source,
             )
-        return ranked
+
+    def _handed_off_hypotheses(self) -> list[Hypothesis]:
+        if self.handed_off is None or not self._budget_left():
+            return []
+        refuted = set(self.history.refuted_keys())
+        fresh = [
+            h
+            for h in self.handed_off()
+            if hypothesis_key(h.weakness_class, h.cited_spans[0].path or "", h.entry_point_id) not in refuted
+        ][: self.config.max_hypotheses_to_validate]
+        self._adopt(fresh, "reviewer")
+        return fresh
 
     def _finding_for(self, hypothesis_id: str) -> FindingRecord:
         return next(f for f in self.result.findings if f.hypothesis.id == hypothesis_id)

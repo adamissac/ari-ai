@@ -42,7 +42,12 @@ _HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 
 def included(finding_docs: list[dict[str, Any]], strictness: int) -> list[dict[str, Any]]:
     """Findings at or above the project's strictness, confirmed first, then by severity."""
-    kept = [f for f in finding_docs if strictness == 1 or _level(f) in _THRESHOLDS[strictness]]
+    kept = [
+        f
+        for f in finding_docs
+        if f.get("status") != "closed"  # resolved, or a duplicate of a listed finding
+        and (strictness == 1 or _level(f) in _THRESHOLDS[strictness])
+    ]
     return sorted(
         kept,
         key=lambda f: (f.get("status") not in _CONFIRMED, _SEVERITY_RANK.get(_level(f) or "", 5)),
