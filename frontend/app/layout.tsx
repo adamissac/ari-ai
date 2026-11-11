@@ -3,15 +3,14 @@ import localFont from 'next/font/local';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { AnchorScroll } from '@/components/anchor-scroll';
-import { Ambient } from '@/components/ambient';
 import { BRAND_NAME, Wordmark } from '@/components/brand';
 import { DemoBanner } from '@/components/demo-banner';
 import { HeaderContrast } from '@/components/header-contrast';
-import { RouteTransition } from '@/components/route-transition';
 import { SiteNavigation } from '@/components/site-navigation';
 import { SiteFooter } from '@/components/site-footer';
 import './globals.css';
 import './interface.css';
+import './platform.css';
 
 // Packaged OFL fonts: no external font service is needed at build or runtime.
 const inter = localFont({ src: './fonts/inter-latin-wght-normal.woff2', weight: '400 600', display: 'swap', variable: '--font-inter' });
@@ -43,7 +42,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable} ${plexMono.variable} ${chakraPetch.variable} ${sixtyfour.variable}`}>
       <body className="min-h-screen antialiased">
-        <Ambient />
         <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:rounded focus:bg-accent focus:px-2 focus:py-1 focus:text-bg">Skip to content</a>
         <header className="site-header relative z-40">
           <div className="site-header-inner mx-auto flex flex-wrap items-center justify-between gap-3 px-4 py-3">
@@ -55,7 +53,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </header>
         <HeaderContrast />
         <AnchorScroll />
-        <RouteTransition />
         <DemoBanner />
         <main id="main" className="site-main mx-auto px-4 py-6">{children}</main>
         <SiteFooter />
