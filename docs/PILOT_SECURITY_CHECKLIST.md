@@ -50,7 +50,7 @@ Findings proven by code path + regression test are **confirmed**; items labelled
 - Audit log: per-org hash-chained, append-only, server-side `verify_chain`.
 - Secret redaction: regex set for `sk-ant`, `gh[pousr]_`, `github_pat_`, `AKIA`,
   `xox`, PEM keys, `Bearer …` applied to artifact text/JSON and webhook payloads.
-- LLM/model pinning: `model_for` pins a fixed model in prod/staging (no caller choice).
+- LLM/model pinning: `model_for` pins a fixed model per agent in prod/staging (no caller choice).
 - Frontend: same-origin `/api/v1` proxy with header allowlists, SSE streaming, CSRF
   token held in memory only.
 
