@@ -21,7 +21,6 @@ vi.mock('@/components/commit-assessment-chips', () => ({
   CommitAssessmentProvider: ({ children }: { children: React.ReactNode }) => children,
   CommitAssessmentChip: () => null,
 }));
-vi.mock('@/components/assessment-history', () => ({ AssessmentList: () => null }));
 vi.mock('@/components/start-assessment', () => ({ StartAssessment: () => null }));
 vi.mock('@/components/agent-run-list', () => ({ AgentRunList: () => <div data-testid="agent-team" /> }));
 vi.mock('next/link', () => ({

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { AgentRunList } from '@/components/agent-run-list';
-import { AssessmentList } from '@/components/assessment-history';
 import { belongsToCommit, RecordedSectorMap } from '@/components/commit-run-workspace';
 import { CommitAssessmentChip, CommitAssessmentProvider } from '@/components/commit-assessment-chips';
 import { useProject } from '@/components/project';
@@ -51,7 +50,7 @@ export default function CommitsPage() {
           return (
             <>
               <div className="grid min-w-0 gap-6 lg:grid-cols-[2fr_3fr]">
-                <Panel title="History">
+                <Panel title="History" id="assessments" className="scroll-mt-24">
                   {github.status === 'error' && <ErrorState error={github.error} onRetry={github.reload} />}
                   {github.status === 'ready' && !github.data.available && <p className="mb-3 text-xs text-muted">{github.data.reason ?? 'GitHub commit history is unavailable.'}</p>}
                   <CommitAssessmentProvider repoId={selectedRepo.id}>
@@ -99,9 +98,6 @@ export default function CommitsPage() {
                 </Panel>
               </div>
               <StartAssessment onStarted={() => { void assessments.reload(); }} />
-              <Panel title="Runs & replay" id="assessments" className="scroll-mt-24">
-                <AssessmentList projectId={project.id} repoId={selectedRepo.id} page={assessmentPage} />
-              </Panel>
             </>
           );
         }}

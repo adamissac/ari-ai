@@ -11,7 +11,7 @@ afterEach(cleanup);
 describe('components', () => {
   it('badges render text and status marks', () => {
     const { container } = render(<Badge view={FINDING_STATUS.hypothesis} />);
-    expect(screen.getByText('Hypothesis')).toBeTruthy();
+    expect(screen.getByText('Suspected')).toBeTruthy();
     expect(container.querySelector('.status-mark-pending')).toBeTruthy();
   });
   it('draws the done, paused, and failed status marks', () => {

@@ -47,6 +47,3 @@ export function bucketCounts(findings: readonly { kind: string; status: string }
   for (const f of findings) if (!kind || f.kind === kind) counts[findingBucket(f.status)]++;
   return counts;
 }
-
-export const FINDING_GROUP_NOTE =
-  'Open is everything that still needs attention: it is not an untested hypothesis, not a fix that independent tests accepted, and not refuted, accepted, or closed. That includes inconclusive results and rejected fixes. It is not a list of confirmed exploits.';

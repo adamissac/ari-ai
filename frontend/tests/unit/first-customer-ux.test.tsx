@@ -185,6 +185,6 @@ describe('findings before the first review', () => {
     state.assessments = [{ id: 'asm_1', repo_id: 'rep_1' }];
     render(<FindingsPage />);
     expect(screen.queryByTestId('findings-no-review')).toBeNull();
-    expect(screen.getByText('No open findings in this list.')).toBeTruthy();
+    expect(screen.getByText('No confirmed problems.')).toBeTruthy();
   });
 });

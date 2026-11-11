@@ -14,7 +14,6 @@ vi.mock('@/components/commit-assessment-chips', () => ({
   CommitAssessmentProvider: ({ children }: { children: React.ReactNode }) => children,
   CommitAssessmentChip: () => null,
 }));
-vi.mock('@/components/assessment-history', () => ({ AssessmentList: () => null }));
 vi.mock('@/components/start-assessment', () => ({ StartAssessment: () => null }));
 vi.mock('@/lib/use-resource', () => ({
   useResource: (key: string | null) => {

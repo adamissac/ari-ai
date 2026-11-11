@@ -24,7 +24,7 @@ afterEach(() => {
   state.items = [];
 });
 
-it('shows other finding counts and opens the fixed tab when Open is empty', () => {
+it('shows other finding counts and opens the fixed tab when nothing confirmed is open', () => {
   state.items = [{
     id: 'finding-fixed',
     assessment_id: 'asm-1',
@@ -39,8 +39,8 @@ it('shows other finding counts and opens the fixed tab when Open is empty', () =
 
   render(<FindingsPage />);
 
-  expect(screen.getByText('No open findings. Counts: 0 open, 0 hypotheses, 1 fixed, 0 refuted or closed.')).toBeTruthy();
+  expect(screen.getByText('No confirmed problems are open. 1 fixed.')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'View fixed findings' }));
-  expect(screen.getByRole('tab', { name: 'Fixed (independently verified)' }).getAttribute('aria-selected')).toBe('true');
+  expect(screen.getByRole('tab', { name: /^Fixed/ }).getAttribute('aria-selected')).toBe('true');
   expect(within(screen.getByTestId('findings-mobile-list')).getByRole('link', { name: 'Verified fix' })).toBeTruthy();
 });

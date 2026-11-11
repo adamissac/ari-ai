@@ -332,12 +332,12 @@ test('expectations page shows the version-pinned snapshot view', async ({ browse
   await evidenceShot(page, 'expectations');
 });
 
-test('findings and assessment history use contained mobile rows and desktop tables', async ({ browser }) => {
+test('findings use contained mobile rows and a desktop table, and commits fit a phone', async ({ browser }) => {
   const page = await newUser(browser, 'e2e-alice');
   const repoId = env('E2E_REPO_ID');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/projects/${project()}/findings?repo=${repoId}`);
-  await page.getByRole('tab', { name: 'Fixed (independently verified)' }).click();
+  await page.getByRole('tab', { name: /^Fixed/ }).click();
   const findingsTable = page.getByTestId('findings-table-scroll');
   const findingsMobile = page.getByTestId('findings-mobile-list');
   await expect(findingsMobile).toBeVisible();
@@ -352,15 +352,6 @@ test('findings and assessment history use contained mobile rows and desktop tabl
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/projects/${project()}/commits?repo=${repoId}`);
-  const historyTable = page.getByTestId('assessment-history-table-scroll');
-  const historyMobile = page.getByTestId('assessment-history-mobile-list');
-  await expect(historyMobile).toBeVisible();
-  await expect(historyTable).toBeHidden();
-  await expectStatusBadgesInsideRows(historyMobile.getByTestId('assessment-history-mobile-row'), 'assessment-mobile-status');
   await expectNoDocumentOverflow(page);
   await evidenceShot(page, 'project-overview-mobile');
-
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await expect(historyTable).toBeVisible();
-  await expect(historyMobile).toBeHidden();
 });
