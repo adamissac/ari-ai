@@ -12,11 +12,12 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import Connection
 
-from backend import audit, jobs
+from backend import audit, jobs, pr_review
 from backend.connection_guard import RepositoryDetached, github_write
 from backend.db import (
     assessments,
     audit_events,
+    finding_records,
     findings,
     monitoring_events,
     projects,
@@ -26,7 +27,6 @@ from backend.db import (
 )
 from backend.github import GitHubApp
 from backend.quota import check_project_quota, skipped_reason
-from backend.redaction import redact_text
 from backend.services import (
     active_scope_for_repo,
     capped_budget,
@@ -46,7 +46,6 @@ from shared.assessment import Assessment, AssessmentState, AssessmentTrigger
 from shared.audit import ActorType
 from shared.base import utcnow
 from shared.errors import ErrorCode
-from shared.findings import SeverityLevel
 from shared.ids import IdPrefix, new_id
 from shared.monitoring import (
     CommitRange,
@@ -722,59 +721,12 @@ def _pr_review_body(
     project_id: str,
     finding_docs: list[dict[str, Any]],
     strictness: int,
+    records: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[str, int]:
-    thresholds = {
-        1: {level.value for level in SeverityLevel},
-        2: {"medium", "high", "critical"},
-        3: {"high", "critical"},
-    }
-    included = [
-        finding
-        for finding in finding_docs
-        if strictness == 1 or (finding.get("severity") or {}).get("level") in thresholds[strictness]
-    ]
     origin = get_settings().frontend_origin.rstrip("/")
-    lines = [
-        "## Ari security review",
-        "",
-        f"{len(included)} findings meet strictness level {strictness}.",
-        "",
-    ]
-    if not included:
-        lines.append("No findings at this strictness.")
-    else:
-        lines.extend(
-            [
-                "| Title | Severity | Status | Evidence location |",
-                "| --- | --- | --- | --- |",
-            ]
-        )
-        for finding in included:
-            evidence = (finding.get("evidence") or [{}])[0]
-            path = evidence.get("path")
-            span = evidence.get("span") or {}
-            location = f"{path}:{span['start_line']}" if path and span.get("start_line") else "—"
-            cells = (
-                finding.get("title", "Untitled finding"),
-                (finding.get("severity") or {}).get("level", "unrated"),
-                finding.get("status", "unknown"),
-                location,
-            )
-            lines.append(
-                "| "
-                + " | ".join(
-                    str(cell).replace("\r", " ").replace("\n", " ").replace("|", "\\|")
-                    for cell in cells
-                )
-                + " |"
-            )
-    lines.extend(
-        [
-            "",
-            f"[View assessment]({origin}/projects/{project_id}/assessments/{assessment_id})",
-        ]
+    return pr_review.render_body(
+        assessment_id, project_id, finding_docs, strictness, origin, records
     )
-    return redact_text("\n".join(lines)), len(included)
 
 
 def _link_pull_request(
@@ -999,8 +951,19 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
                 .order_by(findings.c.created_at, findings.c.id)
             ).scalars()
         )
+        # Latest record of each type per finding: the review explains itself only from these.
+        records: dict[str, dict[str, Any]] = {}
+        for finding_id, record_type, doc in conn.execute(
+            sa.select(
+                finding_records.c.finding_id, finding_records.c.record_type, finding_records.c.doc
+            )
+            .where(finding_records.c.finding_id.in_([d["id"] for d in finding_docs if d.get("id")]))
+            .order_by(finding_records.c.created_at, finding_records.c.id)
+        ):
+            records.setdefault(finding_id, {})[record_type] = doc
+        strictness = settings.review.strictness
         body, finding_count = _pr_review_body(
-            assessment_id, assessment.project_id, finding_docs, settings.review.strictness
+            assessment_id, assessment.project_id, finding_docs, strictness, records
         )
         project_id = assessment.project_id
         repo_full_name = repo["full_name"]
@@ -1009,6 +972,13 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
 
     ctx.check_cancelled()
     client = github_client()
+    comments: list[dict[str, Any]] = []
+    try:  # inline comments are best effort; the summary review is posted either way
+        head_sha, files = client.pull_request_diff(installation_id, repo_full_name, pr_number)
+        if head_sha == assessment.commit_sha:  # line anchors only hold for the assessed commit
+            comments = pr_review.inline_comments(finding_docs, strictness, files, records)
+    except Exception:
+        log.warning("pr review for %s: inline comments skipped", assessment_id, exc_info=True)
     try:
         # The effect guard makes a lost response ``recovery_required`` instead of a replay:
         # GitHub may already have created the review, and only an operator can tell.
@@ -1048,7 +1018,11 @@ def post_pr_review(ctx: JobContext) -> dict[str, Any]:
             with ctx.effect(effect_key, reserve=reserve):
                 try:
                     client.post_pull_request_review(
-                        installation_id, repo_full_name, pr_number, body + marker
+                        installation_id,
+                        repo_full_name,
+                        pr_number,
+                        body + marker,
+                        *((comments, assessment.commit_sha) if comments else ()),
                     )
                 except httpx.HTTPStatusError as answer:
                     if answer.response.status_code < 500:
