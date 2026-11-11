@@ -1138,3 +1138,72 @@ def test_settle_closes_reviewer_duplicates_with_a_pointer_to_the_tested_finding(
             "duplicate of fnd_agent: same weakness at the same code location, tested there",
         )
     ]
+
+
+def _concern(fid, path, lo, hi, cwe, reason="handoff to scout: refund reads any payment"):
+    f = _stored(fid, "agent:reviewer", "hypothesis", path, lo, hi, cwe)
+    f.title = f"[{cwe}] refund lookup skips the owner check"
+    f.history[0].reason = reason
+    return f
+
+
+def test_untested_reviewer_concerns_become_probe_hypotheses(host_and_orchestrator, tmp_path):
+    from security_agents.host_adapter import HostSink, reviewer_hypotheses
+
+    host, adapter, _ = host_and_orchestrator
+    workdir = tmp_path / "handoff"
+    workdir.mkdir()
+    intel = adapter._build_intel(adapter.target_dir, workdir, host)
+    app = "payments_lite/app.py"
+    host.recorded_findings = [
+        _stored("fnd_agent", "agent:orchestrator", "validated", app, 130, 140, "CWE-639"),
+        _concern("fnd_new", app, 60, 64, "CWE-862"),
+        # not routed: already covered, no routable CWE, category outside the scope, no such file
+        _concern("fnd_covered", app, 132, 136, "CWE-639"),
+        _concern("fnd_xss", app, 60, 64, "CWE-79"),
+        _concern("fnd_sqli", app, 60, 64, "CWE-89"),
+        _concern("fnd_gone", "payments_lite/missing.py", 1, 2, "CWE-639"),
+    ]
+    allowed = ["access_control.ownership", "input_validation.bounds"]
+
+    [h] = reviewer_hypotheses(HostSink(host, intel.snapshot.commit_sha), intel, allowed)
+
+    assert h.weakness_class == "CWE-862" and h.suggested_check_category == "access_control.ownership"
+    assert h.title == "refund lookup skips the owner check"
+    assert h.rationale == "Raised by the code reviewer: refund reads any payment"
+    assert [(s.path, s.span.start_line, s.span.end_line) for s in h.cited_spans] == [(app, 60, 64)]
+    assert h.cited_spans[0].sha == intel.snapshot.commit_sha and h.finding_id != "fnd_new"
+
+
+def test_orchestrator_adopts_handed_off_hypotheses_once_and_skips_refuted_ones(
+    host_and_orchestrator, tmp_path
+):
+    from security_agents.contracts import Confidence, EvidenceRef, Hypothesis, SourceSpan
+    from security_agents.intel import hypothesis_key
+
+    host, adapter, _ = host_and_orchestrator
+    workdir = tmp_path / "adopt"
+    workdir.mkdir()
+    intel = adapter._build_intel(adapter.target_dir, workdir, host)
+    orchestrator = adapter._make_orchestrator(host, intel, workdir)
+
+    def hyp(cwe: str) -> Hypothesis:
+        span = EvidenceRef(path="payments_lite/app.py", span=SourceSpan(start_line=60, end_line=64))
+        return Hypothesis(
+            weakness_class=cwe,
+            title="t",
+            rationale="r",
+            cited_spans=[span],
+            confidence=Confidence.MEDIUM,
+            suggested_check_category="access_control.ownership",
+        )
+
+    fresh, refuted = hyp("CWE-862"), hyp("CWE-639")
+    orchestrator.history.records.append(
+        {"key": hypothesis_key("CWE-639", "payments_lite/app.py", None), "outcome": "refuted"}
+    )
+    orchestrator.handed_off = lambda: [fresh, refuted]
+
+    assert orchestrator._handed_off_hypotheses() == [fresh]
+    assert [f.finding_id for f in orchestrator.result.findings] == [fresh.finding_id]
+    assert [f.id for f in host.recorded_findings] == [fresh.finding_id]

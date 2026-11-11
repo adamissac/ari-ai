@@ -40,8 +40,12 @@ from .contracts import (
     AgentRun,
     Approval,
     Budget,
+    Confidence,
     ErrorCode,
+    EvidenceRef,
+    Hypothesis,
     PlatformError,
+    SourceSpan,
     Usage,
     new_id,
     utcnow,
@@ -432,6 +436,92 @@ def _spans(finding: Any) -> list[tuple[str, int, int]]:
 def _cwe(finding: Any) -> str | None:
     cwe = getattr(getattr(finding, "standards", None), "cwe", None)
     return str(cwe.id) if cwe is not None else None
+
+
+# The check category Probe starts from for a reviewer concern. Probe still picks the template
+# and the executed check decides; a CWE not listed here is not routed.
+_HANDOFF_CATEGORY = {
+    "CWE-639": "access_control.ownership",
+    "CWE-566": "access_control.ownership",
+    "CWE-862": "access_control.ownership",
+    "CWE-306": "access_control.authentication",
+    "CWE-287": "access_control.authentication",
+    "CWE-863": "access_control.role",
+    "CWE-285": "access_control.role",
+    "CWE-269": "access_control.role",
+    "CWE-89": "input_validation.injection",
+    "CWE-22": "input_validation.path",
+    "CWE-1284": "input_validation.bounds",
+    "CWE-362": "input_validation.bounds",
+}
+
+
+def reviewer_hypotheses(sink: HostSink, intel: CodeIntel, allowed: list[str]) -> list[Hypothesis]:
+    """Hypotheses for the reviewer's security concerns that no agent finding covers.
+
+    Waits for the reviewer. Each becomes a new agent finding that Probe checks; `settle`
+    then closes the reviewer's own copy as its duplicate. Concerns without a routable CWE,
+    outside the scope's check categories or citing lines the snapshot lacks stay as they are."""
+    from shared.scope import check_category_allowed
+    from standards.owasp_api import owasp_api_tag
+
+    from .standards.fields import cwe_entry
+
+    sink.join_review()
+    finder = getattr(sink.host, "findings", None)
+    findings = finder() if callable(finder) else []
+    covered = {duplicate for duplicate, _ in reviewer_duplicates(findings)}
+    runnable = default_library().categories()
+    out: list[Hypothesis] = []
+    for f in findings:
+        history = getattr(f, "history", None) or []
+        if (
+            _enum_value(getattr(f, "kind", "")) != "security"
+            or _enum_value(getattr(f, "status", "")) != "hypothesis"
+            or not history
+            or getattr(history[0], "actor", None) != _REVIEWER
+            or str(f.id) in covered
+        ):
+            continue
+        weakness = _cwe(f)
+        category = _HANDOFF_CATEGORY.get(weakness or "")
+        if category is None or category not in runnable or not check_category_allowed(category, allowed):
+            continue
+        spans = [
+            EvidenceRef(
+                path=path,
+                sha=intel.snapshot.commit_sha,
+                span=SourceSpan(start_line=lo, end_line=min(hi, intel.snapshot.line_count(path))),
+                provenance="code",
+            )
+            for path, lo, hi in _spans(f)
+            if intel.snapshot.exists(path) and lo <= intel.snapshot.line_count(path)
+        ]
+        if not spans:
+            continue
+        cwe, owasp = cwe_entry(str(weakness)), owasp_api_tag(str(weakness))
+        try:
+            out.append(
+                Hypothesis(
+                    weakness_class=str(weakness),
+                    title=str(f.title).removeprefix(f"[{weakness}] ")[:200],
+                    rationale="Raised by the code reviewer: "
+                    + str(getattr(history[0], "reason", "") or "").removeprefix("handoff to scout: "),
+                    cited_spans=spans,
+                    confidence=Confidence.MEDIUM,
+                    suggested_check_category=category,
+                    cwe_name=cwe.name,
+                    cwe_mapping_usage=str(cwe.detail.get("mapping_usage", "")),
+                    cwe_catalog_version=cwe.catalog_version,
+                    owasp_api_category=owasp.category,
+                    owasp_api_title=owasp.title,
+                    owasp_api_edition=owasp.edition,
+                    owasp_mapping_kind=owasp.kind,
+                )
+            )
+        except ValueError:  # a CWE the catalog rejects is not routed
+            continue
+    return out
 
 
 def reviewer_duplicates(findings: list[Any]) -> list[tuple[str, str]]:
@@ -1008,6 +1098,7 @@ class HostOrchestrator:
             approve_remediation=_approver(host),
             cancelled=lambda: _cancelled(host),
             external_pending=lambda: _external_pending(sink, host),
+            handed_off=lambda: reviewer_hypotheses(sink, intel, config.scope.allowed_check_categories),
         )
         usage = getattr(_val(host, "assessment"), "usage", None)
         if usage is not None:
