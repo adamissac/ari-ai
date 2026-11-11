@@ -220,6 +220,9 @@ def unified_diff(base: Workspace, new: Workspace) -> tuple[str, list[str]]:
     chunks: list[str] = []
     changed: list[str] = []
     for rel in sorted(base_files | new_files):
+        # Secret-bearing files are never read, so they can never be part of a fix.
+        if is_denied_read(rel):
+            continue
         old = base.read(rel).splitlines(keepends=True) if rel in base_files else []
         cur = new.read(rel).splitlines(keepends=True) if rel in new_files else []
         if old == cur:

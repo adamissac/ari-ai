@@ -31,6 +31,7 @@ from code_review.workspace import (
     is_protected_path,
     safe_rel,
     tree_digest,
+    unified_diff,
 )
 from shared.review import ChangeIntent, ChangeIntentSource, IntentClaimStatus
 
@@ -494,3 +495,15 @@ def test_generated_test_must_import_the_project(billing) -> None:
     assert "test_id=" in tb.write_test(
         WriteTestIn(name="real", content=real, claim_key="c", rationale="r")
     )
+
+
+def test_diff_of_a_fix_skips_files_the_reviewer_may_not_read(billing):
+    _, ws = billing
+    # A repository with .env.example used to crash every reviewer fix (production, 2026-11-09).
+    (ws.root / ".env.example").write_text("API_KEY=\n")
+    candidate = ws.clone()
+    try:
+        diff, changed = unified_diff(ws, candidate)
+        assert (diff, changed) == ("", [])
+    finally:
+        candidate.close()

@@ -61,7 +61,8 @@ export function earlyEndNote(events: readonly { type: string; state?: string | n
     if (!e || e.type !== 'assessment.state_changed') continue;
     const skipped = e.message.match(/^skipped \((.+)\);/);
     if (skipped?.[1]) return skipped[1];
-    if (e.state === 'REPORTING' && e.message) return e.message;
+    // A bare "state -> REPORTING" is the state machine's log line, not a reason a person can read.
+    if (e.state === 'REPORTING' && e.message && !e.message.startsWith('state ->')) return e.message;
   }
   return null;
 }
