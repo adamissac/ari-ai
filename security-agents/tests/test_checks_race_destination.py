@@ -13,6 +13,7 @@ from security_agents.checks.library import (
     CONCURRENT_BOUND,
     DESTINATION,
     NONEXISTENT_DESTINATION,
+    WRITE_OWNERSHIP,
     default_library,
 )
 from security_agents.contracts import ErrorCode, PlatformError
@@ -31,6 +32,7 @@ from pydantic import BaseModel
 
 RACY = {racy}
 CHECK_DESTINATION = {check_destination}
+CHECK_OWNER = {check_owner}
 
 
 class TransferIn(BaseModel):
@@ -59,7 +61,7 @@ def create_app():
 
     @app.post("/transfers", status_code=201)
     def transfer(body: TransferIn, user: str = Depends(who)):
-        if owners.get(body.from_account) != user:
+        if CHECK_OWNER and owners.get(body.from_account) != user:
             raise HTTPException(404)
         if CHECK_DESTINATION and body.to_account not in balances:
             raise HTTPException(422, "unknown destination")
@@ -115,11 +117,15 @@ RECIPE = {
 PARAMS = {"route_id": "create_transfer", "read_route_id": "get_account", "owner_identity": "alice"}
 
 
-def _runner(driver, tmp_path, *, racy: bool, check_destination: bool) -> CheckRunner:
+def _runner(
+    driver, tmp_path, *, racy: bool, check_destination: bool, check_owner: bool = True
+) -> CheckRunner:
     pkg = tmp_path / "ws" / "ledger"
     pkg.mkdir(parents=True)
     (pkg / "__init__.py").write_text("")
-    (pkg / "app.py").write_text(LEDGER.format(racy=racy, check_destination=check_destination))
+    (pkg / "app.py").write_text(
+        LEDGER.format(racy=racy, check_destination=check_destination, check_owner=check_owner)
+    )
     return CheckRunner(
         driver=driver,
         library=default_library(),
@@ -195,3 +201,59 @@ def test_destination_template_is_inconclusive_when_the_owner_cannot_read(driver,
     runner.recipe_provider = lambda _ctx, _target: recipe
     result = runner.run(probe_ctx(intel), DESTINATION.ref, TARGET_ID, PARAMS)
     assert result["matches_expectation"] is None, result.get("stdout_tail")
+
+
+OWNERSHIP_PARAMS = {"route_id": "create_transfer", "owner_identity": "alice", "other_identity": "bob"}
+
+
+def test_write_ownership_confirms_a_transfer_from_another_identitys_account(driver, intel, tmp_path):
+    runner = _runner(driver, tmp_path, racy=False, check_destination=True, check_owner=False)
+    result = runner.run(probe_ctx(intel), WRITE_OWNERSHIP.ref, TARGET_ID, OWNERSHIP_PARAMS)
+    assert result["matches_expectation"] is False, result.get("stdout_tail")
+    assert result["category"] == "access_control.ownership"
+
+
+def test_write_ownership_clears_a_route_that_checks_the_owner(driver, intel, tmp_path):
+    runner = _runner(driver, tmp_path, racy=False, check_destination=True)
+    result = runner.run(probe_ctx(intel), WRITE_OWNERSHIP.ref, TARGET_ID, OWNERSHIP_PARAMS)
+    assert result["matches_expectation"] is True, result.get("stdout_tail")
+
+
+def test_write_ownership_is_inconclusive_when_the_owner_is_rejected_too(driver, intel, tmp_path):
+    """A denial the owner also gets (here: an unknown body field value) proves nothing."""
+    runner = _runner(driver, tmp_path, racy=False, check_destination=True)
+    route = {**RECIPE["routes"][1], "body_template": {"from_account": "{resource_id}", "amount": "x"}}
+    recipe = {**RECIPE, "routes": [RECIPE["routes"][0], route]}
+    runner.recipe_provider = lambda _ctx, _target: recipe
+    result = runner.run(probe_ctx(intel), WRITE_OWNERSHIP.ref, TARGET_ID, OWNERSHIP_PARAMS)
+    assert result["matches_expectation"] is None, result.get("stdout_tail")
+
+
+def test_write_ownership_render_sends_the_owners_value_to_the_other_identity():
+    lib = default_library()
+    src = lib.render(WRITE_OWNERSHIP.ref, RECIPE, OWNERSHIP_PARAMS)
+    assert "'from_account': 'acc_a1'" in src and "'to_account': 'acc_b1'" in src
+    assert "'amount': '1.00'" in src
+    offered = lib.parameter_values(WRITE_OWNERSHIP.ref, RECIPE)["route_id"]
+    assert [r["id"] for r in offered] == ["create_transfer"]
+    for bad in (
+        {**OWNERSHIP_PARAMS, "other_identity": "alice"},
+        {**OWNERSHIP_PARAMS, "route_id": "get_account"},
+    ):
+        with pytest.raises(PlatformError) as e:
+            lib.render(WRITE_OWNERSHIP.ref, RECIPE, bad)
+        assert e.value.code is ErrorCode.SCHEMA_INVALID
+
+
+def test_write_ownership_binds_a_path_parameter_route():
+    route = {
+        "id": "delete_account",
+        "method": "DELETE",
+        "path_template": "/accounts/{account_id}",
+        "resource": "account",
+    }
+    recipe = {**RECIPE, "routes": [*RECIPE["routes"], route]}
+    src = default_library().render(
+        WRITE_OWNERSHIP.ref, recipe, {**OWNERSHIP_PARAMS, "route_id": "delete_account"}
+    )
+    assert "PATH = '/accounts/acc_a1'" in src and "BODY = None" in src
