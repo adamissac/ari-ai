@@ -23,7 +23,7 @@
 :root body, :root:has(.hero-full) body, :root:not(:has(.hero-full)) body { background: var(--color-bg); }
 
 /* Nothing drifts, glows or blurs behind the content. */
-.ambient, .hero-orbs, .hero-glow, .hero-colony, .route-veil, .intro { display: none !important; }
+.hero-orbs, .hero-glow, .hero-colony, .intro { display: none !important; }
 body * { text-transform: none !important; text-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 .hero-headline .hero-line::before { display: none !important; }
 :root:has(.hero-full) .hero-ink, :root:not(:has(.hero-full)) .hero-ink { background: var(--color-bg); }
@@ -34,7 +34,7 @@ body * { text-transform: none !important; text-shadow: none !important; backdrop
 :root:not(:has(.hero-full)) :is(input, select, textarea):not([type="checkbox"], [type="radio"], [type="range"]) { background-color: var(--color-night); }
 
 /* Type: one family, sentence case, weight carries less than size. */
-.label-mono, .kicker, .site-header nav a, .hx-tag, .hx-stages, .story-pill { letter-spacing: 0 !important; }
+.label-mono, .kicker, .site-header nav a, .story-pill { letter-spacing: 0 !important; }
 h1, h2, h3, .display { letter-spacing: -0.01em; }
 h1 { font-weight: 500; }
 .tabular-nums, table td, .font-mono { font-variant-numeric: tabular-nums; }
@@ -119,7 +119,7 @@ h1 { font-weight: 500; }
 :root:not(:has(.hero-full)) .bg-brand { background-color: var(--color-brand); }
 
 /* Marketing and lab surfaces: same graphite, no atmosphere layers. */
-.marketing-atmosphere::before, .story-rain::before, .footer-glow, .hero-ants { display: none !important; }
+.marketing-atmosphere::before, .story-rain::before, .footer-glow { display: none !important; }
 .net-map, .graph-view, .lab-now, .monitor-head, .pricing-card-dark { background: var(--color-panel) !important; }
 .story-panel, .story-card, .story-stat { background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--glass-line); }
 
@@ -176,3 +176,23 @@ body:has(.demo-banner) html[data-home-hero] .site-header, html[data-home-hero]:h
 .bleed-hero::after { display: none !important; }
 .project-head, .project-tabbar { background: var(--color-night) !important; border-image-source: none !important; }
 @media (min-width: 1024px) { .project-shell > .project-head, .project-shell > .project-tabbar { background: none !important; } }
+
+/* Page change between parts of the site: the mark, and one line that fills. */
+.route-veil { background: var(--color-bg); }
+.route-veil-mark { top: calc(50% - 28px); }
+.route-veil-line { position: absolute; top: calc(50% + 44px); left: 50%; width: 180px; height: 2px; translate: -50%; overflow: hidden; border-radius: 2px; background: rgb(255 255 255 / 10%); }
+.route-veil-line-fill { display: block; height: 100%; transform-origin: left; background: linear-gradient(90deg, rgb(var(--ember)), rgb(var(--ember-hi))); transition: transform 120ms linear; }
+
+/* Sign-in: one flat card on an ember pool, with the trail on its top edge. */
+.auth-orbits { display: none !important; }
+:root:not(:has(.hero-full)) main .auth-stage, .auth-stage.hero-stage {
+  background: radial-gradient(38% 46% at 50% 44%, rgb(var(--ember) / 34%), transparent 72%), transparent !important; box-shadow: none !important; }
+.auth-card { position: relative; overflow: hidden; border: 0 !important; border-radius: 16px; background: var(--color-panel) !important; box-shadow: inset 0 0 0 1px var(--glass-line), 0 32px 64px -40px rgb(0 0 0 / 80%) !important; }
+.auth-card::before { content: ""; position: absolute; inset: 0 0 auto 0; width: auto; height: 1px; border-radius: 0; opacity: 1; background: var(--trail) !important; filter: none; transform: none; animation: none; }
+.auth-card::after { display: none !important; }
+.auth-btn-light { box-shadow: none !important; }
+
+/* Defense Lab map: a flat instrument panel. Only live traffic and alerts carry colour. */
+.net-map { position: relative; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--glass-line) !important; }
+.net-map::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 1px; background: var(--trail); pointer-events: none; z-index: 1; }
+.auth-stage::before, .auth-stage::after { display: none !important; }
