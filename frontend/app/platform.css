@@ -41,7 +41,8 @@ h1 { font-weight: 500; }
 
 /* Top bar: dense and flat. */
 :root:not(:has(.hero-full)) .site-header, body:has(.project-shell) .site-header { background: var(--color-night); border-bottom: 1px solid var(--glass-line); }
-.site-header-inner { min-height: 56px; padding-block: 0; }
+/* Below 1024px the sticky tab band is positioned from the old bar height, so the bar keeps it there. */
+@media (min-width: 1024px) { .site-header-inner { min-height: 56px; padding-block: 0; } }
 .site-header nav a { font-size: 13px; border-radius: 8px; }
 .site-header nav a[aria-current="page"] { box-shadow: none; background: var(--color-panel-2); text-decoration: none; }
 

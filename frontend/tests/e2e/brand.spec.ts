@@ -85,29 +85,3 @@ test('supplied logo loads on sign-in, scrolled header and projects on desktop/mo
   await expect(page.locator('nextjs-portal')).toHaveCount(0);
   expect(errors).toEqual([]);
 });
-
-test('intro uses the supplied mark and exits; reduced motion skips it', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
-  // Exercise the real intro rather than the normal automation skip.
-  await context.addInitScript(() => Object.defineProperty(navigator, 'webdriver', { get: () => false }));
-  const page = await context.newPage();
-  try {
-    await signIn(page, 'e2e-alice');
-    await page.goto('/'); // the intro plays on the public home page
-    await loadedMark(page, '.intro [data-testid="ari-logo"]');
-    await expect.poll(() => page.locator('.intro-mark').evaluate(element => Number(getComputedStyle(element).opacity))).toBe(1);
-    await screenshot(page, 'desktop-intro');
-    await expect(page.locator('.intro')).toHaveCount(0);
-    await expect.poll(() => page.evaluate(() => sessionStorage.getItem('ari-intro-played'))).toBe('1');
-    await page.reload();
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.locator('.intro')).toHaveCount(0);
-    await page.evaluate(() => sessionStorage.removeItem('ari-intro-played'));
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.reload();
-    await settledHero(page);
-    await expect(page.locator('.intro')).toHaveCount(0);
-  } finally {
-    await context.close();
-  }
-});

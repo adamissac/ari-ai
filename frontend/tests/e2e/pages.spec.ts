@@ -53,7 +53,19 @@ test('project page titles stay below the tab band at every route and viewport', 
         };
       }));
       expect(tabLayout.map(tab => tab.text)).toEqual(['Analytics', 'Commits', 'Findings', 'Approvals', 'Settings']);
-      expect(tabLayout.every(tab => tab.display !== 'none' && tab.labelWidth > 0 && tab.height >= 44)).toBe(true);
+      // From 1024px the tabs are sidebar rows for a pointer; below that they are touch targets.
+      const sidebar = width >= 1024;
+      expect(tabLayout.every(tab => tab.display !== 'none' && tab.labelWidth > 0 && tab.height >= (sidebar ? 32 : 44))).toBe(true);
+      if (sidebar) {
+        const edges = await page.evaluate(() => ({
+          navRight: document.querySelector('.project-tabbar')!.getBoundingClientRect().right,
+          bodyLeft: document.querySelector('.project-body')!.getBoundingClientRect().left,
+          pageScrolls: document.documentElement.scrollHeight > window.innerHeight + 1,
+        }));
+        expect(edges.navRight, `${route} sidebar at ${width}px`).toBeLessThanOrEqual(edges.bodyLeft);
+        expect(edges.pageScrolls, `${route}: only the content column scrolls at ${width}px`).toBe(false);
+        continue;
+      }
       if (width <= 639) {
         const overflow = await page.locator('.project-tab-scroll').evaluate(element => element.scrollWidth > element.clientWidth);
         const fadeWidth = await page.locator('.project-more').evaluate(element => parseFloat(getComputedStyle(element, '::before').width));

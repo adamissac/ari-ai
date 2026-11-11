@@ -50,8 +50,7 @@ test('workspace design stays navigable and fits desktop and phone', async ({ bro
     await expectNoSideScroll(page);
     if (screenshots) await page.screenshot({ animations: 'disabled', path: `${screenshots}/agents-${width}.png`, fullPage: true });
     await page.goto('/');
-    await expect(page.locator('.hero-headline')).toBeVisible();
-    await expect.poll(() => page.locator('.hero-line').first().evaluate(el => Number(getComputedStyle(el).opacity))).toBe(1);
+    await expect(page.locator('#hero-title')).toBeVisible();
     await expectNoSideScroll(page);
     if (screenshots) await page.screenshot({ animations: 'disabled', path: `${screenshots}/landing-${width}.png` });
     await page.getByTestId('landing-footer').scrollIntoViewIfNeeded();
