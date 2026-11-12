@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { cleanSha } from '@/components/start-assessment';
 import { assessmentSelection } from '@/lib/assessment-selection';
 import { START_ASSESSMENT_NOTE } from '@/lib/start-assessment';
 import { effectiveScopeStatus } from '@/lib/status';
@@ -41,5 +42,13 @@ describe('assessment selection defaults', () => {
 
     expect(selection.scopeId).toBe('');
     expect(selection.scopes).toEqual([]);
+  });
+});
+
+describe('commit field', () => {
+  it('accepts a pasted SHA with spaces, capitals or a commit URL', () => {
+    expect(cleanSha('  3F2A9C1  ')).toBe('3f2a9c1');
+    expect(cleanSha('https://github.com/acme/api/commit/3f2a9c1d0e')).toBe('3f2a9c1d0e');
+    expect(cleanSha('not a sha')).toBe('not a sha'); // left for the field's pattern to reject
   });
 });

@@ -26,7 +26,7 @@ describe('page transition', () => {
   });
 });
 
-it('covers a cross-section navigation with the ring loader around the mark', () => {
+it('covers a cross-section navigation with the mark above a line loader', () => {
   Object.defineProperty(window, 'matchMedia', { configurable: true, value: () => ({ matches: false }) });
   window.history.replaceState(null, '', '/pricing');
   const { container, unmount } = render(createElement('div', null, createElement(RouteTransition), createElement('a', { href: '/lab' }, 'Defense Lab')));
@@ -34,9 +34,8 @@ it('covers a cross-section navigation with the ring loader around the mark', () 
   link.addEventListener('click', e => e.preventDefault());
   act(() => { link.click(); });
   const veil = container.querySelector('.route-veil');
-  expect(veil?.querySelector('svg.intro-ring .intro-ring-fill')).not.toBeNull();
-  expect(veil?.querySelector('.intro-pct')?.textContent).toMatch(/^\d+%$/);
-  expect(veil?.querySelector('.route-veil-line')).toBeNull();
+  expect(veil?.querySelector('.route-veil-line .route-veil-line-fill')).not.toBeNull();
+  expect(veil?.querySelector('svg.intro-ring')).toBeNull();
   const cancel = vi.spyOn(window, 'cancelAnimationFrame');
   unmount();
   expect(cancel).toHaveBeenCalled(); // the running transition stops with the component

@@ -75,7 +75,7 @@ export function StartAssessment({ onStarted }: { onStarted: () => void }) {
               <p className="text-xs text-muted sm:col-span-3">Request and approve a scope under <Link className="text-brand hover:underline" href={`/projects/${project.id}/scopes?repo=${encodeURIComponent(selectedRepo.id)}`}>More → Authorized scopes</Link>.</p>
             )}
             <Field label="Commit SHA" hint="Blank = latest commit on the default branch.">
-              <input className={`${inputClass} font-mono`} value={sha} onChange={event => setSha(event.target.value.toLowerCase())} pattern="[0-9a-f]{7,40}" name="commit_sha" placeholder="optional" />
+              <input className={`${inputClass} font-mono`} value={sha} onChange={event => setSha(cleanSha(event.target.value))} pattern="[0-9a-f]{7,40}" name="commit_sha" placeholder="optional" />
             </Field>
             <div className="flex items-end">
               <Button type="submit" variant="primary" disabled={busy || !selection.scopeId || (sha !== '' && !SHA.test(sha))}>Start assessment</Button>
@@ -100,4 +100,10 @@ export function StartAssessment({ onStarted }: { onStarted: () => void }) {
 /** Scopes created from Setup are named after the repository ID; show its name instead. */
 function scopeLabel(name: string, repo: { id: string; full_name: string }): string {
   return name === `Authorize ${repo.id}` ? `Sandbox testing for ${repo.full_name}` : name;
+}
+
+/** Accepts what people paste: surrounding spaces, capitals, or a GitHub commit URL. */
+export function cleanSha(raw: string): string {
+  const value = raw.trim().toLowerCase();
+  return value.match(/\/commit\/([0-9a-f]{7,40})/)?.[1] ?? value;
 }

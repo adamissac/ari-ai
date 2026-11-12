@@ -28,16 +28,15 @@ function allowed(): boolean {
   return !navigator.webdriver; // automated browsers (e2e) skip it, like the intro loader
 }
 
-const MIN_MS = 650; // the veil stays at least this long so it never flickers
+const MIN_MS = 380; // long enough not to flicker, short enough for a page people change often
 const FINISH_MS = 220;
-const LIFT_MS = 750;
+const LIFT_MS = 420;
 const GIVE_UP_MS = 8000; // if the next page never arrives, lift anyway
 
 type Phase = 'idle' | 'cover' | 'lift';
 
 /**
- * Full-screen page change, in the look of the landing's first-load intro: the mark inside a filling
- * ring and a running percentage on warm ink. It covers the page on a click into another part of the
+ * Full-screen page change: the mark above a thin line that fills as the next page loads. It covers the page on a click into another part of the
  * site, runs while the next page loads, completes when it has rendered, then lifts away. It never
  * intercepts input (pointer-events: none) and is skipped under reduced motion or automation.
  */
@@ -124,11 +123,7 @@ export function RouteTransition() {
   return (
     <div aria-hidden="true" className="route-veil" data-phase={phase}>
       <LogoMark size={96} decorative className="route-veil-mark" />
-      <svg className="intro-ring" viewBox="0 0 200 200">
-        <circle className="intro-ring-track" cx="100" cy="100" r="96" pathLength={100} />
-        <circle className="intro-ring-fill" cx="100" cy="100" r="96" pathLength={100} style={{ strokeDashoffset: 100 - pct }} />
-      </svg>
-      <span className="intro-pct">{pct}%</span>
+      <span className="route-veil-line"><span className="route-veil-line-fill" style={{ transform: `scaleX(${pct / 100})` }} /></span>
       <span className="sr-only">{BRAND_NAME}</span>
     </div>
   );
