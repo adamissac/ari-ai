@@ -196,3 +196,38 @@ body:has(.demo-banner) html[data-home-hero] .site-header, html[data-home-hero]:h
 .net-map { position: relative; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--glass-line) !important; }
 .net-map::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 1px; background: var(--trail); pointer-events: none; z-index: 1; }
 .auth-stage::before, .auth-stage::after { display: none !important; }
+
+/* ==========================================================================================
+   Motion and ergonomics. One easing curve, short durations, feedback on every press.
+   - Slow in and out, snappy timing: --ease with 120 to 180ms for feedback.
+   - Squash, anticipation, feedback: a control dips slightly while pressed.
+   - Fitts and hit areas: controls are at least 44px on touch screens; sidebar rows span the rail.
+   - Doherty threshold: every press answers within 150ms; page changes show the veil at once.
+   - Frequency of use: the things clicked all day (rows, tabs, nav) change colour only.
+   ========================================================================================== */
+:root { --ease: cubic-bezier(0.22, 1, 0.36, 1); --t-fast: 120ms; --t-ui: 160ms; --t-enter: 280ms; }
+:where(a, button, [role="tab"], [role="switch"], summary, input, select, textarea) {
+  transition: background-color var(--t-ui) var(--ease), color var(--t-ui) var(--ease), border-color var(--t-ui) var(--ease), box-shadow var(--t-ui) var(--ease), opacity var(--t-ui) var(--ease), transform var(--t-fast) var(--ease);
+}
+:where(button, [role="tab"], [role="switch"], .btn-primary, .btn-quiet):active:not(:disabled, [aria-disabled="true"]) { transform: scale(0.97); }
+:where(button, a):disabled, :where(button, a)[aria-disabled="true"] { cursor: not-allowed; }
+/* Staging: the keyboard focus is always the most visible thing on the page. */
+:focus-visible { outline: 2px solid rgb(var(--ember-hi)); outline-offset: 2px; }
+/* Follow through: the page content settles in once per navigation. Opacity only, so nothing shifts. */
+@keyframes content-in { from { opacity: 0; } }
+.project-body > *, .site-main > :not(.project-shell) { animation: content-in var(--t-enter) var(--ease) both; }
+/* Secondary action: a live status breathes; a finished one is still. */
+@keyframes live-pulse { 50% { opacity: 0.45; } }
+[data-live="true"] { animation: live-pulse 1.6s ease-in-out infinite; }
+/* Fitts: on touch screens every control is a full-size target. */
+@media (pointer: coarse) {
+  :where(button, [role="tab"], [role="switch"], select, input:not([type="checkbox"], [type="radio"]), .project-tab, .project-more-link, .btn-primary, .btn-quiet) { min-height: 44px; }
+  :where(a):not(.project-tab, .btn-primary, .btn-quiet) { padding-block: 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(a, button, [role="tab"], [role="switch"], summary, input, select, textarea) { transition: none; }
+  .project-body > *, .site-main > :not(.project-shell), [data-live="true"] { animation: none; }
+  :where(button, [role="tab"], [role="switch"], .btn-primary, .btn-quiet):active { transform: none; }
+}
+
+.route-veil { transition-duration: 420ms; }

@@ -28,9 +28,9 @@ function allowed(): boolean {
   return !navigator.webdriver; // automated browsers (e2e) skip it, like the intro loader
 }
 
-const MIN_MS = 650; // the veil stays at least this long so it never flickers
+const MIN_MS = 380; // long enough not to flicker, short enough for a page people change often
 const FINISH_MS = 220;
-const LIFT_MS = 750;
+const LIFT_MS = 420;
 const GIVE_UP_MS = 8000; // if the next page never arrives, lift anyway
 
 type Phase = 'idle' | 'cover' | 'lift';
