@@ -7,6 +7,11 @@ never loaded here. With ``--adversary-scale LOW HIGH`` (domain randomization), e
 episode also samples a factor uniformly in [LOW, HIGH] and multiplies the sampled
 training config's adversary transition probabilities by it (capped at 1.0). Without
 it, the random-draw sequence is identical to protocol-v0, so v0 runs stay reproducible.
+
+``--checkpoint-every N`` writes a resumable training state (weights, optimizer, replay
+buffer, every RNG, counters) at the first episode boundary at least N steps after the
+previous one; ``--resume`` continues from it. A resumed run produces the same weights as
+an uninterrupted one (tests/test_train_resume.py). Neither flag changes an ordinary run.
 """
 
 from __future__ import annotations
@@ -14,6 +19,8 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import math
+import os
 import random
 import time
 from pathlib import Path
@@ -80,6 +87,41 @@ def selection_score(
     return float(np.mean(returns)) - fd_penalty * 100.0 * float(np.mean(fds))
 
 
+STATE_VERSION = 1
+
+
+def _state_path(run_dir: Path, seed: int) -> Path:
+    return run_dir / f"train_seed{seed}.state.pt"
+
+
+def _save_state(path: Path, state: dict) -> None:
+    """Write atomically: a crash mid-write must not destroy the previous good state."""
+    tmp = path.with_suffix(".tmp")
+    torch.save(state, tmp)
+    os.replace(tmp, path)
+
+
+def _buffer_state(buffer: ReplayBuffer) -> dict:
+    n = len(buffer)
+    return {
+        "arrays": {
+            k: torch.from_numpy(getattr(buffer, k)[:n].copy())
+            for k in ("obs", "next_obs", "actions", "rewards", "dones", "next_masks", "discounts")
+        },
+        "pos": buffer._pos,
+        "full": buffer._full,
+        "rng": buffer._rng.bit_generator.state,
+    }
+
+
+def _restore_buffer(buffer: ReplayBuffer, state: dict) -> None:
+    for k, v in state["arrays"].items():
+        arr = v.numpy()
+        getattr(buffer, k)[: len(arr)] = arr
+    buffer._pos, buffer._full = state["pos"], state["full"]
+    buffer._rng.bit_generator.state = state["rng"]
+
+
 def train(
     configs: list[ScenarioConfig],
     seed: int,
@@ -91,11 +133,18 @@ def train(
     select_every: int | None = None,
     select_start: int = 0,
     select_fd_penalty: float = 0.0,
+    checkpoint_every: int | None = None,
+    resume: bool = False,
 ) -> dict:
     """Train one seed. ``select_every`` enables in-training checkpoint selection: every
     ``select_every`` steps after ``select_start`` the greedy policy is scored on the
     TRAINING configs (factors ``CKPT_SELECT_FACTORS``, episode seeds ``CKPT_SELECT_SEEDS``)
-    and the best-scoring weights are the ones saved."""
+    and the best-scoring weights are the ones saved.
+
+    ``checkpoint_every`` writes a resumable state at episode boundaries; ``resume``
+    continues from it and refuses a state written by a different run definition."""
+    if checkpoint_every is not None and checkpoint_every < 1:
+        raise ValueError("checkpoint_every must be >= 1")
     if any(c.split != "train" for c in configs):
         raise ValueError("training must only use configs with split=train")
     if adversary_scale is not None and not 0.0 < adversary_scale[0] <= adversary_scale[1]:
@@ -109,13 +158,13 @@ def train(
     rng = np.random.default_rng(seed)
     factors: list[float] = []
 
-    def next_env() -> DefenseSimEnv:
+    def next_env() -> tuple[DefenseSimEnv, int, float | None]:
         base = int(rng.integers(len(envs)))
         if adversary_scale is None:
-            return envs[base]
+            return envs[base], base, None
         factor = float(rng.uniform(*adversary_scale))
         factors.append(factor)
-        return DefenseSimEnv(scaled(configs[base], factor))
+        return DefenseSimEnv(scaled(configs[base], factor)), base, factor
 
     # disruption_margin is a deployment-time rule: training behaviour and in-training
     # checkpoint selection use the plain masked argmax; the margin is saved with the
@@ -128,17 +177,58 @@ def train(
     initial_params = [p.detach().clone() for p in agent.online.parameters()]
 
     log_path = run_dir / f"train_seed{seed}.jsonl"
-    log = log_path.open("w")
+    state_path = _state_path(run_dir, seed)
+    # What must match for a saved state to belong to this run.
+    identity = {
+        "version": STATE_VERSION,
+        "seed": seed,
+        "steps": steps,
+        "ddqn_config": cfg.model_dump(mode="json"),
+        "train_configs": {c.name: c.config_hash() for c in configs},
+        "adversary_scale": list(adversary_scale) if adversary_scale else None,
+        "select": [select_every, select_start, select_fd_penalty],
+    }
     episode, ep_return, ep_len = 0, 0.0, 0
-    env = next_env()
-    obs, info = env.reset(seed=int(rng.integers(2**31)))
     recent_returns: list[float] = []
     last_stats: dict[str, float] = {}
     selection_history: list[dict[str, float]] = []
     best: tuple[float, int, dict] | None = None
+    first_step, resumed_from = 1, []
+    if resume and state_path.exists():
+        state = torch.load(state_path, map_location="cpu", weights_only=True)
+        if state["identity"] != identity:
+            raise ValueError(
+                f"{state_path} was written by a different run definition; refusing to resume"
+            )
+        agent.load_state_dict(state["agent"])
+        _restore_buffer(buffer, state["buffer"])
+        agent._rng.bit_generator.state = state["agent_rng"]
+        rng.bit_generator.state = state["rng"]
+        factors.extend(state["factors"])
+        episode, recent_returns = state["episode"], list(state["recent_returns"])
+        last_stats, selection_history = dict(state["last_stats"]), list(state["selection_history"])
+        best = tuple(state["best"]) if state["best"] is not None else None
+        resumed_from = [*state["resumed_from"], state["step"]]
+        first_step = state["step"] + 1
+        base, factor, reset_seed = state["next_episode"]
+        env = envs[base] if factor is None else DefenseSimEnv(scaled(configs[base], factor))
+        # keep only the log rows the saved state had already written
+        kept = [
+            line
+            for line in (log_path.read_text().splitlines() if log_path.exists() else [])
+            if json.loads(line)["step"] <= state["step"]
+        ]
+        log_path.write_text("".join(line + "\n" for line in kept))
+        log = log_path.open("a")
+    else:
+        log = log_path.open("w")
+        env, base, factor = next_env()
+        reset_seed = int(rng.integers(2**31))
+    obs, info = env.reset(seed=reset_seed)
+    last_state_step = first_step - 1
     start = time.time()
 
-    for step in range(1, steps + 1):
+    for step in range(first_step, steps + 1):
         if cfg.lr_end is not None:
             lr = cfg.lr + (cfg.lr_end - cfg.lr) * min(1.0, step / steps)
             for group in agent.optimizer.param_groups:
@@ -160,12 +250,20 @@ def train(
 
         if step > cfg.learning_starts and step % cfg.train_freq == 0:
             last_stats = agent.update(buffer.sample(cfg.batch_size))
+            if not math.isfinite(last_stats["loss"]):
+                log.close()
+                raise FloatingPointError(
+                    f"non-finite loss at step {step} (update {agent.updates}); "
+                    "training stopped, no checkpoint written"
+                )
 
-        if terminated or truncated:
+        episode_ended = terminated or truncated
+        if episode_ended:
             recent_returns.append(ep_return)
             episode += 1
-            env = next_env()
-            obs, info = env.reset(seed=int(rng.integers(2**31)))
+            env, base, factor = next_env()
+            reset_seed = int(rng.integers(2**31))
+            obs, info = env.reset(seed=reset_seed)
             ep_return, ep_len = 0.0, 0
 
         if select_every and step >= select_start and (step % select_every == 0 or step == steps):
@@ -188,6 +286,35 @@ def train(
             }
             log.write(json.dumps(row) + "\n")
             log.flush()
+
+        # Only at an episode boundary: the n-step window is empty and the next episode is
+        # fully described by (config, factor, reset seed), so the state is small and exact.
+        if (
+            checkpoint_every
+            and episode_ended
+            and step < steps
+            and step - last_state_step >= checkpoint_every
+        ):
+            _save_state(
+                state_path,
+                {
+                    "identity": identity,
+                    "step": step,
+                    "agent": agent.state_dict(),
+                    "buffer": _buffer_state(buffer),
+                    "agent_rng": agent._rng.bit_generator.state,
+                    "rng": rng.bit_generator.state,
+                    "factors": factors,
+                    "episode": episode,
+                    "recent_returns": recent_returns[-20:],
+                    "last_stats": last_stats,
+                    "selection_history": selection_history,
+                    "best": list(best) if best is not None else None,
+                    "resumed_from": resumed_from,
+                    "next_episode": [base, factor, reset_seed],
+                },
+            )
+            last_state_step = step
     log.close()
 
     final_step_updates = agent.updates
@@ -225,6 +352,7 @@ def train(
             "param_abs_change": param_change,
             "wall_clock_s": round(time.time() - start, 1),
             "train_log": log_path.name,
+            "resumed_from_steps": resumed_from,
             "adversary_scale": list(adversary_scale) if adversary_scale else None,
             "adversary_scale_sampled": {
                 "min": min(factors),
@@ -266,6 +394,15 @@ def main() -> None:
         default=0.0,
         help="checkpoint selection: subtract this × false-disruption percentage points",
     )
+    ap.add_argument(
+        "--checkpoint-every",
+        type=int,
+        help="write a resumable training state at the first episode boundary this many steps "
+        "after the previous one",
+    )
+    ap.add_argument(
+        "--resume", action="store_true", help="continue from the saved training state, if any"
+    )
     args = ap.parse_args()
     configs = load_configs(args.config or default_config_paths("train"))
     ddqn = DDQNConfig(**yaml.safe_load(args.ddqn_config.read_text())) if args.ddqn_config else None
@@ -281,6 +418,8 @@ def main() -> None:
         select_every=args.select_every,
         select_start=args.select_start,
         select_fd_penalty=args.select_fd_penalty,
+        checkpoint_every=args.checkpoint_every,
+        resume=args.resume,
     )
     print(
         json.dumps(
