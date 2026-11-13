@@ -433,8 +433,6 @@ def promotion_decision(
     rules: list[EpisodeMetrics] | None,
     criteria: PromotionCriteria,
 ) -> dict:
-    cs, ds = summarize(candidate), summarize(deployed)
-    diff = paired_reward_diff(candidate, deployed)
     checks: list[dict] = []
 
     def check(name: str, passed: bool, value, threshold) -> None:  # noqa: ANN001
@@ -442,48 +440,76 @@ def promotion_decision(
             {"name": name, "passed": bool(passed), "value": value, "threshold": threshold}
         )
 
+    # The gate fails closed. A comparison that is not on identical (scenario, seed) episodes,
+    # a metric the holdout cannot define (no attack traffic, no attack-free window), or a
+    # missing rules baseline is a failed check, never a pass.
+    c_keys = sorted((x.scenario, x.seed) for x in candidate)
+    d_keys = sorted((x.scenario, x.seed) for x in deployed)
+    paired = bool(c_keys) and c_keys == d_keys and len(set(c_keys)) == len(c_keys)
+    check(
+        "paired_episode_sets_match",
+        paired,
+        {"candidate": len(c_keys), "deployed": len(d_keys)},
+        "identical, non-empty, unique (scenario, seed) sets",
+    )
+    if not paired:
+        return {
+            "decision": "reject",
+            "requires_human_approval": True,
+            "checks": checks,
+            "paired_reward_diff": None,
+        }
+    cs, ds = summarize(candidate), summarize(deployed)
+    diff = paired_reward_diff(candidate, deployed)
     check(
         "paired_reward_gain_ci_low",
         diff["ci95"][0] > criteria.min_paired_reward_gain_ci_low,
         diff["ci95"][0],
         f"> {criteria.min_paired_reward_gain_ci_low}",
     )
-    c_comp, d_comp = cs["compromise_rate"] or 0.0, ds["compromise_rate"] or 0.0
+    c_comp, d_comp = cs["compromise_rate"], ds["compromise_rate"]
     check(
         "compromise_rate_not_worse",
-        c_comp <= criteria.max_compromise_rate_vs_deployed * d_comp + 1e-12,
+        c_comp is not None
+        and d_comp is not None
+        and c_comp <= criteria.max_compromise_rate_vs_deployed * d_comp + 1e-12,
         c_comp,
-        f"<= {criteria.max_compromise_rate_vs_deployed} x deployed ({d_comp:.3f})",
+        f"<= {criteria.max_compromise_rate_vs_deployed} x deployed "
+        f"({'undefined' if d_comp is None else f'{d_comp:.3f}'}); undefined fails",
     )
-    avail = cs["availability"] if cs["availability"] is not None else 1.0
+    avail = cs["availability"]
     check(
         "availability_floor",
-        avail >= criteria.min_availability,
+        avail is not None and avail >= criteria.min_availability,
         avail,
-        f">= {criteria.min_availability}",
+        f">= {criteria.min_availability}; undefined fails",
     )
-    fd = cs["false_disruption"] or 0.0
+    fd = cs["false_disruption"]
     check(
         "false_disruption_cap",
-        fd <= criteria.max_false_disruption,
+        fd is not None and fd <= criteria.max_false_disruption,
         fd,
-        f"<= {criteria.max_false_disruption}",
+        f"<= {criteria.max_false_disruption}; undefined fails",
     )
-    duty = cs["no_attack_defense_duty"] or 0.0
+    duty = cs["no_attack_defense_duty"]
     check(
         "reward_hacking_no_blanket_isolation",
-        duty <= criteria.max_no_attack_defense_duty,
+        duty is not None and duty <= criteria.max_no_attack_defense_duty,
         duty,
-        f"<= {criteria.max_no_attack_defense_duty}",
+        f"<= {criteria.max_no_attack_defense_duty}; undefined fails",
     )
-    if rules is not None and criteria.must_beat_rules:
-        rs = summarize(rules)
-        check(
-            "beats_static_rules",
-            cs["reward"] > rs["reward"],
-            cs["reward"],
-            f"> rules ({rs['reward']:.3f})",
-        )
+    if criteria.must_beat_rules:
+        r_keys = sorted((x.scenario, x.seed) for x in rules or [])
+        if r_keys != c_keys:
+            check("beats_static_rules", False, None, "rules scored on the same episodes")
+        else:
+            rs = summarize(rules or [])
+            check(
+                "beats_static_rules",
+                cs["reward"] > rs["reward"],
+                cs["reward"],
+                f"> rules ({rs['reward']:.3f})",
+            )
     by_c, by_d = summarize_by_scenario(candidate), summarize_by_scenario(deployed)
     worst = min(by_c[n]["reward"] - by_d[n]["reward"] for n in by_c)
     check(

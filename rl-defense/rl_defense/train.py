@@ -32,7 +32,7 @@ import yaml
 from rl_defense.agents.ddqn import DDQNAgent, DDQNConfig, NStepAccumulator, ReplayBuffer
 from rl_defense.checkpoint import save_checkpoint
 from rl_defense.envs import DefenseSimEnv, default_config_paths, load_configs
-from rl_defense.envs.config import ScenarioConfig
+from rl_defense.envs.config import ENV_V0, ScenarioConfig
 from rl_defense.envs.defense_sim import N_ACTIONS, OBS_DIM
 from rl_defense.evaluate import run_episode
 from rl_defense.stress import scaled
@@ -135,6 +135,7 @@ def train(
     select_fd_penalty: float = 0.0,
     checkpoint_every: int | None = None,
     resume: bool = False,
+    time_limit_terminal: bool = False,
 ) -> dict:
     """Train one seed. ``select_every`` enables in-training checkpoint selection: every
     ``select_every`` steps after ``select_start`` the greedy policy is scored on the
@@ -142,7 +143,14 @@ def train(
     and the best-scoring weights are the ones saved.
 
     ``checkpoint_every`` writes a resumable state at episode boundaries; ``resume``
-    continues from it and refuses a state written by a different run definition."""
+    continues from it and refuses a state written by a different run definition.
+
+    ``time_limit_terminal`` stores the transition that reaches the horizon as terminal (no
+    bootstrap). The observation carries ``time_fraction`` and the scored objective is the
+    return over the fixed horizon, so the value after the last step is 0 by definition; the
+    default bootstraps from Q(s_H), a state that never occurs as a transition's start state
+    and is therefore never trained. The default stays False because protocol-v0/v1 were
+    produced with it and reproduce bit for bit (docs/rl-live-defense-audit-progress.md)."""
     if checkpoint_every is not None and checkpoint_every < 1:
         raise ValueError("checkpoint_every must be >= 1")
     if any(c.split != "train" for c in configs):
@@ -188,6 +196,8 @@ def train(
         "adversary_scale": list(adversary_scale) if adversary_scale else None,
         "select": [select_every, select_start, select_fd_penalty],
     }
+    if time_limit_terminal:  # only when set, so states saved before the option still resume
+        identity["time_limit_terminal"] = True
     episode, ep_return, ep_len = 0, 0.0, 0
     recent_returns: list[float] = []
     last_stats: dict[str, float] = {}
@@ -236,12 +246,14 @@ def train(
         eps = agent.epsilon(step)
         action = agent.act(obs, info["action_mask"], eps)
         next_obs, reward, terminated, truncated, info = env.step(action)
-        # Bootstrap through truncation (time limit); only true termination stops the target.
+        # Default: bootstrap through truncation (time limit); only true termination stops
+        # the target. With time_limit_terminal the horizon stops it too.
+        stop = terminated or (truncated and time_limit_terminal)
         if nstep is None:
-            buffer.add(obs, action, reward, next_obs, terminated, info["action_mask"])
+            buffer.add(obs, action, reward, next_obs, stop, info["action_mask"])
         else:
             for tr in nstep.push(
-                obs, action, reward, next_obs, terminated, truncated, info["action_mask"]
+                obs, action, reward, next_obs, stop, truncated and not stop, info["action_mask"]
             ):
                 buffer.add(*tr)
         obs = next_obs
@@ -353,6 +365,14 @@ def train(
             "wall_clock_s": round(time.time() - start, 1),
             "train_log": log_path.name,
             "resumed_from_steps": resumed_from,
+            **({"time_limit_terminal": True} if time_limit_terminal else {}),
+            # The checkpoint's env_id names the observation/action space (shared by v0 and
+            # v1). A policy trained under another reward version says so here.
+            **(
+                {"reward_env_version": sorted({c.env_version for c in configs})}
+                if any(c.env_version != ENV_V0 for c in configs)
+                else {}
+            ),
             "adversary_scale": list(adversary_scale) if adversary_scale else None,
             "adversary_scale_sampled": {
                 "min": min(factors),
@@ -403,6 +423,11 @@ def main() -> None:
     ap.add_argument(
         "--resume", action="store_true", help="continue from the saved training state, if any"
     )
+    ap.add_argument(
+        "--time-limit-terminal",
+        action="store_true",
+        help="store the step that reaches the horizon as terminal (finite-horizon targets)",
+    )
     args = ap.parse_args()
     configs = load_configs(args.config or default_config_paths("train"))
     ddqn = DDQNConfig(**yaml.safe_load(args.ddqn_config.read_text())) if args.ddqn_config else None
@@ -420,6 +445,7 @@ def main() -> None:
         select_fd_penalty=args.select_fd_penalty,
         checkpoint_every=args.checkpoint_every,
         resume=args.resume,
+        time_limit_terminal=args.time_limit_terminal,
     )
     print(
         json.dumps(

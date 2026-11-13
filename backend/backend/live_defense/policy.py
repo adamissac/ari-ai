@@ -173,7 +173,10 @@ def _run_v6(windows: list[WindowView]) -> ShadowInference:
     signals = [
         pm.RouteSignal(
             route=w.route,
-            alert_rate=float(w.auth_failures + w.status_4xx + w.status_5xx),
+            # auth_failures (401/403) are already inside status_4xx (RouteWindow validator).
+            # Adding them again doubled the feature relative to the lab detector v6 was
+            # trained on, which counts each error response once.
+            alert_rate=float(w.status_4xx + w.status_5xx),
             anomaly_score=min(1.0, w.anomaly_score),
             source="runtime_demo",
         )

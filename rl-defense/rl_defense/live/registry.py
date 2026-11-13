@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -53,8 +54,12 @@ class Registry:
             self.data = {"versions": {}, "deployed": None, "stack": [], "history": []}
 
     def save(self) -> None:
+        """Write atomically: a crash mid-write must not lose the deployed pointer or the
+        audit history."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(self.data, indent=2))
+        tmp = self.path.with_name(self.path.name + ".tmp")
+        tmp.write_text(json.dumps(self.data, indent=2))
+        os.replace(tmp, self.path)
 
     # ---------------------------------------------------------------- queries
     @property
@@ -197,6 +202,15 @@ class Registry:
         stack = self.data["stack"]
         if len(stack) < 2:
             raise RegistryError("nothing to roll back to")
+        target = self.data["versions"][stack[-2]]
+        # Roll back only to bytes that are still the registered ones; otherwise the registry
+        # would point at a policy that serving refuses, with the usable one already popped.
+        path = Path(target["checkpoint"])
+        if not path.is_file() or sha256_file(path) != target["sha256"]:
+            raise RegistryError(
+                f"rollback target {target['id']} is missing or no longer matches its "
+                "registered hash; the deployed version is unchanged"
+            )
         cur = stack.pop()
         prev = stack[-1]
         self.data["deployed"] = prev

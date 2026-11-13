@@ -109,6 +109,63 @@ class ThresholdRulesPolicy:
         return NOOP_ACTION
 
 
+class ExposedGuardPolicy:
+    """Deterministic prevention rule: isolate any node whose anomaly exceeds a threshold,
+    otherwise keep every internet-exposed node rate-limited.
+
+    It needs no learning and reads only the observation. It exists because the tuned
+    ``threshold_rules`` are a weak reference under the v0 reward: this rule reaches a
+    return close to the trained DDQN's there (results/reward-v1/REPORT.md).
+    """
+
+    name = "exposed_guard"
+
+    def __init__(self, isolate_anomaly: float) -> None:
+        self.isolate_anomaly = isolate_anomaly
+
+    def reset(self, seed: int) -> None:
+        pass
+
+    def act(self, obs: np.ndarray, mask: np.ndarray) -> int:
+        anomaly = np.array([node_feature(obs, i, "anomaly_score") for i in range(N_NODES)])
+        for i in np.argsort(-anomaly):
+            if anomaly[i] > self.isolate_anomaly:
+                a = encode_action("isolate", int(i))
+                if mask[a]:
+                    return a
+        for i in range(N_NODES):
+            if node_feature(obs, i, "exposed") > 0.5:
+                a = encode_action("rate_limit", i)
+                if mask[a]:
+                    return a
+        return NOOP_ACTION
+
+
+EXPOSED_GUARD_GRID: tuple[float, ...] = (0.1, 0.15, 0.2, 0.25, 0.35, 0.5)
+
+
+def tune_exposed_guard(
+    train_configs: list[ScenarioConfig], seeds: range = TUNING_SEEDS
+) -> tuple[float, list[dict[str, float]]]:
+    """Pick the isolation threshold by mean return on TRAINING configs only."""
+    grid = [
+        {
+            "isolate_anomaly": thr,
+            "mean_return": float(
+                np.mean(
+                    [
+                        rollout_return(DefenseSimEnv(cfg), ExposedGuardPolicy(thr), s)
+                        for cfg in train_configs
+                        for s in seeds
+                    ]
+                )
+            ),
+        }
+        for thr in EXPOSED_GUARD_GRID
+    ]
+    return max(grid, key=lambda g: g["mean_return"])["isolate_anomaly"], grid
+
+
 def rollout_return(env: DefenseSimEnv, policy: Policy, seed: int) -> float:
     obs, info = env.reset(seed=seed)
     policy.reset(seed)
