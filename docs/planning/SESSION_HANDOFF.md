@@ -3,6 +3,13 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-11-13 — Claude (agent, for Alan) — RL follow-up: policy quality, live gate, v6 shadow
+
+- PR #941. Details and numbers: `docs/rl-live-defense-audit-progress.md`, `rl-defense/results/reward-v1/REPORT.md`.
+- Changed: live promotion gate fails closed; registry atomic save and verified rollback; v6 shadow `alert_rate` counts errors once; new `backend/tests/test_shadow_inference_v6.py` (in `rl-integration`); opt-in `DefenseSimEnv-v1` reward and `ExposedGuardPolicy`; opt-in `time_limit_terminal`.
+- Result: the v1 reward lowers false disruption and raises compromise; no policy is recommended or promoted. Assumption recorded: a v1-trained checkpoint keeps `env_id` `DefenseSimEnv-v0` because the spaces are identical.
+- Tests run locally: rl-defense `test_reward_v1`, `test_env`, `test_live_retrain`, `test_live_block_principal`, `test_time_limit`, `test_train_resume`; backend `test_shadow_inference_v6`, `test_live_defense_pilot_safety`, `test_live_defense_phase3`. Full suites: CI.
+
 ### 2026-11-13 — Claude (agent, for Alan) — RL lab audit, repair and simulation panel
 - Did: audited the RL lab end to end and merged PRs #929, #930, #931, #932, #935. Inference refuses NaN, infinite, out-of-range observations and non-boolean masks; `rl_defense.train` gained `--checkpoint-every` and `--resume` (resumed weights equal an uninterrupted run) and stops on a non-finite loss; new `rl_defense.lab_episode` and `rl_defense.learning_check`; new backend routes `GET /lab/simulation` and `POST /lab/simulation/episodes`; transport `labSimulationStatus` / `runLabSimulation`; a simulation panel on `/lab` with a same-episode policy comparison. `/lab` header copy now reads "Recorded · recommendation-only". Running record: `docs/rl-live-defense-audit-progress.md`.
 - Verification (executed): rl-defense suite 569 passed before the changes; new RL tests 46 passed; `backend/tests/test_lab_simulation.py` 11 passed with the real engine; transport 42 passed; frontend unit suite passed; `tests/e2e/stack.py` with `lab-simulation.spec.ts` and `honesty.spec.ts` 11 passed locally; simulator invariant fuzz, 72,000 steps over all six scenarios, no violation. Learning check (3 seeds x 150k steps, held-out configs): trained -47.4, untrained -229.6, random -154.1, rules -96.0 mean return; simulation output only.

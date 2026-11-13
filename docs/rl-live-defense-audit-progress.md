@@ -37,8 +37,13 @@ here are from commands that were actually run; anything not run says so.
 | 4 | No comparison of the trained policy with an untrained network | Fixed, #931: `rl_defense.learning_check` and committed results |
 | 5 | `/lab` is a recording but its header read "Defender: Active" with a green indicator | Fixed, #932: "Recorded · recommendation-only" |
 | 6 | No simulation could be started from the lab; nothing showed a policy's observation, mask, Q-values or reward | Fixed: engine #931, backend route and UI panel #932 |
-| 7 | Simulator training bootstraps through the time limit while the live pipeline stores the time limit as terminal. Both have time in the observation, so the simulator's last-step target reads a state (`time_fraction = 1`) that is never trained as a start state | Open, documented. Not changed: protocol-v0/v1 evidence is reproducible bit for bit with the current behaviour |
-| 8 | The lab-trained policy has a high false-disruption rate (67.8% in the learning check, 75% for protocol-v1) and is worse than random on compromise rate | Open. A property of the reward and action set, already disclosed in `rl-defense/README.md` |
+| 7 | Simulator training bootstraps through the time limit while the live pipeline stores the time limit as terminal. Both have time in the observation, so the simulator's last-step target reads a state (`time_fraction = 1`) that is never trained as a start state | Analysed, opt-in fix in #941 (`train(time_limit_terminal=True)`, `--time-limit-terminal`). Default unchanged; see "Finding 7" below |
+| 8 | The lab-trained policy has a high false-disruption rate (67.8% in the learning check, 75% for protocol-v1) | Cause found and a versioned reward tested, #941. No better policy came out of it; see "Finding 8" below |
+| 9 | Live promotion gate passed undefined metrics (`or 0.0`, `else 1.0`), skipped the rules check when no rules rows were given, and compared unpaired episode sets silently | Fixed, #941 |
+| 10 | Registry `save()` was not atomic; `rollback` did not verify the target checkpoint bytes | Fixed, #941 |
+| 11 | v6 shadow observation double-counted 401/403 (`auth_failures + status_4xx`), unlike the lab detector v6 trained on | Fixed, #941 |
+| 12 | No test proved the v6 checkpoint produces a recommendation in the backend shadow path (existing tests accept either outcome) | Fixed, #941: `backend/tests/test_shadow_inference_v6.py`, in the `rl-integration` job |
+| 13 | The tuned `threshold_rules` baseline is weak: a simple deterministic rule (`ExposedGuardPolicy`) reaches -34.0 return and 11.3% compromise held-out against -96.0 and 83% | Baseline added, #941 |
 
 ## Measured learning (finding 4)
 
@@ -68,6 +73,8 @@ untrained one on 4.9% to 18.0% of states.
 | [#931](https://github.com/adamissac/ari-ai/pull/931) | Lab episode engine and the learning check with results | 0d2a7baa |
 | [#932](https://github.com/adamissac/ari-ai/pull/932) | Backend route `/lab/simulation`, transport methods, `/lab` simulation panel, e2e | b32b2130 |
 | [#935](https://github.com/adamissac/ari-ai/pull/935) | Audit progress doc | 5cea8359 |
+| [#941](https://github.com/adamissac/ari-ai/pull/941) | Fail-closed gate, registry hardening, v6 shadow fix and tests, opt-in v1 reward and study, opt-in time-limit option | see GitHub |
+| [#939](https://github.com/adamissac/ari-ai/pull/939) | 8-seed truncation ablation, simulator fuzz | f952a72f |
 | [#938](https://github.com/adamissac/ari-ai/pull/938) | Same-episode policy comparison in the lab panel; session handoff | 92a712d3 |
 
 ## Finding 7: measured, not changed
@@ -98,15 +105,76 @@ valid isolate, rate-limit, reassessment, monitoring raise or escalation visible 
 observation; termination only on database impact; truncation only at the horizon; the mask
 never offering a rate-limit or isolate on an isolated node; `noop` always valid.
 
-## Not audited
+## Finding 8: cause, experiment, result
 
-- `rl_defense/live/` (live loop, retraining, promotion gate) was only spot-checked.
-- `backend/backend/live_defense/policy.py` (v6 shadow inference) was read, not tested here.
+Full report: [`rl-defense/results/reward-v1/REPORT.md`](../rl-defense/results/reward-v1/REPORT.md).
+
+- **Cause.** On the pinned protocol-v1 checkpoint, 95% of benign disruptions are on the two
+  internet-exposed nodes and 84% are rate-limits of gateway or api, at a median target anomaly
+  of 0.036. The v0 reward prices a benign rate-limit of the gateway at 0.027 per step, so
+  standing prevention is nearly free. It is reward-rational, not a training defect.
+- **Change.** `DefenseSimEnv-v1` (opt-in, `c_false_disrupt`): a per-step cost for each
+  healthy node under a control, not scaled by criticality. v0 configs, hashes and rewards are
+  unchanged (`tests/test_reward_v1.py`).
+- **Result** (5 seeds x 300k steps per arm, held-out, seeds 1000-1099):
+
+| Policy | Return (v0) | Compromise % | False disruption % | Benign load | Uptime % |
+|---|---|---|---|---|---|
+| DDQN, v0 reward | -46.2 | 16.3 [9.5, 22.4] | 72.2 | 0.912 | 91.5 |
+| DDQN, c = 0.1 | -39.4 | 30.3 [16.6, 42.6] | 60.9 | 0.664 | 92.6 |
+| DDQN, c = 0.25 | -45.0 | 28.1 [15.7, 40.8] | 48.5 | 0.522 | 93.6 |
+| DDQN, c = 0.5 | -58.3 | 70.9 [45.1, 90.2] | 41.4 | 0.369 | 95.0 |
+| exposed_guard (rule) | -34.0 | 11.3 | 74.8 | 0.725 | 94.0 |
+| threshold_rules | -96.0 | 83.0 | 28.7 | 0.455 | 93.3 |
+| random | -154.3 | 8.9 | 94.3 | 3.412 | 41.2 |
+
+- **Reading.** Charging for benign disruption lowers it and raises compromise. No arm is a
+  better defender, and none is recommended. At this budget the DDQN does not beat the
+  `exposed_guard` rule; the 1M-step protocol-v1 policy (-29.1, 7.1%) beats it by a small
+  margin. Deterministic controls stay authoritative.
+
+## Finding 7: analysis
+
+The scored objective is the return over a fixed 200-step horizon and the observation carries
+`time_fraction`, so this is a time-aware finite-horizon problem: the value after the last step
+is 0 by definition (Pardo et al. 2018, the time-aware case). The default bootstraps from
+`Q(s_H)`, and `s_H` (`time_fraction = 1`) never occurs as a transition's start state, so that
+value is never trained. Storing the horizon as terminal is the correct target here, and it is
+what the live pipeline already does. The measured effect is small and not significant
+(8 seeds: +16.7 [-1.9, +41.3]), consistent with a bounded error discounted by gamma = 0.99.
+`time_limit_terminal` is therefore available and tested (`tests/test_time_limit.py`) but off
+by default, so protocol-v0/v1 still reproduce. A larger ablation was not run in this round.
+
+## Live pipeline and shadow path: audited in the follow-up
+
+Traced: gateway records -> `telemetry.build_facts` -> `observations.from_platform_facts` /
+`mask_from_facts` -> `PolicyRunner` -> `LiveDefenseLoop.step` (enforced control, measured
+outcome, reward from measured counts) -> `LiveTransition` -> `experience`/`online` ->
+`retrain` -> `evaluate.promotion_decision` -> `registry`; and in the backend
+`engine.process_shadow` -> `policy.decide_inference` -> `_run_v6`.
+
+- The live path uses the learned network: the backend loads the sha256-pinned v6 checkpoint
+  and its Q-values match an independent load of the same bytes (new test). It abstains, with
+  a recorded reason and no action, on a missing, tampered or swapped checkpoint, on
+  unverified ownership, off-topology routes, synthetic sources, stale or quiet windows.
+  Shadow decisions are audited as `NOT_EXECUTED`.
+- Nothing retrains or promotes on its own; promotion needs a passing report bound to the
+  checkpoint and incumbent hashes plus a `usr_*` id (which the local CLI does not
+  authenticate, as its docstring says).
+- Known serving differences left as they are, all in the recommendation-only path:
+  `time_fraction` is always 0 and escalations always full at serving; active controls are not
+  passed (`defense=None`), so v6 is not told a block is already in force; `anomaly_score` is
+  the max of the runtime score and the lab formula; finding severities are 0 (ADR-0017, the
+  reason quiet windows abstain). `mask_from_facts` hardcodes the reassessment threshold at
+  0.1 while the live loop lowers severity to 0.2, so a repeated reassessment stays valid.
+- Not done: the v1-v10 retrain result bundles were not re-run; `gateway.py`,
+  `adversary.py`, `study.py`, `report.py` and `rl_defense/research/` were not read in depth.
 
 ## Next action
 
-1. Decide finding 8 with the owner: the false-disruption rate is a reward and action-set
-   choice.
-2. Finding 7 is inconclusive at 8 seeds. If it matters, run it under the full protocol
-   with in-training selection; do not change the default on this evidence.
-3. Audit `rl_defense/live/` to the same depth as the simulator path.
+1. Owner decision on finding 8: the trade-off is now measured; a different reward form or a
+   constraint would be new work.
+2. If finding 7 matters for a future protocol, enable `time_limit_terminal` there and say so
+   in that protocol; do not change v0/v1.
+3. Pass active controls and time context into the v6 shadow observation if shadow
+   recommendations are ever to be compared with rules quantitatively.
