@@ -8,22 +8,25 @@ against an independent load of the same weights. Nothing here executes a control
 
 from __future__ import annotations
 
-import importlib.util
-
-import numpy as np
 import pytest
 
-from backend.live_defense import policy
-from backend.live_defense.policy import V6_OBS_DIM, V6_SHA256, decide_inference, pick_rule_action
-from monitoring.detect import WindowView, authorization_context, detect
-from shared.base import utcnow
-from shared.live_defense import AuthorizationContext, InferenceStatus
-from shared.monitoring import PrincipalCounts
+# The plain backend environment has no numpy/torch/rl_defense; the rl-integration job does
+# and fails on any skip.
+np = pytest.importorskip("numpy")
+pytest.importorskip("torch")
+pytest.importorskip("rl_defense")
 
-pytestmark = pytest.mark.skipif(
-    importlib.util.find_spec("rl_defense") is None or importlib.util.find_spec("torch") is None,
-    reason="rl_defense/torch not installed in this environment",
+from backend.live_defense import policy  # noqa: E402
+from backend.live_defense.policy import (  # noqa: E402
+    V6_OBS_DIM,
+    V6_SHA256,
+    decide_inference,
+    pick_rule_action,
 )
+from monitoring.detect import WindowView, authorization_context, detect  # noqa: E402
+from shared.base import utcnow  # noqa: E402
+from shared.live_defense import AuthorizationContext, InferenceStatus  # noqa: E402
+from shared.monitoring import PrincipalCounts  # noqa: E402
 
 N_FEATURES = 9  # per node, in NODE order gateway, api, auth, payments, db
 ALERT, ANOMALY = 0, 1
