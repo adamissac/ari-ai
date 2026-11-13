@@ -339,9 +339,20 @@ def test_concurrent_workers_respect_hourly_quota(automatic, settings_override):
         t.join()
     assert errors == []
     assert len(records()) == 2
+    # The other four are not skipped: their jobs wait in the queue for the window to reset.
     with transaction() as conn:
         statuses = sorted(conn.execute(sa.select(reassessment_requests.c.status)).scalars())
-    assert statuses.count("skipped") == 4
+        waiting = conn.execute(
+            sa.select(sa.func.count())
+            .select_from(jobs)
+            .where(
+                jobs.c.kind == "assess_github_commit",
+                jobs.c.status == "queued",
+                jobs.c.defer_count >= 1,
+            )
+        ).scalar_one()
+    assert statuses.count("skipped") == 0
+    assert waiting == 4
 
 
 # --- reviewer filters -----------------------------------------------------------------

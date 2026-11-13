@@ -44,14 +44,19 @@ export function CommitAssessmentProvider({ repoId, children }: { repoId: string;
   return <LookupContext.Provider value={currentLookup}>{children}</LookupContext.Provider>;
 }
 
-export function CommitAssessmentChip({ repoId, sha }: { repoId: string; sha: string }) {
+export function CommitAssessmentChip({ repoId, sha, committedAt }: { repoId: string; sha: string; committedAt?: string | null }) {
   const lookup = useContext(LookupContext);
   if (!lookup || lookup.status !== 'ready' || lookup.truncated) return null;
   const matches = lookup.items
     .filter(assessment => assessment.repo_id === repoId && assessment.commit_sha === sha)
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
   const newest = matches[0];
-  if (!newest) return <span data-testid="not-reviewed" className="font-mono text-xs text-faint">Not reviewed</span>;
+  if (!newest) {
+    // Ari reviews commits from the moment a repository is connected; it does not go back over history.
+    const first = lookup.items.filter(a => a.repo_id === repoId).reduce<number | null>((min, a) => Math.min(min ?? Infinity, Date.parse(a.created_at)), null);
+    const before = committedAt != null && (first === null || Date.parse(committedAt) < first);
+    return <span data-testid="not-reviewed" className="font-mono text-xs text-faint">{before ? 'Before Ari was connected' : 'Not reviewed'}</span>;
+  }
   const status = ASSESSMENT_STATE[newest.state];
   if (!status) return null;
   const additionalCount = matches.length - 1;
