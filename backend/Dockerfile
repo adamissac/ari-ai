@@ -22,6 +22,9 @@ COPY rl-defense/pyproject.toml rl-defense/README.md rl-defense/
 COPY rl-defense/rl_defense/ rl-defense/rl_defense/
 COPY rl-defense/configs/ rl-defense/configs/
 COPY rl-defense/results/protocol-v1-retrain/checkpoints/ddqn_seed0.pt rl-defense/results/protocol-v1-retrain/checkpoints/ddqn_seed0.manifest.json rl-defense/results/protocol-v1-retrain/checkpoints/
+# Live Defense shadow inference (backend/live_defense/policy.py) loads this sha256-pinned
+# checkpoint by path. It only ever fills a NOT_EXECUTED shadow decision.
+COPY rl-defense/results/live-retrain-v6/candidate_online.pt rl-defense/results/live-retrain-v6/candidate_online.manifest.json rl-defense/results/live-retrain-v6/
 RUN uv pip install --python /app/.venv/bin/python --index-url https://download.pytorch.org/whl/cpu torch==2.14.1 \
  && uv pip install --python /app/.venv/bin/python "gymnasium>=1.0" "scipy>=1.13" "pyyaml>=6" \
  && uv pip install --python /app/.venv/bin/python --no-deps ./rl-defense

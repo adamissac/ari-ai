@@ -611,3 +611,48 @@ def test_member_cannot_authorize(wired) -> None:
         },
     )
     assert res.status_code == 403
+
+
+def _rollback(alice, control_id):
+    res = alice.post(
+        f"/api/v1/live-controls/{control_id}/rollback", json={"reason": "owner changed mind"}
+    )
+    assert res.status_code == 200, res.text
+
+
+def test_rollback_before_execute_stops_the_control(wired) -> None:
+    """Rollback outruns execute in the queue; the control must not be applied afterwards."""
+    alice, ids = wired["alice"], wired["ids"]
+    res = _authorize(alice, ids, "rate_limit", {"type": "route", "value": ROUTE}, max_requests=1)
+    assert res.status_code == 201, res.text
+    control_id = res.json()["id"]
+    _rollback(alice, control_id)
+    _drain()
+    got = alice.get(f"/api/v1/live-controls/{control_id}").json()
+    assert got["status"] == "rejected"
+    assert got["unresolved"] is False
+    assert got["verification"] is None or got["verification"]["method"] != "probe_rate_limit"
+
+
+def test_rollback_while_verifying_ends_rolled_back_and_does_not_block(wired) -> None:
+    alice, ids = wired["alice"], wired["ids"]
+    res = _authorize(alice, ids, "rate_limit", {"type": "route", "value": ROUTE}, max_requests=1)
+    assert res.status_code == 201, res.text
+    control_id = res.json()["id"]
+    worker.drain(max_jobs=1, kinds=["live_defense_execute"])
+    assert alice.get(f"/api/v1/live-controls/{control_id}").json()["status"] == "verifying"
+    _rollback(alice, control_id)
+    _drain()
+    got = alice.get(f"/api/v1/live-controls/{control_id}").json()
+    assert got["status"] == "rolled_back"
+    assert got["unresolved"] is False
+    again = _authorize(alice, ids, "increase_logging", {"type": "application", "value": ids["app"]})
+    assert again.status_code == 201, again.text
+
+
+def test_production_image_ships_the_pinned_shadow_checkpoint() -> None:
+    """policy.py loads this file by path; an image without it abstains on every window."""
+    from backend.live_defense.policy import REPO_ROOT, V6_CHECKPOINT
+
+    dockerfile = (REPO_ROOT / "backend" / "Dockerfile").read_text()
+    assert V6_CHECKPOINT.relative_to(REPO_ROOT).as_posix() in dockerfile

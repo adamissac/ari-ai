@@ -568,6 +568,27 @@ def verify_job(conn: Connection, control_id: str) -> dict[str, Any]:
 
 def rollback_job(conn: Connection, control_id: str, *, emergency: bool = False) -> dict[str, Any]:
     control = load_control(conn, control_id, for_update=True)
+    if not emergency and control.status is LiveControlStatus.authorized:
+        # Rollback outran execute: nothing was applied. Close the control so the queued
+        # execute job skips it instead of applying it after the owner withdrew it.
+        control = control.model_copy(
+            update={"denial_reason": "Rolled back before execution.", "unresolved": False}
+        )
+        persist(conn, control)
+        control = advance(conn, control, LiveControlStatus.rejected, "live_defense.rollback")
+        return {
+            "control_id": control.id,
+            "status": control.status.value,
+            "verified_removed": True,
+            "claimed_success": True,
+        }
+    if not emergency and control.status in (
+        LiveControlStatus.executing,
+        LiveControlStatus.verifying,
+    ):
+        # Applied but not yet verified. The only legal path to rolled_back is through failed;
+        # without it the pending verify job fails the control and leaves it unresolved.
+        control = advance(conn, control, LiveControlStatus.failed, "live_defense.rollback")
     channel = load_channel(conn, control.application_id)
     observed = True
     if channel is not None and control.kind is not LiveControlKind.escalate:

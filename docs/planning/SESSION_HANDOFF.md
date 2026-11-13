@@ -3,6 +3,11 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-11-13 — Claude (agent, for Adam) — Live Defense 24/7 audit and safe slice
+- Did: audited every Live Defense stage against `main` `5d5c26f9` and wrote `docs/LIVE_DEFENSE_24_7_AUDIT.md` (stage status, every recommendation-only guard, ranked gaps, owner decisions). Fixed two rollback bugs in `live_defense/controls.py` `rollback_job` and added the pinned v6 checkpoint to `backend/Dockerfile`. No guard was loosened; no AUTO-EXECUTE; no production target.
+- Verification (executed): `make check` clean; `uv run mypy` clean; `backend/tests/live_defense_e2e` 54 passed, 1 skipped; `backend/tests -k "live_defense or pilot"` 226 passed, 4 skipped. The three new tests failed before the fix.
+- Known gaps: the image was not built, so the checkpoint copy is asserted by a static test only. Production Railway variables and live data were not inspected. Rollback dedupe and expiry-while-verifying (audit gaps 10, 11) are not fixed.
+
 ### 2026-11-03 — Claude (agent, for Adam) — demo account walks the real signed-in flow
 - Did: `/access` → simulated GitHub App step (`/access/github`) → real `/connect` picker with five fictional `lumen-pay` repositories → connect → setup → scope → start check; the account opens with a recorded run paused at approval, and approving it replays Patch/Fortify/Verify live. Simulation in `frontend/lib/demo/console/sim.ts` (sessionStorage), sample quick read in `quick-read.ts`. ADR-0024 amended.
 - Verification: frontend lint, typecheck, `npx vitest run` (116 files, 528 tests), `next build`; `tests/e2e/demo.spec.ts` 2/2 against a local `next dev` with `DEMO_ACCESS_CODE=test` (not through `stack.py`; CI runs it there).
