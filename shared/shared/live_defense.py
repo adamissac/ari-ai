@@ -54,10 +54,15 @@ from shared.rl import ActionScore, DefenseActionName, NodeName
 
 
 class StagingEnvironment(StrEnum):
-    """Environments a shadow-pilot app may declare. Production is not allowed."""
+    """Environment an owner declares for a connected application.
+
+    ``production`` is a live customer system. Controls on it still need an owner grant
+    and an owner's click per control; nothing executes on its own.
+    """
 
     sandbox = "sandbox"
     owned_test = "owned_test"
+    production = "production"
 
 
 class ApplicationVerification(StrEnum):
@@ -380,6 +385,10 @@ CONTROL_LIFECYCLE_CAVEAT = (
     "Owned-test control. Not customer production. Adapter HTTP 200 is not "
     "effectiveness. Shadow recommendations stay NOT_EXECUTED."
 )
+PRODUCTION_CONTROL_CAVEAT = (
+    "Production control, applied after an owner's authorization. Its effect is what the "
+    "application's own control endpoint reports; Ari sends no test traffic to production."
+)
 
 
 class LiveControlKind(StrEnum):
@@ -457,22 +466,30 @@ class ControlGrantCreate(StrictModel):
 
 
 class ControlChannelView(StrictModel):
-    """Registered adapter destination. Secret is never included after issuance."""
+    """Registered adapter destination. Secret is never included after issuance.
+
+    ``http`` channels are the loopback owned-test fixture. ``https`` channels are a
+    production application's own control endpoint at a public address.
+    """
 
     id: ControlChannelId
     project_id: ProjectId
     application_id: ConnectedApplicationId
-    host: Literal["127.0.0.1"]
-    port: int = Field(ge=1024, le=65535)
+    scheme: Literal["http", "https"] = "http"
+    host: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9.\-:\[\]]+$")
+    port: int = Field(ge=1, le=65535)
     path: Literal["/live-defense/control"] = CONTROL_PATH
     created_at: UtcDatetime
     revoked_at: UtcDatetime | None = None
 
 
 class ControlChannelCreate(StrictModel):
-    """Owner registers a loopback port. Arbitrary URLs are rejected by construction."""
+    """Owned-test/sandbox apps register a loopback ``port``. Production apps register the
+    ``url`` of their control endpoint: https, public address, path ``/live-defense/control``.
+    """
 
-    port: int = Field(ge=1024, le=65535)
+    port: int | None = Field(default=None, ge=1024, le=65535)
+    url: str | None = Field(default=None, max_length=300)
 
 
 class ControlChannelCreated(ControlChannelView):
@@ -530,7 +547,7 @@ class LiveControl(StrictModel):
     verification: LiveControlVerification | None = None
     unresolved: bool = False
     simulated: Literal[False] = False
-    environment_label: Literal["OWNED TEST ENVIRONMENT"] = "OWNED TEST ENVIRONMENT"
+    environment_label: Literal["OWNED TEST ENVIRONMENT", "PRODUCTION"] = "OWNED TEST ENVIRONMENT"
     caveat: ShortText = CONTROL_LIFECYCLE_CAVEAT
     max_requests: int | None = None
     rationale: ShortText | None = None

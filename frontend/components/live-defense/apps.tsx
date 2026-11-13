@@ -9,6 +9,7 @@ import type {
   IngestTokenRotated,
   IngestTokenView,
   LiveControlKind,
+  StagingEnvironment,
 } from '@hackatl/frontend-transport';
 import { useState } from 'react';
 import { OwnedTestBanner, ShadowModeNote, SourceTag } from '@/components/live-defense/common';
@@ -85,7 +86,7 @@ export function StagingApps({
 
 function RegisterApp({ projectId, onChange }: { projectId: string; onChange?: () => void }) {
   const [name, setName] = useState('');
-  const [environment, setEnvironment] = useState<'sandbox' | 'owned_test'>('sandbox');
+  const [environment, setEnvironment] = useState<StagingEnvironment>('sandbox');
   const [gated, setGated] = useState(false);
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [error, setError] = useState<unknown>(null);
@@ -103,16 +104,19 @@ function RegisterApp({ projectId, onChange }: { projectId: string; onChange?: ()
     }
   };
   return (
-    <Panel title="Register an authorized staging app">
-      <p className="mb-3 text-sm text-muted">Identity and environment class only. Ari will not grant production enforcement from this form.</p>
+    <Panel title="Register an application">
+      <p className="mb-3 text-sm text-muted">
+        Identity and environment only. A production app gets controls only after you grant each kind and click to authorize each control.
+      </p>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <Field label="Name">
           <input className={inputClass} value={name} onChange={e => setName(e.target.value)} maxLength={500} required />
         </Field>
         <Field label="Environment">
-          <select className={inputClass} value={environment} onChange={e => setEnvironment(e.target.value as 'sandbox' | 'owned_test')}>
+          <select className={inputClass} value={environment} onChange={e => setEnvironment(e.target.value as StagingEnvironment)}>
             <option value="sandbox">sandbox</option>
             <option value="owned_test">owned test</option>
+            <option value="production">production</option>
           </select>
         </Field>
         <Button variant="primary" disabled={status === 'saving' || name.trim().length === 0} onClick={() => void submit()}>Register app</Button>
@@ -195,7 +199,7 @@ function AppCard({
           <Tag>{app.environment.replaceAll('_', ' ')}</Tag>
           {(app.environment === 'owned_test' || app.environment === 'sandbox') && <Tag tone="ok">{OWNED_TEST_LABEL}</Tag>}
           <Tag tone="info">shadow ingest</Tag>
-          {gated ? <Tag tone="ok">RL-gated shadow-only</Tag> : <Tag>owned-test controls allowed</Tag>}
+          {gated ? <Tag tone="ok">RL-gated shadow-only</Tag> : <Tag>{app.environment === 'production' ? 'production controls allowed' : 'owned-test controls allowed'}</Tag>}
           <Tag>{app.verification.replaceAll('_', ' ')}</Tag>
           {app.control_channel_configured ? <Tag>control channel registered</Tag> : <Tag>no control channel</Tag>}
         </span>
@@ -345,13 +349,15 @@ function GrantForm({
 }
 
 function ControlChannelForm({ app, onChange }: { app: ConnectedApplication; onChange?: () => void }) {
+  const production = app.environment === 'production';
   const [port, setPort] = useState('8099');
+  const [url, setUrl] = useState('');
   const [issued, setIssued] = useState<ControlChannelCreated | null>(null);
   const [error, setError] = useState<unknown>(null);
   const submit = async () => {
     setError(null);
     try {
-      setIssued(await api().createControlChannel(app.id, { port: Number(port) }));
+      setIssued(await api().createControlChannel(app.id, production ? { url: url.trim(), port: null } : { port: Number(port), url: null }));
       onChange?.();
     } catch (err) {
       setError(err);
@@ -360,13 +366,21 @@ function ControlChannelForm({ app, onChange }: { app: ConnectedApplication; onCh
   return (
     <div className="mt-3 border-t border-line pt-3" data-testid={`live-defense-channel-${app.id}`}>
       <p className="text-xs text-muted">
-        Register a loopback control port only. Arbitrary URLs, scripts, and browser-supplied destinations are rejected.
+        {production
+          ? 'Your app\'s control endpoint: https, a public address, path /live-defense/control. Internal and private addresses are refused.'
+          : 'Register a loopback control port only. Arbitrary URLs, scripts, and browser-supplied destinations are rejected.'}{' '}
         HMAC secret is shown once.
       </p>
       <div className="mt-2 flex flex-wrap items-end gap-2">
-        <Field label="Loopback port">
-          <input className={inputClass} type="number" min={1024} max={65535} value={port} onChange={e => setPort(e.target.value)} />
-        </Field>
+        {production ? (
+          <Field label="Control endpoint URL">
+            <input className={inputClass} type="url" placeholder="https://api.example.com/live-defense/control" value={url} onChange={e => setUrl(e.target.value)} />
+          </Field>
+        ) : (
+          <Field label="Loopback port">
+            <input className={inputClass} type="number" min={1024} max={65535} value={port} onChange={e => setPort(e.target.value)} />
+          </Field>
+        )}
         <Button className="!px-2 !py-0.5 text-xs" onClick={() => void submit()}>Register control channel</Button>
       </div>
       {error !== null && <div className="mt-2"><ErrorState error={error} /></div>}
@@ -374,7 +388,7 @@ function ControlChannelForm({ app, onChange }: { app: ConnectedApplication; onCh
         <div className="mt-3 rounded-md border border-warn/50 bg-warn/10 p-2 text-xs" data-testid="live-defense-hmac-once">
           <p className="font-medium text-warn">Copy this HMAC secret now. Ari will not show it again.</p>
           <Mono className="mt-1 block break-all text-ink">{issued.hmac_secret}</Mono>
-          <p className="mt-1 text-muted">Adapter: http://127.0.0.1:{issued.port}{issued.path}</p>
+          <p className="mt-1 text-muted">Adapter: {issued.scheme}://{issued.host}:{issued.port}{issued.path}</p>
         </div>
       )}
     </div>

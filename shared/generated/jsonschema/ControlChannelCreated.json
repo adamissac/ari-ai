@@ -18,7 +18,9 @@
       "type": "string"
     },
     "host": {
-      "const": "127.0.0.1",
+      "maxLength": 253,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9.\\-:\\[\\]]+$",
       "title": "Host",
       "type": "string"
     },
@@ -35,7 +37,7 @@
     },
     "port": {
       "maximum": 65535,
-      "minimum": 1024,
+      "minimum": 1,
       "title": "Port",
       "type": "integer"
     },
@@ -56,6 +58,15 @@
       ],
       "default": null,
       "title": "Revoked At"
+    },
+    "scheme": {
+      "default": "http",
+      "enum": [
+        "http",
+        "https"
+      ],
+      "title": "Scheme",
+      "type": "string"
     }
   },
   "required": [

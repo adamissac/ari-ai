@@ -224,8 +224,11 @@
       "title": "Ended At"
     },
     "environment_label": {
-      "const": "OWNED TEST ENVIRONMENT",
       "default": "OWNED TEST ENVIRONMENT",
+      "enum": [
+        "OWNED TEST ENVIRONMENT",
+        "PRODUCTION"
+      ],
       "title": "Environment Label",
       "type": "string"
     },

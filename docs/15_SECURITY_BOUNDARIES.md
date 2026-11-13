@@ -94,6 +94,7 @@ Untrusted data may influence *what is analyzed*, never *what is permitted*.
 | Generate patch | Orchestrator, after human remediation approval |
 | Open PR | Human click → API with `pr` approval |
 | Merge / deploy | **Never the platform** |
+| Apply a Live Defense control | Human owner click, per control, after an owner grant for that kind ([ADR-0027](decisions/0027-live-defense-production-targets.md)). On production apps: https endpoint at a public address only, one public address per source block, no test traffic |
 
 ## 8. Probe check library
 

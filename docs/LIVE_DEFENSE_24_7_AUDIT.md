@@ -73,7 +73,7 @@ recommends; its decision record always carries `executed: false`
 | # | Gap | Kind |
 |---|---|---|
 | 1 | No telemetry collector. Nothing measures a running app and posts windows. Without it every later stage is idle | Partly fixed here: `monitoring/monitoring/collector.py` is an ASGI middleware that sends route-template counters only. Still missing: non-Python apps, per-principal ownership counters (without them the RL policy abstains), and installing it on a real app |
-| 2 | No way to reach a customer system. Channel is loopback, environment excludes production | **Owner decision** |
+| 2 | No way to reach a customer system. Channel is loopback, environment excludes production | Owner decided to allow it (ADR-0027). Done here: production environment, https control endpoint at a public address, DNS-pinned adapter, self-reported verification, and `monitoring/monitoring/controls.py` as the endpoint an app installs. Each control still needs an owner grant and click |
 | 3 | No approved RL policy. v6 is a pinned compatibility fixture; the retrained candidate was rejected by its own gate (`rl-defense/LIVE_RL_GAP_AUDIT.md`) | **Owner decision** on promotion criteria; then training work |
 | 4 | v6 is hardwired to the payments-lite topology (`live_defense/policy.py:32-38, 235-248`). On any other app its recommendation is not meaningful | Contained here: v6 now abstains (`skipped_schema`) when any route is outside that topology. A policy for other apps still needs per-application topology and retraining |
 | 5 | Nothing connects a decision to an action without a human | **Owner decision** (this is AUTO-EXECUTE) |

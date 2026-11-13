@@ -22,6 +22,7 @@ from backend.db import (
     live_controls,
     transaction,
 )
+from backend.live_defense.adapters import AdapterDenied, parse_production_url
 from backend.live_defense.controls import (
     advance,
     enqueue_execute,
@@ -40,6 +41,7 @@ from shared.errors import ErrorCode
 from shared.ids import IdPrefix, new_id
 from shared.live_defense import (
     CONTROL_PATH,
+    PRODUCTION_CONTROL_CAVEAT,
     ControlAuthorizationCreate,
     ControlChannelCreate,
     ControlChannelCreated,
@@ -51,6 +53,7 @@ from shared.live_defense import (
     LiveControl,
     LiveControlRollbackCreate,
     LiveControlStatus,
+    StagingEnvironment,
 )
 from shared.tenancy import MemberRole
 
@@ -171,6 +174,27 @@ def revoke_grant(grant_id: str, request: Request) -> ControlGrant:
         return grant
 
 
+def _channel_destination(environment: str, body: ControlChannelCreate) -> tuple[str, str, int]:
+    """Loopback port for owned-test/sandbox; public https endpoint for production."""
+    if environment == StagingEnvironment.production.value:
+        if body.url is None or body.port is not None:
+            raise ApiError(
+                ErrorCode.VALIDATION_FAILED,
+                f"production apps register an https url ending in {CONTROL_PATH}",
+                422,
+            )
+        try:
+            host, port = parse_production_url(body.url)
+        except AdapterDenied as exc:
+            raise ApiError(ErrorCode.VALIDATION_FAILED, str(exc), 422) from exc
+        return "https", host, port
+    if body.port is None or body.url is not None:
+        raise ApiError(
+            ErrorCode.VALIDATION_FAILED, "owned-test and sandbox apps register a loopback port", 422
+        )
+    return "http", "127.0.0.1", body.port
+
+
 @router.post(
     "/applications/{app_id}/control-channel",
     status_code=201,
@@ -202,14 +226,16 @@ def create_channel(
         ).scalar()
         if existing:
             raise ApiError(ErrorCode.CONFLICT_STATE, "control channel already registered", 409)
+        scheme, host, port = _channel_destination(app["environment"], body)
         secret = "hkt_ctl_" + secrets.token_urlsafe(32)
         now = utcnow()
         view = ControlChannelView(
             id=new_id(IdPrefix.cch),
             project_id=app["project_id"],
             application_id=app_id,
-            host="127.0.0.1",
-            port=body.port,
+            scheme=scheme,
+            host=host,
+            port=port,
             path=CONTROL_PATH,
             created_at=now,
         )
@@ -218,8 +244,8 @@ def create_channel(
                 id=view.id,
                 project_id=view.project_id,
                 application_id=app_id,
-                host="127.0.0.1",
-                port=body.port,
+                host=host,
+                port=port,
                 hmac_secret=secret,
                 created_by=user.id,
                 doc=view.model_dump(mode="json"),
@@ -234,7 +260,7 @@ def create_channel(
             action="live_defense.channel.created",
             subject_type="control_channel",
             subject_id=view.id,
-            details={"host": "127.0.0.1", "port": body.port, "shown_once": True},
+            details={"scheme": scheme, "host": host, "port": port, "shown_once": True},
         )
         return ControlChannelCreated(**view.model_dump(), hmac_secret=secret)
 
@@ -318,6 +344,11 @@ def authorize_control(
             max_requests=body.max_requests,
             rationale=body.rationale,
             denial_reason=None if gate.allowed else gate.reason,
+            **(
+                {"environment_label": "PRODUCTION", "caveat": PRODUCTION_CONTROL_CAVEAT}
+                if app["environment"] == StagingEnvironment.production.value
+                else {}
+            ),
         )
         insert_control(conn, control)
         audit.record(

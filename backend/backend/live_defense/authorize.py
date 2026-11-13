@@ -11,6 +11,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 
+from backend.live_defense.adapters import AdapterDenied, production_host_shape, public_address
 from shared.live_defense import (
     AUTHORIZATION_CHECKS,
     CONTROL_PATH,
@@ -61,6 +62,7 @@ class ChannelView:
     port: int
     path: str
     revoked_at: datetime | None
+    scheme: str = "http"
 
 
 @dataclass(frozen=True)
@@ -164,17 +166,22 @@ def _app_registered(inp: AuthorizationInput) -> AuthorizationCheckResult:
     return _ok("application_registered", True, "Application is registered in the project.")
 
 
-def _environment(inp: AuthorizationInput) -> AuthorizationCheckResult:
+def _env(inp: AuthorizationInput) -> StagingEnvironment | None:
     try:
-        env = StagingEnvironment(inp.application_environment or "")
+        return StagingEnvironment(inp.application_environment or "")
     except ValueError:
-        return _ok(
-            "environment_owned_test",
-            False,
-            "Production and unknown environments are denied.",
-        )
-    if env not in (StagingEnvironment.owned_test, StagingEnvironment.sandbox):
-        return _ok("environment_owned_test", False, "Environment is not owned-test/sandbox.")
+        return None
+
+
+def _production(inp: AuthorizationInput) -> bool:
+    return _env(inp) is StagingEnvironment.production
+
+
+def _environment(inp: AuthorizationInput) -> AuthorizationCheckResult:
+    # Check name kept for contract stability; production is an owner-declared environment.
+    env = _env(inp)
+    if env is None:
+        return _ok("environment_owned_test", False, "Unknown environment is denied.")
     return _ok("environment_owned_test", True, f"Environment is {env.value}.")
 
 
@@ -269,6 +276,15 @@ def _blast(inp: AuthorizationInput) -> AuthorizationCheckResult:
 def _address(inp: AuthorizationInput) -> AuthorizationCheckResult:
     if inp.kind != LiveControlKind.block_source.value:
         return _ok("address_policy", True, "Not a source block.")
+    if _production(inp):
+        if public_address(inp.target_value) and inp.target_value == inp.target_value.strip():
+            return _ok("address_policy", True, "Exactly one public unicast address.")
+        return _ok(
+            "address_policy",
+            False,
+            "Production source blocks need exactly one public address; private, loopback, "
+            "link-local, reserved, documentation, mapped, CIDR and ranges are denied.",
+        )
     if is_owned_test_block_source(inp.target_value):
         return _ok(
             "address_policy",
@@ -289,12 +305,20 @@ def _channel(inp: AuthorizationInput) -> AuthorizationCheckResult:
         return _ok("control_channel_allowlist", True, "Escalate does not call an adapter.")
     if inp.channel is None or inp.channel.revoked_at is not None:
         return _ok("control_channel_allowlist", False, "No active control channel.")
-    if inp.channel.host != "127.0.0.1":
-        return _ok("control_channel_allowlist", False, "Adapter host is not the loopback fixture.")
     if inp.channel.path != CONTROL_PATH:
         return _ok(
             "control_channel_allowlist", False, "Adapter path is not the fixed control path."
         )
+    if _production(inp):
+        if inp.channel.scheme != "https":
+            return _ok("control_channel_allowlist", False, "Production channel must use https.")
+        try:
+            production_host_shape(inp.channel.host)
+        except AdapterDenied as exc:
+            return _ok("control_channel_allowlist", False, str(exc))
+        return _ok("control_channel_allowlist", True, "Channel is the app's public https endpoint.")
+    if inp.channel.scheme != "http" or inp.channel.host != "127.0.0.1":
+        return _ok("control_channel_allowlist", False, "Adapter host is not the loopback fixture.")
     if inp.channel.port < 1024 or inp.channel.port > 65535:
         return _ok(
             "control_channel_allowlist", False, "Adapter port is not in the registered range."

@@ -22,7 +22,8 @@ Persistence, signature verification, jobs and assessment creation live in `backe
 `make worker` / Compose is up. Locally signed deliveries are simulated events.
 `monitoring.collector` is the one module here that does I/O: an ASGI middleware that
 runs inside a monitored app and posts per-route counters to `/ingest/runtime`. It has
-not been installed on a real application yet.
+not been installed on a real application yet. `monitoring.controls` is its partner:
+the signed control endpoint Ari calls on a production app (ADR-0027).
 
 ## Commands
 

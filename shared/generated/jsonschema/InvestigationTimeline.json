@@ -2261,10 +2261,11 @@
       "type": "object"
     },
     "StagingEnvironment": {
-      "description": "Environments a shadow-pilot app may declare. Production is not allowed.",
+      "description": "Environment an owner declares for a connected application.\n\n``production`` is a live customer system. Controls on it still need an owner grant\nand an owner's click per control; nothing executes on its own.",
       "enum": [
         "sandbox",
-        "owned_test"
+        "owned_test",
+        "production"
       ],
       "title": "StagingEnvironment",
       "type": "string"

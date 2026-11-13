@@ -6,7 +6,7 @@ coordination/CONTRACTS.md.
 """
 
 SCHEMA_VERSION = (
-    "0.29.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
+    "0.30.0"  # 0.2 RLExplanation; 0.3 runtime signals; 0.4 ids allow _-; 0.5 early REPORTING;
     # 0.6 intelligence memory (PR #39); 0.7 security standards + incidents (PR #49);
     # 0.8 FindingDetail / AssessmentReport response DTOs (additive);
     # 0.9 CheckCategory enum (Probe ids + V0 fixture aliases);
@@ -82,4 +82,8 @@ SCHEMA_VERSION = (
     #      GET /repositories/{id}/automation-status and POST .../recipe/retry.
     # 0.29 AccessibleRepository / AccessibleRepositoryList (additive): the GitHub picker
     #      response (GET /github/repositories) with disconnected and live_checked.
+    # 0.30 live-defense production targets (additive): StagingEnvironment.production;
+    #      ControlChannelView.scheme (http loopback fixture | https production endpoint) and a
+    #      hostname host; ControlChannelCreate.url; LiveControl.environment_label "PRODUCTION".
+    #      Every control still needs an owner grant and an owner's click. Alembic 0022.
 )
