@@ -47,6 +47,7 @@ from backend.db import (
     artifacts,
     assessment_events,
     assessments,
+    connected_applications,
     findings,
     get_engine,
     idempotency_keys,
@@ -945,6 +946,43 @@ def _post_alert(url: str, payload: dict[str, Any]) -> None:
         log.warning("alert webhook post failed: %s", exc)
 
 
+INGEST_STALE = timedelta(minutes=30)
+
+
+def stale_ingest(engine: Engine, s: Settings, now: datetime | None = None) -> list[dict[str, Any]]:
+    """Connected apps whose telemetry stopped during the last cycle.
+
+    An app is reported once: when its newest window fell past ``INGEST_STALE`` within the
+    last ``maintenance_interval_s``. Apps that never sent anything are not reported.
+    """
+    now = now or datetime.now(UTC)
+    newest = sa.func.max(runtime_windows.c.window_end).label("last_ingest_at")
+    since = now - INGEST_STALE - timedelta(seconds=s.maintenance_interval_s)
+    with engine.connect() as conn:
+        rows = conn.execute(
+            sa.select(
+                connected_applications.c.id,
+                connected_applications.c.project_id,
+                connected_applications.c.environment,
+                newest,
+            )
+            .join(runtime_windows, runtime_windows.c.application_id == connected_applications.c.id)
+            .where(connected_applications.c.doc["disconnected_at"].astext.is_(None))
+            .group_by(connected_applications.c.id)
+            .having(newest <= now - INGEST_STALE, newest > since)
+        ).all()
+    return [
+        {
+            "kind": "live_defense_ingest_stopped",
+            "application_id": r.id,
+            "project_id": r.project_id,
+            "environment": r.environment,
+            "last_ingest_at": r.last_ingest_at.isoformat(),
+        }
+        for r in rows
+    ]
+
+
 def run_once(engine: Engine | None = None, s: Settings | None = None) -> dict[str, Any]:
     """Report + retention + alerting; one maintenance cycle."""
     s = s or get_settings()
@@ -1030,6 +1068,12 @@ def run_once(engine: Engine | None = None, s: Settings | None = None) -> dict[st
                 "at": report["generated_at"],
             },
         )
+    stopped = stale_ingest(engine, s)
+    for item in stopped:
+        log.warning("live defense ingest stopped %s", json.dumps(item, default=str))
+        if s.ops_alert_webhook_url:
+            _post_alert(s.ops_alert_webhook_url, {"service": "ari-ai-backend", **item})
+    report["ingest_stopped"] = stopped
     retention = run_retention(engine=engine, s=s)
     if retention["deleted"]:
         log.info("retention %s", json.dumps(retention["deleted"], default=str)[:4000])

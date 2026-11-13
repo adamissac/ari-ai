@@ -60,7 +60,7 @@ def test_staging_app_onboarding_and_ingest_token_shown_once(env) -> None:
 
     forbidden_env = alice.post(
         f"/api/v1/projects/{pid}/applications",
-        json={"name": "prod", "environment": "production"},
+        json={"name": "prod", "environment": "staging"},
     )
     assert forbidden_env.status_code == 422
 

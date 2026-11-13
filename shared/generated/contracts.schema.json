@@ -3870,17 +3870,39 @@
     },
     "ControlChannelCreate": {
       "additionalProperties": false,
-      "description": "Owner registers a loopback port. Arbitrary URLs are rejected by construction.",
+      "description": "Owned-test/sandbox apps register a loopback ``port``. Production apps register the\n``url`` of their control endpoint: https, public address, path ``/live-defense/control``.",
       "properties": {
         "port": {
-          "maximum": 65535,
-          "minimum": 1024,
-          "title": "Port",
-          "type": "integer"
+          "anyOf": [
+            {
+              "maximum": 65535,
+              "minimum": 1024,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Port"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
         }
       },
       "required": [
-        "port"
+        "port",
+        "url"
       ],
       "title": "ControlChannelCreate",
       "type": "object"
@@ -3905,7 +3927,9 @@
           "type": "string"
         },
         "host": {
-          "const": "127.0.0.1",
+          "maxLength": 253,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9.\\-:\\[\\]]+$",
           "title": "Host",
           "type": "string"
         },
@@ -3922,7 +3946,7 @@
         },
         "port": {
           "maximum": 65535,
-          "minimum": 1024,
+          "minimum": 1,
           "title": "Port",
           "type": "integer"
         },
@@ -3943,17 +3967,42 @@
           ],
           "default": null,
           "title": "Revoked At"
+        },
+        "scheme": {
+          "default": "http",
+          "enum": [
+            "http",
+            "https"
+          ],
+          "title": "Scheme",
+          "type": "string"
+        },
+        "verified_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When the endpoint last answered a signed challenge with the right proof. Production channels carry no controls until this is set.",
+          "title": "Verified At"
         }
       },
       "required": [
         "id",
         "project_id",
         "application_id",
+        "scheme",
         "host",
         "port",
         "path",
         "created_at",
         "revoked_at",
+        "verified_at",
         "hmac_secret"
       ],
       "title": "ControlChannelCreated",
@@ -3961,7 +4010,7 @@
     },
     "ControlChannelView": {
       "additionalProperties": false,
-      "description": "Registered adapter destination. Secret is never included after issuance.",
+      "description": "Registered adapter destination. Secret is never included after issuance.\n\n``http`` channels are the loopback owned-test fixture. ``https`` channels are a\nproduction application's own control endpoint at a public address.",
       "properties": {
         "application_id": {
           "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
@@ -3974,7 +4023,9 @@
           "type": "string"
         },
         "host": {
-          "const": "127.0.0.1",
+          "maxLength": 253,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9.\\-:\\[\\]]+$",
           "title": "Host",
           "type": "string"
         },
@@ -3991,7 +4042,7 @@
         },
         "port": {
           "maximum": 65535,
-          "minimum": 1024,
+          "minimum": 1,
           "title": "Port",
           "type": "integer"
         },
@@ -4012,17 +4063,42 @@
           ],
           "default": null,
           "title": "Revoked At"
+        },
+        "scheme": {
+          "default": "http",
+          "enum": [
+            "http",
+            "https"
+          ],
+          "title": "Scheme",
+          "type": "string"
+        },
+        "verified_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When the endpoint last answered a signed challenge with the right proof. Production channels carry no controls until this is set.",
+          "title": "Verified At"
         }
       },
       "required": [
         "id",
         "project_id",
         "application_id",
+        "scheme",
         "host",
         "port",
         "path",
         "created_at",
-        "revoked_at"
+        "revoked_at",
+        "verified_at"
       ],
       "title": "ControlChannelView",
       "type": "object"
@@ -4089,6 +4165,16 @@
           "title": "Project Id",
           "type": "string"
         },
+        "protected_sources": {
+          "description": "Addresses or networks (CIDR) a source block may never hit, e.g. the owner's office, load balancer or uptime monitor.",
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Protected Sources",
+          "type": "array"
+        },
         "revoked_at": {
           "anyOf": [
             {
@@ -4113,7 +4199,8 @@
         "created_by",
         "created_at",
         "expires_at",
-        "revoked_at"
+        "revoked_at",
+        "protected_sources"
       ],
       "title": "ControlGrant",
       "type": "object"
@@ -4160,6 +4247,16 @@
           "minimum": 5,
           "title": "Max Duration S",
           "type": "integer"
+        },
+        "protected_sources": {
+          "description": "Addresses or networks (CIDR) a source block may never hit, e.g. the owner's office, load balancer or uptime monitor.",
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Protected Sources",
+          "type": "array"
         }
       },
       "required": [
@@ -4167,7 +4264,8 @@
         "allowed_kinds",
         "max_duration_s",
         "hourly_budget",
-        "expires_at"
+        "expires_at",
+        "protected_sources"
       ],
       "title": "ControlGrantCreate",
       "type": "object"
@@ -9167,8 +9265,11 @@
           "title": "Ended At"
         },
         "environment_label": {
-          "const": "OWNED TEST ENVIRONMENT",
           "default": "OWNED TEST ENVIRONMENT",
+          "enum": [
+            "OWNED TEST ENVIRONMENT",
+            "PRODUCTION"
+          ],
           "title": "Environment Label",
           "type": "string"
         },
@@ -14145,10 +14246,11 @@
       "type": "object"
     },
     "StagingEnvironment": {
-      "description": "Environments a shadow-pilot app may declare. Production is not allowed.",
+      "description": "Environment an owner declares for a connected application.\n\n``production`` is a live customer system. Controls on it still need an owner grant\nand an owner's click per control; nothing executes on its own.",
       "enum": [
         "sandbox",
-        "owned_test"
+        "owned_test",
+        "production"
       ],
       "title": "StagingEnvironment",
       "type": "string"
@@ -15292,5 +15394,5 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HackATL platform contracts",
-  "x-schema-version": "0.29.0"
+  "x-schema-version": "0.30.0"
 }

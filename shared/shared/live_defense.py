@@ -54,10 +54,15 @@ from shared.rl import ActionScore, DefenseActionName, NodeName
 
 
 class StagingEnvironment(StrEnum):
-    """Environments a shadow-pilot app may declare. Production is not allowed."""
+    """Environment an owner declares for a connected application.
+
+    ``production`` is a live customer system. Controls on it still need an owner grant
+    and an owner's click per control; nothing executes on its own.
+    """
 
     sandbox = "sandbox"
     owned_test = "owned_test"
+    production = "production"
 
 
 class ApplicationVerification(StrEnum):
@@ -380,6 +385,10 @@ CONTROL_LIFECYCLE_CAVEAT = (
     "Owned-test control. Not customer production. Adapter HTTP 200 is not "
     "effectiveness. Shadow recommendations stay NOT_EXECUTED."
 )
+PRODUCTION_CONTROL_CAVEAT = (
+    "Production control, applied after an owner's authorization. Its effect is what the "
+    "application's own control endpoint reports; Ari sends no test traffic to production."
+)
 
 
 class LiveControlKind(StrEnum):
@@ -446,6 +455,14 @@ class ControlGrant(StrictModel):
     created_at: UtcDatetime
     expires_at: UtcDatetime | None = None
     revoked_at: UtcDatetime | None = None
+    protected_sources: list[ShortText] = Field(
+        default_factory=list,
+        max_length=100,
+        description=(
+            "Addresses or networks (CIDR) a source block may never hit, e.g. the owner's "
+            "office, load balancer or uptime monitor."
+        ),
+    )
 
 
 class ControlGrantCreate(StrictModel):
@@ -454,25 +471,61 @@ class ControlGrantCreate(StrictModel):
     max_duration_s: int = Field(default=300, ge=MIN_CONTROL_DURATION_S, le=MAX_CONTROL_DURATION_S)
     hourly_budget: int = Field(default=5, ge=1, le=20)
     expires_at: UtcDatetime | None = None
+    protected_sources: list[ShortText] = Field(
+        default_factory=list,
+        max_length=100,
+        description=(
+            "Addresses or networks (CIDR) a source block may never hit, e.g. the owner's "
+            "office, load balancer or uptime monitor."
+        ),
+    )
+
+    @field_validator("protected_sources")
+    @classmethod
+    def _networks(cls, value: list[str]) -> list[str]:
+        import ipaddress
+
+        out = []
+        for item in value:
+            try:
+                out.append(str(ipaddress.ip_network(item.strip(), strict=False)))
+            except ValueError as exc:
+                raise ValueError(f"not an address or CIDR network: {item!r}") from exc
+        return out
 
 
 class ControlChannelView(StrictModel):
-    """Registered adapter destination. Secret is never included after issuance."""
+    """Registered adapter destination. Secret is never included after issuance.
+
+    ``http`` channels are the loopback owned-test fixture. ``https`` channels are a
+    production application's own control endpoint at a public address.
+    """
 
     id: ControlChannelId
     project_id: ProjectId
     application_id: ConnectedApplicationId
-    host: Literal["127.0.0.1"]
-    port: int = Field(ge=1024, le=65535)
+    scheme: Literal["http", "https"] = "http"
+    host: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9.\-:\[\]]+$")
+    port: int = Field(ge=1, le=65535)
     path: Literal["/live-defense/control"] = CONTROL_PATH
     created_at: UtcDatetime
     revoked_at: UtcDatetime | None = None
+    verified_at: UtcDatetime | None = Field(
+        default=None,
+        description=(
+            "When the endpoint last answered a signed challenge with the right proof. "
+            "Production channels carry no controls until this is set."
+        ),
+    )
 
 
 class ControlChannelCreate(StrictModel):
-    """Owner registers a loopback port. Arbitrary URLs are rejected by construction."""
+    """Owned-test/sandbox apps register a loopback ``port``. Production apps register the
+    ``url`` of their control endpoint: https, public address, path ``/live-defense/control``.
+    """
 
-    port: int = Field(ge=1024, le=65535)
+    port: int | None = Field(default=None, ge=1024, le=65535)
+    url: str | None = Field(default=None, max_length=300)
 
 
 class ControlChannelCreated(ControlChannelView):
@@ -530,7 +583,7 @@ class LiveControl(StrictModel):
     verification: LiveControlVerification | None = None
     unresolved: bool = False
     simulated: Literal[False] = False
-    environment_label: Literal["OWNED TEST ENVIRONMENT"] = "OWNED TEST ENVIRONMENT"
+    environment_label: Literal["OWNED TEST ENVIRONMENT", "PRODUCTION"] = "OWNED TEST ENVIRONMENT"
     caveat: ShortText = CONTROL_LIFECYCLE_CAVEAT
     max_requests: int | None = None
     rationale: ShortText | None = None

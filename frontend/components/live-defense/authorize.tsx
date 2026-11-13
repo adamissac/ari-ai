@@ -4,7 +4,7 @@ import { ApiError, type ConnectedApplication, type ControlAuthorizationCreate, t
 import { useState } from 'react';
 import { Button, ErrorState, Field, inputClass, Mono, Tag } from '@/components/ui';
 import { api } from '@/lib/api';
-import { controlKindLabel, ISOLATED_FIXTURE_SOURCE, OWNED_TEST_LABEL } from '@/lib/live-defense';
+import { controlKindLabel, ISOLATED_FIXTURE_SOURCE } from '@/lib/live-defense';
 
 const KINDS: LiveControlKind[] = ['rate_limit', 'block_source', 'increase_logging', 'escalate'];
 
@@ -28,9 +28,11 @@ export function AuthorizeControlForm({
   apps: ConnectedApplication[];
   onSaved?: () => void;
 }) {
-  const owned = apps.filter(app => (app.environment === 'owned_test' || app.environment === 'sandbox') && app.rl_gated_pilot !== true);
+  const owned = apps.filter(app => app.rl_gated_pilot !== true && app.disconnected_at == null);
   const [appId, setAppId] = useState('');
   const selectedAppId = appId || owned[0]?.id || '';
+  const production = owned.find(app => app.id === selectedAppId)?.environment === 'production';
+  const fixedSource = (k: LiveControlKind) => k === 'block_source' && !production;
   const [kind, setKind] = useState<LiveControlKind>('rate_limit');
   const [targetValue, setTargetValue] = useState(defaultTarget('rate_limit', appId).value);
   const [duration, setDuration] = useState('60');
@@ -53,7 +55,7 @@ export function AuthorizeControlForm({
     setDenial(null);
     setCreated(null);
     const target = defaultTarget(kind, selectedAppId);
-    if (kind === 'block_source') {
+    if (fixedSource(kind)) {
       target.value = ISOLATED_FIXTURE_SOURCE;
     } else {
       target.value = kind === 'escalate' ? '' : targetValue.trim();
@@ -85,7 +87,7 @@ export function AuthorizeControlForm({
   };
 
   if (owned.length === 0) {
-    return <p className="text-sm text-muted">Register an owned-test or sandbox app before authorizing a control.</p>;
+    return <p className="text-sm text-muted">Register an application before authorizing a control.</p>;
   }
 
   return (
@@ -95,7 +97,7 @@ export function AuthorizeControlForm({
         It is not analyst accept and not a browser-callable apply, isolate, rate-limit, or block.
       </p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <Field label="Owned-test application">
+        <Field label="Application">
           <select className={inputClass} value={selectedAppId} onChange={e => setAppId(e.target.value)}>
             {owned.map(app => (
               <option key={app.id} value={app.id}>{app.name} ({app.environment.replaceAll('_', ' ')})</option>
@@ -111,10 +113,10 @@ export function AuthorizeControlForm({
           <Field label={kind === 'block_source' ? 'Exact source IP' : kind === 'rate_limit' ? 'Exact route' : 'Application id'}>
             <input
               className={inputClass}
-              value={kind === 'block_source' ? ISOLATED_FIXTURE_SOURCE : targetValue}
+              value={fixedSource(kind) ? ISOLATED_FIXTURE_SOURCE : targetValue}
               onChange={e => setTargetValue(e.target.value)}
               maxLength={500}
-              readOnly={kind === 'block_source'}
+              readOnly={fixedSource(kind)}
             />
           </Field>
         )}
@@ -133,7 +135,12 @@ export function AuthorizeControlForm({
           <input className={inputClass} value={rationale} onChange={e => setRationale(e.target.value)} maxLength={500} />
         </Field>
       </div>
-      {kind === 'block_source' && (
+      {kind === 'block_source' && production && (
+        <p className="text-xs text-muted">
+          Exactly one public address. Private, loopback, link-local, reserved, CIDR and ranges are rejected.
+        </p>
+      )}
+      {fixedSource(kind) && (
         <p className="text-xs text-muted">
           Only the owned-test fixture IP {ISOLATED_FIXTURE_SOURCE} is allowed.
           Public, private, loopback, link-local, CIDR, ranges, malformed, and
@@ -167,7 +174,7 @@ export function AuthorizeControlForm({
           )}
         </div>
       )}
-      <p className="text-xs text-muted">{OWNED_TEST_LABEL} only. A recommendation cannot jump to EXECUTING.</p>
+      <p className="text-xs text-muted">Every control needs your click here. A recommendation cannot jump to EXECUTING.</p>
     </div>
   );
 }

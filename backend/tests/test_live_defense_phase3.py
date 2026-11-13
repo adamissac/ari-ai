@@ -411,3 +411,134 @@ def test_pilot_trail_keeps_runtime_ingest_events(env) -> None:
     assert _ingest(anon, ids, _batch(utcnow(), 20, e4=18, auth=18)).status_code == 202
     report = alice.get(f"/api/v1/projects/{ids['project']}/pilot-report").json()
     assert "runtime.ingested" in [e["action"] for e in report["investigation_trail"]]
+
+
+def test_collector_reports_counts_only_through_the_real_ingest(env) -> None:
+    """monitoring.collector inside a FastAPI app → real ingest → shadow decision."""
+    from fastapi import FastAPI, HTTPException
+    from fastapi.testclient import TestClient
+
+    from monitoring.collector import AriCollector
+
+    alice, _, _, ids, anon = env
+    sent: list[dict] = []
+    acks: list[int] = []
+
+    def send(batch: dict) -> None:
+        sent.append(batch)
+        acks.append(_ingest(anon, ids, batch).status_code)
+
+    now = [utcnow().timestamp() - 30]
+    target = FastAPI()
+
+    @target.get("/payments/{payment_id}")
+    def payment(payment_id: str) -> dict:
+        if payment_id == "denied":
+            raise HTTPException(403)
+        return {"id": payment_id}
+
+    collector = AriCollector(target, send=send, clock=lambda: now[0])
+    client = TestClient(collector)
+    for _ in range(3):
+        client.get("/payments/pay_secret123?card=4111", headers={"Authorization": "Bearer x"})
+    client.get("/payments/denied")
+    client.get("/nope/raw-path-value")
+    now[0] += 20
+    collector.flush()
+
+    assert acks == [202], sent
+    routes = {r["route"]: r for r in sent[0]["routes"]}
+    assert routes["GET /payments/{payment_id}"] == {
+        "route": "GET /payments/{payment_id}",
+        "requests": 4,
+        "status_4xx": 1,
+        "status_5xx": 0,
+        "auth_failures": 1,
+    }
+    assert routes["GET /__unmatched__"]["requests"] == 1
+    wire = str(sent)
+    for leaked in ("pay_secret123", "4111", "Bearer", "raw-path-value"):
+        assert leaked not in wire
+    worker.drain(kinds=["live_defense_shadow"])
+    decision = alice.get(f"/api/v1/projects/{ids['project']}/live-policy-decisions").json()[
+        "items"
+    ][0]
+    assert decision["telemetry_source"] == "owned_staging"
+    assert decision["executed"] is False
+
+
+def test_collector_never_breaks_the_app_and_rolls_windows() -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from monitoring.collector import MAX_ROUTES, AriCollector
+    from shared.monitoring import RuntimeSignalBatch
+
+    def boom(_batch: dict) -> None:
+        raise OSError("ingest down")
+
+    now = [1_800_000_000.0]
+    target = FastAPI()
+
+    @target.get("/ok")
+    def ok() -> dict:
+        return {}
+
+    collector = AriCollector(target, send=boom, clock=lambda: now[0], window_s=60)
+    client = TestClient(collector)
+    assert client.get("/ok").status_code == 200
+    now[0] += 61
+    assert client.get("/ok").status_code == 200  # window rolls; failed send is swallowed
+
+    good: list[dict] = []
+    collector = AriCollector(target, send=good.append, clock=lambda: now[0])
+    for i in range(MAX_ROUTES + 5):
+        collector._record("GET", f"/r{i}", 200)
+    now[0] += 7200  # idle gap longer than the ingest maximum
+    collector.flush()
+    batch = RuntimeSignalBatch.model_validate(good[0])
+    assert len(batch.routes) == MAX_ROUTES + 1
+    assert {r.route: r.requests for r in batch.routes}["GET /__overflow__"] == 5
+
+
+def test_v6_abstains_on_routes_outside_its_trained_topology() -> None:
+    from backend.live_defense.policy import decide_inference
+    from monitoring.detect import authorization_context, detect, view_from_window
+    from shared.monitoring import RouteWindow
+
+    def infer(route: str):
+        window = RouteWindow(route=route, requests=20, status_4xx=18, auth_failures=18)
+        views = [view_from_window(window, source="owned_staging", anomaly_score=0.9)]
+        return decide_inference(
+            source="owned_staging",
+            windows=views,
+            hits=detect(views),
+            auth=authorization_context(views),
+            window_end=utcnow(),
+        )
+
+    other = infer("POST /api/orders/{order_id}/ship")
+    assert other.status.value == "skipped_schema"
+    assert other.feature_schema_ok is False
+    assert "payments-lite" in (other.reason or "")
+    assert infer("GET /payments/{payment_id}").status.value != "skipped_schema"
+
+
+def test_ingest_stop_is_reported_once_per_stoppage(env) -> None:
+    from backend import maintenance
+    from backend.db import get_engine
+    from backend.settings import get_settings
+
+    _, _, _, ids, anon = env
+    sent_at = utcnow() - timedelta(minutes=40)
+    assert _ingest(anon, ids, _batch(sent_at, 5)).status_code == 202
+    s = get_settings()
+    first = maintenance.stale_ingest(get_engine(), s)
+    assert [(i["application_id"], i["kind"]) for i in first] == [
+        (ids["app"], "live_defense_ingest_stopped")
+    ]
+    later = maintenance.stale_ingest(
+        get_engine(), s, now=utcnow() + timedelta(seconds=s.maintenance_interval_s)
+    )
+    assert later == []  # reported in the cycle it stopped, not every hour after
+    assert maintenance.stale_ingest(get_engine(), s, now=sent_at + timedelta(minutes=5)) == []

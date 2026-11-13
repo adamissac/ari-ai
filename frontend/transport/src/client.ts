@@ -405,6 +405,9 @@ export class ApiClient {
   createControlChannel(appId: string, body: C.ControlChannelCreate, options?: RequestOptions): Promise<C.ControlChannelCreated> {
     return this.request(`/applications/${segment(appId)}/control-channel`, 'ControlChannelCreated', options, body) as Promise<C.ControlChannelCreated>;
   }
+  verifyControlChannel(appId: string, options?: RequestOptions): Promise<C.ControlChannelView> {
+    return this.request(`/applications/${segment(appId)}/control-channel/verify`, 'ControlChannelView', options, {}) as Promise<C.ControlChannelView>;
+  }
   controlChannel(appId: string, options?: RequestOptions): Promise<C.ControlChannelView> {
     return this.request(`/applications/${segment(appId)}/control-channel`, 'ControlChannelView', options) as Promise<C.ControlChannelView>;
   }

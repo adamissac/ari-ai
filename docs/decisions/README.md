@@ -45,3 +45,4 @@ before Phase 1 implementation relies on them.
 - [ADR-0021: per-project fix delivery mode, auto, pull request or manual](0021-auto-delivery-mode.md)
 - [ADR-0022: boundaries of live policy enforcement in the isolated lab (proposed)](0022-live-lab-enforcement-boundaries.md)
 - [ADR-0023: security-agent testing for JavaScript/TypeScript repositories (proposed)](0023-js-ts-security-agent-testing.md)
+- [ADR-0027: Live Defense may apply controls to a production application (accepted)](0027-live-defense-production-targets.md)

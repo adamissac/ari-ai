@@ -501,7 +501,7 @@ connected_applications = sa.Table(
     sa.Column("created_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
     sa.Column("doc", JSONB, nullable=False),
     _created(),
-    sa.CheckConstraint("environment in ('sandbox','owned_test')", name="environment"),
+    sa.CheckConstraint("environment in ('sandbox','owned_test','production')", name="environment"),
 )
 
 ingest_tokens = sa.Table(
@@ -629,15 +629,18 @@ control_channels = sa.Table(
         nullable=False,
         index=True,
     ),
-    sa.Column("host", sa.String(16), nullable=False),
+    sa.Column("host", sa.String(253), nullable=False),
     sa.Column("port", sa.Integer, nullable=False),
     sa.Column("hmac_secret", sa.String(200), nullable=False),
     sa.Column("revoked_at", TS),
     sa.Column("created_by", sa.String(80), sa.ForeignKey("users.id"), nullable=False),
     sa.Column("doc", JSONB, nullable=False),
     _created(),
-    sa.CheckConstraint("host = '127.0.0.1'", name="control_channel_host"),
-    sa.CheckConstraint("port >= 1024 AND port <= 65535", name="control_channel_port"),
+    sa.CheckConstraint("host <> ''", name="control_channel_host"),
+    sa.CheckConstraint(
+        "port >= 1 AND port <= 65535 AND (host <> '127.0.0.1' OR port >= 1024)",
+        name="control_channel_port",
+    ),
 )
 sa.Index(
     "uq_control_channels_active_app",

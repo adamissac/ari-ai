@@ -5,5 +5,6 @@
   "application_id": "app_01JFIXTURE0000000000000APP",
   "expires_at": null,
   "hourly_budget": 5,
-  "max_duration_s": 300
+  "max_duration_s": 300,
+  "protected_sources": []
 }

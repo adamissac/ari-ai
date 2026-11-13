@@ -1,17 +1,35 @@
 {
   "additionalProperties": false,
-  "description": "Owner registers a loopback port. Arbitrary URLs are rejected by construction.",
+  "description": "Owned-test/sandbox apps register a loopback ``port``. Production apps register the\n``url`` of their control endpoint: https, public address, path ``/live-defense/control``.",
   "properties": {
     "port": {
-      "maximum": 65535,
-      "minimum": 1024,
-      "title": "Port",
-      "type": "integer"
+      "anyOf": [
+        {
+          "maximum": 65535,
+          "minimum": 1024,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Port"
+    },
+    "url": {
+      "anyOf": [
+        {
+          "maxLength": 300,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Url"
     }
   },
-  "required": [
-    "port"
-  ],
   "title": "ControlChannelCreate",
   "type": "object"
 }

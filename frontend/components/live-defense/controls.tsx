@@ -10,7 +10,6 @@ import {
   controlKindLabel,
   isActiveControl,
   isPendingControl,
-  OWNED_TEST_LABEL,
   ttlRemaining,
   type LiveDefenseMode,
 } from '@/lib/live-defense';
@@ -127,7 +126,7 @@ function ControlCard({ control, onChange }: { control: LiveControl; onChange?: (
     <li className="rounded-md border border-line bg-panel-2 p-3 text-sm text-ink" data-testid={`live-defense-control-${control.id}`}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium">{controlKindLabel(control.kind)}</span>
-        <Tag tone="ok">{OWNED_TEST_LABEL}</Tag>
+        <Tag tone={control.environment_label === 'PRODUCTION' ? 'warn' : 'ok'}>{control.environment_label}</Tag>
         <Tag>{control.status.replaceAll('_', ' ')}</Tag>
         <Tag tone="info">origin {control.origin}</Tag>
         {control.simulated === false && <Tag>not sample</Tag>}

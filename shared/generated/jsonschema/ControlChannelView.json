@@ -1,6 +1,6 @@
 {
   "additionalProperties": false,
-  "description": "Registered adapter destination. Secret is never included after issuance.",
+  "description": "Registered adapter destination. Secret is never included after issuance.\n\n``http`` channels are the loopback owned-test fixture. ``https`` channels are a\nproduction application's own control endpoint at a public address.",
   "properties": {
     "application_id": {
       "pattern": "^app_[0-9A-Za-z_\\-]{8,64}$",
@@ -13,7 +13,9 @@
       "type": "string"
     },
     "host": {
-      "const": "127.0.0.1",
+      "maxLength": 253,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9.\\-:\\[\\]]+$",
       "title": "Host",
       "type": "string"
     },
@@ -30,7 +32,7 @@
     },
     "port": {
       "maximum": 65535,
-      "minimum": 1024,
+      "minimum": 1,
       "title": "Port",
       "type": "integer"
     },
@@ -51,6 +53,29 @@
       ],
       "default": null,
       "title": "Revoked At"
+    },
+    "scheme": {
+      "default": "http",
+      "enum": [
+        "http",
+        "https"
+      ],
+      "title": "Scheme",
+      "type": "string"
+    },
+    "verified_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "When the endpoint last answered a signed challenge with the right proof. Production channels carry no controls until this is set.",
+      "title": "Verified At"
     }
   },
   "required": [

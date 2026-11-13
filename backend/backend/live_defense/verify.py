@@ -38,6 +38,35 @@ def _get(url: str, source: str | None = None) -> int:
         return int(response.status_code)
 
 
+SELF_REPORTED = "Reported by the application's control endpoint; Ari sent no test traffic."
+
+
+def _production_applied(
+    kind: LiveControlKind, target_value: str, inspect: AdapterResult, apply: AdapterResult
+) -> LiveControlVerification:
+    """Production: the control counts only when the endpoint reports exactly what was sent."""
+    control = inspect.body.get("control") or {}
+    matches = (
+        inspect.ok
+        and bool(inspect.body.get("present"))
+        and control.get("kind") == kind.value
+        and str(control.get("target_value") or "") == target_value
+    )
+    if kind is LiveControlKind.increase_logging:
+        matches = matches and inspect.body.get("log_level") == "debug"
+    return LiveControlVerification(
+        observed_effect=matches,
+        adapter_http_status=apply.http_status,
+        probe_http_statuses=[],
+        method="endpoint_inspect",
+        detail=(
+            f"Endpoint reports present={inspect.body.get('present')} "
+            f"kind={control.get('kind')} target={control.get('target_value')}. {SELF_REPORTED}"
+        )[:500],
+        verified_at=utcnow(),
+    )
+
+
 def verify_control(
     *,
     kind: LiveControlKind,
@@ -52,6 +81,8 @@ def verify_control(
         secret,
         {"op": "inspect", "control_id": control_id},
     )
+    if control_url.startswith("https://") and kind is not LiveControlKind.escalate:
+        return _production_applied(kind, target_value, inspect, adapter_apply)
     statuses: list[int] = []
     observed = False
     detail = "not verified"
@@ -119,6 +150,16 @@ def verify_removed(
 ) -> LiveControlVerification:
     inspect = call(control_url, secret, {"op": "inspect", "control_id": control_id})
     present = bool(inspect.body.get("present"))
+    if control_url.startswith("https://"):
+        # Production: no test traffic. The endpoint's signed report is the evidence.
+        return LiveControlVerification(
+            observed_effect=inspect.ok and not present,
+            adapter_http_status=inspect.http_status,
+            probe_http_statuses=[],
+            method="endpoint_inspect_after_remove",
+            detail=f"Production endpoint reports present={present}. {SELF_REPORTED}"[:500],
+            verified_at=utcnow(),
+        )
     statuses: list[int] = []
     observed = inspect.ok and not present
     detail = f"inspect present={present}"

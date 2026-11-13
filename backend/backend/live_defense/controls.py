@@ -19,7 +19,7 @@ from backend.db import (
     live_controls,
     live_policy_decisions,
 )
-from backend.live_defense.adapters import AdapterDenied, call, registered_control_url
+from backend.live_defense.adapters import AdapterDenied, call, channel_url
 from backend.live_defense.authorize import (
     AuthorizationInput,
     ChannelView,
@@ -27,6 +27,7 @@ from backend.live_defense.authorize import (
     GrantView,
     check,
 )
+from backend.live_defense.sealing import unseal
 from backend.live_defense.state import IllegalControlTransition, transition
 from backend.live_defense.verify import verify_control, verify_removed
 from backend.services import project_org
@@ -40,6 +41,7 @@ from shared.live_defense import (
     LiveControlKind,
     LiveControlOrigin,
     LiveControlStatus,
+    LiveControlVerification,
     LivePolicyDecision,
 )
 
@@ -110,7 +112,7 @@ def load_channel(conn: Connection, application_id: str) -> tuple[ControlChannelV
     if row is None:
         return None
     view = ControlChannelView.model_validate(row["doc"])
-    return view, row["hmac_secret"]
+    return view, unseal(row["hmac_secret"])
 
 
 def emergency_active(conn: Connection, project_id: str, application_id: str | None) -> bool:
@@ -218,6 +220,7 @@ def gate_for(
             hourly_budget=grant.hourly_budget,
             revoked_at=grant.revoked_at,
             expires_at=grant.expires_at,
+            protected_sources=tuple(grant.protected_sources),
         ),
         channel=None
         if channel is None
@@ -226,6 +229,8 @@ def gate_for(
             port=channel[0].port,
             path=channel[0].path,
             revoked_at=channel[0].revoked_at,
+            scheme=channel[0].scheme,
+            verified=channel[0].verified_at is not None,
         ),
         emergency_stop_active=emergency_active(conn, project_id, application_id),
         unresolved_control=unresolved(conn, application_id),
@@ -418,8 +423,6 @@ def execute_control(
         control = advance(conn, control, LiveControlStatus.rejected, "live_defense.execute")
         return {"control_id": control.id, "status": control.status.value, "denied": True}
     if control.kind is LiveControlKind.escalate:
-        from shared.live_defense import LiveControlVerification
-
         control = advance(conn, control, LiveControlStatus.executing, "live_defense.execute")
         control = advance(conn, control, LiveControlStatus.verifying, "live_defense.execute")
         control = control.model_copy(
@@ -443,7 +446,7 @@ def execute_control(
         return {"control_id": control.id, "status": "failed", "error": "no channel"}
     view, secret = channel
     try:
-        url = registered_control_url(view.host, view.port)
+        url = channel_url(view)
     except AdapterDenied as exc:
         control = control.model_copy(update={"denial_reason": str(exc), "unresolved": True})
         persist(conn, control)
@@ -531,6 +534,17 @@ def execute_control(
     }
 
 
+def _refused(reason: str) -> LiveControlVerification:
+    """The adapter refused the destination (e.g. it now resolves inward). Nothing was sent,
+    so nothing is proven: the control is treated as not verified / not removed."""
+    return LiveControlVerification(
+        observed_effect=False,
+        method="adapter_refused",
+        detail=f"Adapter refused the control endpoint: {reason}"[:500],
+        verified_at=utcnow(),
+    )
+
+
 def verify_job(conn: Connection, control_id: str) -> dict[str, Any]:
     control = load_control(conn, control_id, for_update=True)
     if control.status is not LiveControlStatus.verifying:
@@ -544,18 +558,21 @@ def verify_job(conn: Connection, control_id: str) -> dict[str, Any]:
         enqueue_rollback(conn, control.id, control.project_id)
         return {"control_id": control.id, "status": "failed"}
     view, secret = channel
-    url = registered_control_url(view.host, view.port)
+    url = channel_url(view)
     apply_status = None
     from backend.live_defense.adapters import AdapterResult
 
-    verification = verify_control(
-        kind=control.kind,
-        control_url=url,
-        secret=secret,
-        control_id=control.id,
-        target_value=control.target.value,
-        adapter_apply=AdapterResult(ok=True, http_status=apply_status or 200, body={}),
-    )
+    try:
+        verification = verify_control(
+            kind=control.kind,
+            control_url=url,
+            secret=secret,
+            control_id=control.id,
+            target_value=control.target.value,
+            adapter_apply=AdapterResult(ok=True, http_status=apply_status or 200, body={}),
+        )
+    except AdapterDenied as exc:
+        verification = _refused(str(exc))
     control = control.model_copy(update={"verification": verification})
     persist(conn, control)
     if verification.observed_effect:
@@ -593,18 +610,22 @@ def rollback_job(conn: Connection, control_id: str, *, emergency: bool = False) 
     observed = True
     if channel is not None and control.kind is not LiveControlKind.escalate:
         view, secret = channel
-        url = registered_control_url(view.host, view.port)
-        result = call(url, secret, {"op": "remove", "control_id": control.id})
-        verification = verify_removed(
-            control_url=url,
-            secret=secret,
-            control_id=control.id,
-            kind=control.kind,
-            target_value=control.target.value,
-        )
+        try:
+            url = channel_url(view)
+            result = call(url, secret, {"op": "remove", "control_id": control.id})
+            verification = verify_removed(
+                control_url=url,
+                secret=secret,
+                control_id=control.id,
+                kind=control.kind,
+                target_value=control.target.value,
+            )
+            removed = result.ok
+        except AdapterDenied as exc:
+            verification, removed = _refused(str(exc)), False
         control = control.model_copy(update={"verification": verification})
         persist(conn, control)
-        observed = verification.observed_effect and result.ok
+        observed = verification.observed_effect and removed
     target = LiveControlStatus.emergency_stopped if emergency else LiveControlStatus.rolled_back
     if control.status is LiveControlStatus.verified or control.status is LiveControlStatus.failed:
         try:
@@ -649,21 +670,27 @@ def rollback_job(conn: Connection, control_id: str, *, emergency: bool = False) 
 
 def expire_job(conn: Connection, control_id: str) -> dict[str, Any]:
     control = load_control(conn, control_id, for_update=True)
+    if control.status in (LiveControlStatus.executing, LiveControlStatus.verifying):
+        # Applied but never verified (stalled verify job). Remove it rather than leave it open.
+        return rollback_job(conn, control_id)
     if control.status is not LiveControlStatus.verified:
         return {"control_id": control.id, "status": control.status.value, "skipped": True}
     channel = load_channel(conn, control.application_id)
     observed = True
     if channel is not None and control.kind is not LiveControlKind.escalate:
         view, secret = channel
-        url = registered_control_url(view.host, view.port)
-        call(url, secret, {"op": "expire", "control_id": control.id})
-        verification = verify_removed(
-            control_url=url,
-            secret=secret,
-            control_id=control.id,
-            kind=control.kind,
-            target_value=control.target.value,
-        )
+        try:
+            url = channel_url(view)
+            call(url, secret, {"op": "expire", "control_id": control.id})
+            verification = verify_removed(
+                control_url=url,
+                secret=secret,
+                control_id=control.id,
+                kind=control.kind,
+                target_value=control.target.value,
+            )
+        except AdapterDenied as exc:
+            verification = _refused(str(exc))
         observed = verification.observed_effect
         control = control.model_copy(update={"verification": verification})
         persist(conn, control)
@@ -708,8 +735,14 @@ def emergency_stop_job(
     for row in channel_rows:
         if application_id and row["application_id"] != application_id:
             continue
-        url = registered_control_url(row["host"], row["port"])
-        call(url, row["hmac_secret"], {"op": "emergency_clear", "control_id": "est_all"})
+        try:
+            url = channel_url(ControlChannelView.model_validate(row["doc"]))
+            call(
+                url, unseal(row["hmac_secret"]), {"op": "emergency_clear", "control_id": "est_all"}
+            )
+        except AdapterDenied:
+            # Refused destination: nothing was sent. Per-control rollbacks above still ran.
+            continue
     claimed = all(item.get("verified_removed") for item in results) if results else True
     return {"removed": results, "claimed_success": claimed}
 

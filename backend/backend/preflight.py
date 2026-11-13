@@ -86,6 +86,17 @@ def validate_config(s: Settings, *, worker: bool = False) -> PreflightResult:
         r.warnings.append("OPS_TOKEN unset: /api/v1/ops/status stays disabled in this environment")
     if not _secret_value(s.alert_webhook_url):
         r.warnings.append("ALERT_WEBHOOK_URL unset: no critical-failure alerting")
+    if not _secret_value(s.control_secret_key):
+        r.warnings.append(
+            "CONTROL_SECRET_KEY unset: Live Defense control-channel secrets are stored plaintext"
+        )
+    else:
+        try:
+            from cryptography.fernet import Fernet
+
+            Fernet(s.control_secret_key.get_secret_value().encode())  # type: ignore[union-attr]
+        except ValueError:
+            r.errors.append("CONTROL_SECRET_KEY is not a valid Fernet key")
     for name in ("api_base_url", "frontend_origin"):
         if not getattr(s, name).startswith("https://"):
             r.warnings.append(f"{name.upper()} is not https ({getattr(s, name)})")

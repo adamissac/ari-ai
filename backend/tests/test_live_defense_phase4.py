@@ -656,3 +656,20 @@ def test_production_image_ships_the_pinned_shadow_checkpoint() -> None:
 
     dockerfile = (REPO_ROOT / "backend" / "Dockerfile").read_text()
     assert V6_CHECKPOINT.relative_to(REPO_ROOT).as_posix() in dockerfile
+
+
+def test_expiry_while_still_verifying_removes_and_closes_the_control(wired) -> None:
+    """A stalled verify job must not leave an applied control open past its expiry."""
+    from backend.db import transaction
+    from backend.live_defense.controls import expire_job
+
+    alice, ids = wired["alice"], wired["ids"]
+    res = _authorize(alice, ids, "rate_limit", {"type": "route", "value": ROUTE}, max_requests=1)
+    control_id = res.json()["id"]
+    worker.drain(max_jobs=1, kinds=["live_defense_execute"])
+    with transaction() as conn:
+        out = expire_job(conn, control_id)
+    assert out["verified_removed"] is True
+    got = alice.get(f"/api/v1/live-controls/{control_id}").json()
+    assert got["status"] == "rolled_back"
+    assert got["unresolved"] is False

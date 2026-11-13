@@ -58,13 +58,21 @@ class ShadowInference:
     feature_mapping_note: str | None = None
 
 
-def node_for_route(route: str) -> NodeName:
+def _mapped_node(route: str) -> NodeName | None:
     import fnmatch
 
     for node, patterns in NODE_PATTERNS:
         if any(fnmatch.fnmatchcase(route, pat) for pat in patterns):
             return node
-    return DEFAULT_NODE
+    return None
+
+
+def _route_mapped(route: str) -> bool:
+    return _mapped_node(route) is not None
+
+
+def node_for_route(route: str) -> NodeName:
+    return _mapped_node(route) or DEFAULT_NODE
 
 
 def freshness_ok(window_end) -> bool:
@@ -113,6 +121,18 @@ def decide_inference(
             ),
             feature_schema_ok=True,
             action_mask_valid=True,
+        )
+    unmapped = [w.route for w in windows if not _route_mapped(w.route)]
+    if unmapped:
+        # v6 has a fixed five-node observation. Folding unknown routes into the default
+        # node would feed it another application's traffic as if it were payments-lite.
+        return ShadowInference(
+            status=InferenceStatus.skipped_schema,
+            reason=(
+                f"{len(unmapped)} of {len(windows)} routes are outside the payments-lite "
+                "topology v6 was trained on"
+            ),
+            feature_schema_ok=False,
         )
     if auth is not AuthorizationContext.verified:
         return ShadowInference(

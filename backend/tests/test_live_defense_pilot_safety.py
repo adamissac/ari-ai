@@ -142,7 +142,8 @@ def test_unsafe_kinds_denied_and_abstain_even_with_perfect_grant(kind: str) -> N
         ({"application_exists": False}, "application_registered"),
         ({"application_id": None}, "application_registered"),
         ({"application_disconnected": True}, "application_registered"),
-        ({"application_environment": "production"}, "environment_owned_test"),
+        # Production is an owner-declared environment; a loopback channel is refused for it.
+        ({"application_environment": "production"}, "control_channel_allowlist"),
         ({"application_environment": "staging"}, "environment_owned_test"),
         ({"application_environment": None}, "environment_owned_test"),
         ({"grant": None}, "owner_grant_exact_kind"),
