@@ -190,11 +190,120 @@ def test_gate_passes_a_strictly_better_candidate():
         for i in range(10)
     ]
     dep = [ev.EpisodeMetrics("s", i, -5.0, 10, 10, 10, 20, 0, 5, 0, 5, 0, 0) for i in range(10)]
+    rules = [ev.EpisodeMetrics("s", i, -3.0, 10, 10, 5, 20, 0, 5, 0, 5, 0, 1) for i in range(10)]
     v = ev.promotion_decision(
-        candidate=cand, deployed=dep, rules=None, criteria=ev.PromotionCriteria()
+        candidate=cand, deployed=dep, rules=rules, criteria=ev.PromotionCriteria()
     )
     assert v["decision"] == "recommend_promote", v["checks"]
     assert v["requires_human_approval"] is True
+
+
+def _rows(reward: float, n: int = 10, **over: int) -> list[ev.EpisodeMetrics]:
+    base = dict(
+        steps=10,
+        attack_requests=10,
+        compromised=1,
+        benign_requests=20,
+        benign_blocked=1,
+        benign_requests_no_attack=5,
+        benign_blocked_no_attack=0,
+        steps_no_attack=5,
+        disruptive_steps_no_attack=0,
+        nonnoop_actions=1,
+    )
+    base.update(over)
+    return [ev.EpisodeMetrics("s", i, reward - 0.01 * i, **base) for i in range(n)]
+
+
+def _failed(v: dict) -> set[str]:
+    return {c["name"] for c in v["checks"] if not c["passed"]}
+
+
+def test_gate_fails_closed_on_undefined_metrics_and_missing_baselines():
+    crit = ev.PromotionCriteria()
+    dep, rules = _rows(-5.0, compromised=10), _rows(-3.0)
+    good = _rows(-1.0)
+    assert (
+        ev.promotion_decision(candidate=good, deployed=dep, rules=rules, criteria=crit)["decision"]
+        == "recommend_promote"
+    )
+
+    # must_beat_rules with no rules rows is a failed check, not a skipped one
+    v = ev.promotion_decision(candidate=good, deployed=dep, rules=None, criteria=crit)
+    assert v["decision"] == "reject" and _failed(v) == {"beats_static_rules"}
+    v = ev.promotion_decision(candidate=good, deployed=dep, rules=rules[:5], criteria=crit)
+    assert _failed(v) == {"beats_static_rules"}
+
+    # a holdout with no attack traffic cannot show the candidate is not worse on compromise
+    no_attack = dict(attack_requests=0, compromised=0)
+    v = ev.promotion_decision(
+        candidate=_rows(-1.0, **no_attack),
+        deployed=_rows(-5.0, **no_attack),
+        rules=rules,
+        criteria=crit,
+    )
+    assert "compromise_rate_not_worse" in _failed(v)
+
+    # no attack-free window: false disruption and defense duty are undefined
+    never_quiet = dict(benign_requests_no_attack=0, steps_no_attack=0)
+    v = ev.promotion_decision(
+        candidate=_rows(-1.0, **never_quiet), deployed=dep, rules=rules, criteria=crit
+    )
+    assert {"false_disruption_cap", "reward_hacking_no_blanket_isolation"} <= _failed(v)
+
+    # no legitimate traffic at all: availability is undefined
+    v = ev.promotion_decision(
+        candidate=_rows(-1.0, benign_requests=0, benign_blocked=0),
+        deployed=dep,
+        rules=rules,
+        criteria=crit,
+    )
+    assert "availability_floor" in _failed(v)
+
+
+def test_gate_rejects_unpaired_or_empty_episode_sets():
+    crit = ev.PromotionCriteria()
+    dep, rules, good = _rows(-5.0, compromised=10), _rows(-3.0), _rows(-1.0)
+    for cand, deployed in (
+        (good[:6], dep),  # candidate scored on a subset
+        (good, dep[:6]),
+        ([], dep),
+        (good + good[:1], dep + dep[:1]),  # a duplicated episode
+    ):
+        v = ev.promotion_decision(candidate=cand, deployed=deployed, rules=rules, criteria=crit)
+        assert v["decision"] == "reject"
+        assert _failed(v) == {"paired_episode_sets_match"}
+        assert v["requires_human_approval"] is True
+
+
+def test_registry_save_is_atomic_and_rollback_verifies_the_target(base_ckpt, tmp_path):
+    from rl_defense.checkpoint import sha256_file
+
+    path = tmp_path / "registry.json"
+    reg = Registry(path)
+    base = tmp_path / "base.pt"
+    base.write_bytes(base_ckpt.read_bytes())
+    v0 = reg.init(base, approved_by="usr_alan")
+    reg.save()
+    assert not path.with_name("registry.json.tmp").exists()
+    assert Registry(path).data["deployed"] == v0
+
+    cand = tmp_path / "cand.pt"
+    cand.write_bytes(base_ckpt.read_bytes() + b"\0")
+    sha = sha256_file(cand)
+    v1 = reg.register(
+        cand, _report(tmp_path / "ok.json", sha, "recommend_promote", sha256_file(base))
+    )
+    reg.promote(v1, approved_by="usr_alan", reason="passed gate")
+
+    base.write_bytes(b"tampered")  # the rollback target no longer has its registered bytes
+    with pytest.raises(RegistryError, match="rollback target"):
+        reg.rollback(approved_by="usr_alan", reason="regression")
+    assert reg.data["deployed"] == v1 and reg.data["stack"] == [v0, v1]
+    base.unlink()
+    with pytest.raises(RegistryError, match="rollback target"):
+        reg.rollback(approved_by="usr_alan", reason="regression")
+    assert reg.data["deployed"] == v1
 
 
 # ------------------------------------------------------------------ registry
