@@ -6,6 +6,7 @@ import { DefenseSwitch } from '@/components/defense-switch';
 import { ConsoleSide } from '@/components/lab-console';
 import { observedState } from '@/components/lab-command';
 import { ReplayStage } from '@/components/lab-replay';
+import { LabSimulation } from '@/components/lab-simulation';
 import { OptionalSession, useOptionalSession } from '@/components/session';
 import { Empty, ErrorState, inputClass, Loading, Mono, Panel } from '@/components/ui';
 import { defenderCountPhrase } from '@/components/lab-copy';
@@ -81,8 +82,8 @@ export default function DefenseLabPage() {
               <div>
                 <dt className="label-mono text-faint">Defender</dt>
                 <dd className="mt-1 flex items-center gap-2 text-sm font-medium text-ink">
-                  <span aria-hidden="true" className="h-2 w-2 rounded-full bg-ok" />
-                  Active · recommendation-only
+                  <span aria-hidden="true" className="h-2 w-2 rounded-full bg-faint" />
+                  Recorded · recommendation-only
                 </dd>
               </div>
               <div>
@@ -178,6 +179,7 @@ function Lab({ data, scenarioId, onStep }: { data: BundleResponse; scenarioId: s
   return (
     <div className="flex flex-col gap-16">
       <LiveView episode={episode} scenario={scenario} onStep={onStep} />
+      {!DEMO_ONLY && <OptionalSession><LabSimulation /></OptionalSession>}
       <Scoreboard bundle={bundle} />
       {!DEMO_ONLY && <OptionalSession><SignedInDefenseProjects /></OptionalSession>}
       <details className="group rounded-2xl border border-line bg-panel" data-testid="lab-details">

@@ -100,6 +100,8 @@ by FastAPI is the source for frontend client generation.
 | GET | `/projects/{id}/defense-graph` | Recorded apps and ingest routes; missing checks stay unknown |
 | POST | `/defense-recommendations/{id}/reviews` | Analyst accept/reject/needs-investigation (does not execute) |
 | GET | `/defense-recommendations/{id}/reviews` | Review history for one stored recommendation |
+| GET | `/lab/simulation` | Defense Lab simulation status: scenarios, policy kinds, pinned checkpoint; `available=false` with a reason when the engine or checkpoint is missing |
+| POST | `/lab/simulation/episodes` | Run one simulated `DefenseSimEnv` episode (`scenario`, `policy`, `episode_seed`); returns every step's observation, mask, Q-values, action and reward. Simulation only, stateless, 120/hour per user; 503 when unavailable |
 | GET | `/projects/{id}/defense-reviews` | Review history for the project |
 
 ### Ops

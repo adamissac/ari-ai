@@ -48,7 +48,9 @@ collection study, training or enforcement is implemented or authorized.
 | Reference evaluation results | [`results/protocol-v1/`](results/protocol-v1/COMPARISON.md) (current), [`results/protocol-v0/`](results/protocol-v0/eval_table.md) | ✅ real output, see below |
 | **Live defense loop (vertical slice)**: real telemetry → DQN → enforced action → measured outcome → reward → transition, against the owned demo app | `rl_defense/live/` | ✅ closed loop, 11 tests; sim-trained policy, lab evidence only (see [`live/README.md`](rl_defense/live/README.md)) |
 | **Live retraining + promotion gate**: experience → offline candidate → held-out verdict → human-approved registry | `rl_defense/live/{experience,retrain,evaluate,registry,pipeline}.py` | ✅ 11 tests; first run: candidate +5.38 return vs deployed but **rejected** (rules still better, availability floor unmet) — [`results/live-retrain/REPORT.md`](results/live-retrain/REPORT.md) |
-| Backend endpoint / UI panel | backend (Srihith), frontend (Vihaan) | ❌ not integrated yet |
+| **On-demand lab episode**: one simulated episode for a chosen scenario, policy and seed, with each step's observation, mask, Q-values, action, reward components and ground truth | `rl_defense/lab_episode.py` | ✅ equals `evaluate.run_episode` and the served `PolicyRunner` step for step (`tests/test_lab_episode.py`) |
+| **Learning check**: trained vs an untrained copy of the same network vs random, noop and rules on held-out configs | `rl_defense/learning_check.py` | ✅ [`results/learning-check/`](results/learning-check/learning_check.md): trained −47.4, untrained −229.6, random −154.1, rules −96.0 mean return (3 seeds × 150k steps) |
+| Backend recommendation job, shadow inference, Defense Lab replay | `backend/backend/pipeline.py`, `backend/backend/live_defense/policy.py`, `frontend/app/lab` | ✅ recommendation-only; see [the audit progress doc](../docs/rl-live-defense-audit-progress.md) |
 
 ## The environment in one paragraph
 
