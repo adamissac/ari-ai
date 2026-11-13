@@ -5,16 +5,23 @@ import json
 import numpy as np
 import pytest
 
-from rl_defense.baselines import NoopPolicy, RandomValidPolicy, ThresholdRulesPolicy
+from rl_defense.baselines import (
+    NoopPolicy,
+    RandomValidPolicy,
+    ThresholdParams,
+    ThresholdRulesPolicy,
+)
 from rl_defense.envs import DefenseSimEnv
+from rl_defense.envs.config import CONFIG_DIR
 from rl_defense.envs.defense_sim import N_ACTIONS, OBS_DIM, REWARD_COMPONENTS
 from rl_defense.evaluate import DDQNPolicy, run_episode
 from rl_defense.inference import PolicyRunner
 from rl_defense.lab_episode import (
+    COMMITTED_THRESHOLD_PARAMS,
     DEFAULT_CHECKPOINT,
+    EVAL_SUMMARY,
     POLICY_KINDS,
     LabEpisode,
-    committed_threshold_params,
     run_lab_episode,
     scenarios,
 )
@@ -32,6 +39,12 @@ def episodes() -> dict[str, LabEpisode]:
 def test_all_committed_scenarios_are_available():
     assert {c.split for c in SCENARIOS.values()} == {"train", "eval"}
     assert len(SCENARIOS) == 6
+    assert scenarios(CONFIG_DIR) == SCENARIOS
+
+
+def test_rule_thresholds_are_the_ones_the_committed_evaluation_tuned():
+    tuned = json.loads(EVAL_SUMMARY.read_text())["threshold_rules"]["params"]
+    assert COMMITTED_THRESHOLD_PARAMS == ThresholdParams(**tuned)
 
 
 @pytest.mark.parametrize("kind", POLICY_KINDS)
@@ -40,7 +53,7 @@ def test_episode_matches_the_evaluation_code_exactly(episodes, kind):
         "ddqn_trained": lambda: DDQNPolicy(DEFAULT_CHECKPOINT),
         "random": lambda: RandomValidPolicy(seed=0),
         "noop": NoopPolicy,
-        "threshold_rules": lambda: ThresholdRulesPolicy(committed_threshold_params()),
+        "threshold_rules": lambda: ThresholdRulesPolicy(COMMITTED_THRESHOLD_PARAMS),
     }.get(kind)
     ep = episodes[kind]
     assert ep.summary.total_return == pytest.approx(sum(s.reward for s in ep.steps))

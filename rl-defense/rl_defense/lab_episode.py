@@ -56,6 +56,12 @@ RESULTS = Path(__file__).resolve().parents[1] / "results" / "protocol-v1-retrain
 DEFAULT_CHECKPOINT = RESULTS / "checkpoints" / "ddqn_seed0.pt"
 DEFAULT_CHECKPOINT_SHA256 = "666145e00d4ee3b9a1839179d9d9aca5a245c20fe7a173e2cb960e34e0393fe8"
 EVAL_SUMMARY = RESULTS / "eval_summary.json"
+# The thresholds the committed protocol-v1-retrain evaluation tuned on the training configs
+# (EVAL_SUMMARY["threshold_rules"]["params"]; equality is asserted in tests). Kept in code so
+# an installed package without the results directory runs the same rules.
+COMMITTED_THRESHOLD_PARAMS = ThresholdParams(
+    isolate_anomaly=0.25, rate_limit_alerts=0.2, monitor_anomaly=0.1, criticality_min=0.6
+)
 STAGE_NAMES = ("none", "foothold", "escalated", "impact")
 FEATURE_NAMES: tuple[str, ...] = (
     *(f"{node}.{feat}" for node in NODE_NAMES for feat in NODE_FEATURES),
@@ -153,15 +159,19 @@ class LabEpisode(_Strict):
     summary: LabEpisodeSummary
 
 
-def scenarios() -> dict[str, ScenarioConfig]:
-    """Every committed scenario config, by name."""
-    return {
-        c.name: c for split in ("train", "eval") for c in load_configs(default_config_paths(split))
-    }
-
-
-def committed_threshold_params() -> ThresholdParams:
-    return ThresholdParams(**json.loads(EVAL_SUMMARY.read_text())["threshold_rules"]["params"])
+def scenarios(config_dir: Path | None = None) -> dict[str, ScenarioConfig]:
+    """Every committed scenario config, by name. ``config_dir`` is the ``configs`` directory
+    when the package is installed away from its source tree (the backend image)."""
+    paths = [
+        p
+        for split in ("train", "eval")
+        for p in (
+            default_config_paths(split)
+            if config_dir is None
+            else sorted((config_dir / split).glob("*.yaml"))
+        )
+    ]
+    return {c.name: c for c in load_configs(paths)}
 
 
 def _load_trained(checkpoint: Path, expected_sha256: str | None) -> tuple[DDQNAgent, dict]:
@@ -219,7 +229,7 @@ class _Policy:
             self._scripted = NoopPolicy()
             description = "Never acts"
         elif kind == "threshold_rules":
-            self._scripted = ThresholdRulesPolicy(committed_threshold_params())
+            self._scripted = ThresholdRulesPolicy(COMMITTED_THRESHOLD_PARAMS)
             description = "Hand-written threshold rules, tuned on the training configs"
         else:
             raise ValueError(f"unknown policy kind: {kind}")
