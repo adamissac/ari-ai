@@ -950,6 +950,24 @@ def run_once(engine: Engine | None = None, s: Settings | None = None) -> dict[st
     s = s or get_settings()
     engine = engine or get_engine()
     report = storage_report(engine, s)
+    # The hourly log names what is using the disk, so an operator never needs a database shell.
+    log.info(
+        "storage top tables db_bytes=%s wal_bytes=%s %s",
+        report["database"]["size_bytes"],
+        report["wal_bytes"],
+        json.dumps(
+            [
+                {
+                    "table": t["table"],
+                    "total_mb": t["total_bytes"] // 1_000_000,
+                    "indexes_mb": t["indexes_bytes"] // 1_000_000,
+                    "live": t["live_tuples"],
+                    "dead": t["dead_tuples"],
+                }
+                for t in report["tables"][:10]
+            ]
+        ),
+    )
     pct = report["volume"]["pct_used"]
     level = 0
     if pct is not None:
