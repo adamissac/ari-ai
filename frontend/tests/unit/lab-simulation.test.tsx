@@ -162,3 +162,28 @@ it('refuses a seed that is not a whole number in range before calling the backen
   await waitFor(() => expect(episodeCalls(calls)).toHaveLength(1));
   expect(episodeCalls(calls)[0]!.body).toEqual({ scenario: 'eval_aggressive_noisy', policy: 'ddqn_trained', episode_seed: 1003 });
 });
+
+it('compares every policy on the same episode and ranks them by the returned totals', async () => {
+  const policies = ['ddqn_trained', 'ddqn_untrained', 'threshold_rules'];
+  const calls = mount({ status: { ...status, policies } });
+  await ready();
+  fireEvent.click(screen.getByTestId('sim-compare'));
+  const table = await screen.findByTestId('sim-comparison');
+  expect(episodeCalls(calls).map(c => (c.body as { policy: string; episode_seed: number }))).toEqual(policies.map(policy => ({ scenario: 'eval_aggressive_noisy', policy, episode_seed: 1003 })));
+  const expected = policies
+    .map(p => fixtures[p as keyof typeof fixtures].episode)
+    .sort((a, b) => b.summary.total_return - a.summary.total_return);
+  const rows = [...table.querySelectorAll('tbody tr')];
+  expect(rows.map(r => r.getAttribute('data-testid'))).toEqual(expected.map(e => `sim-compare-${e.policy.kind}`));
+  rows.forEach((row, i) => expect(row.textContent).toContain(expected[i]!.summary.total_return.toFixed(2)));
+  expect(screen.getByTestId('sim-compare-ddqn_untrained').textContent).toContain('Untrained network');
+  expect(table.textContent).toContain('not average performance');
+});
+
+it('shows no comparison table when any policy run fails', async () => {
+  mount({ episode: body => (body.policy === 'ddqn_untrained' ? Response.json(error503, { status: 503 }) : Response.json(fixtures[body.policy])) });
+  await ready();
+  fireEvent.click(screen.getByTestId('sim-compare'));
+  expect((await screen.findByTestId('error-state')).textContent).toContain('no table is shown');
+  expect(screen.queryByTestId('sim-comparison')).toBeNull();
+});
