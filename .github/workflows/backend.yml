@@ -112,5 +112,5 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         run: |
           set -o pipefail
-          ~/.local/bin/uv run --no-sync pytest -q -rs backend/tests/test_rl_integration.py backend/tests/test_lab_simulation.py | tee rl.log
+          ~/.local/bin/uv run --no-sync pytest -q -rs backend/tests/test_rl_integration.py backend/tests/test_lab_simulation.py backend/tests/test_shadow_inference_v6.py | tee rl.log
           ! grep -q SKIPPED rl.log
