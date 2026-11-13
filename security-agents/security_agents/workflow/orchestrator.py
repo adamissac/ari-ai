@@ -1255,6 +1255,10 @@ class Orchestrator:
                     finding.status = "unresolved"
                     self._audit("remediation.unresolved", "finding", finding.finding_id, attempt=attempt)
                     return
+                if patch_failed:
+                    reasons = [f"attempt {attempt} produced no usable patch; produce a complete one"]
+                    attempt += 1
+                    continue
                 finding.status = "patch_proposed"
                 continue
             if sub_state is RemediationState.VERIFYING:

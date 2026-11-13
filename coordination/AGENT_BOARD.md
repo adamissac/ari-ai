@@ -3,13 +3,14 @@
 
 # Agent board — live coordination dashboard
 
-Regenerated 2026-11-03 08:46 UTC. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
+Regenerated 2026-11-13 16:54 UTC. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
 
 ## Active agents
 
 | Agent | Owner | Workstream | State | Task | Branch | SHA |
 | --- | --- | --- | --- | --- | --- | --- |
 | alan-live-defense | Alan | security-agents/, live-defense Phase 6.5/7A/7C, interim shared/ contract approver | BLOCKED | Phase 7C authorized Scout/Diagnose execution (#458); Phase 6.5 RL-gated pilot infra (#412) | feat/alan/live-defense-phase7c-agent-execution, feat/live-defense-phase6-5-rl-gated-pilot | 9486a5b0 |
+| alan-rl-lab-audit | Alan | RL lab audit: rl-defense inference/training/lab episode, backend /lab/simulation, frontend /lab simulation panel | DONE | RL lab audit delivered | main | 92a712d3 |
 | code-review-eval | Adam | standalone functional AI code reviewer evaluation + scorer integration | DONE | Reviewer eval report merged (#529); combined scorer verified on merged release-gate head | docs/reviewer-eval-report (merged), docs/adam/status-final-verification | 19a16af0 |
 | codex-36bd-check | Alan | exact integrated 36bd05ee merge-readiness check | READY_FOR_REVIEW | ? | codex/check-36bd05ee | f6883835 |
 | codex-b6d-check | Alan | exact b6d5108b independent check | READY_FOR_REVIEW | ? | codex/check-b6d5108b | 1f4cf1ef |
@@ -29,42 +30,115 @@ Regenerated 2026-11-03 08:46 UTC. Comms channel: [issue #559](https://github.com
 
 | PR | Title | Branch | Head | Owned by | Merge position |
 | --- | --- | --- | --- | --- | --- |
-| #412 | feat(live-defense): Phase 6.5 RL-gated pilot infrastructure (RL BLOCKED) | feat/live-defense-phase6-5-rl-gated-pilot | ee6168fd | alan-live-defense | 1 |
-| #441 | ? | ? | ? | devin-pipeline-fixer | 19 |
-| #458 | feat(live-defense): Phase 7C authorized Scout/Diagnose execution | feat/alan/live-defense-phase7c-agent-execution | 122a309c | alan-live-defense | 0 |
-| #527 | ? | ? | ? | devin-pipeline-fixer | 14 |
-| #529 | ? | ? | ? | code-review-eval | 2 |
-| #531 | ? | ? | ? | devin-intel-audit | 12 |
-| #532 | ? | ? | ? | devin-defense-lab | 6 |
-| #533 | ? | ? | ? | devin-pipeline-fixer | 15 |
-| #535 | ? | ? | ? | devin-pipeline-fixer | 16 |
-| #536 | ? | ? | ? | devin-pipeline-fixer | 17 |
-| #537 | ? | ? | ? | devin-pipeline-fixer | 18 |
-| #538 | ? | ? | ? | devin-frontend-ux | 11 |
-| #540 | ? | ? | ? | integration-lead | 30 |
-| #541 | ? | ? | ? | devin-defense-lab | 7 |
-| #544 | ? | ? | ? | devin-defense-lab | 8 |
-| #549 | ? | ? | ? | devin-defense-lab | 9 |
-| #555 | ? | ? | ? | devin-pipeline-fixer | 20 |
-| #556 | ? | ? | ? | devin-defense-lab | 10 |
-| #557 | ? | ? | ? | integration-lead | 23 |
-| #560 | ? | ? | ? | integration-lead | 24 |
-| #561 | ? | ? | ? | integration-lead | 25 |
-| #563 | ? | ? | ? | code-review-eval | 3 |
-| #564 | ? | ? | ? | devin-pipeline-fixer | 21 |
-| #567 | ? | ? | ? | integration-lead | 26 |
-| #570 | ? | ? | ? | integration-lead | 27 |
-| #571 | ? | ? | ? | integration-lead | 28 |
-| #572 | ? | ? | ? | devin-pipeline-fixer | 22 |
-| #573 | ? | ? | ? | integration-lead | 29 |
-| #580 | ? | ? | ? | devin-pipeline-fixer | 13 |
-| #614 | ? | ? | ? | codex-review-automation | 4 |
-| #649 | ? | ? | ? | devin-console-refinement | 5 |
-| #777 | fix(ops): uptime-watch probes /readyz and fails loudly without RAILWAY_TOKEN | devin/1793666000-uptime-readyz-main | dcfb065d | unassigned | — |
-| #786 | docs(adam): cloud health run 36 | feat/adam/cloud-20261103-0217 | 2f90282a | unassigned | — |
-| #787 | fix(frontend): stop How it works cards skipping on wheel scroll | fix/alan/how-it-works-scroll-steps | 2ba68718 | unassigned | — |
-| #792 | chore: integrate open PRs #777, #782, #786, #787 | chore/adam/integrate-open-prs-2 | 8e0d0ff1 | unassigned | — |
-| #798 | docs(status): Adam run 36 no-op entry | feat/adam/cloud-20261103-1 | 0dc75a75 | unassigned | — |
+| #412 | ? | ? | ? | alan-live-defense | 1 |
+| #441 | ? | ? | ? | devin-pipeline-fixer | 25 |
+| #458 | ? | ? | ? | alan-live-defense | 0 |
+| #527 | ? | ? | ? | devin-pipeline-fixer | 20 |
+| #529 | ? | ? | ? | code-review-eval | 8 |
+| #531 | ? | ? | ? | devin-intel-audit | 18 |
+| #532 | ? | ? | ? | devin-defense-lab | 12 |
+| #533 | ? | ? | ? | devin-pipeline-fixer | 21 |
+| #535 | ? | ? | ? | devin-pipeline-fixer | 22 |
+| #536 | ? | ? | ? | devin-pipeline-fixer | 23 |
+| #537 | ? | ? | ? | devin-pipeline-fixer | 24 |
+| #538 | ? | ? | ? | devin-frontend-ux | 17 |
+| #540 | ? | ? | ? | integration-lead | 36 |
+| #541 | ? | ? | ? | devin-defense-lab | 13 |
+| #544 | ? | ? | ? | devin-defense-lab | 14 |
+| #549 | ? | ? | ? | devin-defense-lab | 15 |
+| #555 | ? | ? | ? | devin-pipeline-fixer | 26 |
+| #556 | ? | ? | ? | devin-defense-lab | 16 |
+| #557 | ? | ? | ? | integration-lead | 29 |
+| #560 | ? | ? | ? | integration-lead | 30 |
+| #561 | ? | ? | ? | integration-lead | 31 |
+| #563 | ? | ? | ? | code-review-eval | 9 |
+| #564 | ? | ? | ? | devin-pipeline-fixer | 27 |
+| #567 | ? | ? | ? | integration-lead | 32 |
+| #570 | ? | ? | ? | integration-lead | 33 |
+| #571 | ? | ? | ? | integration-lead | 34 |
+| #572 | ? | ? | ? | devin-pipeline-fixer | 28 |
+| #573 | ? | ? | ? | integration-lead | 35 |
+| #580 | ? | ? | ? | devin-pipeline-fixer | 19 |
+| #614 | ? | ? | ? | codex-review-automation | 10 |
+| #649 | ? | ? | ? | devin-console-refinement | 11 |
+| #929 | ? | ? | ? | alan-rl-lab-audit | 2 |
+| #930 | ? | ? | ? | alan-rl-lab-audit | 3 |
+| #931 | ? | ? | ? | alan-rl-lab-audit | 4 |
+| #932 | ? | ? | ? | alan-rl-lab-audit | 5 |
+| #935 | ? | ? | ? | alan-rl-lab-audit | 6 |
+| #938 | ? | ? | ? | alan-rl-lab-audit | 7 |
+| #833 | docs(status): Adam cloud health run 41 | feat/adam/cloud-20261105-1817 | 9886c68b | unassigned | — |
+| #835 | docs(adam): cloud health run 41, no-op | feat/adam/cloud-20261105-run41 | d1d1b03b | unassigned | — |
+| #836 | docs(adam): scheduled cloud health run 41 handoff | feat/adam/cloud-20261105-1500 | ab39dd7f | unassigned | — |
+| #837 | docs(adam): scheduled cloud health run 41 | feat/adam/cloud-20261106-0417 | 111ff793 | unassigned | — |
+| #838 | docs(adam): scheduled cloud health run 41 | feat/adam/cloud-20261106-0637 | 16b8c582 | unassigned | — |
+| #839 | docs(status): Adam cloud health run 41 | feat/adam/cloud-20261106 | 6e1f0ad6 | unassigned | — |
+| #840 | docs(status): Adam cloud health run 41 | feat/adam/cloud-20261106-1017 | 3727072b | unassigned | — |
+| #841 | docs(adam): cloud health run 41 no-op | feat/adam/cloud-20261106-1220 | 1c1ab6de | unassigned | — |
+| #842 | docs(adam): cloud health run 41 handoff | feat/adam/cloud-20261106-1420 | 92ffd66f | unassigned | — |
+| #843 | docs(adam): scheduled health run 41 | feat/adam/cloud-20261106-1618 | f555cce3 | unassigned | — |
+| #844 | docs(adam): cloud health run 41 handoff | feat/adam/cloud-20261106-1817 | c11378bb | unassigned | — |
+| #845 | docs(adam): cloud health run 41 handoff | feat/adam/cloud-20261106-1500 | 17f4009c | unassigned | — |
+| #846 | docs(adam): scheduled cloud health run 41 (no-op) | feat/adam/cloud-20261106-1400 | c128e65a | unassigned | — |
+| #847 | docs(adam): scheduled run 41 no-op handoff | feat/adam/cloud-20261107-run | ed37df9e | unassigned | — |
+| #848 | docs(adam): scheduled cloud health run 41 (no-op) | feat/adam/cloud-20261107-0230 | 53bfe5b9 | unassigned | — |
+| #849 | docs(adam): cloud health run 41 handoff | feat/adam/cloud-20261107-1200 | c4eb9e2b | unassigned | — |
+| #851 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261107-1215 | 7ad24f5e | unassigned | — |
+| #852 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261107-1840 | 9dd5393f | unassigned | — |
+| #853 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261107-1205 | 8e25d7b0 | unassigned | — |
+| #854 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261107-1400 | 469e0b03 | unassigned | — |
+| #855 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261107-run42 | c9564b08 | unassigned | — |
+| #856 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261107-181807 | 6c9e0c11 | unassigned | — |
+| #857 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261107-run42b | c06199cd | unassigned | — |
+| #858 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261108-run42 | 03694c7c | unassigned | — |
+| #859 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261108-0617 | 9d6ebcfd | unassigned | — |
+| #860 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261108-run | cded7744 | unassigned | — |
+| #861 | docs(adam): scheduled cloud health run (no-op) | feat/adam/cloud-20261108-1400 | 5a95932b | unassigned | — |
+| #862 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261108-1200 | 71d74d31 | unassigned | — |
+| #863 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261108-1418 | 6ff89553 | unassigned | — |
+| #864 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261108-1500 | f3955dff | unassigned | — |
+| #865 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261108-2016 | 1ca9a44c | unassigned | — |
+| #866 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261108-2216 | 8a2004e5 | unassigned | — |
+| #867 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261109-0016 | e38b1afd | unassigned | — |
+| #868 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261109-run | c698cb97 | unassigned | — |
+| #871 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261109-0819 | 2c448ceb | unassigned | — |
+| #873 | docs(adam): scheduled cloud health run 43 (no-op) | feat/adam/cloud-20261109-1500 | 98c4f7c1 | unassigned | — |
+| #875 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261109-1222 | 970ddfb1 | unassigned | — |
+| #876 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261109-1422 | 21a3f15e | unassigned | — |
+| #877 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261109-1618 | d0ccfd90 | unassigned | — |
+| #878 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261109 | 70080b45 | unassigned | — |
+| #879 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261109-2018 | f7258db8 | unassigned | — |
+| #880 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261109-2221 | 3a9fc158 | unassigned | — |
+| #881 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261110 | 3c48f6df | unassigned | — |
+| #882 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261110-0219 | 7ab53f34 | unassigned | — |
+| #884 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261110-0620 | 0dce70cd | unassigned | — |
+| #887 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261110-1218 | 51e8f7bb | unassigned | — |
+| #888 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261110-run | e8f5a850 | unassigned | — |
+| #889 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261110-1617 | 0295fb47 | unassigned | — |
+| #890 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261110-run42 | 4a7cb49a | unassigned | — |
+| #891 | docs(adam): scheduled cloud health run 42 (no-op) | feat/adam/cloud-20261110-2017 | 09d7fb87 | unassigned | — |
+| #897 | docs(adam): scheduled cloud health run 43 (no-op) | feat/adam/cloud-20261111-1 | b71d900a | unassigned | — |
+| #898 | docs(adam): scheduled cloud health run 43 (no-op) | feat/adam/cloud-20261111-1530 | 9fcac28d | unassigned | — |
+| #900 | docs(adam): scheduled cloud health run 43 (no-op) | feat/adam/cloud-20261111-run43 | 229ee9dd | unassigned | — |
+| #903 | docs(adam): scheduled cloud health run 43 (no-op) | feat/adam/cloud-20261111-1200 | 0d732b7e | unassigned | — |
+| #905 | docs(adam): cloud health run 45 handoff | feat/adam/cloud-20261111-run45 | 19059fcb | unassigned | — |
+| #907 | docs(adam): cloud health run 45 handoff | feat/adam/cloud-20261111-1700 | ecb9fb2f | unassigned | — |
+| #909 | docs(adam): cloud health run 45 handoff | feat/adam/cloud-20261111-1900 | 322ec401 | unassigned | — |
+| #911 | docs(adam): scheduled cloud health run 46 (no-op) | feat/adam/cloud-20261111-run46 | 48e7c49f | unassigned | — |
+| #912 | docs(adam): scheduled cloud health run 46 (no-op) | feat/adam/cloud-20261111-run46b | 25126bdb | unassigned | — |
+| #914 | docs(adam): scheduled cloud health run 46 (no-op) | feat/adam/cloud-20261111-run46c | 0cd64fd6 | unassigned | — |
+| #915 | docs(adam): scheduled cloud health run 46 (no-op) | feat/adam/cloud-20261112-run46 | b51a0894 | unassigned | — |
+| #916 | docs(adam): scheduled cloud health run 46 (no-op) | feat/adam/cloud-20261112-1200 | bc052e40 | unassigned | — |
+| #918 | docs(adam): scheduled cloud health run 47 (no-op) | feat/adam/cloud-20261112-0617 | d8193991 | unassigned | — |
+| #919 | docs(adam): scheduled cloud health run 47 (no-op) | feat/adam/cloud-20261112-0617b | ee0b2343 | unassigned | — |
+| #920 | docs(adam): scheduled cloud health run 47 (no-op) | feat/adam/cloud-20261112-1217 | 10aefb9c | unassigned | — |
+| #921 | docs(adam): scheduled cloud health run 47 (no-op) | feat/adam/cloud-20261112-1617 | df2e79f1 | unassigned | — |
+| #922 | docs(adam): scheduled cloud health run 47 (no-op) | feat/adam/cloud-20261112-run47 | 4e8f2bb2 | unassigned | — |
+| #925 | docs(adam): scheduled cloud health run 47 (no-op) | feat/adam/cloud-20261113-run47 | deecca16 | unassigned | — |
+| #927 | docs(adam): scheduled cloud health run 47 (no-op) | feat/adam/cloud-20261113-0817 | 9c690b8e | unassigned | — |
+| #934 | feat: plain findings and commit outcomes, parallel commits per project, patch retry | feat/adam/findings-commits-clarity | 0b6b3b9d | unassigned | — |
+| #936 | feat(live-defense): production targets, ownership challenge, never-block list, sealed secrets, ingest alert | feat/adam/live-defense-safe-slice | e55345d1 | unassigned | — |
+| #937 | docs(adam): scheduled health run 47 handoff | feat/adam/cloud-20261113-1100 | 7f3e4006 | unassigned | — |
 
 ## File / subsystem claims
 
@@ -118,6 +192,7 @@ Regenerated 2026-11-03 08:46 UTC. Comms channel: [issue #559](https://github.com
 ## Next actions
 
 - **alan-live-defense**: hold; rebase onto post-integration main when asked
+- **alan-rl-lab-audit**: none; findings 7 and 8 and the rl_defense/live audit are open for the rl-defense owner
 - **code-review-eval**: none — workstream complete; #530 carries inverted score_api conflict resolution (verified clean) and is ready for final security review + merge by integration lead. Re-verify only if scorer code changes again.
 - **codex-36bd-check**: Release owner may use exact integrated candidate through normal protected-branch process; no approval/merge/deploy executed
 - **codex-b6d-check**: Integration/frontend owners reconcile current main; security GO on requested candidate, merge HOLD; no deploy

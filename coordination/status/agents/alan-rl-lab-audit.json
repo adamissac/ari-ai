@@ -1,0 +1,23 @@
+{
+  "agent": "alan-rl-lab-audit",
+  "human_owner": "Alan",
+  "workstream": "RL lab audit: rl-defense inference/training/lab episode, backend /lab/simulation, frontend /lab simulation panel",
+  "state": "DONE",
+  "task": "RL lab audit delivered",
+  "branch": "main",
+  "latest_sha": "92a712d3",
+  "prs": [
+    929,
+    930,
+    931,
+    932,
+    935,
+    938
+  ],
+  "claims": [],
+  "depends_on": [],
+  "blockers": [],
+  "last_update_utc": "2026-11-13T17:05:00Z",
+  "tests": "see docs/planning/SESSION_HANDOFF.md entry of 2026-11-13 (RL lab audit)",
+  "next_action": "none; findings 7 and 8 and the rl_defense/live audit are open for the rl-defense owner"
+}

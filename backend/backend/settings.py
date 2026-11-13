@@ -83,7 +83,10 @@ class Settings(BaseSettings):
     worker_lease_s: int = 60
     worker_poll_interval_s: float = 1.0
     # Execution reliability (docs/architecture/execution-reliability.md). 0 disables a limit.
-    job_max_running_per_project: int = 4
+    # Matches the default worker count (deploy/railway/start.sh): a burst of commits to one
+    # project runs all at once instead of four at a time. Other projects stay served because
+    # claims prefer the least-busy project.
+    job_max_running_per_project: int = 12
     job_max_running_global: int = 0
     job_max_pending_per_project: int = 1000
     # Reserved running slots for emergency-class jobs (estop/rollback/expiry) so

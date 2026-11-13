@@ -57,6 +57,8 @@ function Runner() {
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
   const inFlight = useRef<AbortController | null>(null);
+  const [comparison, setComparison] = useState<Load<LabSimulationResult[]>>({ status: 'idle' });
+  const comparing = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const c = new AbortController();
@@ -66,7 +68,7 @@ function Runner() {
     );
     return () => c.abort();
   }, [attempt]);
-  useEffect(() => () => inFlight.current?.abort(), []);
+  useEffect(() => () => { inFlight.current?.abort(); comparing.current?.abort(); }, []);
 
   const episode = run.status === 'ready' ? run.data.episode : null;
   const last = episode ? episode.steps.length - 1 : 0;
@@ -90,6 +92,21 @@ function Runner() {
     api().runLabSimulation({ scenario, policy, episode_seed: episodeSeed }, { signal: c.signal }).then(
       data => { if (!c.signal.aborted) { setRun({ status: 'ready', data }); setPlaying(true); } },
       (error: unknown) => { if (!c.signal.aborted) setRun({ status: 'error', error }); },
+    );
+  };
+  /** Every policy on the same scenario and seed. One failure fails the comparison: no partial table. */
+  const compare = (episodeSeed: number, kinds: LabPolicyKind[]) => {
+    comparing.current?.abort();
+    const c = new AbortController();
+    comparing.current = c;
+    setComparison({ status: 'loading' });
+    (async () => {
+      const results: LabSimulationResult[] = [];
+      for (const kind of kinds) results.push(await api().runLabSimulation({ scenario, policy: kind, episode_seed: episodeSeed }, { signal: c.signal }));
+      return results;
+    })().then(
+      data => { if (!c.signal.aborted) setComparison({ status: 'ready', data }); },
+      (error: unknown) => { if (!c.signal.aborted) setComparison({ status: 'error', error }); },
     );
   };
   const stop = () => { inFlight.current?.abort(); setPlaying(false); setT(0); setRun({ status: 'idle' }); };
@@ -129,11 +146,17 @@ function Runner() {
         <Button variant="primary" className="h-9" disabled={seedValue === null || !scenario || run.status === 'loading'} onClick={() => seedValue !== null && start(seedValue)} data-testid="sim-run">
           {episode ? 'Run again' : 'Run simulation'}
         </Button>
+        <Button className="h-9 sm:col-start-4" disabled={seedValue === null || !scenario || comparison.status === 'loading'} onClick={() => seedValue !== null && compare(seedValue, info.policies)} data-testid="sim-compare">
+          Compare all policies
+        </Button>
         <p className="text-xs text-muted sm:col-span-4" data-testid="sim-label">
           {info.label} Trained policy: <Mono>{info.checkpoint?.policy_version}</Mono>.
           {seedValue === null && <span className="text-bad"> Seed must be a whole number from 0 to {MAX_SEED}.</span>}
         </p>
       </div>
+      {comparison.status === 'loading' && <Loading label="Running every policy on the same episode" />}
+      {comparison.status === 'error' && <ErrorState error={comparison.error} context="The comparison did not finish, so no table is shown" onRetry={seedValue === null ? undefined : () => compare(seedValue, info.policies)} />}
+      {comparison.status === 'ready' && <Comparison results={comparison.data} />}
       {run.status === 'loading' && <Loading label="Running the episode on the server" />}
       {run.status === 'error' && <ErrorState error={run.error} context="The simulation did not run" onRetry={seedValue === null ? undefined : () => start(seedValue)} />}
       {episode && (
@@ -147,6 +170,46 @@ function Runner() {
           onSeek={value => { setPlaying(false); setT(value); }}
         />
       )}
+    </div>
+  );
+}
+
+function Comparison({ results }: { results: LabSimulationResult[] }) {
+  const rows = [...results].sort((a, b) => b.episode.summary.total_return - a.episode.summary.total_return);
+  const first = rows[0]!.episode;
+  return (
+    <div className="rounded-xl border border-line bg-panel p-5" data-testid="sim-comparison">
+      <h3 className="text-sm font-medium text-ink">Same episode, every policy</h3>
+      <p className="mt-1 text-xs text-muted">{first.scenario.name} · seed {first.episode_seed}. One episode each, so this shows behaviour on this episode, not average performance. Highest return first.</p>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full min-w-[34rem] border-collapse text-xs">
+          <thead>
+            <tr className="text-left text-muted">
+              <th scope="col" className="py-1 pr-3 font-normal">Policy</th>
+              <th scope="col" className="px-2 py-1 font-normal">Source</th>
+              <th scope="col" className="px-2 py-1 text-right font-normal">Return</th>
+              <th scope="col" className="px-2 py-1 text-right font-normal">Actions taken</th>
+              <th scope="col" className="px-2 py-1 font-normal">Attacker reached impact on</th>
+              <th scope="col" className="px-2 py-1 font-normal">Ended</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ episode: e }) => {
+              const acted = Object.entries(e.summary.action_counts).reduce((n, [label, count]) => (label === 'noop' ? n : n + count), 0);
+              return (
+                <tr key={e.policy.kind} className="border-t border-line" data-testid={`sim-compare-${e.policy.kind}`}>
+                  <th scope="row" className="py-1.5 pr-3 text-left font-medium text-ink">{POLICY_LABEL[e.policy.kind]}</th>
+                  <td className="px-2 py-1.5"><Tag tone={SOURCE_TONE[e.policy.source]}>{SOURCE_LABEL[e.policy.source]}</Tag></td>
+                  <td className="px-2 py-1.5 text-right font-mono tabular-nums text-ink">{fmt(e.summary.total_return)}</td>
+                  <td className="px-2 py-1.5 text-right font-mono tabular-nums text-ink">{acted} of {e.summary.steps}</td>
+                  <td className={`px-2 py-1.5 ${e.summary.ever_impact ? 'text-bad' : 'text-muted'}`}>{e.summary.ever_impact ? e.summary.impact_nodes.join(', ') : 'nothing'}</td>
+                  <td className="px-2 py-1.5 text-muted">{e.summary.terminated ? `step ${e.summary.steps}, database lost` : 'time limit'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

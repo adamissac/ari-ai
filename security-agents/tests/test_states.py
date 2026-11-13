@@ -121,8 +121,12 @@ def test_rejected_final_attempt_is_unresolved():
     assert MAX_PATCH_ATTEMPTS == 4
 
 
-def test_patch_failure_is_unresolved_without_verification():
-    assert next_remediation_state(R.PATCHING, verdict=None, attempt=1, patch_failed=True) is R.UNRESOLVED
+def test_patch_failure_retries_then_is_unresolved_without_verification():
+    assert next_remediation_state(R.PATCHING, verdict=None, attempt=1, patch_failed=True) is R.PATCHING
+    assert (
+        next_remediation_state(R.PATCHING, verdict=None, attempt=MAX_PATCH_ATTEMPTS, patch_failed=True)
+        is R.UNRESOLVED
+    )
 
 
 def test_no_verdict_is_treated_as_rejection():
