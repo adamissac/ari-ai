@@ -31,6 +31,39 @@ LIVE_LAB_CAVEAT = (
 )
 
 
+class MalformedPolicyInput(ValueError):
+    """The observation or action mask is not a valid input for this checkpoint."""
+
+
+def validate_policy_input(
+    obs: np.ndarray, mask: np.ndarray, obs_dim: int, n_actions: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """Refuse inputs the Q-network was never trained on instead of scoring them.
+
+    Every layout's observation is a float vector in [0, 1] (the environment's Box space and
+    the bounded PlatformFacts fields), and the mask is one boolean per action. A NaN/inf or
+    out-of-range feature still produces Q-values, so without this check a corrupt telemetry
+    window would be served as an ordinary recommendation.
+    """
+    obs = np.asarray(obs)
+    mask = np.asarray(mask)
+    if obs.shape != (obs_dim,):
+        raise MalformedPolicyInput(f"observation shape {obs.shape} != ({obs_dim},)")
+    if not np.issubdtype(obs.dtype, np.floating):
+        raise MalformedPolicyInput(f"observation dtype {obs.dtype} is not floating point")
+    if not np.isfinite(obs).all():
+        raise MalformedPolicyInput("observation contains NaN or infinite values")
+    if obs.min() < 0.0 or obs.max() > 1.0:
+        raise MalformedPolicyInput("observation features must lie in [0, 1]")
+    if mask.shape != (n_actions,):
+        raise MalformedPolicyInput(f"action mask shape {mask.shape} != ({n_actions},)")
+    if mask.dtype != np.bool_:
+        raise MalformedPolicyInput(f"action mask dtype {mask.dtype} is not bool")
+    if not mask.any():
+        raise MalformedPolicyInput("action mask has no valid actions")
+    return obs.astype(np.float32, copy=False), mask
+
+
 class PolicyRunner:
     def __init__(self, checkpoint: Path, *, blob: bytes | None = None) -> None:
         self.agent, self.manifest = load_checkpoint(checkpoint, blob=blob)
@@ -45,9 +78,10 @@ class PolicyRunner:
     def recommend_from_observation(
         self, obs: np.ndarray, mask: np.ndarray, project_id: str | None = None, top_k: int = 3
     ) -> DefenseRecommendation:
-        if not mask.any():
-            raise ValueError("action mask has no valid actions")
+        obs, mask = validate_policy_input(obs, mask, self.agent.obs_dim, self.agent.n_actions)
         q = self.agent.q_values(obs).astype(np.float64)
+        if not np.isfinite(q).all():
+            raise MalformedPolicyInput("policy produced non-finite Q-values")
         q_masked = np.where(mask, q, NEG_INF_MASK)
         by_q = [int(a) for a in np.argsort(-q_masked) if mask[a]]
         # the checkpoint's own greedy rule, abstention margins included, so the served action

@@ -95,9 +95,10 @@ def load_checkpoint(
     loaded = torch.load(source, map_location="cpu", weights_only=True)
     manifest = loaded["manifest"]
     space = KNOWN_SPACES.get(manifest["env_id"])
-    if space is None or manifest["obs_dim"] != space[0]:
+    if space is None or (manifest["obs_dim"], manifest["n_actions"]) != space:
         raise ValueError(
-            f"checkpoint was trained for {manifest['env_id']} obs_dim={manifest['obs_dim']}"
+            f"checkpoint was trained for {manifest['env_id']} obs_dim={manifest['obs_dim']} "
+            f"n_actions={manifest['n_actions']}"
         )
     agent = DDQNAgent(*space, DDQNConfig(**manifest["ddqn_config"]), seed=manifest["seed"])
     if manifest["env_id"] != ENV_ID:
