@@ -35,8 +35,8 @@ here are from commands that were actually run; anything not run says so.
 | 2 | Checkpoint load checked `obs_dim` but not `n_actions` | Fixed, #929 |
 | 3 | Training wrote one checkpoint at the end: no periodic state, no resume, and a non-finite loss did not stop the run | Fixed, #930 |
 | 4 | No comparison of the trained policy with an untrained network | Fixed, #931: `rl_defense.learning_check` and committed results |
-| 5 | `/lab` is a recording but its header read "Defender: Active" with a green indicator | Fixed in the lab UI PR: "Recorded · recommendation-only" |
-| 6 | No simulation could be started from the lab; nothing showed a policy's observation, mask, Q-values or reward | Fixed: engine #931, backend route and UI panel in their own PRs |
+| 5 | `/lab` is a recording but its header read "Defender: Active" with a green indicator | Fixed, #932: "Recorded · recommendation-only" |
+| 6 | No simulation could be started from the lab; nothing showed a policy's observation, mask, Q-values or reward | Fixed: engine #931, backend route and UI panel #932 |
 | 7 | Simulator training bootstraps through the time limit while the live pipeline stores the time limit as terminal. Both have time in the observation, so the simulator's last-step target reads a state (`time_fraction = 1`) that is never trained as a start state | Open, documented. Not changed: protocol-v0/v1 evidence is reproducible bit for bit with the current behaviour |
 | 8 | The lab-trained policy has a high false-disruption rate (67.8% in the learning check, 75% for protocol-v1) and is worse than random on compromise rate | Open. A property of the reward and action set, already disclosed in `rl-defense/README.md` |
 
@@ -65,14 +65,27 @@ untrained one on 4.9% to 18.0% of states.
 |---|---|---|
 | [#929](https://github.com/adamissac/ari-ai/pull/929) | Inference refuses malformed observations and masks; checkpoint load checks n_actions | c811dbda |
 | [#930](https://github.com/adamissac/ari-ai/pull/930) | Resumable training and a stop on non-finite loss | 5902db1a |
+| [#931](https://github.com/adamissac/ari-ai/pull/931) | Lab episode engine and the learning check with results | 0d2a7baa |
+| [#932](https://github.com/adamissac/ari-ai/pull/932) | Backend route `/lab/simulation`, transport methods, `/lab` simulation panel, e2e | b32b2130 |
 
-## In flight
+## Finding 7: measured, not changed
 
-- #931: lab episode engine and learning check (this PR).
-- `feat/alan/rl-audit-lab-api`: backend route `/lab/simulation`. Opens after #931 merges.
-- `feat/alan/rl-audit-lab-ui`: transport methods, `/lab` simulation panel, e2e. Opens after the route merges.
+One ablation with the learning-check settings (3 seeds x 150k steps, same held-out
+episodes), storing the time limit as a terminal transition during training only:
+mean return -37.7 [-51.7, -29.3] against -47.4 [-55.0, -32.6] for the current behaviour;
+compromise 13.4% against 16.1%; false disruption 71.6% against 67.8%. The intervals over
+seeds overlap, so this does not show a difference. It was a scratch run and its output is
+not committed. A decision needs more seeds and the full protocol, and changing the default
+would break bit-for-bit reproduction of protocol-v0/v1.
+
+## Not audited
+
+- `rl_defense/live/` (live loop, retraining, promotion gate) was only spot-checked.
+- `backend/backend/live_defense/policy.py` (v6 shadow inference) was read, not tested here.
 
 ## Next action
 
-Merge the three in-flight changes in order. Then decide finding 7 with the ablation
-numbers, and finding 8 with the owner (it is a reward-design choice, not a bug).
+1. Decide finding 8 with the owner: the false-disruption rate is a reward and action-set
+   choice.
+2. Repeat the finding 7 ablation with five or more seeds before considering a change.
+3. Audit `rl_defense/live/` to the same depth as the simulator path.
