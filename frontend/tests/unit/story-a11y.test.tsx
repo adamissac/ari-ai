@@ -21,9 +21,9 @@ describe('story a11y in non-sticky mode', () => {
     expect(screen.getByText('root cause · create_refund', { selector: 'span.block' })).toBeTruthy();
     expect(screen.getByText('verified · replay 2 / 2', { selector: 'span.block' })).toBeTruthy();
   });
-  it('shows Never rather than a zero counter', () => {
+  it('shows Zero rather than a zero counter', () => {
     render(<ProofStats />);
-    expect(screen.getByText('Never')).toBeTruthy();
+    expect(screen.getByText('Zero')).toBeTruthy();
     expect(screen.queryByText('0')).toBeNull();
   });
 });

@@ -54,7 +54,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     const heading = page.getByRole('heading', { level: 1 });
     await expect(heading).toHaveText('Find the flaw. Prove the fix.');
     await expect(page.locator('.hero-content .hero-sub')).toHaveCount(1);
-    await expect(page.getByRole('figure', { name: 'Sample of an Ari review of one commit' })).toBeVisible();
+    await expect(page.getByRole('figure', { name: "Sample of Ari reviewing the commits on a repository's main branch" })).toBeVisible();
     await expectContrastAtLeastAA(page.getByRole('link', { name: 'Go to projects', exact: true }).first(), 'hero CTA');
     await expectContrastAtLeastAA(page.getByTestId('problem-count'), 'problem count');
     await expectContrastAtLeastAA(page.getByTestId('story-events-line'), 'events card line');

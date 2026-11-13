@@ -356,9 +356,9 @@ function CountUp({ to, suffix = '' }: { to: number; suffix?: string }) {
 }
 
 const STATS: Array<{ n: number; suffix?: string; tag: string; body: string }> = [
-  { n: 7, tag: 'Design', body: 'Separate security agents, each its own tool loop with enforced permissions.' },
-  { n: 2, suffix: '×', tag: 'Rule', body: 'A failing test only counts if it fails the same way twice.' },
-  { n: 0, tag: 'Rule', body: 'Remediation approval stays with a different human.' },
+  { n: 1205, tag: 'Pilot', body: 'Commits reviewed end to end on connected repositories, each by the code reviewer and the seven security agents.' },
+  { n: 8, suffix: '/8', tag: 'Reviewer eval', body: 'Defects located on the hard review corpus, with no false alarms on the clean changes.' },
+  { n: 0, tag: 'Rule', body: 'Fixes committed without an independent test that fails before and passes after.' },
 ];
 
 export function ProofStats(): ReactNode {
@@ -375,7 +375,7 @@ export function ProofStats(): ReactNode {
         {STATS.map((s, n) => (
           <Reveal key={s.body} className="story-stat" delay={n * 90}>
             <p className="label-mono flex justify-between text-white/50"><span>{String(n + 1).padStart(2, '0')}</span><span>{s.tag}</span></p>
-            <p className="stat-num mt-8 font-mono font-semibold tracking-tight">{s.n === 0 ? 'Never' : <CountUp to={s.n} suffix={s.suffix} />}</p>
+            <p className="stat-num mt-8 font-mono font-semibold tracking-tight">{s.n === 0 ? 'Zero' : <CountUp to={s.n} suffix={s.suffix} />}</p>
             <p className="mt-3 text-sm text-white/70">{s.body}</p>
           </Reveal>
         ))}
