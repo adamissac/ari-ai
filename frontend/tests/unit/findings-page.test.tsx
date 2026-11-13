@@ -39,7 +39,7 @@ it('shows other finding counts and opens the fixed tab when nothing confirmed is
 
   render(<FindingsPage />);
 
-  expect(screen.getByText('No confirmed problems are open. 1 fixed.')).toBeTruthy();
+  expect(screen.getByText('Nothing needs a fix. 1 fixed.')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'View fixed findings' }));
   expect(screen.getByRole('tab', { name: /^Fixed/ }).getAttribute('aria-selected')).toBe('true');
   expect(within(screen.getByTestId('findings-mobile-list')).getByRole('link', { name: 'Verified fix' })).toBeTruthy();

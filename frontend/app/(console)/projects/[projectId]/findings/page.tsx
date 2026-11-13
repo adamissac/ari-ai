@@ -5,24 +5,24 @@ import { useState } from 'react';
 import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, Mono, PageTitle, Panel, Time } from '@/components/ui';
 import { api } from '@/lib/api';
-import { findingBucket } from '@/lib/findings';
+import { findingBucket, OPEN_REASON } from '@/lib/findings';
 import { shortSha } from '@/lib/format';
 import { FINDING_STATUS, SEVERITY } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
 
 const TABS = [
-  ['confirmed', 'Confirmed'],
+  ['confirmed', 'Needs a fix'],
   ['fixed', 'Fixed'],
-  ['unconfirmed', 'Unconfirmed'],
-  ['dismissed', 'Dismissed'],
+  ['unconfirmed', 'Not proven'],
+  ['dismissed', 'Ruled out'],
 ] as const;
 type Tab = (typeof TABS)[number][0];
 
 const NOTE: Record<Tab, string> = {
-  confirmed: 'A test reproduced each of these. They need a fix.',
-  fixed: 'Independent tests accepted the fix for each of these.',
-  unconfirmed: 'Suspicions that no test has confirmed. Most need no action.',
-  dismissed: 'Ruled out by a test, accepted, or closed.',
+  confirmed: 'A test Ari ran proved each of these is real. None has a fix that passed independent tests yet; the breakdown says where each one stopped.',
+  fixed: "Ari's fix for each of these passed independent tests.",
+  unconfirmed: "The code reviewer or the 7 agents flagged these while reviewing a commit, but no test proved them (or the test could not decide). Each commit's review saves its own, so the same suspicion repeats across commits. No action needed unless one looks real.",
+  dismissed: 'A test showed the problem is not there, or someone accepted the risk or closed it.',
 };
 
 /** Untested suspicions and undecided tests share one tab: neither is a confirmed problem. */
@@ -49,6 +49,7 @@ export default function FindingsPage() {
         ))}
       </div>
       <p className="mb-3 text-sm text-muted" data-testid="finding-group-note">{NOTE[tab]}</p>
+      {findings.status === 'ready' && <TabBreakdown tab={tab} items={findings.data.items} />}
       <Async resource={findings} label="findings">
         {page => {
           const repoItems = page.items;
@@ -66,14 +67,14 @@ export default function FindingsPage() {
           if (items.length === 0 && tab === 'confirmed' && counts && counts.fixed > 0) {
             return (
               <>
-                <Empty>No confirmed problems are open. {counts.fixed} fixed.</Empty>
+                <Empty>Nothing needs a fix. {counts.fixed} fixed.</Empty>
                 <div className="mt-3 flex justify-center">
                   <Button variant="primary" onClick={() => setTab('fixed')}>View fixed findings</Button>
                 </div>
               </>
             );
           }
-          if (items.length === 0) return <Empty>{tab === 'unconfirmed' ? 'No unconfirmed suspicions.' : tab === 'dismissed' ? 'Nothing dismissed.' : tab === 'fixed' ? 'No fix has been accepted by independent tests yet.' : 'No confirmed problems.'}</Empty>;
+          if (items.length === 0) return <Empty>{tab === 'unconfirmed' ? 'Nothing unproven.' : tab === 'dismissed' ? 'Nothing ruled out.' : tab === 'fixed' ? 'No fix has been accepted by independent tests yet.' : 'Nothing needs a fix.'}</Empty>;
           return (
             <>
               <div className="hidden min-w-0 overflow-x-auto sm:block" data-testid="findings-table-scroll">
@@ -113,6 +114,23 @@ export default function FindingsPage() {
       </Async>
     </Panel>
       }
+    </div>
+  );
+}
+
+/** Counts behind the selected tab: why proven problems are still open, and how many titles repeat. */
+function TabBreakdown({ tab, items }: { tab: Tab; items: readonly { status: string; title: string }[] }) {
+  const inTab = items.filter(f => tabOf(f.status) === tab);
+  if (!inTab.length || (tab !== 'confirmed' && tab !== 'unconfirmed')) return null;
+  const distinct = new Set(inTab.map(f => f.title)).size;
+  const reasons = new Map<string, number>();
+  if (tab === 'confirmed') for (const f of inTab) reasons.set(f.status, (reasons.get(f.status) ?? 0) + 1);
+  return (
+    <div className="mb-3 text-sm text-muted" data-testid="finding-group-breakdown">
+      {reasons.size > 0 && <ul className="mb-1 flex flex-col gap-0.5">
+        {[...reasons].sort((a, b) => b[1] - a[1]).map(([status, n]) => <li key={status}><span className="tabular-nums text-ink">{n}</span> {OPEN_REASON[status] ?? FINDING_STATUS[status as keyof typeof FINDING_STATUS]?.label ?? status}</li>)}
+      </ul>}
+      {distinct < inTab.length && <p className="text-faint">{inTab.length} findings, {distinct} different titles: the rest are the same issue raised again on later commits.</p>}
     </div>
   );
 }
