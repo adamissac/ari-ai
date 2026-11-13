@@ -604,6 +604,13 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                 }
         scope = active_scope_for_repo(conn, repo["project_id"], repo["id"])
         reason = "automatic commit assessment" if scope else "waiting for repository scope approval"
+        # Every commit is reviewed: over the project's review limit, the commit waits for the
+        # window to reset instead of being skipped. Raising here rolls back this transaction,
+        # so nothing is recorded until the review actually starts.
+        quota = check_project_quota(conn, repo["project_id"], utcnow()) if scope else None
+        if quota is not None:
+            wait = max((quota.resets_at - utcnow()).total_seconds(), 1.0) + 5.0
+            raise JobDeferred(wait, f"waiting for review capacity: {skipped_reason(quota)[9:]}")
         if existing is None:
             event = MonitoringEvent(
                 id=new_id(IdPrefix.evt),
@@ -648,13 +655,7 @@ def assess_commit(ctx: JobContext) -> dict[str, Any]:
                 created_at=utcnow(),
             )
         assert rrq is not None
-        quota = None
         if scope:
-            quota = check_project_quota(conn, repo["project_id"], utcnow())
-        if quota is not None:
-            reason = skipped_reason(quota)
-            rrq = rrq.model_copy(update={"status": ReassessmentStatus.skipped, "reason": reason})
-        elif scope:
             asm, _ = create_assessment(
                 conn,
                 project_id=repo["project_id"],
