@@ -2943,3 +2943,10 @@ Canonical main 9437e217d65aa1be22fa7b4f54f723200cd428c8; external pilot NO-GO. S
 - `_JsVerifyRunner` in `security-agents/security_agents/host_adapter.py` runs `.test.js` generated tests through `nodetest`; `related_js_tests` moved to `code_review.node_tests`. Owner approved this edit beyond the reviewer handoff.
 - Gap: the JS `functional_suite_passes` check covers related tests only (at most 12). A regression in an unrelated JS test passes Verify. The Verify report records `related_tests_only`.
 - Verified: fake-driver accept/reject tests; real `LocalProcessDriver` run on a mypypath checkout (real fix accepted, 71 tests; non-fix rejected). Live push 2026-11-10: `js-lessonkey` fix passed Verify and opened `adamissac/mypypath#44` against the pushed branch; demo branches deleted, #44 closed (`docs/REVIEWER_LIVE_EVAL_2026-11-03.md`).
+
+## 2026-11-13 — findings/commits clarity, parallel commits, patch retry (PR 934, `feat/adam/findings-commits-clarity`)
+- Findings page: tabs are Needs a fix / Fixed / Not proven / Ruled out; repeated titles collapse to the newest copy (exact-title match in the frontend, no backend fingerprint yet); a banner and per-row badge say when fixes wait for approval. Commits page: outcome per commit, All / Found something / No issues filter, one-line view for clean commits.
+- `JOB_MAX_RUNNING_PER_PROJECT` default 4 → 12 (the default `WORKER_PROCESSES`): the old cap ran one project's commits four at a time. A Railway variable override, if set, still wins; not checked.
+- Patch retry: a Patch step that produces no usable candidate now retries up to `MAX_PATCH_ATTEMPTS` (was: `unresolved` on the first failure). Covered by `test_states.py` only; no replay test drives the orchestrator branch.
+- Unchanged, by design: remediation approval is skipped only while fix delivery is `active` (owner-authorized, not `PILOT_RECOMMENDATION_ONLY`). Review quota (10 starts/hour, 50/day, $50/day) still defers commits beyond it.
+- Gap: findings are still stored per commit with no cross-commit identity; counts in the API and analytics remain per copy.

@@ -95,7 +95,9 @@ def transition(src: AssessmentState, dst: AssessmentState) -> AssessmentState:
 
 
 REMEDIATION_EDGES: dict[RemediationState, frozenset[RemediationState]] = {
-    RemediationState.PATCHING: frozenset({RemediationState.VERIFYING, RemediationState.UNRESOLVED}),
+    RemediationState.PATCHING: frozenset(
+        {RemediationState.VERIFYING, RemediationState.PATCHING, RemediationState.UNRESOLVED}
+    ),
     RemediationState.VERIFYING: frozenset(
         {
             RemediationState.ACCEPTED,
@@ -113,7 +115,12 @@ def next_remediation_state(
 ) -> RemediationState:
     """Per-finding sub-machine (docs/08). `attempt` is the attempt just executed."""
     if current is RemediationState.PATCHING:
-        nxt = RemediationState.UNRESOLVED if patch_failed else RemediationState.VERIFYING
+        if not patch_failed:
+            nxt = RemediationState.VERIFYING
+        elif attempt < MAX_PATCH_ATTEMPTS:
+            nxt = RemediationState.PATCHING  # no usable patch this time: try again
+        else:
+            nxt = RemediationState.UNRESOLVED
     elif current is RemediationState.VERIFYING:
         if verdict == "accepted":
             nxt = RemediationState.ACCEPTED

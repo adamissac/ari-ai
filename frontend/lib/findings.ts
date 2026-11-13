@@ -70,10 +70,10 @@ export function foundSomething(outcome: CommitOutcome): boolean {
 
 /** Why a proven problem is still open, in plain words, from the statuses the backend sets. */
 export const OPEN_REASON: Record<string, string> = {
-  validated: 'proven by a test; no fix written yet',
-  diagnosed: 'cause found; fix not written yet',
+  validated: 'proven by a test; fix not started (it starts after approval, or at once when fix delivery is automatic)',
+  diagnosed: 'cause found and fix planned; not written yet (approval is pending or was declined)',
   patch_proposed: 'fix written; waiting for approval or its tests',
-  patch_rejected: "Ari's fix failed its tests; needs a manual fix",
-  unresolved: 'Ari could not fix it; needs a manual fix',
+  patch_rejected: 'Ari tried 4 different fixes and each failed independent tests; needs a manual fix',
+  unresolved: 'Ari could not produce a fix in 4 attempts; needs a manual fix',
   needs_recheck: 'marked for a recheck',
 };
