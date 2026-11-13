@@ -20,7 +20,9 @@ Persistence, signature verification, jobs and assessment creation live in `backe
 
 "24/7" requires the worker deployed and running; locally it runs only while
 `make worker` / Compose is up. Locally signed deliveries are simulated events.
-Runtime telemetry ingestion (`/ingest/runtime`) is not implemented.
+`monitoring.collector` is the one module here that does I/O: an ASGI middleware that
+runs inside a monitored app and posts per-route counters to `/ingest/runtime`. It has
+not been installed on a real application yet.
 
 ## Commands
 

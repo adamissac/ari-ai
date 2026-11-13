@@ -649,6 +649,9 @@ def rollback_job(conn: Connection, control_id: str, *, emergency: bool = False) 
 
 def expire_job(conn: Connection, control_id: str) -> dict[str, Any]:
     control = load_control(conn, control_id, for_update=True)
+    if control.status in (LiveControlStatus.executing, LiveControlStatus.verifying):
+        # Applied but never verified (stalled verify job). Remove it rather than leave it open.
+        return rollback_job(conn, control_id)
     if control.status is not LiveControlStatus.verified:
         return {"control_id": control.id, "status": control.status.value, "skipped": True}
     channel = load_channel(conn, control.application_id)

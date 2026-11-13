@@ -72,17 +72,17 @@ recommends; its decision record always carries `executed: false`
 
 | # | Gap | Kind |
 |---|---|---|
-| 1 | No telemetry collector. Nothing measures a running app and posts windows. Without it every later stage is idle | Build work, plus an owner decision on what Ari may read from a customer's runtime |
+| 1 | No telemetry collector. Nothing measures a running app and posts windows. Without it every later stage is idle | Partly fixed here: `monitoring/monitoring/collector.py` is an ASGI middleware that sends route-template counters only. Still missing: non-Python apps, per-principal ownership counters (without them the RL policy abstains), and installing it on a real app |
 | 2 | No way to reach a customer system. Channel is loopback, environment excludes production | **Owner decision** |
 | 3 | No approved RL policy. v6 is a pinned compatibility fixture; the retrained candidate was rejected by its own gate (`rl-defense/LIVE_RL_GAP_AUDIT.md`) | **Owner decision** on promotion criteria; then training work |
-| 4 | v6 is hardwired to the payments-lite topology (`live_defense/policy.py:32-38, 235-248`). On any other app its recommendation is not meaningful | Build work; needs per-application topology |
+| 4 | v6 is hardwired to the payments-lite topology (`live_defense/policy.py:32-38, 235-248`). On any other app its recommendation is not meaningful | Contained here: v6 now abstains (`skipped_schema`) when any route is outside that topology. A policy for other apps still needs per-application topology and retraining |
 | 5 | Nothing connects a decision to an action without a human | **Owner decision** (this is AUTO-EXECUTE) |
 | 6 | The safe control set is too weak to contain an attack. The candidate policy missed the availability floor because node-level isolate was the only containment | **Owner decision**: which stronger controls to allow |
 | 7 | Shadow inference never ran in production (missing checkpoint in the image) | Bug. Fixed here |
 | 8 | Rollback before execution did not stop the control; rollback during verification left it `failed` and blocked all further controls | Bug. Fixed here |
 | 9 | No retention for `live_policy_decisions`, first-responder decisions or `live_controls` (`maintenance.py` covers `runtime_windows` and `monitoring_events` only). At one window a minute per app these grow without bound | **Owner decision**: these rows are audit evidence |
-| 10 | Rollback jobs dedupe forever on the control id (`live_defense/controls.py:290-297`), so a rollback can be requested once | Bug, low impact after fix 8. Not fixed |
-| 11 | Expiry is skipped when the control is not yet `verified` (`live_defense/controls.py:631`). The fixture expires it by itself, but the record never closes | Bug, low impact. Not fixed |
+| 10 | Rollback jobs dedupe forever on the control id (`live_defense/controls.py:290-297`), so a rollback can be requested once | Moot after fix 8: every rollback job now ends the control in a terminal state. Not changed |
+| 11 | Expiry is skipped when the control is not yet `verified` (`live_defense/controls.py:631`). The fixture expires it by itself, but the record never closes | Bug. Fixed here |
 | 12 | `control_channels.hmac_secret` is stored in plaintext (documented residual risk) | **Owner decision**: needs a secrets store |
 | 13 | `test_rl_integration.py` skips in the default environment, so CI does not exercise v6 inference | Test gap |
 | 14 | API and twelve workers share one Railway service; a restart pauses detection. No alert when ingest stops for a project | Operations |
@@ -109,6 +109,15 @@ Each of these lets Ari change a running system, or changes what counts as proof.
 - `live_defense/controls.py` `rollback_job`: a rollback that arrives before execute now
   rejects the control so it is never applied; a rollback during execute or verify now
   ends `rolled_back` and does not leave an unresolved control.
+
+- `monitoring/monitoring/collector.py`: telemetry collector (gap 1). It sends counts per
+  route template and never a raw path, query, header, body or client address.
+- `live_defense/policy.py`: v6 abstains on routes outside its trained topology (gap 4).
+- `live_defense/controls.py` `expire_job`: a control still executing or verifying at
+  expiry is removed and closed instead of skipped (gap 11).
+
+Gaps 2, 3, 5 and 6 are untouched. Each one lets Ari change a running system or lowers
+the bar for doing so, and each needs an explicit owner decision.
 
 Not checked: the production Railway environment variables, any live project data, and a
 real image build. The Dockerfile change is asserted by a static test only.
