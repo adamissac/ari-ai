@@ -22,7 +22,7 @@ from backend.db import (
     live_controls,
     transaction,
 )
-from backend.live_defense.adapters import AdapterDenied, parse_production_url
+from backend.live_defense.adapters import AdapterDenied, channel_url, parse_production_url, prove
 from backend.live_defense.controls import (
     advance,
     enqueue_execute,
@@ -35,6 +35,7 @@ from backend.live_defense.controls import (
     origin_from_decision,
 )
 from backend.live_defense.pilot_guard import refuse_control_surface
+from backend.live_defense.sealing import seal
 from shared.audit import ActorType
 from shared.base import utcnow
 from shared.errors import ErrorCode
@@ -90,6 +91,7 @@ def create_grant(project_id: str, body: ControlGrantCreate, request: Request) ->
             allowed_kinds=body.allowed_kinds,
             max_duration_s=body.max_duration_s,
             hourly_budget=body.hourly_budget,
+            protected_sources=body.protected_sources,
             created_by=user.id,
             created_at=utcnow(),
             expires_at=body.expires_at,
@@ -246,7 +248,7 @@ def create_channel(
                 application_id=app_id,
                 host=host,
                 port=port,
-                hmac_secret=secret,
+                hmac_secret=seal(secret),
                 created_by=user.id,
                 doc=view.model_dump(mode="json"),
             )
@@ -263,6 +265,59 @@ def create_channel(
             details={"scheme": scheme, "host": host, "port": port, "shown_once": True},
         )
         return ControlChannelCreated(**view.model_dump(), hmac_secret=secret)
+
+
+@router.post("/applications/{app_id}/control-channel/verify", response_model=ControlChannelView)
+def verify_channel(app_id: str, request: Request) -> ControlChannelView:
+    """Owner asks Ari to send the endpoint a signed challenge. Success marks the channel
+    verified; failure clears it, so a moved or replaced endpoint stops receiving controls."""
+    with transaction() as conn:
+        user = require_user(conn, request)
+        app = (
+            conn.execute(
+                sa.select(connected_applications).where(connected_applications.c.id == app_id)
+            )
+            .mappings()
+            .first()
+        )
+        if app is None:
+            raise not_found("application")
+        org_id, _ = require_project(conn, user, app["project_id"], MemberRole.owner)
+        denied = refuse_control_surface(app)
+        if denied:
+            raise ApiError(ErrorCode.LIVE_CONTROL_DENIED, denied, 403)
+        loaded = load_channel(conn, app_id)
+        if loaded is None:
+            raise not_found("control channel")
+        view, secret = loaded
+        try:
+            result = prove(channel_url(view), secret)
+            reason = result.error
+        except AdapterDenied as exc:
+            result, reason = None, str(exc)
+        ok = result is not None and result.ok
+        view = view.model_copy(update={"verified_at": utcnow() if ok else None})
+        conn.execute(
+            sa.update(control_channels)
+            .where(control_channels.c.id == view.id)
+            .values(doc=view.model_dump(mode="json"))
+        )
+        audit.record(
+            conn,
+            org_id=org_id,
+            project_id=view.project_id,
+            actor_type=ActorType.user,
+            actor_id=user.id,
+            action="live_defense.channel.verified" if ok else "live_defense.channel.unverified",
+            subject_type="control_channel",
+            subject_id=view.id,
+            details={"ok": ok, "error": None if ok else reason},
+        )
+    if not ok:
+        raise ApiError(
+            ErrorCode.VALIDATION_FAILED, f"endpoint did not prove ownership: {reason}", 422
+        )
+    return view
 
 
 @router.get("/applications/{app_id}/control-channel", response_model=ControlChannelView)

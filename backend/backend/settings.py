@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     ops_token: SecretStr | None = None
     # Generic HTTPS webhook for critical-failure alerts (Slack-compatible {"text": ...}).
     alert_webhook_url: SecretStr | None = None
+    # Fernet key that encrypts Live Defense control-channel secrets at rest. Unset keeps them
+    # plaintext (preflight warns outside development).
+    control_secret_key: SecretStr | None = None
     # Controlled feature flags: comma-separated names, off unless listed. See flags().
     feature_flags: str = ""
 
@@ -189,6 +192,7 @@ class Settings(BaseSettings):
         "security_workdir",
         "ops_token",
         "alert_webhook_url",
+        "control_secret_key",
         "ops_api_token",
         "ops_destructive_token",
         "ops_alert_webhook_url",

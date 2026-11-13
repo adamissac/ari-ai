@@ -7,5 +7,6 @@
   "port": 18080,
   "project_id": "prj_01JFIXTURE0000000000000PRJ",
   "revoked_at": null,
-  "scheme": "http"
+  "scheme": "http",
+  "verified_at": null
 }

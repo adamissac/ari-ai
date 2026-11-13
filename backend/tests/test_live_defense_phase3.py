@@ -522,3 +522,23 @@ def test_v6_abstains_on_routes_outside_its_trained_topology() -> None:
     assert other.feature_schema_ok is False
     assert "payments-lite" in (other.reason or "")
     assert infer("GET /payments/{payment_id}").status.value != "skipped_schema"
+
+
+def test_ingest_stop_is_reported_once_per_stoppage(env) -> None:
+    from backend import maintenance
+    from backend.db import get_engine
+    from backend.settings import get_settings
+
+    _, _, _, ids, anon = env
+    sent_at = utcnow() - timedelta(minutes=40)
+    assert _ingest(anon, ids, _batch(sent_at, 5)).status_code == 202
+    s = get_settings()
+    first = maintenance.stale_ingest(get_engine(), s)
+    assert [(i["application_id"], i["kind"]) for i in first] == [
+        (ids["app"], "live_defense_ingest_stopped")
+    ]
+    later = maintenance.stale_ingest(
+        get_engine(), s, now=utcnow() + timedelta(seconds=s.maintenance_interval_s)
+    )
+    assert later == []  # reported in the cycle it stopped, not every hour after
+    assert maintenance.stale_ingest(get_engine(), s, now=sent_at + timedelta(minutes=5)) == []

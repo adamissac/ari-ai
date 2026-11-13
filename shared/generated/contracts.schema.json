@@ -3976,6 +3976,20 @@
           ],
           "title": "Scheme",
           "type": "string"
+        },
+        "verified_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When the endpoint last answered a signed challenge with the right proof. Production channels carry no controls until this is set.",
+          "title": "Verified At"
         }
       },
       "required": [
@@ -3988,6 +4002,7 @@
         "path",
         "created_at",
         "revoked_at",
+        "verified_at",
         "hmac_secret"
       ],
       "title": "ControlChannelCreated",
@@ -4057,6 +4072,20 @@
           ],
           "title": "Scheme",
           "type": "string"
+        },
+        "verified_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When the endpoint last answered a signed challenge with the right proof. Production channels carry no controls until this is set.",
+          "title": "Verified At"
         }
       },
       "required": [
@@ -4068,7 +4097,8 @@
         "port",
         "path",
         "created_at",
-        "revoked_at"
+        "revoked_at",
+        "verified_at"
       ],
       "title": "ControlChannelView",
       "type": "object"
@@ -4135,6 +4165,16 @@
           "title": "Project Id",
           "type": "string"
         },
+        "protected_sources": {
+          "description": "Addresses or networks (CIDR) a source block may never hit, e.g. the owner's office, load balancer or uptime monitor.",
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Protected Sources",
+          "type": "array"
+        },
         "revoked_at": {
           "anyOf": [
             {
@@ -4159,7 +4199,8 @@
         "created_by",
         "created_at",
         "expires_at",
-        "revoked_at"
+        "revoked_at",
+        "protected_sources"
       ],
       "title": "ControlGrant",
       "type": "object"
@@ -4206,6 +4247,16 @@
           "minimum": 5,
           "title": "Max Duration S",
           "type": "integer"
+        },
+        "protected_sources": {
+          "description": "Addresses or networks (CIDR) a source block may never hit, e.g. the owner's office, load balancer or uptime monitor.",
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Protected Sources",
+          "type": "array"
         }
       },
       "required": [
@@ -4213,7 +4264,8 @@
         "allowed_kinds",
         "max_duration_s",
         "hourly_budget",
-        "expires_at"
+        "expires_at",
+        "protected_sources"
       ],
       "title": "ControlGrantCreate",
       "type": "object"

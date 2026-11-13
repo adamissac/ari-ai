@@ -13,5 +13,6 @@
   "id": "cgr_01JFIXTURE0000000000000CGR",
   "max_duration_s": 300,
   "project_id": "prj_01JFIXTURE0000000000000PRJ",
+  "protected_sources": [],
   "revoked_at": null
 }

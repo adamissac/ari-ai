@@ -279,6 +279,7 @@ function GrantForm({
   const selectedAppId = appId || appItems[0]?.id || '';
   const [kinds, setKinds] = useState<LiveControlKind[]>([...GRANT_KINDS]);
   const [maxDuration, setMaxDuration] = useState('300');
+  const [protectedSources, setProtectedSources] = useState('');
   const [error, setError] = useState<unknown>(null);
   const toggle = (kind: LiveControlKind) => {
     setKinds(current => current.includes(kind) ? current.filter(item => item !== kind) : [...current, kind]);
@@ -292,6 +293,7 @@ function GrantForm({
         max_duration_s: Number(maxDuration),
         hourly_budget: 5,
         expires_at: null,
+        protected_sources: protectedSources.split(',').map(item => item.trim()).filter(Boolean),
       });
       onChange?.();
     } catch (err) {
@@ -309,6 +311,9 @@ function GrantForm({
         </Field>
         <Field label="Max duration (seconds)">
           <input className={inputClass} type="number" min={5} max={300} value={maxDuration} onChange={e => setMaxDuration(e.target.value)} />
+        </Field>
+        <Field label="Never block (IPs or CIDRs, comma-separated)">
+          <input className={inputClass} value={protectedSources} onChange={e => setProtectedSources(e.target.value)} placeholder="203.0.113.10, 198.51.100.0/24" maxLength={2000} />
         </Field>
         <Button variant="primary" disabled={selectedAppId.length === 0 || kinds.length === 0 || appItems.find(item => item.id === selectedAppId)?.rl_gated_pilot === true} onClick={() => void submit()}>Create grant</Button>
       </div>
@@ -354,6 +359,18 @@ function ControlChannelForm({ app, onChange }: { app: ConnectedApplication; onCh
   const [url, setUrl] = useState('');
   const [issued, setIssued] = useState<ControlChannelCreated | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [checked, setChecked] = useState<string | null>(null);
+  const check = async () => {
+    setError(null);
+    setChecked(null);
+    try {
+      const view = await api().verifyControlChannel(app.id);
+      setChecked(view.verified_at);
+      onChange?.();
+    } catch (err) {
+      setError(err);
+    }
+  };
   const submit = async () => {
     setError(null);
     try {
@@ -382,7 +399,18 @@ function ControlChannelForm({ app, onChange }: { app: ConnectedApplication; onCh
           </Field>
         )}
         <Button className="!px-2 !py-0.5 text-xs" onClick={() => void submit()}>Register control channel</Button>
+        {production && (app.control_channel_configured || issued) && (
+          <Button className="!px-2 !py-0.5 text-xs" onClick={() => void check()} data-testid={`live-defense-channel-check-${app.id}`}>
+            Check endpoint
+          </Button>
+        )}
       </div>
+      {production && (
+        <p className="mt-1 text-xs text-muted">
+          After installing the secret in your app, press Check endpoint. Ari sends a signed challenge; controls stay off until your endpoint answers it.
+        </p>
+      )}
+      {checked && <p className="mt-1 text-xs text-ok">Endpoint answered the challenge. Controls can be authorized.</p>}
       {error !== null && <div className="mt-2"><ErrorState error={error} /></div>}
       {issued && (
         <div className="mt-3 rounded-md border border-warn/50 bg-warn/10 p-2 text-xs" data-testid="live-defense-hmac-once">

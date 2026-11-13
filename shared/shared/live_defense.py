@@ -455,6 +455,14 @@ class ControlGrant(StrictModel):
     created_at: UtcDatetime
     expires_at: UtcDatetime | None = None
     revoked_at: UtcDatetime | None = None
+    protected_sources: list[ShortText] = Field(
+        default_factory=list,
+        max_length=100,
+        description=(
+            "Addresses or networks (CIDR) a source block may never hit, e.g. the owner's "
+            "office, load balancer or uptime monitor."
+        ),
+    )
 
 
 class ControlGrantCreate(StrictModel):
@@ -463,6 +471,27 @@ class ControlGrantCreate(StrictModel):
     max_duration_s: int = Field(default=300, ge=MIN_CONTROL_DURATION_S, le=MAX_CONTROL_DURATION_S)
     hourly_budget: int = Field(default=5, ge=1, le=20)
     expires_at: UtcDatetime | None = None
+    protected_sources: list[ShortText] = Field(
+        default_factory=list,
+        max_length=100,
+        description=(
+            "Addresses or networks (CIDR) a source block may never hit, e.g. the owner's "
+            "office, load balancer or uptime monitor."
+        ),
+    )
+
+    @field_validator("protected_sources")
+    @classmethod
+    def _networks(cls, value: list[str]) -> list[str]:
+        import ipaddress
+
+        out = []
+        for item in value:
+            try:
+                out.append(str(ipaddress.ip_network(item.strip(), strict=False)))
+            except ValueError as exc:
+                raise ValueError(f"not an address or CIDR network: {item!r}") from exc
+        return out
 
 
 class ControlChannelView(StrictModel):
@@ -481,6 +510,13 @@ class ControlChannelView(StrictModel):
     path: Literal["/live-defense/control"] = CONTROL_PATH
     created_at: UtcDatetime
     revoked_at: UtcDatetime | None = None
+    verified_at: UtcDatetime | None = Field(
+        default=None,
+        description=(
+            "When the endpoint last answered a signed challenge with the right proof. "
+            "Production channels carry no controls until this is set."
+        ),
+    )
 
 
 class ControlChannelCreate(StrictModel):

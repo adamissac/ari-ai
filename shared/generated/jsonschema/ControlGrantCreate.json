@@ -53,6 +53,16 @@
       "minimum": 5,
       "title": "Max Duration S",
       "type": "integer"
+    },
+    "protected_sources": {
+      "description": "Addresses or networks (CIDR) a source block may never hit, e.g. the owner's office, load balancer or uptime monitor.",
+      "items": {
+        "maxLength": 500,
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Protected Sources",
+      "type": "array"
     }
   },
   "required": [

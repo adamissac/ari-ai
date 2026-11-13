@@ -7,6 +7,7 @@ allowlisted and rules-originated action goes through :func:`check`. Fail closed.
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -54,6 +55,7 @@ class GrantView:
     hourly_budget: int
     revoked_at: datetime | None
     expires_at: datetime | None
+    protected_sources: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -63,6 +65,7 @@ class ChannelView:
     path: str
     revoked_at: datetime | None
     scheme: str = "http"
+    verified: bool = False
 
 
 @dataclass(frozen=True)
@@ -273,11 +276,22 @@ def _blast(inp: AuthorizationInput) -> AuthorizationCheckResult:
     return _ok("blast_radius", False, "Unknown kind; fail closed.")
 
 
+def _protected_hit(inp: AuthorizationInput) -> str | None:
+    addr = ipaddress.ip_address(inp.target_value)
+    for item in inp.grant.protected_sources if inp.grant else ():
+        if addr in ipaddress.ip_network(item, strict=False):
+            return item
+    return None
+
+
 def _address(inp: AuthorizationInput) -> AuthorizationCheckResult:
     if inp.kind != LiveControlKind.block_source.value:
         return _ok("address_policy", True, "Not a source block.")
     if _production(inp):
         if public_address(inp.target_value) and inp.target_value == inp.target_value.strip():
+            hit = _protected_hit(inp)
+            if hit:
+                return _ok("address_policy", False, f"Owner protected {hit}; never blocked.")
             return _ok("address_policy", True, "Exactly one public unicast address.")
         return _ok(
             "address_policy",
@@ -316,6 +330,12 @@ def _channel(inp: AuthorizationInput) -> AuthorizationCheckResult:
             production_host_shape(inp.channel.host)
         except AdapterDenied as exc:
             return _ok("control_channel_allowlist", False, str(exc))
+        if not inp.channel.verified:
+            return _ok(
+                "control_channel_allowlist",
+                False,
+                "Production endpoint has not answered the ownership challenge yet.",
+            )
         return _ok("control_channel_allowlist", True, "Channel is the app's public https endpoint.")
     if inp.channel.scheme != "http" or inp.channel.host != "127.0.0.1":
         return _ok("control_channel_allowlist", False, "Adapter host is not the loopback fixture.")

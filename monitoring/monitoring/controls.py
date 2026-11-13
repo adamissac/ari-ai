@@ -197,6 +197,13 @@ class AriControls:
     def _apply(self, payload: dict[str, Any], control_id: str) -> tuple[int, dict[str, Any]]:
         op = payload.get("op")
         level = logging.getLevelName(self._logger.getEffectiveLevel()).lower()
+        if op == "prove":
+            # Ownership challenge at channel registration: only the secret holder can answer.
+            challenge = str(payload.get("challenge") or "")
+            if not challenge:
+                return 400, {"ok": False, "error": "challenge required"}
+            proof = hmac.new(self._secret, f"prove.{challenge}".encode(), hashlib.sha256)
+            return 200, {"ok": True, "proof": proof.hexdigest()}
         if op == "inspect":
             item = self._controls.get(control_id)
             return 200, {

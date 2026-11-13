@@ -25,6 +25,11 @@ change to a real system (docs/01 §6.3), and the control model in
   The record says the effect is self-reported by the application.
 - `monitoring.controls.AriControls` is the reference endpoint an application installs. It
   checks the HMAC, refuses replays, and enforces each control's expiry itself.
+- Ownership: after registering, the owner presses Check endpoint. Ari sends a fresh challenge
+  and the endpoint must return `HMAC(secret, "prove." + challenge)`. The gate refuses every
+  control on a production channel until this succeeds; a failed re-check clears it.
+- Each grant carries `protected_sources` (addresses or CIDRs) that a source block may never hit.
+- With `CONTROL_SECRET_KEY` set, channel secrets are stored Fernet-encrypted.
 
 Unchanged: each control kind needs an owner grant (duration and hourly budget), each control
 needs an owner's click, RL-gated pilot apps stay shadow-only, AUTO-EXECUTE is rejected, and
@@ -37,5 +42,5 @@ the RL policy only recommends.
   or is rolled back.
 - Verification is weaker than on the fixture: it trusts the application's report.
 - The loopback-only rule moved from database checks to the gate and adapter (migration 0022).
-- Not done: an owner-maintained list of addresses that may never be blocked, a channel
-  ownership challenge at registration, and non-Python control endpoints.
+- Not done: non-Python control endpoints, key rotation for `CONTROL_SECRET_KEY`, and
+  re-encrypting secrets written before the key was set.

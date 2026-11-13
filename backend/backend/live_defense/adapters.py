@@ -159,6 +159,28 @@ def _send(
         return client.post(url, content=body, headers=headers, extensions=extensions)
 
 
+def proof_for(secret: str, challenge: str) -> str:
+    """What an endpoint must return for ``op: prove``. Only the secret holder can make it."""
+    return hmac.new(secret.encode(), f"prove.{challenge}".encode(), hashlib.sha256).hexdigest()
+
+
+def prove(url: str, secret: str) -> AdapterResult:
+    """Send a fresh challenge; ok only when the endpoint returns the matching proof."""
+    challenge = secrets.token_urlsafe(24)
+    result = call(
+        url, secret, {"op": "prove", "control_id": "chk_ownership", "challenge": challenge}
+    )
+    proof = str(result.body.get("proof") or "")
+    if result.ok and hmac.compare_digest(proof, proof_for(secret, challenge)):
+        return result
+    return AdapterResult(
+        ok=False,
+        http_status=result.http_status,
+        body=result.body,
+        error=result.error or "endpoint did not return the proof for this secret",
+    )
+
+
 def call(
     url: str,
     secret: str,

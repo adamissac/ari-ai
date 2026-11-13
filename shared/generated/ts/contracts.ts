@@ -667,6 +667,8 @@ export interface ControlChannelCreated {
   path: "/live-defense/control";
   created_at: string;
   revoked_at: string | null;
+  /** When the endpoint last answered a signed challenge with the right proof. Production channels carry no controls until this is set. */
+  verified_at: string | null;
   /** Shown once; never re-returned */
   hmac_secret: string;
 }
@@ -685,6 +687,8 @@ export interface ControlChannelView {
   path: "/live-defense/control";
   created_at: string;
   revoked_at: string | null;
+  /** When the endpoint last answered a signed challenge with the right proof. Production channels carry no controls until this is set. */
+  verified_at: string | null;
 }
 
 /** Owner grant for exact kinds on one owned-test/sandbox application. */
@@ -699,6 +703,8 @@ export interface ControlGrant {
   created_at: string;
   expires_at: string | null;
   revoked_at: string | null;
+  /** Addresses or networks (CIDR) a source block may never hit, e.g. the owner's office, load balancer or uptime monitor. */
+  protected_sources: Array<string>;
 }
 
 export interface ControlGrantCreate {
@@ -707,6 +713,8 @@ export interface ControlGrantCreate {
   max_duration_s: number;
   hourly_budget: number;
   expires_at: string | null;
+  /** Addresses or networks (CIDR) a source block may never hit, e.g. the owner's office, load balancer or uptime monitor. */
+  protected_sources: Array<string>;
 }
 
 export type ControlStatus = "proposed" | "implemented" | "tested";

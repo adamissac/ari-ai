@@ -12,4 +12,6 @@ Shared changes (additive):
 - Alembic `0022_control_channel_hostname`: environment check allows `production`, channel host
   widened to 253 and its loopback-only check moved into the gate and adapter.
 
+- `ControlChannelView.verified_at` (ownership challenge) and `ControlGrant[Create].protected_sources`.
+
 If your branch adds a migration, renumber after 0022. Decision: ADR-0027.

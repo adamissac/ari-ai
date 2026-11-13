@@ -27,6 +27,7 @@ from backend.live_defense.authorize import (
     GrantView,
     check,
 )
+from backend.live_defense.sealing import unseal
 from backend.live_defense.state import IllegalControlTransition, transition
 from backend.live_defense.verify import verify_control, verify_removed
 from backend.services import project_org
@@ -111,7 +112,7 @@ def load_channel(conn: Connection, application_id: str) -> tuple[ControlChannelV
     if row is None:
         return None
     view = ControlChannelView.model_validate(row["doc"])
-    return view, row["hmac_secret"]
+    return view, unseal(row["hmac_secret"])
 
 
 def emergency_active(conn: Connection, project_id: str, application_id: str | None) -> bool:
@@ -219,6 +220,7 @@ def gate_for(
             hourly_budget=grant.hourly_budget,
             revoked_at=grant.revoked_at,
             expires_at=grant.expires_at,
+            protected_sources=tuple(grant.protected_sources),
         ),
         channel=None
         if channel is None
@@ -228,6 +230,7 @@ def gate_for(
             path=channel[0].path,
             revoked_at=channel[0].revoked_at,
             scheme=channel[0].scheme,
+            verified=channel[0].verified_at is not None,
         ),
         emergency_stop_active=emergency_active(conn, project_id, application_id),
         unresolved_control=unresolved(conn, application_id),
@@ -734,7 +737,9 @@ def emergency_stop_job(
             continue
         try:
             url = channel_url(ControlChannelView.model_validate(row["doc"]))
-            call(url, row["hmac_secret"], {"op": "emergency_clear", "control_id": "est_all"})
+            call(
+                url, unseal(row["hmac_secret"]), {"op": "emergency_clear", "control_id": "est_all"}
+            )
         except AdapterDenied:
             # Refused destination: nothing was sent. Per-control rollbacks above still ran.
             continue

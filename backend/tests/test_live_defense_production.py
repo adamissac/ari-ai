@@ -65,7 +65,12 @@ def _inp(**overrides: object) -> AuthorizationInput:
             expires_at=None,
         ),
         channel=ChannelView(
-            host=HOST, port=443, path="/live-defense/control", revoked_at=None, scheme="https"
+            host=HOST,
+            port=443,
+            path="/live-defense/control",
+            revoked_at=None,
+            scheme="https",
+            verified=True,
         ),
         emergency_stop_active=False,
         unresolved_control=False,
@@ -239,6 +244,14 @@ def prod(client_factory, monkeypatch):
         return app_client.post("/live-defense/control", content=body, headers=headers)
 
     monkeypatch.setattr(adapters, "_send", to_customer)
+    unverified = _authorize(
+        alice, ids, "increase_logging", {"type": "application", "value": ids["app"]}
+    )
+    assert unverified.status_code == 403 and "ownership challenge" in unverified.text
+    proved = alice.post(f"/api/v1/applications/{ids['app']}/control-channel/verify")
+    assert proved.status_code == 200, proved.text
+    assert proved.json()["verified_at"]
+    sent.clear()  # the ownership challenge itself is the only call so far
     grant = alice.post(
         f"/api/v1/projects/{ids['project']}/control-grants",
         json={
@@ -352,3 +365,98 @@ def test_channel_shape_must_match_environment(client_factory, monkeypatch) -> No
     ).json()["id"]
     monkeypatch.setattr(adapters, "_resolve", lambda _h, _p: [PUBLIC_IP])
     assert alice.post(chan.format(gated), json={"url": URL}).status_code == 403
+
+
+def test_endpoint_without_the_secret_cannot_prove_ownership(client_factory, monkeypatch) -> None:
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    app_id = alice.post(
+        f"/api/v1/projects/{ids['project']}/applications",
+        json={"name": "p", "environment": "production"},
+    ).json()["id"]
+    monkeypatch.setattr(adapters, "_resolve", lambda _h, _p: [PUBLIC_IP])
+    assert (
+        alice.post(f"/api/v1/applications/{app_id}/control-channel", json={"url": URL}).status_code
+        == 201
+    )
+    impostor = TestClient(AriControls(FastAPI(), secret="x" * 43))  # a different secret
+    monkeypatch.setattr(
+        adapters,
+        "_send",
+        lambda url, body, headers, t, sni: impostor.post(
+            "/live-defense/control", content=body, headers=headers
+        ),
+    )
+    res = alice.post(f"/api/v1/applications/{app_id}/control-channel/verify")
+    assert res.status_code == 422
+    view = alice.get(f"/api/v1/applications/{app_id}/control-channel").json()
+    assert view["verified_at"] is None
+
+
+def test_gate_refuses_an_unverified_production_channel() -> None:
+    channel = ChannelView(
+        host=HOST, port=443, path="/live-defense/control", revoked_at=None, scheme="https"
+    )
+    decision = check(_inp(channel=channel))
+    assert not decision.allowed
+    assert "ownership challenge" in decision.reason
+
+
+def test_owner_protected_addresses_are_never_blocked() -> None:
+    grant = _inp().grant
+    from dataclasses import replace
+
+    protected = replace(grant, protected_sources=("8.8.8.0/24", "1.1.1.1/32"))
+    for value in ("8.8.8.8", "1.1.1.1"):
+        decision = check(_inp(grant=protected, target_value=value))
+        assert not decision.allowed and "protected" in decision.reason, value
+    assert check(_inp(grant=protected, target_value="9.9.9.9")).allowed
+
+
+def test_grant_rejects_a_malformed_protected_entry(prod) -> None:
+    alice, ids = prod["alice"], prod["ids"]
+    bad = alice.post(
+        f"/api/v1/projects/{ids['project']}/control-grants",
+        json={
+            "application_id": ids["app"],
+            "allowed_kinds": ["block_source"],
+            "protected_sources": ["office"],
+        },
+    )
+    assert bad.status_code == 422
+
+
+def test_channel_secret_is_encrypted_at_rest_when_a_key_is_set(prod, monkeypatch) -> None:
+    import sqlalchemy as sa
+    from cryptography.fernet import Fernet
+
+    from backend.db import control_channels, transaction
+    from backend.live_defense.sealing import seal, unseal
+    from backend.settings import get_settings
+
+    monkeypatch.setenv("CONTROL_SECRET_KEY", Fernet.generate_key().decode())
+    get_settings.cache_clear()
+    try:
+        sealed = seal("hkt_ctl_example_secret_value")
+        assert sealed.startswith("fernet:v1:") and "example" not in sealed
+        assert unseal(sealed) == "hkt_ctl_example_secret_value"
+        assert unseal("hkt_ctl_legacy_plaintext") == "hkt_ctl_legacy_plaintext"
+        alice = prod["alice"]
+        app_id = alice.post(
+            f"/api/v1/projects/{prod['ids']['project']}/applications",
+            json={"name": "sealed", "environment": "production"},
+        ).json()["id"]
+        made = alice.post(f"/api/v1/applications/{app_id}/control-channel", json={"url": URL})
+        assert made.status_code == 201, made.text
+        with transaction() as conn:
+            stored = conn.execute(
+                sa.select(control_channels.c.hmac_secret).where(
+                    control_channels.c.application_id == app_id
+                )
+            ).scalar_one()
+        assert stored.startswith("fernet:v1:")
+        assert made.json()["hmac_secret"] not in stored
+        assert unseal(stored) == made.json()["hmac_secret"]
+    finally:
+        monkeypatch.delenv("CONTROL_SECRET_KEY")
+        get_settings.cache_clear()
