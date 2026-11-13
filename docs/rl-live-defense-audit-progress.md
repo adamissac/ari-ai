@@ -67,16 +67,36 @@ untrained one on 4.9% to 18.0% of states.
 | [#930](https://github.com/adamissac/ari-ai/pull/930) | Resumable training and a stop on non-finite loss | 5902db1a |
 | [#931](https://github.com/adamissac/ari-ai/pull/931) | Lab episode engine and the learning check with results | 0d2a7baa |
 | [#932](https://github.com/adamissac/ari-ai/pull/932) | Backend route `/lab/simulation`, transport methods, `/lab` simulation panel, e2e | b32b2130 |
+| [#935](https://github.com/adamissac/ari-ai/pull/935) | Audit progress doc | 5cea8359 |
+| [#938](https://github.com/adamissac/ari-ai/pull/938) | Same-episode policy comparison in the lab panel; session handoff | 92a712d3 |
 
 ## Finding 7: measured, not changed
 
-One ablation with the learning-check settings (3 seeds x 150k steps, same held-out
-episodes), storing the time limit as a terminal transition during training only:
-mean return -37.7 [-51.7, -29.3] against -47.4 [-55.0, -32.6] for the current behaviour;
-compromise 13.4% against 16.1%; false disruption 71.6% against 67.8%. The intervals over
-seeds overlap, so this does not show a difference. It was a scratch run and its output is
-not committed. A decision needs more seeds and the full protocol, and changing the default
-would break bit-for-bit reproduction of protocol-v0/v1.
+Ablation with the learning-check settings, storing the time limit as a terminal transition
+during training only. 8 training seeds (0-7), 150k steps each, the same 300 held-out
+episodes per seed for both variants. Scratch runs; raw output is not committed.
+
+| Variant | Return [95% CI over seeds] | Compromise % | False disruption % | Uptime % |
+|---|---|---|---|---|
+| Current (bootstrap through the time limit) | -61.0 [-86.5, -44.7] | 26.9 | 59.9 | 91.2 |
+| Time limit stored as terminal | -44.4 [-54.5, -35.8] | 21.5 | 63.4 | 92.2 |
+
+Paired by seed, the difference in return is +16.7 [-1.9, +41.3]; 7 of 8 seeds are better
+with the terminal variant; Wilcoxon p = 0.15. That is not a demonstrated difference. Most
+of the gap is one seed of the current variant that ended at -145 (compromise 76%), against
+-52 for the same seed in the other variant. The clearer result is seed variance: at 150k
+steps without in-training checkpoint selection, the final weights of one seed in eight
+were poor. protocol-v1 uses in-training selection for this reason. No default was changed;
+doing so would break bit-for-bit reproduction of protocol-v0/v1.
+
+## Simulator invariants
+
+A fuzz over all six scenario configs (60 episodes each, 72,000 steps, 10% deliberately
+invalid actions) found no violation of: observation inside the Box space; reward equal to
+the sum of its components; an invalid action flagged, penalized and applied as a no-op; a
+valid isolate, rate-limit, reassessment, monitoring raise or escalation visible in the next
+observation; termination only on database impact; truncation only at the horizon; the mask
+never offering a rate-limit or isolate on an isolated node; `noop` always valid.
 
 ## Not audited
 
@@ -87,5 +107,6 @@ would break bit-for-bit reproduction of protocol-v0/v1.
 
 1. Decide finding 8 with the owner: the false-disruption rate is a reward and action-set
    choice.
-2. Repeat the finding 7 ablation with five or more seeds before considering a change.
+2. Finding 7 is inconclusive at 8 seeds. If it matters, run it under the full protocol
+   with in-training selection; do not change the default on this evidence.
 3. Audit `rl_defense/live/` to the same depth as the simulator path.
