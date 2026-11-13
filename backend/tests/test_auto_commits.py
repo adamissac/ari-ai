@@ -40,6 +40,24 @@ def automatic(client_factory, settings_override, monkeypatch):
     return alice, bob, ids, identity
 
 
+def assert_waiting_for_capacity(repo_id: str, sha: str) -> None:
+    """Over the review limit a commit is never skipped: no review is recorded yet and its job
+    waits in the queue for the window to reset."""
+    with transaction() as conn:
+        rrq = conn.execute(
+            sa.select(reassessment_requests.c.doc).where(
+                reassessment_requests.c.doc["head_sha"].astext == sha
+            )
+        ).scalar_one_or_none()
+        job = conn.execute(
+            sa.select(jobs.c.status, jobs.c.defer_count, jobs.c.run_after).where(
+                jobs.c.dedupe_key == f"github:commit:{repo_id}:{sha}"
+            )
+        ).one()
+    assert rrq is None or rrq["status"] != "skipped"
+    assert job.status == "queued" and job.defer_count >= 1
+
+
 def push(client, *shas):
     p = push_payload(["README.md"], head=shas[-1])
     p["sender"] = {"login": "adamissac"}
@@ -383,20 +401,7 @@ def test_ten_mixed_assessments_fill_the_shared_pool_for_both_triggers(automatic)
     pushed_sha = "e" * 40
     push(alice, pushed_sha)
     assert len(records()) == 10
-    with transaction() as conn:
-        rrq = conn.execute(
-            sa.select(reassessment_requests.c.doc).where(
-                reassessment_requests.c.doc["head_sha"].astext == pushed_sha
-            )
-        ).scalar_one()
-        deferred_jobs = conn.execute(
-            sa.select(sa.func.count())
-            .select_from(jobs)
-            .where(jobs.c.dedupe_key.like("github:deferred:%"))
-        ).scalar_one()
-    assert rrq["status"] == "skipped"
-    assert rrq["reason"] == "skipped: project review limit reached (10/hour)"
-    assert deferred_jobs == 0
+    assert_waiting_for_capacity(ids["repo"], pushed_sha)
 
     # One pool: the same ten runs also hold back a manual start.
     response = manual_start(alice, ids, "f" * 40)
@@ -530,14 +535,7 @@ def test_fifty_daily_assessments_block_by_day_quota(automatic):
 
     pushed_sha = "e" * 40
     push(alice, pushed_sha)
-    with transaction() as conn:
-        rrq = conn.execute(
-            sa.select(reassessment_requests.c.doc).where(
-                reassessment_requests.c.doc["head_sha"].astext == pushed_sha
-            )
-        ).scalar_one()
-    assert rrq["status"] == "skipped"
-    assert rrq["reason"] == "skipped: project review limit reached (50/day)"
+    assert_waiting_for_capacity(ids["repo"], pushed_sha)
 
     response = manual_start(alice, ids, "f" * 40)
     assert response.status_code == 429
@@ -578,19 +576,13 @@ def test_global_spend_from_any_trigger_blocks_automatic_and_manual(automatic):
 
     pushed_sha = "e" * 40
     push(alice, pushed_sha)
+    assert_waiting_for_capacity(ids["repo"], pushed_sha)
     with transaction() as conn:
-        rrq = conn.execute(
-            sa.select(reassessment_requests.c.doc).where(
-                reassessment_requests.c.doc["head_sha"].astext == pushed_sha
-            )
-        ).scalar_one()
         local_count = conn.execute(
             sa.select(sa.func.count())
             .select_from(assessments)
             .where(assessments.c.project_id == ids["project"])
         ).scalar_one()
-    assert rrq["status"] == "skipped"
-    assert rrq["reason"] == "skipped: daily spend cap reached"
     assert local_count == 1
 
     response = manual_start(alice, ids, "f" * 40)
@@ -853,9 +845,8 @@ def test_legacy_deferred_job_is_skipped_under_quota_without_new_job(automatic):
             sa.select(reassessment_requests.c.doc).where(reassessment_requests.c.id == rrq.id)
         ).scalar_one()
     assert jobs_after == jobs_before
-    assert job_status != "queued"
-    assert saved["status"] == "skipped"
-    assert saved["reason"] == "skipped: project review limit reached (10/hour)"
+    assert job_status == "queued"  # waits for capacity; the earlier queued request is kept
+    assert saved["status"] == "queued"
     assert len(records()) == 10
 
 
@@ -884,6 +875,7 @@ def test_legacy_monitoring_pipeline_obeys_shared_quota(automatic, settings_overr
     pushed_sha = "d" * 40
     push(alice, pushed_sha)
 
+    # The legacy impact monitor (no per-commit author list) still coalesces and skips.
     with transaction() as conn:
         rrq = conn.execute(
             sa.select(reassessment_requests.c.doc).where(

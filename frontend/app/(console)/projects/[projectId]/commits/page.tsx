@@ -63,7 +63,7 @@ export default function CommitsPage() {
                             <span className="block truncate text-sm">{commit.message || `Commit ${shortSha(commit.sha)}`}</span>
                             <span className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
                               <span className="flex gap-2 text-xs text-muted"><Mono>{shortSha(commit.sha)}</Mono>{commit.committed_at && <Time iso={commit.committed_at} />}</span>
-                              <CommitAssessmentChip repoId={selectedRepo.id} sha={commit.sha} />
+                              <CommitAssessmentChip repoId={selectedRepo.id} sha={commit.sha} committedAt={commit.committed_at} />
                             </span>
                           </button>
                         </li>

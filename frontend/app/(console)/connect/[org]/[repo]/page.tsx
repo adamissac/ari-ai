@@ -84,7 +84,7 @@ function Commits({ org, name, repo, onConnected }: { org: string; name: string; 
                       </span>
                     </Link>
                     <span className="flex flex-wrap items-center gap-3 pl-[42px] md:pl-0">
-                      <CommitAssessmentChip repoId={id} sha={c.sha} />
+                      <CommitAssessmentChip repoId={id} sha={c.sha} committedAt={c.committed_at} />
                       <Link
                         href={`/connect/${encodeURIComponent(org)}/${encodeURIComponent(name)}/commit/${c.sha}`}
                         className="rounded-md border border-line px-2 py-1 font-mono text-xs text-muted group-hover:border-brand/40"
