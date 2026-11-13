@@ -145,7 +145,7 @@ inside the reservation transaction — both rows commit or neither does.
 
 ## Resource and concurrency limits
 
-* `JOB_MAX_RUNNING_PER_PROJECT` (default 4): live leases per project. Enforced in
+* `JOB_MAX_RUNNING_PER_PROJECT` (default 12, the default worker count): live leases per project. Enforced in
   the claim statement; claims serialize on an advisory lock while any limit is on,
   so the limit holds across workers (claims are one short statement).
 * `JOB_MAX_RUNNING_GLOBAL` (default 0 = off; the worker count already bounds it).

@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ sha: 'b'.repeat(40) }));
+const proven = { id: 'fnd-1', assessment_id: 'asm-1', kind: 'functional', status: 'validated', title: 'Refund ignores the cap', severity: null };
+const state = vi.hoisted(() => ({ sha: 'b'.repeat(40), findings: [] as unknown[] }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn() }),
   useSearchParams: () => ({ get: (key: string) => key === 'commit' ? state.sha : null, toString: () => `repo=repo-1&commit=${state.sha}` }),
@@ -32,7 +33,7 @@ vi.mock('@/lib/use-resource', () => ({
     };
     const data = key?.startsWith('commits:') ? { items: [{ sha: 'a'.repeat(40), message: 'GitHub commit', committed_at: '2026-10-24T00:00:00Z' }], available: true, reason: null }
       : key?.startsWith('commits-asm:') ? { items: [run], next_cursor: null }
-      : key?.startsWith('commits-findings:') ? { items: [], next_cursor: null }
+      : key?.startsWith('commits-findings:') ? { items: state.findings, next_cursor: null }
       : key?.startsWith('commit-agent-detail:') ? detail
       : { items: [], next_cursor: null };
     return { status: 'ready', data, error: undefined, refreshError: undefined, reload: vi.fn() };
@@ -42,7 +43,7 @@ vi.mock('@/lib/use-resource', () => ({
 import CommitsPage from '@/app/(console)/projects/[projectId]/commits/page';
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
-beforeEach(() => { vi.stubGlobal('matchMedia', () => ({ matches: false })); });
+beforeEach(() => { vi.stubGlobal('matchMedia', () => ({ matches: false })); state.findings = [proven]; });
 
 it('merges GitHub and assessment-only commits and switches to the recorded agents tab', () => {
   render(<CommitsPage />);
@@ -77,4 +78,25 @@ it('merges GitHub and assessment-only commits and switches to the recorded agent
   const activeNode = recordedMap.querySelector('.amap-node[data-active]');
   expect(activeNode).toBeTruthy();
   expect(activeNode?.getAttribute('style')).toContain('--beam');
+});
+
+it('a commit with no proven problem is one line, and the filter hides it from Found something', () => {
+  state.findings = [{ ...proven, status: 'hypothesis' }];
+  render(<CommitsPage />);
+  expect(screen.getByTestId('commit-clean').textContent).toContain('No issues found');
+  expect(screen.getByTestId('commit-clean').textContent).toContain('1 suspicion was flagged but not proven');
+  expect(screen.queryByRole('tab', { name: '7 agents' })).toBeNull();
+  expect(screen.getByTestId('commit-filter-found').textContent).toBe('Found something0');
+  expect(screen.getByTestId('commit-filter-clean').textContent).toBe('No issues1');
+  fireEvent.click(screen.getByTestId('commit-filter-found'));
+  expect(screen.queryByTestId(`commit-row-${state.sha}`)).toBeNull();
+  expect(screen.queryByTestId(`commit-row-${'a'.repeat(40)}`)).toBeNull();
+  fireEvent.click(screen.getByTestId('commit-filter-clean'));
+  expect(screen.getByTestId(`commit-row-${state.sha}`)).toBeTruthy();
+});
+
+it('Found something keeps commits with a proven problem', () => {
+  render(<CommitsPage />);
+  fireEvent.click(screen.getByTestId('commit-filter-found'));
+  expect(screen.getByTestId(`commit-row-${state.sha}`)).toBeTruthy();
 });

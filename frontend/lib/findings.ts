@@ -47,3 +47,33 @@ export function bucketCounts(findings: readonly { kind: string; status: string }
   for (const f of findings) if (!kind || f.kind === kind) counts[findingBucket(f.status)]++;
   return counts;
 }
+
+/** What one review run of a commit turned up, from its persisted findings. */
+export interface CommitOutcome { needsFix: number; fixed: number; unproven: number }
+
+export function commitOutcome(findings: readonly { assessment_id: string; status: string }[], assessmentId: string): CommitOutcome {
+  const out: CommitOutcome = { needsFix: 0, fixed: 0, unproven: 0 };
+  for (const f of findings) {
+    if (f.assessment_id !== assessmentId) continue;
+    const bucket = findingBucket(f.status);
+    if (bucket === 'confirmed') out.needsFix++;
+    else if (bucket === 'fixed') out.fixed++;
+    else if (bucket === 'untested' || bucket === 'inconclusive') out.unproven++;
+  }
+  return out;
+}
+
+/** Ari proved a problem or fixed one in this run; untested suspicions alone do not count. */
+export function foundSomething(outcome: CommitOutcome): boolean {
+  return outcome.needsFix > 0 || outcome.fixed > 0;
+}
+
+/** Why a proven problem is still open, in plain words, from the statuses the backend sets. */
+export const OPEN_REASON: Record<string, string> = {
+  validated: 'proven by a test; fix not started (it starts after approval, or at once when fix delivery is automatic)',
+  diagnosed: 'cause found and fix planned; not written yet (approval is pending or was declined)',
+  patch_proposed: 'fix written; waiting for approval or its tests',
+  patch_rejected: 'Ari tried 4 different fixes and each failed independent tests; needs a manual fix',
+  unresolved: 'Ari could not produce a fix in 4 attempts; needs a manual fix',
+  needs_recheck: 'marked for a recheck',
+};
