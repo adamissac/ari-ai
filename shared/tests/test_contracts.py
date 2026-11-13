@@ -248,8 +248,8 @@ def test_live_defense_reviews_cannot_execute_and_health_cannot_be_healthy() -> N
         BY_NAME["AnalystReview"].model_validate(
             {**review.model_dump(mode="json"), "executes": True}
         )
-    with pytest.raises(ValueError):
-        StagingEnvironment("production")
+    # ADR-0027: production is an allowed environment; the gate, not the enum, restricts it.
+    assert StagingEnvironment("production") is StagingEnvironment.production
     report = examples.build()["PilotReport"]
     assert report.shadow_mode is True
     assert report.health.status == "unknown"
@@ -295,8 +295,6 @@ def test_live_control_is_separate_from_shadow_decision_and_nist() -> None:
         LiveControlKind("isolate")
     with pytest.raises(ValueError):
         LiveControlStatus("detected")
-    with pytest.raises(ValueError):
-        StagingEnvironment("production")
     created = examples.build()["ControlChannelCreated"]
     view = examples.build()["ControlChannelView"]
     assert "hmac_secret" not in view.model_dump()
