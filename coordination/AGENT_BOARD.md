@@ -3,14 +3,14 @@
 
 # Agent board — live coordination dashboard
 
-Regenerated 2026-11-13 16:35 UTC. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
+Regenerated 2026-11-13 16:54 UTC. Comms channel: [issue #559](https://github.com/adamissac/ari-ai/issues/559). Protocol: `coordination/PROTOCOL.md`.
 
 ## Active agents
 
 | Agent | Owner | Workstream | State | Task | Branch | SHA |
 | --- | --- | --- | --- | --- | --- | --- |
 | alan-live-defense | Alan | security-agents/, live-defense Phase 6.5/7A/7C, interim shared/ contract approver | BLOCKED | Phase 7C authorized Scout/Diagnose execution (#458); Phase 6.5 RL-gated pilot infra (#412) | feat/alan/live-defense-phase7c-agent-execution, feat/live-defense-phase6-5-rl-gated-pilot | 9486a5b0 |
-| alan-rl-lab-audit | Alan | RL lab audit: rl-defense inference/training/lab episode, backend /lab/simulation, frontend /lab simulation panel | WORKING | Audit follow-ups: policy comparison in the lab panel, 8-seed truncation ablation, progress doc | feat/alan/lab-compare-policies | 5cea8359 |
+| alan-rl-lab-audit | Alan | RL lab audit: rl-defense inference/training/lab episode, backend /lab/simulation, frontend /lab simulation panel | DONE | RL lab audit delivered | main | 92a712d3 |
 | code-review-eval | Adam | standalone functional AI code reviewer evaluation + scorer integration | DONE | Reviewer eval report merged (#529); combined scorer verified on merged release-gate head | docs/reviewer-eval-report (merged), docs/adam/status-final-verification | 19a16af0 |
 | codex-36bd-check | Alan | exact integrated 36bd05ee merge-readiness check | READY_FOR_REVIEW | ? | codex/check-36bd05ee | f6883835 |
 | codex-b6d-check | Alan | exact b6d5108b independent check | READY_FOR_REVIEW | ? | codex/check-b6d5108b | 1f4cf1ef |
@@ -31,41 +31,42 @@ Regenerated 2026-11-13 16:35 UTC. Comms channel: [issue #559](https://github.com
 | PR | Title | Branch | Head | Owned by | Merge position |
 | --- | --- | --- | --- | --- | --- |
 | #412 | ? | ? | ? | alan-live-defense | 1 |
-| #441 | ? | ? | ? | devin-pipeline-fixer | 24 |
+| #441 | ? | ? | ? | devin-pipeline-fixer | 25 |
 | #458 | ? | ? | ? | alan-live-defense | 0 |
-| #527 | ? | ? | ? | devin-pipeline-fixer | 19 |
-| #529 | ? | ? | ? | code-review-eval | 7 |
-| #531 | ? | ? | ? | devin-intel-audit | 17 |
-| #532 | ? | ? | ? | devin-defense-lab | 11 |
-| #533 | ? | ? | ? | devin-pipeline-fixer | 20 |
-| #535 | ? | ? | ? | devin-pipeline-fixer | 21 |
-| #536 | ? | ? | ? | devin-pipeline-fixer | 22 |
-| #537 | ? | ? | ? | devin-pipeline-fixer | 23 |
-| #538 | ? | ? | ? | devin-frontend-ux | 16 |
-| #540 | ? | ? | ? | integration-lead | 35 |
-| #541 | ? | ? | ? | devin-defense-lab | 12 |
-| #544 | ? | ? | ? | devin-defense-lab | 13 |
-| #549 | ? | ? | ? | devin-defense-lab | 14 |
-| #555 | ? | ? | ? | devin-pipeline-fixer | 25 |
-| #556 | ? | ? | ? | devin-defense-lab | 15 |
-| #557 | ? | ? | ? | integration-lead | 28 |
-| #560 | ? | ? | ? | integration-lead | 29 |
-| #561 | ? | ? | ? | integration-lead | 30 |
-| #563 | ? | ? | ? | code-review-eval | 8 |
-| #564 | ? | ? | ? | devin-pipeline-fixer | 26 |
-| #567 | ? | ? | ? | integration-lead | 31 |
-| #570 | ? | ? | ? | integration-lead | 32 |
-| #571 | ? | ? | ? | integration-lead | 33 |
-| #572 | ? | ? | ? | devin-pipeline-fixer | 27 |
-| #573 | ? | ? | ? | integration-lead | 34 |
-| #580 | ? | ? | ? | devin-pipeline-fixer | 18 |
-| #614 | ? | ? | ? | codex-review-automation | 9 |
-| #649 | ? | ? | ? | devin-console-refinement | 10 |
+| #527 | ? | ? | ? | devin-pipeline-fixer | 20 |
+| #529 | ? | ? | ? | code-review-eval | 8 |
+| #531 | ? | ? | ? | devin-intel-audit | 18 |
+| #532 | ? | ? | ? | devin-defense-lab | 12 |
+| #533 | ? | ? | ? | devin-pipeline-fixer | 21 |
+| #535 | ? | ? | ? | devin-pipeline-fixer | 22 |
+| #536 | ? | ? | ? | devin-pipeline-fixer | 23 |
+| #537 | ? | ? | ? | devin-pipeline-fixer | 24 |
+| #538 | ? | ? | ? | devin-frontend-ux | 17 |
+| #540 | ? | ? | ? | integration-lead | 36 |
+| #541 | ? | ? | ? | devin-defense-lab | 13 |
+| #544 | ? | ? | ? | devin-defense-lab | 14 |
+| #549 | ? | ? | ? | devin-defense-lab | 15 |
+| #555 | ? | ? | ? | devin-pipeline-fixer | 26 |
+| #556 | ? | ? | ? | devin-defense-lab | 16 |
+| #557 | ? | ? | ? | integration-lead | 29 |
+| #560 | ? | ? | ? | integration-lead | 30 |
+| #561 | ? | ? | ? | integration-lead | 31 |
+| #563 | ? | ? | ? | code-review-eval | 9 |
+| #564 | ? | ? | ? | devin-pipeline-fixer | 27 |
+| #567 | ? | ? | ? | integration-lead | 32 |
+| #570 | ? | ? | ? | integration-lead | 33 |
+| #571 | ? | ? | ? | integration-lead | 34 |
+| #572 | ? | ? | ? | devin-pipeline-fixer | 28 |
+| #573 | ? | ? | ? | integration-lead | 35 |
+| #580 | ? | ? | ? | devin-pipeline-fixer | 19 |
+| #614 | ? | ? | ? | codex-review-automation | 10 |
+| #649 | ? | ? | ? | devin-console-refinement | 11 |
 | #929 | ? | ? | ? | alan-rl-lab-audit | 2 |
 | #930 | ? | ? | ? | alan-rl-lab-audit | 3 |
 | #931 | ? | ? | ? | alan-rl-lab-audit | 4 |
 | #932 | ? | ? | ? | alan-rl-lab-audit | 5 |
 | #935 | ? | ? | ? | alan-rl-lab-audit | 6 |
+| #938 | ? | ? | ? | alan-rl-lab-audit | 7 |
 | #833 | docs(status): Adam cloud health run 41 | feat/adam/cloud-20261105-1817 | 9886c68b | unassigned | — |
 | #835 | docs(adam): cloud health run 41, no-op | feat/adam/cloud-20261105-run41 | d1d1b03b | unassigned | — |
 | #836 | docs(adam): scheduled cloud health run 41 handoff | feat/adam/cloud-20261105-1500 | ab39dd7f | unassigned | — |
@@ -135,15 +136,13 @@ Regenerated 2026-11-13 16:35 UTC. Comms channel: [issue #559](https://github.com
 | #922 | docs(adam): scheduled cloud health run 47 (no-op) | feat/adam/cloud-20261112-run47 | 4e8f2bb2 | unassigned | — |
 | #925 | docs(adam): scheduled cloud health run 47 (no-op) | feat/adam/cloud-20261113-run47 | deecca16 | unassigned | — |
 | #927 | docs(adam): scheduled cloud health run 47 (no-op) | feat/adam/cloud-20261113-0817 | 9c690b8e | unassigned | — |
-| #933 | feat(frontend): commit-stream hero, real figures, firmer corners | feat/adam/hero-and-radii | 113e2850 | unassigned | — |
-| #934 | feat(frontend): plain finding tabs and commit outcome filter | feat/adam/findings-commits-clarity | 94e007a0 | unassigned | — |
-| #936 | Feat/adam/live defense safe slice | feat/adam/live-defense-safe-slice | 5ff1266a | unassigned | — |
+| #934 | feat: plain findings and commit outcomes, parallel commits per project, patch retry | feat/adam/findings-commits-clarity | 0b6b3b9d | unassigned | — |
+| #936 | feat(live-defense): production targets, ownership challenge, never-block list, sealed secrets, ingest alert | feat/adam/live-defense-safe-slice | e55345d1 | unassigned | — |
 | #937 | docs(adam): scheduled health run 47 handoff | feat/adam/cloud-20261113-1100 | 7f3e4006 | unassigned | — |
 
 ## File / subsystem claims
 
 - **alan-live-defense**: `security-agents/`, `backend/backend/live_defense/`, `frontend/components/live-defense/`, `shared/ contract bumps (interim approver)`
-- **alan-rl-lab-audit**: `frontend/components/lab-simulation.tsx`, `docs/rl-live-defense-audit-progress.md`
 - **code-review-eval**: `code-review/eval/REVIEWER_EVAL_2026-10-24.md`, `security-agents/tests/test_eval_score_api.py`
 - **codex-rc4-review**: `docs/reviews/rc4-independent/`
 - **codex-review-automation**: `scripts/ari_review/`, `.github/ari-review/`, `.github/workflows/ari-*.yml`
@@ -193,7 +192,7 @@ Regenerated 2026-11-13 16:35 UTC. Comms channel: [issue #559](https://github.com
 ## Next actions
 
 - **alan-live-defense**: hold; rebase onto post-integration main when asked
-- **alan-rl-lab-audit**: merge the comparison PR; record the 8-seed ablation; leave finding 7 and 8 for the rl-defense owner
+- **alan-rl-lab-audit**: none; findings 7 and 8 and the rl_defense/live audit are open for the rl-defense owner
 - **code-review-eval**: none — workstream complete; #530 carries inverted score_api conflict resolution (verified clean) and is ready for final security review + merge by integration lead. Re-verify only if scorer code changes again.
 - **codex-36bd-check**: Release owner may use exact integrated candidate through normal protected-branch process; no approval/merge/deploy executed
 - **codex-b6d-check**: Integration/frontend owners reconcile current main; security GO on requested candidate, merge HOLD; no deploy
