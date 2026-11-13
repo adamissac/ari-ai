@@ -158,10 +158,10 @@ function Episode({ episode, t, playing, onPlay, onPause, onStep, onReset, onStop
   const steps = episode.steps;
   const step = steps[t]!;
   const last = steps.length - 1;
-  const cumulative = useMemo(() => {
-    let total = 0;
-    return steps.map(s => (total += s.reward));
-  }, [steps]);
+  const cumulative = useMemo(
+    () => steps.reduce<number[]>((acc, s) => [...acc, (acc[acc.length - 1] ?? 0) + s.reward], []),
+    [steps],
+  );
   const p = episode.policy;
   const finished = t === last;
   return (
