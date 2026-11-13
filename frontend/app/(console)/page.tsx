@@ -19,12 +19,17 @@ export default function HomePage() {
       <HeroStage className="hero-full px-6 pb-20 pt-32 md:px-12 md:pt-36" labelledBy="hero-title">
         <div className="hero-split mx-auto w-full max-w-6xl">
           <div>
-            <h1 id="hero-title"><span className="block">{BRAND_HEADLINE}</span>{' '}<span className="block">{BRAND_HEADLINE_REST}</span></h1>
-            <p className="hero-sub">Ari reviews every commit, tries to break it in a sandbox, and opens a fix only after independent tests pass.</p>
+            <h1 id="hero-title"><span className="block">{BRAND_HEADLINE}</span>{' '}<span className="block hero-accent">{BRAND_HEADLINE_REST}</span></h1>
+            <p className="hero-sub">Ari reviews every commit against what the code is meant to do, attacks it in a sandbox, and commits the fix only after independent tests prove it.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href={START.href} className="btn-primary">{START.hero}</Link>
               <a href="#how" className="btn-quiet">How it works</a>
             </div>
+            <dl className="hero-facts">
+              <div><dt>Commits reviewed in the pilot</dt><dd>1,205</dd></div>
+              <div><dt>Planted flaws fixed and verified</dt><dd>All, across 3 test apps</dd></div>
+              <div><dt>Fixes merged without a passing test</dt><dd>0</dd></div>
+            </dl>
           </div>
           <ProductPreview />
         </div>
