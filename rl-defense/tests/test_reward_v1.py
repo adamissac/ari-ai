@@ -149,3 +149,14 @@ def test_selection_rule_uses_validation_and_can_select_nothing() -> None:
     picked = select_arm([ref, _arm(0.1, 0.3, 0.1, 0.2), _arm(0.5, 0.2, 0.05, 0.1)])
     assert picked["selected_c_false_disrupt"] == 0.5
     assert not picked["validation"][0]["qualifies"]  # the reference arm never qualifies
+
+
+def test_a_v1_trained_checkpoint_records_its_reward_version(tmp_path) -> None:
+    from rl_defense.agents.ddqn import DDQNConfig
+    from rl_defense.train import train
+
+    small = DDQNConfig(learning_starts=100, buffer_size=1_000, eps_decay_steps=200)
+    v0 = train(TRAIN, 0, 300, tmp_path / "v0", small)
+    v1 = train([to_arm(c, 0.25) for c in TRAIN], 0, 300, tmp_path / "v1", small)
+    assert "reward_env_version" not in v0
+    assert v1["reward_env_version"] == [ENV_V1]

@@ -32,7 +32,7 @@ import yaml
 from rl_defense.agents.ddqn import DDQNAgent, DDQNConfig, NStepAccumulator, ReplayBuffer
 from rl_defense.checkpoint import save_checkpoint
 from rl_defense.envs import DefenseSimEnv, default_config_paths, load_configs
-from rl_defense.envs.config import ScenarioConfig
+from rl_defense.envs.config import ENV_V0, ScenarioConfig
 from rl_defense.envs.defense_sim import N_ACTIONS, OBS_DIM
 from rl_defense.evaluate import run_episode
 from rl_defense.stress import scaled
@@ -366,6 +366,13 @@ def train(
             "train_log": log_path.name,
             "resumed_from_steps": resumed_from,
             **({"time_limit_terminal": True} if time_limit_terminal else {}),
+            # The checkpoint's env_id names the observation/action space (shared by v0 and
+            # v1). A policy trained under another reward version says so here.
+            **(
+                {"reward_env_version": sorted({c.env_version for c in configs})}
+                if any(c.env_version != ENV_V0 for c in configs)
+                else {}
+            ),
             "adversary_scale": list(adversary_scale) if adversary_scale else None,
             "adversary_scale_sampled": {
                 "min": min(factors),

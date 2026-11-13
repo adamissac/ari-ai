@@ -72,4 +72,5 @@ Reference, not the same budget: the committed protocol-v1 policy (1M steps, 5 se
 - The held-out numbers for all arms were looked at together, so they are a comparison, not a
   single pre-registered held-out evaluation of one candidate.
 - `DefenseSimEnv-v1` shares v0's observation and action space, so a checkpoint's `env_id`
-  stays `DefenseSimEnv-v0`; the reward version is in the manifest's training-config hashes.
+  stays `DefenseSimEnv-v0`. Checkpoints trained after this study record `reward_env_version` in
+  the manifest; this study's manifests predate that and carry it only in the config hashes.
