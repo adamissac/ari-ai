@@ -178,13 +178,18 @@ class DefenseSimEnv(gym.Env[np.ndarray, np.int64]):
 
         # Disruption from active rate-limits/isolations: costlier on benign nodes.
         disruption = 0.0
+        benign_load = 0.0  # benign nodes under a disruptive control, unweighted by criticality
         for i in range(N_NODES):
             benign = h.stage[i] == STAGE_NONE
             if o.isolate_timer[i] > 0:
                 disruption += self._criticality[i] * (1.0 if benign else 0.3)
+                benign_load += 1.0 if benign else 0.0
             elif o.rate_limit_timer[i] > 0:
                 disruption += 0.3 * self._criticality[i] * (1.0 if benign else 0.3)
+                benign_load += 0.3 if benign else 0.0
         comp["disruption"] = -(rp.c_disrupt * disruption)
+        if rp.c_false_disrupt > 0.0:  # DefenseSimEnv-v1; the v0 expression above is untouched
+            comp["disruption"] -= rp.c_false_disrupt * benign_load
 
         contained = self._resolve_delayed_effects(events)
         progressed = self._advance_adversary(events)
@@ -219,6 +224,7 @@ class DefenseSimEnv(gym.Env[np.ndarray, np.int64]):
             {
                 "reward_components": comp,
                 "disruption": disruption,
+                "benign_disruption_load": benign_load,
                 "progressed": int(progressed.sum()),
                 "contained": int(contained.sum()),
                 "disruptive_on_benign": bool(

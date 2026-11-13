@@ -10,6 +10,11 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 NODE_NAMES: tuple[str, ...] = ("gateway", "api", "auth", "payments", "db")
+ENV_V0 = "DefenseSimEnv-v0"
+# Same dynamics, observation and action space as v0. Only the reward differs: a benign node
+# under a disruptive control costs ``c_false_disrupt`` per step whatever its criticality.
+ENV_V1 = "DefenseSimEnv-v1"
+ENV_VERSIONS: tuple[str, ...] = (ENV_V0, ENV_V1)
 
 
 class _Strict(BaseModel):
@@ -73,6 +78,12 @@ class RewardParams(_Strict):
     c_contain: float = Field(ge=0.0)
     c_terminal: float = Field(ge=0.0, description="Penalty when the db node reaches impact")
     c_invalid: float = Field(ge=0.0)
+    c_false_disrupt: float = Field(
+        default=0.0,
+        ge=0.0,
+        description="DefenseSimEnv-v1 only. Per-step cost of each uncompromised node under "
+        "isolation (x1.0) or rate-limit (x0.3), NOT scaled by criticality. 0 = the v0 reward.",
+    )
 
 
 class ScenarioConfig(_Strict):
@@ -95,10 +106,22 @@ class ScenarioConfig(_Strict):
         for src, dst in self.edges:
             if src not in names or dst not in names:
                 raise ValueError(f"edge references unknown node: {src}->{dst}")
+        if self.env_version not in ENV_VERSIONS:
+            raise ValueError(f"env_version must be one of {ENV_VERSIONS}, got {self.env_version}")
+        # The reward version is part of the scenario identity: a v0 config cannot carry the
+        # v1 term, and a v1 config must (otherwise it would be v0 under another name).
+        if (self.reward.c_false_disrupt > 0.0) != (self.env_version == ENV_V1):
+            raise ValueError(
+                f"c_false_disrupt > 0 is required by and only allowed in {ENV_V1} configs"
+            )
         return self
 
     def config_hash(self) -> str:
-        payload = json.dumps(self.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+        data = self.model_dump(mode="json")
+        if self.env_version == ENV_V0:
+            # v0 hashes predate c_false_disrupt; committed manifests must keep matching.
+            del data["reward"]["c_false_disrupt"]
+        payload = json.dumps(data, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 
