@@ -61,7 +61,7 @@ test('Defense Lab plots only the committed, schema-validated evaluation bundle',
   await page.goto('/lab');
   await expect(page.getByTestId('lab-caveat')).toContainText('Recorded run');
   await expect(page.getByTestId('lab-intro')).toHaveText("What your team sees while Ari's defender watches the network.");
-  await expect(page.getByText('Active · recommendation-only')).toBeVisible();
+  await expect(page.getByText('Recorded · recommendation-only')).toBeVisible();
   await expect(page.getByLabel('Attacker scenario')).toBeVisible();
   await expect(page.getByLabel('Evaluation run')).toBeVisible();
   // Plain scoreboard: named defenders, values with their 95% interval, best marked.

@@ -17,6 +17,7 @@ from backend.api import (
     github_repos,
     incidents,
     intelligence,
+    lab,
     live_defense,
     live_defense_controls,
     live_defense_first_responder,
@@ -188,6 +189,7 @@ def create_app() -> FastAPI:
         live_defense_investigations.router,
         ops_api.router,
         onboarding.router,
+        lab.router,
     ):
         app.include_router(r, prefix="/api/v1")
     return app

@@ -1,5 +1,7 @@
 import { decode, ProtocolError } from './contracts.js';
 import type * as C from './contracts.js';
+import { decodeLabSimulationResult, decodeLabSimulationStatus, LAB_POLICY_KINDS } from './lab.js';
+import type { LabSimulationRequest, LabSimulationResult, LabSimulationStatus } from './lab.js';
 
 export type Fetch = typeof globalThis.fetch;
 export interface Page<T> { items: T[]; next_cursor: string | null }
@@ -522,6 +524,18 @@ export class ApiClient {
     if (typeof r.id !== 'string' || typeof r.kind !== 'string' || typeof r.status !== 'string') throw new ProtocolError('Invalid job');
     const err = r.last_error === null || r.last_error === undefined ? null : object(r.last_error, 'job error');
     return { id: r.id, kind: r.kind, status: r.status, result: r.result ?? null, error: err && typeof err.message === 'string' ? err.message : null };
+  }
+  /** What the Defense Lab can simulate in this deployment, or why it cannot. */
+  async labSimulationStatus(options?: RequestOptions): Promise<LabSimulationStatus> {
+    return decodeLabSimulationStatus(await this.request('/lab/simulation', RAW, options));
+  }
+  /** Run one simulated episode on the backend. Deterministic in the request, so a retry is safe. */
+  async runLabSimulation(request: LabSimulationRequest, options?: RequestOptions): Promise<LabSimulationResult> {
+    if (!/^[a-z0-9_]{1,80}$/.test(request.scenario) || !LAB_POLICY_KINDS.includes(request.policy) || !Number.isSafeInteger(request.episode_seed) || request.episode_seed < 0 || request.episode_seed > 2147483647) {
+      throw new ProtocolError('Invalid lab simulation request');
+    }
+    const body = { scenario: request.scenario, policy: request.policy, episode_seed: request.episode_seed };
+    return decodeLabSimulationResult(await this.request('/lab/simulation/episodes', RAW, options, body), body);
   }
   rlEvaluations(projectId: string, options?: RequestOptions): Promise<Page<C.RLEvaluation>> {
     return this.list(`/projects/${segment(projectId)}/rl-evaluations`, 'RLEvaluation', options);

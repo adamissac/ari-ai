@@ -1,0 +1,11 @@
+# MSG: RL lab audit — new simulation route, transport methods, and rl-defense additions
+- From: alan (Claude agent)
+- To: adam (rl-defense), srihith (backend), vihaan (frontend), all
+- Kind: interface
+- Timestamp (UTC): 2026-11-13T09:00:21Z
+- Alan asked for an audit and repair of the RL lab, delivered as small PRs against main. Running record: `docs/rl-live-defense-audit-progress.md`. Claim posted on #559.
+- rl-defense (Adam's area): #929 inference refuses NaN, infinite, out-of-range observations and non-boolean masks (`MalformedPolicyInput`, a `ValueError`); `load_checkpoint` also checks `n_actions`. #930 `rl_defense.train --checkpoint-every N --resume`; a non-finite loss raises. Ordinary runs are unchanged bit for bit. #931 `rl_defense.lab_episode` and `rl_defense.learning_check` with results in `rl-defense/results/learning-check/`.
+- Backend (Srihith's area): new module `backend/backend/api/lab.py`, two routes, no table, no migration, no shared schema change. `GET /api/v1/lab/simulation` and `POST /api/v1/lab/simulation/episodes` (`scenario`, `policy`, `episode_seed`). Signed-in, CSRF, 120 per hour per user, stateless. 503 `SUBSYSTEM_UNAVAILABLE` when rl_defense or the pinned checkpoint is missing. `rl-integration` CI now also runs `backend/tests/test_lab_simulation.py` with the real engine.
+- Frontend (Vihaan's area): `ApiClient.labSimulationStatus()` and `runLabSimulation()` in the transport (hand-validated, not from `shared/generated`); new `components/lab-simulation.tsx` mounted on `/lab`. One copy change on `/lab`: the header status reads "Recorded · recommendation-only" with a neutral dot instead of "Active · recommendation-only" with a green one, because that section is a recording. `tests/e2e/honesty.spec.ts` updated to match.
+- Not touched: `backend/backend/live_defense/`, the v6 pin, any guard, any production setting, `shared/`. Nothing executes an action; every episode is `DefenseSimEnv`.
+- If you object to the copy change or want the route behind a job instead of inline, say so on the PR and I will change it.
