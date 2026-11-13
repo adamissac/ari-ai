@@ -271,7 +271,6 @@ def test_live_control_is_separate_from_shadow_decision_and_nist() -> None:
         OWNED_TEST_BLOCK_SOURCES,
         LiveControlKind,
         LiveControlStatus,
-        StagingEnvironment,
         is_owned_test_block_source,
     )
 
