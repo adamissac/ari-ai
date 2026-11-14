@@ -1,0 +1,23 @@
+# Pilot gate (created 2026-11-14, committed before any policy was evaluated on it; see
+# results/pilot-gate/PREREGISTRATION.md). Two outsider-style identities and one
+# customer alternate per request with token rotation at high volume, in rare long campaigns.
+# Unseen: three attackers switching per request.
+name: pilot_outsider_trio_rotation
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.1
+p_stop: 0.12
+attack_per_step: 7
+benign_per_step: 6
+attackers: [mallory, bob, carol]
+attacker_switch: per_request
+rotate_tokens: true
+victims: [alice, erin]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice"]
+delegate_per_step: 1
+delegate_burst_p: 0.15
+delegate_burst_size: 5
+seed_start: 42100
+episodes: 30

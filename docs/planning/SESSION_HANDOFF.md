@@ -3,6 +3,14 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-11-14 — Claude (agent, for Alan) — RL pilot gate run; readiness reports it
+
+- Owner decision (Alan): pilot-gate thresholds = `configs/live/promotion.yaml` + delegated success >= 0.85, rules as incumbent; a pass would report "ready for owner approval" only.
+- Added `configs/live/pilot_gate/` (4 frozen scenarios), `rl_defense/live/pilot_gate.py`, `results/pilot-gate/` (pre-registered in `b851b88d`, run once).
+- Result: frozen v6 FAILS (8/9; trails the rules on `pilot_outsider_trio_rotation`). `backend/backend/live_defense/readiness.py` reads the bundle by hash: category F is FAIL, nothing is PASS, `ready` false. RL remains shadow-only.
+- Ambiguity recorded: the shared contract's `threshold`/`threshold_status` and `v6_claimed_to_pass_new_criteria` fields were left untouched (contract-first review, Srihith); the approved thresholds live in the pre-registration and the bundle.
+- Tests run locally: `rl-defense tests/test_pilot_gate.py` (4), `backend/tests/test_live_defense_phase6_5.py` (10). Full suites: CI.
+
 ### 2026-11-13 — Claude (agent, for Alan) — RL evidence-policy study
 
 - Owner decision (Alan): v1 reward at `c_false_disrupt = 0.25`. Added `train(guide=...)`, `MonitorIsolatePolicy`, `rl_defense.evidence_policy_study`, results in `rl-defense/results/evidence-policy/`.

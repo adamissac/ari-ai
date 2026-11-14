@@ -1,0 +1,21 @@
+# Pilot gate (created 2026-11-14, committed before any policy was evaluated on it; see
+# results/pilot-gate/PREREGISTRATION.md). Almost no attack: one faint, short burst
+# from an outsider while both bookkeepers run heavy reconciliation the whole time.
+# Unseen: attack active in very few windows with the heaviest delegated load.
+name: pilot_quiet_heavy_books
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.04
+p_stop: 0.5
+attack_per_step: 2
+benign_per_step: 9
+attackers: [mallory]
+victims: [alice, carol]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 2
+delegate_burst_p: 0.5
+delegate_burst_size: 6
+seed_start: 42600
+episodes: 30

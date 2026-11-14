@@ -76,6 +76,8 @@ untrained one on 4.9% to 18.0% of states.
 | [#941](https://github.com/adamissac/ari-ai/pull/941) | Fail-closed gate, registry hardening, v6 shadow fix and tests, opt-in v1 reward and study, opt-in time-limit option | see GitHub |
 | [#941](https://github.com/adamissac/ari-ai/pull/941) merged | as above | d5a967bf |
 | [#945](https://github.com/adamissac/ari-ai/pull/945) | Guided exploration, `monitor_isolate` rule, evidence-policy study | dd73a920 |
+| [#949](https://github.com/adamissac/ari-ai/pull/949) | Lab offers the two deterministic rules | c7b28b99 |
+| [#947](https://github.com/adamissac/ari-ai/pull/947) | 1M-step evidence-policy result | 8c8db5c0 |
 | [#939](https://github.com/adamissac/ari-ai/pull/939) | 8-seed truncation ablation, simulator fuzz | f952a72f |
 | [#938](https://github.com/adamissac/ari-ai/pull/938) | Same-episode policy comparison in the lab panel; session handoff | 92a712d3 |
 
@@ -163,6 +165,22 @@ fixable by training in this environment".
 
 The lab's simulation panel offers `exposed_guard` and `monitor_isolate` as policies, so the
 same-episode comparison shows the rules next to the trained policy.
+
+## RL in live defense and the pilot gate (2026-11-14)
+
+RL is in live defense today as a shadow recommender: the backend runs the frozen v6 policy
+on verified owned-staging windows, records its recommendation with the checkpoint hash, and
+executes nothing; the deterministic rules are the authority. The separate "RL-gated pilot"
+gate was blocked because no owner had set thresholds. Alan (RL owner, with Adam) approved
+`configs/live/promotion.yaml` plus a 0.85 delegated-access floor, and the gate was run once
+on four new frozen scenarios, pre-registered in `b851b88d`:
+[`rl-defense/results/pilot-gate/REPORT.md`](../rl-defense/results/pilot-gate/REPORT.md).
+
+**v6 failed: 8 of 9 checks pass, but it trails the rules on one scenario** (three attackers
+rotating tokens: -4.63 against -4.12). Pooled it halves the rules' compromise rate (0.090
+against 0.175) inside every floor. `GET /projects/{id}/rl-readiness` now reads that bundle by
+hash and reports category F as FAIL; nothing is PASS and `ready` is false. The scenarios are
+exposed; another attempt needs a new candidate, new scenarios and a new pre-registration.
 
 ## Finding 7: analysis
 
