@@ -1,6 +1,7 @@
 """Guided exploration and the monitor_isolate rule."""
 
 import numpy as np
+import pytest
 import torch
 
 import rl_defense.train as train_mod
@@ -104,3 +105,9 @@ def test_verdict_needs_all_three_checks_and_reports_the_rule_comparison():
                      "monitor_isolate": rule})  # fmt: skip
     assert not worse["improves_on_original"]
     assert not worse["checks"]["compromise_not_above_original"]
+
+
+@pytest.mark.parametrize("kwargs", [{"checkpoint_every": 100}, {"resume": True}])
+def test_guided_runs_refuse_resumable_state(tmp_path, kwargs):
+    with pytest.raises(ValueError, match="guided exploration"):
+        train(TRAIN, 0, 300, tmp_path, SMALL, guide=NoopPolicy(), guide_steps=100, **kwargs)

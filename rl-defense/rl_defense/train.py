@@ -161,6 +161,10 @@ def train(
     random valid action otherwise. The guide sees only the observation and the mask. It
     shapes what enters the replay buffer; the targets, the loss and the saved policy are
     the ordinary Double DQN ones. Off by default."""
+    if guide is not None and guide_steps > 0 and (checkpoint_every is not None or resume):
+        # The guide's random stream is not part of the saved state, so a resumed guided run
+        # would not reproduce the uninterrupted one. Refuse rather than diverge silently.
+        raise ValueError("guided exploration cannot be combined with checkpoint_every/resume")
     if checkpoint_every is not None and checkpoint_every < 1:
         raise ValueError("checkpoint_every must be >= 1")
     if any(c.split != "train" for c in configs):
