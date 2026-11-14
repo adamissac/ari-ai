@@ -74,6 +74,7 @@ untrained one on 4.9% to 18.0% of states.
 | [#932](https://github.com/adamissac/ari-ai/pull/932) | Backend route `/lab/simulation`, transport methods, `/lab` simulation panel, e2e | b32b2130 |
 | [#935](https://github.com/adamissac/ari-ai/pull/935) | Audit progress doc | 5cea8359 |
 | [#941](https://github.com/adamissac/ari-ai/pull/941) | Fail-closed gate, registry hardening, v6 shadow fix and tests, opt-in v1 reward and study, opt-in time-limit option | see GitHub |
+| [#941](https://github.com/adamissac/ari-ai/pull/941) merged | as above | d5a967bf |
 | [#939](https://github.com/adamissac/ari-ai/pull/939) | 8-seed truncation ablation, simulator fuzz | f952a72f |
 | [#938](https://github.com/adamissac/ari-ai/pull/938) | Same-episode policy comparison in the lab panel; session handoff | 92a712d3 |
 
@@ -132,6 +133,24 @@ Full report: [`rl-defense/results/reward-v1/REPORT.md`](../rl-defense/results/re
   better defender, and none is recommended. At this budget the DDQN does not beat the
   `exposed_guard` rule; the 1M-step protocol-v1 policy (-29.1, 7.1%) beats it by a small
   margin. Deterministic controls stay authoritative.
+
+### Follow-up with the trade-off fixed (owner decision, c = 0.25)
+
+[`rl-defense/results/evidence-policy/REPORT.md`](../rl-defense/results/evidence-policy/REPORT.md).
+A deterministic evidence-driven rule (`MonitorIsolatePolicy`: monitor exposed nodes, isolate
+only on an anomaly signal) and a DDQN whose early exploration follows that rule
+(`train(guide=...)`). Held-out, 5 seeds x 300k steps:
+
+| Policy | Return (v1) | Return (v0) | Compromise % | False disruption % | Benign load |
+|---|---|---|---|---|---|
+| DDQN guided, v1 reward | -61.0 | -33.4 | 22.6 [8.2, 39.3] | 52.6 | 0.555 |
+| DDQN, v0 reward | -91.4 | -46.2 | 16.3 [9.5, 22.4] | 72.2 | 0.912 |
+| monitor_isolate rule | -62.5 | -42.2 | 25.7 | 6.7 | 0.411 |
+| exposed_guard rule | -70.1 | -34.0 | 11.3 | 74.8 | 0.725 |
+
+The guided policy is better than the original on return, disruption, db loss and uptime, and
+not shown equal on compromise (overlapping intervals, per-seed 4% to 53%), so the
+pre-stated acceptance check fails. No learned policy dominates the rules. Nothing promoted.
 
 ## Finding 7: analysis
 
