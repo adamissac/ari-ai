@@ -1,0 +1,20 @@
+# Val v11 (created 2026-11-14, before any v11 run). Three attackers switching per request.
+name: val11_trio_switch
+split: val
+horizon: 30
+schedule: bursty
+p_start: 0.12
+p_stop: 0.15
+attack_per_step: 5
+benign_per_step: 7
+attackers: [carol, mallory, bob]
+attacker_switch: per_request
+rotate_tokens: true
+victims: [alice, dave]
+benign: [alice, bob, carol, dave]
+delegations: ["dave:alice"]
+delegate_per_step: 1
+delegate_burst_p: 0.2
+delegate_burst_size: 4
+seed_start: 27000
+episodes: 15

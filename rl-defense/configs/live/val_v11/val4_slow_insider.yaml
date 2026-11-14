@@ -1,0 +1,20 @@
+# Val v4 (created 2026-10-19, before the v4 run; checkpoint, margin and round selection
+# only, never training or the verdict). A low-volume insider (carol) reads alice's payments
+# in long campaigns while two bookkeepers read their clients' payments with bursts.
+name: val4_slow_insider
+split: val
+horizon: 30
+schedule: bursty
+p_start: 0.1
+p_stop: 0.1
+attack_per_step: 3
+benign_per_step: 8
+attackers: [carol]
+victims: [alice]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.3
+delegate_burst_size: 3
+seed_start: 21000
+episodes: 15

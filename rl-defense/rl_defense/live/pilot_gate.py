@@ -191,27 +191,41 @@ def gate(
     }
 
 
-def run(out: Path, episodes: int | None = None) -> dict[str, Any]:
+def run(
+    out: Path,
+    episodes: int | None = None,
+    *,
+    scenario_dir: str = SCENARIO_DIR,
+    candidate: Path = CANDIDATE,
+    candidate_sha256: str = CANDIDATE_SHA256,
+    rules_tuning: Path = RULES_TUNING,
+    rules_tuning_sha256: str = RULES_TUNING_SHA256,
+    references: dict[str, tuple[Path, str]] | None = None,
+) -> dict[str, Any]:
+    """Defaults are the first gate (frozen v6). ``references`` are other pinned checkpoints
+    run on the same episodes and reported only; they are not part of the gate."""
     out.mkdir(parents=True, exist_ok=True)
-    scenarios = load_scenarios("holdout", subdir=SCENARIO_DIR)
-    agent, manifest = load_checkpoint(_pinned(CANDIDATE, CANDIDATE_SHA256))
-    rules_params = json.loads(_pinned(RULES_TUNING, RULES_TUNING_SHA256).read_text())["selected"]
+    scenarios = load_scenarios("holdout", subdir=scenario_dir)
+    agent, manifest = load_checkpoint(_pinned(candidate, candidate_sha256))
+    rules_params = json.loads(_pinned(rules_tuning, rules_tuning_sha256).read_text())["selected"]
     criteria = ev.PromotionCriteria(
         **yaml.safe_load(_pinned(CRITERIA, CRITERIA_SHA256).read_text())
     )
     policies: dict[str, ev.PolicyFn] = {
-        "candidate_v6": ev.dqn_policy(agent),
+        "candidate": ev.dqn_policy(agent),
         "threshold_rules": ev.rules_policy(rules_params),
         "always_block_principal": ev.always_block_principal,
         "always_block_principal_long": ev.always_block_principal_long,
         "always_block_top_principal_long": ev.always_block_top_principal_long,
         "noop": ev.noop_policy,
     }
+    for ref_name, (ref_path, ref_sha) in (references or {}).items():
+        policies[ref_name] = ev.dqn_policy(load_checkpoint(_pinned(ref_path, ref_sha))[0])
     rows: dict[str, list[ev.EpisodeMetrics]] = {}
     access: dict[str, list[dict[str, Any]]] = {}
     decisions: list[dict[str, Any]] = []
     for name, policy in policies.items():
-        q = agent.q_values if name == "candidate_v6" else None
+        q = agent.q_values if name == "candidate" else None
         rows[name], access[name], d = run_policy(policy, scenarios, episodes=episodes, q_values=q)
         decisions = d or decisions
         print(f"{name}: {ev.summarize(rows[name])['reward']:.3f}", flush=True)
@@ -244,16 +258,16 @@ def run(out: Path, episodes: int | None = None) -> dict[str, Any]:
         "episode_seeds": {s.name: [s.seeds(episodes)[0], s.seeds(episodes)[-1]] for s in scenarios},
         "loop_overrides": dict(ev.V4_LOOP_OVERRIDES),
         "action_space": SPACE,
-        "rules": {"params": rules_params, "tuning_sha256": RULES_TUNING_SHA256},
+        "scenario_dir": scenario_dir,
+        "rules": {"params": rules_params, "tuning_sha256": rules_tuning_sha256},
+        "references": {n: sha for n, (_, sha) in (references or {}).items()},
         "criteria": {
             **criteria.model_dump(),
             "min_delegated_success": MIN_DELEGATED_SUCCESS,
             "promotion_yaml_sha256": CRITERIA_SHA256,
             "incumbent": "threshold_rules",
         },
-        "gate": gate(
-            rows["candidate_v6"], rows["threshold_rules"], access["candidate_v6"], criteria
-        ),
+        "gate": gate(rows["candidate"], rows["threshold_rules"], access["candidate"], criteria),
         "abstention": abstention(decisions),
         "uncertainty": uncertainty(decisions),
         "summary": summary,
@@ -285,8 +299,23 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--episodes", type=int, help="per scenario (default: all 30)")
+    ap.add_argument("--scenario-dir", default=SCENARIO_DIR)
+    ap.add_argument("--candidate", type=Path, default=CANDIDATE)
+    ap.add_argument("--candidate-sha256", default=CANDIDATE_SHA256)
+    ap.add_argument("--rules-tuning", type=Path, default=RULES_TUNING)
+    ap.add_argument("--rules-tuning-sha256", default=RULES_TUNING_SHA256)
+    ap.add_argument("--reference-v6", action="store_true", help="also run frozen v6, reported only")
     args = ap.parse_args()
-    result = run(args.out, args.episodes)
+    result = run(
+        args.out,
+        args.episodes,
+        scenario_dir=args.scenario_dir,
+        candidate=args.candidate,
+        candidate_sha256=args.candidate_sha256,
+        rules_tuning=args.rules_tuning,
+        rules_tuning_sha256=args.rules_tuning_sha256,
+        references={"frozen_v6": (CANDIDATE, CANDIDATE_SHA256)} if args.reference_v6 else None,
+    )
     print(json.dumps(result["gate"], indent=2))
 
 
