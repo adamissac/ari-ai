@@ -1,0 +1,19 @@
+# Val v11 (created 2026-11-14, before any v11 run). dave (alice's bookkeeper) also reads
+# bob's and erin's payments while both bookkeepers keep reconciling.
+name: val11_delegate_two_victims
+split: val
+horizon: 30
+schedule: bursty
+p_start: 0.25
+p_stop: 0.3
+attack_per_step: 4
+benign_per_step: 6
+attackers: [dave]
+victims: [bob, erin]
+benign: [alice, bob, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 2
+delegate_burst_p: 0.3
+delegate_burst_size: 3
+seed_start: 27300
+episodes: 15

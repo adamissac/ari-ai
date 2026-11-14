@@ -1,0 +1,17 @@
+# Train v3. A delegate abuses its access: dave may read alice's payments but also reads
+# carol's. The same principal produces legitimate and malicious cross-tenant reads.
+name: insider_delegate
+split: train
+horizon: 30
+schedule: bursty
+p_start: 0.15
+p_stop: 0.25
+attack_per_step: 4
+benign_per_step: 6
+attackers: [dave]
+victims: [carol]
+benign: [alice, carol, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 1
+seed_start: 6500
+episodes: 14

@@ -1,0 +1,20 @@
+# Pilot gate v2 (created 2026-11-14, committed before v11 was trained or any policy was run on
+# it; see results/pilot-gate-v2/PREREGISTRATION.md). The busiest legitimate load with a
+# faint insider (bob) in brief bursts.
+name: gate2_busy_day_faint_insider
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.08
+p_stop: 0.4
+attack_per_step: 2
+benign_per_step: 10
+attackers: [bob]
+victims: [carol, dave]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 2
+delegate_burst_p: 0.4
+delegate_burst_size: 5
+seed_start: 42700
+episodes: 30

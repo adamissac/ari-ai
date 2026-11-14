@@ -1,0 +1,22 @@
+# Train v11 (created 2026-11-14 after the pilot-gate failure, before any v11 run). Three
+# attackers alternate per request with token rotation. Family v6 lost on in the pilot gate;
+# identities, volume and timing differ from the exposed gate scenario.
+name: train11_trio_per_request
+split: train
+horizon: 30
+schedule: bursty
+p_start: 0.15
+p_stop: 0.18
+attack_per_step: 6
+benign_per_step: 6
+attackers: [mallory, bob, dave]
+attacker_switch: per_request
+rotate_tokens: true
+victims: [alice, carol]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.2
+delegate_burst_size: 3
+seed_start: 9000
+episodes: 14

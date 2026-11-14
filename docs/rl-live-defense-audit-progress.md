@@ -76,6 +76,7 @@ untrained one on 4.9% to 18.0% of states.
 | [#941](https://github.com/adamissac/ari-ai/pull/941) | Fail-closed gate, registry hardening, v6 shadow fix and tests, opt-in v1 reward and study, opt-in time-limit option | see GitHub |
 | [#941](https://github.com/adamissac/ari-ai/pull/941) merged | as above | d5a967bf |
 | [#945](https://github.com/adamissac/ari-ai/pull/945) | Guided exploration, `monitor_isolate` rule, evidence-policy study | dd73a920 |
+| [#951](https://github.com/adamissac/ari-ai/pull/951) | Pilot gate run (v6 fails 1 of 9); readiness reports the evidence | e8cfc5b6 |
 | [#949](https://github.com/adamissac/ari-ai/pull/949) | Lab offers the two deterministic rules | c7b28b99 |
 | [#947](https://github.com/adamissac/ari-ai/pull/947) | 1M-step evidence-policy result | 8c8db5c0 |
 | [#939](https://github.com/adamissac/ari-ai/pull/939) | 8-seed truncation ablation, simulator fuzz | f952a72f |
@@ -181,6 +182,15 @@ rotating tokens: -4.63 against -4.12). Pooled it halves the rules' compromise ra
 against 0.175) inside every floor. `GET /projects/{id}/rl-readiness` now reads that bundle by
 hash and reports category F as FAIL; nothing is PASS and `ready` is false. The scenarios are
 exposed; another attempt needs a new candidate, new scenarios and a new pre-registration.
+
+**New candidate (v11, v12).** v11 added the two scenario families v6 lost on and
+availability-aware snapshot selection. Its validation prediction failed (trails the re-tuned
+rules on 4 of 6 validation scenarios), so gate v2 was not run. v12 (teacher scored on more
+episodes) was stopped at its first step because the teacher did not change. The four
+`pilot_gate_v2` scenarios are unexposed. On validation the fixed `always_block_principal_long`
+rule (-5.83) beats v6 (-7.35), the rules (-8.59) and v11 (-8.86), and on the first gate's
+saved episodes it meets all nine checks (post hoc, not a gate pass). Details:
+[`rl-defense/results/live-retrain-v11/REPORT.md`](../rl-defense/results/live-retrain-v11/REPORT.md).
 
 ## Finding 7: analysis
 

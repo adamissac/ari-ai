@@ -1,0 +1,20 @@
+# Pilot gate v2 (created 2026-11-14, committed before v11 was trained or any policy was run on
+# it; see results/pilot-gate-v2/PREREGISTRATION.md). An outsider rotating tokens attacks
+# from the first window in every window against three victims, with one bookkeeper active.
+name: gate2_outsider_from_start
+split: holdout
+horizon: 30
+schedule: always
+start_active: true
+attack_per_step: 5
+benign_per_step: 5
+attackers: [mallory]
+rotate_tokens: true
+victims: [alice, bob, carol]
+benign: [alice, bob, carol, dave]
+delegations: ["dave:alice"]
+delegate_per_step: 1
+delegate_burst_p: 0.15
+delegate_burst_size: 3
+seed_start: 44200
+episodes: 30

@@ -1,0 +1,21 @@
+# Pilot gate v2 (created 2026-11-14, committed before v11 was trained or any policy was run on
+# it; see results/pilot-gate-v2/PREREGISTRATION.md). Both bookkeepers abuse their access
+# in turn (per window) against tenants they hold no grant for, while delegated reads are heavy.
+name: gate2_both_bookkeepers_rogue
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.2
+p_stop: 0.22
+attack_per_step: 5
+benign_per_step: 8
+attackers: [dave, erin]
+attacker_switch: per_window
+victims: [bob, mallory]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["dave:alice", "erin:carol"]
+delegate_per_step: 2
+delegate_burst_p: 0.35
+delegate_burst_size: 5
+seed_start: 42200
+episodes: 30

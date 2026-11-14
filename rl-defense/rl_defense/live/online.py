@@ -176,7 +176,12 @@ def train_online(
     balance_demo_actions: bool = False,
     name: str = "candidate_online",
     log=print,  # noqa: ANN001
+    min_val_availability: float | None = None,
 ) -> dict:
+    """``min_val_availability`` (v11): prefer (snapshot, margin) pairs whose validation
+    availability meets this floor; the best return is taken among those, and among all pairs
+    only if none meets it. None = the v6-v10 selection (return only). It is a parameter and
+    not an ``OnlineConfig`` field so saved v6-v10 manifests still list every config setting."""
     cfg = cfg or OnlineConfig()
     if any(s.split != "train" for s in train_scenarios):
         raise ValueError("online training may only run on train scenarios")
@@ -216,6 +221,13 @@ def train_online(
             rec = {"kind": kind, "scenario": sc.name, "split": sc.split, "seed": seed, "t": i}
             exp_fh.write(json.dumps({**rec, **t.model_dump(mode="json")}, sort_keys=True) + "\n")
 
+    def feasible(s: dict) -> bool:
+        floor = min_val_availability
+        return floor is None or (s["availability"] is not None and s["availability"] >= floor)
+
+    def rank(s: dict) -> tuple[bool, float]:
+        return (feasible(s), s["reward"])
+
     def val_score() -> tuple[dict, float]:
         best_m: tuple[dict, float] | None = None
         for m in cfg.noop_margins:
@@ -234,14 +246,15 @@ def train_online(
             s["by_scenario"] = {
                 k: round(v["reward"], 4) for k, v in ev.summarize_by_scenario(rows).items()
             }
-            if best_m is None or s["reward"] > best_m[0]["reward"]:
+            s["feasible"] = feasible(s)
+            if best_m is None or rank(s) > rank(best_m[0]):
                 best_m = (s, float(m))
         agent.config = base_config
         assert best_m is not None
         return best_m
 
     history: list[dict] = []
-    best: tuple[float, int, dict, float] | None = None
+    best: tuple[float, int, dict, float, tuple[bool, float]] | None = None
 
     def evaluate_snapshot(step: int, phase: str) -> None:
         nonlocal best
@@ -257,11 +270,16 @@ def train_online(
                 "val_no_attack_defense_duty": s["no_attack_defense_duty"],
                 "val_reward_by_scenario": s["by_scenario"],
                 "noop_margin": m,
+                **(
+                    {"val_meets_availability_floor": s["feasible"]}
+                    if min_val_availability is not None
+                    else {}
+                ),
             }
         )
         log(f"[{phase}] env_step {step}: val {s['reward']:.2f} (margin {m})", flush=True)
-        if best is None or s["reward"] > best[0]:
-            best = (s["reward"], step, copy.deepcopy(agent.state_dict()), m)
+        if best is None or rank(s) > best[4]:
+            best = (s["reward"], step, copy.deepcopy(agent.state_dict()), m, rank(s))
 
     try:
         # 1. demonstrations (train scenarios, expert policy)
@@ -361,6 +379,11 @@ def train_online(
                     "updates": history[-1]["updates"],
                 },
                 "balance_demo_actions": balance_demo_actions,
+                **(
+                    {"min_val_availability": min_val_availability}
+                    if min_val_availability is not None
+                    else {}
+                ),
                 "expert": expert_name,
                 "loop_overrides": overrides,
                 "selected_env_step": best[1],

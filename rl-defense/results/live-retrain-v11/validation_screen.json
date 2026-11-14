@@ -1,0 +1,53 @@
+{
+  "checks": {
+    "availability_floor": true,
+    "no_val_scenario_trails_rules": false
+  },
+  "eligible_for_gate": false,
+  "expert": {
+    "name": "threshold_rules",
+    "train_scores": {
+      "always_block_principal": -5.738852813852814,
+      "always_block_principal_long": -5.132309833024118,
+      "always_block_top_principal_long": -5.16577922077922,
+      "threshold_rules": -4.629042980828695
+    }
+  },
+  "rules_val_reward_by_scenario": {
+    "val11_delegate_two_victims": -11.1975,
+    "val11_trio_switch": -5.8769,
+    "val3_mixed": -7.7397,
+    "val4_rogue_delegate": -7.6144,
+    "val4_rotation_start": -6.2307,
+    "val4_slow_insider": -12.8675
+  },
+  "selected_env_step": 120000,
+  "selected_noop_margin": 0.0,
+  "trailing_scenarios": {
+    "val11_trio_switch": [
+      -6.0338,
+      -5.8769
+    ],
+    "val3_mixed": [
+      -8.855,
+      -7.7397
+    ],
+    "val4_rogue_delegate": [
+      -8.8233,
+      -7.6144
+    ],
+    "val4_rotation_start": [
+      -10.2475,
+      -6.2307
+    ]
+  },
+  "val_availability": 0.9367647058823529,
+  "val_reward_by_scenario": {
+    "val11_delegate_two_victims": -11.1975,
+    "val11_trio_switch": -6.0338,
+    "val3_mixed": -8.855,
+    "val4_rogue_delegate": -8.8233,
+    "val4_rotation_start": -10.2475,
+    "val4_slow_insider": -8.0075
+  }
+}

@@ -1,0 +1,20 @@
+# Train v11 (created 2026-11-14, before any v11 run). A bookkeeper (erin, delegate of carol)
+# also reads two tenants she has no grant for, while her delegated reads continue at volume.
+# Family where v6 blocked authorized delegated reads in the pilot gate.
+name: train11_delegate_multi_victim
+split: train
+horizon: 30
+schedule: bursty
+p_start: 0.2
+p_stop: 0.25
+attack_per_step: 4
+benign_per_step: 7
+attackers: [erin]
+victims: [alice, bob]
+benign: [alice, bob, carol, erin]
+delegations: ["erin:carol", "dave:alice"]
+delegate_per_step: 2
+delegate_burst_p: 0.25
+delegate_burst_size: 4
+seed_start: 9300
+episodes: 14

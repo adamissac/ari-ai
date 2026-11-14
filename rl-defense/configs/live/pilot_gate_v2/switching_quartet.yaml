@@ -1,0 +1,22 @@
+# Pilot gate v2 (created 2026-11-14, committed before v11 was trained or any policy was run on
+# it; see results/pilot-gate-v2/PREREGISTRATION.md). Four attackers switch per request
+# with token rotation in rare, long campaigns at the highest volume.
+name: gate2_switching_quartet
+split: holdout
+horizon: 30
+schedule: bursty
+p_start: 0.09
+p_stop: 0.1
+attack_per_step: 8
+benign_per_step: 6
+attackers: [mallory, carol, dave, bob]
+attacker_switch: per_request
+rotate_tokens: true
+victims: [alice, erin]
+benign: [alice, bob, carol, dave, erin]
+delegations: ["erin:carol"]
+delegate_per_step: 1
+delegate_burst_p: 0.2
+delegate_burst_size: 4
+seed_start: 41800
+episodes: 30
