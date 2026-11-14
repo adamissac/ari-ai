@@ -75,6 +75,7 @@ untrained one on 4.9% to 18.0% of states.
 | [#935](https://github.com/adamissac/ari-ai/pull/935) | Audit progress doc | 5cea8359 |
 | [#941](https://github.com/adamissac/ari-ai/pull/941) | Fail-closed gate, registry hardening, v6 shadow fix and tests, opt-in v1 reward and study, opt-in time-limit option | see GitHub |
 | [#941](https://github.com/adamissac/ari-ai/pull/941) merged | as above | d5a967bf |
+| [#945](https://github.com/adamissac/ari-ai/pull/945) | Guided exploration, `monitor_isolate` rule, evidence-policy study | dd73a920 |
 | [#939](https://github.com/adamissac/ari-ai/pull/939) | 8-seed truncation ablation, simulator fuzz | f952a72f |
 | [#938](https://github.com/adamissac/ari-ai/pull/938) | Same-episode policy comparison in the lab panel; session handoff | 92a712d3 |
 
@@ -151,6 +152,14 @@ only on an anomaly signal) and a DDQN whose early exploration follows that rule
 The guided policy is better than the original on return, disruption, db loss and uptime, and
 not shown equal on compromise (overlapping intervals, per-seed 4% to 53%), so the
 pre-stated acceptance check fails. No learned policy dominates the rules. Nothing promoted.
+
+**Settled at 1M steps** (5 seeds, same episodes): guided v1 policy 32.3% compromise
+[26.3, 38.5] and 34.5% false disruption; original-objective policy 10.5% [6.1, 13.8] and
+72.4%. The intervals no longer overlap. The trade-off is real: lowering disruption costs
+security in this simulator, and each learned policy is matched on its own objective by a
+deterministic rule (`monitor_isolate` -62.5 vs -65.9 on v1 return; `exposed_guard` -34.0 vs
+-35.4 on v0 return). The protocol-v1 policy stays; finding 8 is closed as "explained, not
+fixable by training in this environment".
 
 ## Finding 7: analysis
 
