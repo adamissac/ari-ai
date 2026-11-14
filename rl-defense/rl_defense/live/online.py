@@ -94,11 +94,6 @@ class OnlineConfig:
     val_episodes: int = 8
     noop_margins: tuple[float, ...] = (0.0, 0.1, 0.2, 0.3, 0.5)
     seed: int = 0
-    # v11: prefer (snapshot, margin) pairs whose validation availability meets this floor;
-    # the best return is taken among those, and among all pairs only if none meets it.
-    # None = the v6-v10 selection (return only). The v10 diagnosis found every selected
-    # checkpoint below the gate's availability floor on validation.
-    min_val_availability: float | None = None
 
     def epsilon(self, step: int) -> float:
         frac = min(1.0, step / max(1, self.eps_decay_steps))
@@ -181,7 +176,12 @@ def train_online(
     balance_demo_actions: bool = False,
     name: str = "candidate_online",
     log=print,  # noqa: ANN001
+    min_val_availability: float | None = None,
 ) -> dict:
+    """``min_val_availability`` (v11): prefer (snapshot, margin) pairs whose validation
+    availability meets this floor; the best return is taken among those, and among all pairs
+    only if none meets it. None = the v6-v10 selection (return only). It is a parameter and
+    not an ``OnlineConfig`` field so saved v6-v10 manifests still list every config setting."""
     cfg = cfg or OnlineConfig()
     if any(s.split != "train" for s in train_scenarios):
         raise ValueError("online training may only run on train scenarios")
@@ -222,7 +222,7 @@ def train_online(
             exp_fh.write(json.dumps({**rec, **t.model_dump(mode="json")}, sort_keys=True) + "\n")
 
     def feasible(s: dict) -> bool:
-        floor = cfg.min_val_availability
+        floor = min_val_availability
         return floor is None or (s["availability"] is not None and s["availability"] >= floor)
 
     def rank(s: dict) -> tuple[bool, float]:
@@ -272,7 +272,7 @@ def train_online(
                 "noop_margin": m,
                 **(
                     {"val_meets_availability_floor": s["feasible"]}
-                    if cfg.min_val_availability is not None
+                    if min_val_availability is not None
                     else {}
                 ),
             }
@@ -379,6 +379,11 @@ def train_online(
                     "updates": history[-1]["updates"],
                 },
                 "balance_demo_actions": balance_demo_actions,
+                **(
+                    {"min_val_availability": min_val_availability}
+                    if min_val_availability is not None
+                    else {}
+                ),
                 "expert": expert_name,
                 "loop_overrides": overrides,
                 "selected_env_step": best[1],

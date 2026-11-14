@@ -108,6 +108,7 @@ def run(
         loop_overrides=lo,
         expert_name=expert_name,
         name=name,
+        min_val_availability=MIN_AVAILABILITY,
     )
     rules_rows = ev.run_policy(
         ev.rules_policy(rules_params),
@@ -142,7 +143,7 @@ def main() -> None:
     run(
         args.out,
         args.evidence_dir,
-        OnlineConfig(seed=args.seed, min_val_availability=MIN_AVAILABILITY),
+        OnlineConfig(seed=args.seed),
         name=args.name,
         expert_episodes=args.expert_episodes,
         rules_tuning=args.rules_tuning,
