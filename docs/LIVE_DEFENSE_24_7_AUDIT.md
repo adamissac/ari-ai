@@ -110,6 +110,7 @@ Each of these lets Ari change a running system, or changes what counts as proof.
   rejects the control so it is never applied; a rollback during execute or verify now
   ends `rolled_back` and does not leave an unresolved control.
 
+- `monitoring/monitoring/proxy.py`: a sidecar reverse proxy so apps in any language get telemetry and controls; tested in front of a Node app, driven by Ari's API and worker.
 - `monitoring/monitoring/collector.py`: telemetry collector (gap 1). It sends counts per
   route template and never a raw path, query, header, body or client address.
 - `live_defense/policy.py`: v6 abstains on routes outside its trained topology (gap 4).
