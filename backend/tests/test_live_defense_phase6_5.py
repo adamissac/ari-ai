@@ -368,3 +368,39 @@ def test_evaluation_plan_does_not_invent_thresholds() -> None:
     for metric in plan.metrics:
         assert metric.threshold is None
         assert metric.threshold_status == "pending_rl_owner_approval"
+
+
+def test_pilot_gate_run_is_reported_as_a_failure_and_never_as_a_pass(tmp_path, monkeypatch) -> None:
+    import json
+
+    from backend.live_defense import readiness
+
+    evidence = readiness.pilot_gate_evidence()
+    assert evidence is not None and evidence["gate"]["passed"] is False
+    by = {item.letter: item for item in assess().categories}
+    # the candidate trails the rules on one frozen scenario: per-scenario is a FAIL
+    assert by["F"].status is EvidenceCheckStatus.failed and "-0.510" in by["F"].summary
+    assert by["E"].status is EvidenceCheckStatus.blocked  # pooled metrics held; still no PASS
+    assert any("FAILED the pre-registered checks" in n for n in by["A"].evidence_notes)
+    assert any("not an uncertainty signal" in n for n in by["H"].evidence_notes)
+    assert all(item.status is not EvidenceCheckStatus.passed for item in by.values())
+    assert assess().ready is False
+
+    # a bundle whose bytes are not the pinned ones is ignored entirely
+    for name in ("EVIDENCE.json", "summary.json", "episodes.json"):
+        (tmp_path / name).write_bytes((readiness.PILOT_GATE_DIR / name).read_bytes())
+    summary = json.loads((tmp_path / "summary.json").read_text())
+    summary["gate"]["passed"] = True
+    (tmp_path / "summary.json").write_text(json.dumps(summary))
+    monkeypatch.setattr(readiness, "PILOT_GATE_DIR", tmp_path)
+    assert readiness.pilot_gate_evidence() is None
+    assert all(item.status is EvidenceCheckStatus.blocked for item in assess().categories[:-1])
+
+    # even an intact bundle that says "passed" cannot produce PASS or ready
+    passing = {**evidence, "gate": {**evidence["gate"], "passed": True}}
+    monkeypatch.setattr(readiness, "pilot_gate_evidence", lambda: passing)
+    assert all(item.status is not EvidenceCheckStatus.passed for item in assess().categories)
+    assert assess().ready is False
+
+    monkeypatch.setattr(readiness, "PILOT_GATE_DIR", tmp_path / "missing")
+    monkeypatch.undo()

@@ -7,7 +7,11 @@ category is PASS.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Mapping, Sequence
+from pathlib import Path
+from typing import Any
 
 from backend.live_defense.serving import hosted_report
 from shared import SCHEMA_VERSION
@@ -90,6 +94,94 @@ _SUMMARIES: dict[RlEvidenceCategory, str] = {
 
 _J_STATUS = EvidenceCheckStatus.not_verified
 
+# The one pre-registered gate run (rl-defense/results/pilot-gate/PREREGISTRATION.md,
+# thresholds approved by the RL owner on 2026-11-14). The bundle is read only if its bytes
+# match this hash; a deployment without it, or with other bytes, reports exactly what it
+# reported before the run. A bundle can add FAIL and notes. It can never produce PASS here:
+# the scenarios are exposed once used, so a pass needs a new pre-registered run and a code
+# change that an owner reviews.
+PILOT_GATE_DIR = Path(__file__).resolve().parents[3] / "rl-defense" / "results" / "pilot-gate"
+PILOT_GATE_EVIDENCE_SHA256 = "e5802f247cedfed428bb278e036ad4e7bbabba96dc00b638e1dd3153a7488c1e"
+_METRIC_CHECKS = (
+    "compromise_rate_not_worse",
+    "availability_floor",
+    "delegated_success_floor",
+    "false_disruption_cap",
+    "reward_hacking_no_blanket_isolation",
+)
+
+
+def pilot_gate_evidence() -> dict[str, Any] | None:
+    """The gate run's summary, or None when the pinned bundle is not present and intact."""
+    try:
+        index_blob = (PILOT_GATE_DIR / "EVIDENCE.json").read_bytes()
+        if hashlib.sha256(index_blob).hexdigest() != PILOT_GATE_EVIDENCE_SHA256:
+            return None
+        index = json.loads(index_blob)
+        blobs = {name: (PILOT_GATE_DIR / name).read_bytes() for name in index["files"]}
+        if any(hashlib.sha256(b).hexdigest() != index["files"][n] for n, b in blobs.items()):
+            return None
+        return json.loads(blobs["summary.json"])
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def _fmt(value: Any) -> str:
+    return "undefined" if value is None else f"{value:.3f}"
+
+
+def _apply_gate_evidence(
+    results: list[RlCategoryResult], evidence: dict[str, Any]
+) -> list[RlCategoryResult]:
+    """Record the run. Failed checks become FAIL; nothing becomes PASS."""
+    checks = {c["name"]: c for c in evidence["gate"]["checks"]}
+    sha = evidence["candidate"]["checkpoint_sha256"]
+    run = (
+        f"Pilot-gate run on {len(evidence['scenarios'])} frozen scenarios, candidate "
+        f"{sha[:12]}: {'PASSED' if evidence['gate']['passed'] else 'FAILED'} the "
+        "pre-registered checks. The scenarios are now exposed and cannot be reused as fresh."
+    )
+    metric_fail = [n for n in _METRIC_CHECKS if not checks[n]["passed"]]
+    per_scenario = checks["no_per_scenario_regression"]
+    abst, unc = evidence["abstention"], evidence["uncertainty"]["harm_rate"]
+    notes: dict[RlEvidenceCategory, tuple[EvidenceCheckStatus | None, str]] = {
+        RlEvidenceCategory.E_safety_metrics: (
+            EvidenceCheckStatus.failed if metric_fail else None,
+            "Pooled metric checks "
+            + ("failed: " + ", ".join(metric_fail) if metric_fail else "all held")
+            + ". "
+            + "; ".join(f"{n}={_fmt(checks[n]['value'])}" for n in _METRIC_CHECKS),
+        ),
+        RlEvidenceCategory.F_per_scenario: (
+            None if per_scenario["passed"] else EvidenceCheckStatus.failed,
+            "Worst per-scenario return difference against the rules: "
+            f"{_fmt(per_scenario['value'])} (required {per_scenario['threshold']}).",
+        ),
+        RlEvidenceCategory.G_abstention: (
+            None,
+            "Measured, no owner threshold: no action in "
+            f"{_fmt(abst['no_action_share_without_flag'])} of windows without a flagged "
+            f"principal; acts in {_fmt(abst['action_share_with_flag'])} of windows with one.",
+        ),
+        RlEvidenceCategory.H_uncertainty: (
+            None,
+            "Measured, no owner threshold: harm rate by Q-margin tercile low/mid/high = "
+            f"{_fmt(unc['low_margin'])}/{_fmt(unc['mid_margin'])}/{_fmt(unc['high_margin'])}. "
+            "A small margin did not go with more harm; the margin is not an uncertainty signal.",
+        ),
+    }
+    out = []
+    for item in results:
+        status, note = notes.get(item.category, (None, ""))
+        update: dict[str, Any] = {
+            "evidence_notes": [*item.evidence_notes, run, *([note] if note else [])]
+        }
+        if status is not None and not evidence["gate"]["passed"]:
+            update["status"] = status
+            update["summary"] = note[:500]
+        out.append(item.model_copy(update=update))
+    return out
+
 
 def evaluation_plan() -> RlEvaluationPlan:
     return RlEvaluationPlan(
@@ -164,6 +256,9 @@ def assess_categories(
                 evidence_notes=_notes_for(category),
             )
         )
+    evidence = pilot_gate_evidence()
+    if evidence is not None:
+        results = _apply_gate_evidence(results, evidence)
     return results
 
 

@@ -1,0 +1,9 @@
+{
+  "candidate_checkpoint_sha256": "8113a37f4ff9360a9efed2e9f499c4b2ae36e97bfb78372436f97da106fc05f1",
+  "files": {
+    "episodes.json": "c670d910922b66bb3aa139bc45c4a98cfd8aabee87f5b99f0ab254ee131604e9",
+    "summary.json": "2317e51d091b7726f7acd5b18fea3836a987e454e177faf54f558c2216fa01a9"
+  },
+  "passed": false,
+  "schema": "pilot-gate/1"
+}
