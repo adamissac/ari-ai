@@ -263,3 +263,7 @@ li[data-state="running"] .pv-state { color: rgb(var(--ember-hi)); animation: liv
 .pv-rail { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 12px; font-size: 11px; color: var(--color-muted); }
 .pv-rail span { padding-top: 6px; border-top: 2px solid rgb(var(--ember-hi)); }
 @media (prefers-reduced-motion: reduce) { .pv-live i, li[data-state="running"] .pv-state { animation: none; } }
+
+/* The ant colony carrying work to the computer runs along the bottom of the hero. */
+.hero-full { padding-bottom: 160px; }
+[data-testid="hero-ants"] { opacity: 1 !important; bottom: 48px !important; color: rgb(255 247 242 / 0.8) !important; }

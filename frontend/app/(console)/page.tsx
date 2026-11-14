@@ -5,6 +5,7 @@ import { LandingFooter } from '@/components/landing-footer';
 import Link from 'next/link';
 import { BRAND_HEADLINE, BRAND_HEADLINE_REST } from '@/components/brand';
 import { HeroStage } from '@/components/hero';
+import { HeroAnts } from '@/components/hero-ants';
 import { ProductPreview } from '@/components/product-preview';
 import { HowItWorks, ProblemScene, ProofStats, Walkthrough } from '@/components/story';
 import { OptionalUserBar } from '@/components/user-bar';
@@ -16,7 +17,7 @@ const START = DEMO_ONLY ? { href: '/access', hero: 'Sign in' } : { href: '/proje
 export default function HomePage() {
   return (
     <div className="home-deep marketing-atmosphere">
-      <HeroStage className="hero-full px-6 pb-20 pt-32 md:px-12 md:pt-36" labelledBy="hero-title">
+      <HeroStage className="hero-full px-6 pb-20 pt-32 md:px-12 md:pt-36" labelledBy="hero-title" base={<HeroAnts />}>
         <div className="hero-split mx-auto w-full max-w-6xl">
           <div>
             <h1 id="hero-title"><span className="block">{BRAND_HEADLINE}</span>{' '}<span className="block hero-accent">{BRAND_HEADLINE_REST}</span></h1>
