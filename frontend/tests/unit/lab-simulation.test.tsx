@@ -187,3 +187,20 @@ it('shows no comparison table when any policy run fails', async () => {
   expect((await screen.findByTestId('error-state')).textContent).toContain('no table is shown');
   expect(screen.queryByTestId('sim-comparison')).toBeNull();
 });
+
+it('offers the deterministic rules the backend lists and sends the chosen one', async () => {
+  const calls = mount({
+    status: { ...status, policies: [...status.policies, 'exposed_guard', 'monitor_isolate'] },
+    episode: () => Response.json(error503, { status: 503 }),
+  });
+  const run = await ready();
+  const select = screen.getByLabelText('Simulation policy') as HTMLSelectElement;
+  const labels = Array.from(select.options).map(o => o.textContent);
+  expect(labels).toContain('Rule: rate-limit exposed nodes, isolate on anomaly');
+  expect(labels).toContain('Rule: monitor exposed nodes, isolate on anomaly');
+  fireEvent.change(select, { target: { value: 'monitor_isolate' } });
+  fireEvent.click(run);
+  await waitFor(() => expect(episodeCalls(calls)).toHaveLength(1));
+  expect(episodeCalls(calls)[0]?.body).toMatchObject({ policy: 'monitor_isolate', episode_seed: 1003 });
+  expect(screen.queryByTestId('sim-episode')).toBeNull();
+});

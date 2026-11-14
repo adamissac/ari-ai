@@ -46,7 +46,15 @@ EPISODES_PER_HOUR = 120
 # One episode at a time per process: torch inference is CPU-bound and an episode is short.
 _ENGINE_LOCK = threading.Lock()
 
-LabPolicyKind = Literal["ddqn_trained", "ddqn_untrained", "random", "noop", "threshold_rules"]
+LabPolicyKind = Literal[
+    "ddqn_trained",
+    "ddqn_untrained",
+    "random",
+    "noop",
+    "threshold_rules",
+    "exposed_guard",
+    "monitor_isolate",
+]
 
 
 class LabEpisodeRequest(StrictModel):

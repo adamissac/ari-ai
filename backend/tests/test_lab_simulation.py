@@ -90,6 +90,8 @@ def test_status_lists_real_scenarios_and_the_pinned_checkpoint(client_factory):
         "random",
         "noop",
         "threshold_rules",
+        "exposed_guard",
+        "monitor_isolate",
     ]
     assert status["checkpoint"]["sha256"] == lab.LAB_CHECKPOINT_SHA256
     assert "simulat" in status["label"].lower()
