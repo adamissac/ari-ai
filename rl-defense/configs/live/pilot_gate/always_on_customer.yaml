@@ -1,0 +1,18 @@
+# Pilot gate (created 2026-11-14, committed before any policy was evaluated on it; see
+# results/pilot-gate/PREREGISTRATION.md). A customer (carol) attacks in every window
+# from the first one at low volume while staying an active legitimate customer.
+# Unseen: an always-on insider with no quiet lead-in and a light benign load.
+name: pilot_always_on_customer
+split: holdout
+horizon: 30
+schedule: always
+start_active: true
+attack_per_step: 3
+benign_per_step: 4
+attackers: [carol]
+victims: [alice, bob]
+benign: [alice, bob, carol]
+delegations: ["erin:carol"]
+delegate_per_step: 1
+seed_start: 44100
+episodes: 30
