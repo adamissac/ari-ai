@@ -7,6 +7,13 @@ adds an entry before ending.
 - Did: `monitoring/monitoring/proxy.py` sidecar reverse proxy (httpx + uvicorn, `proxy` extra) wrapping `AriCollector` and `AriControls`; collector gained owner route templates and skip paths. Tests: `monitoring/tests/test_proxy.py` (proxy as a real process in front of a Node server) and `test_ari_controls_a_node_app_through_the_sidecar_proxy` (API + worker -> proxy -> Node).
 - Known gaps: controls are per proxy process (run one instance); WebSockets and serverless not covered; no published image or package for customers outside this repo.
 
+### 2026-11-14 — Claude (agent, for Alan) — v11 candidate: validation prediction failed, gate v2 not run
+
+- Owner (Alan) approved a new candidate. Added `train_v11`, `val_v11`, `pilot_gate_v2` (unexposed), `OnlineConfig.min_val_availability`, `rl_defense/live/v11.py`; `pilot_gate.run` takes a candidate, scenario dir and rules tuning.
+- v11 trained once (150k live steps, seed 0): availability 0.937 on validation, but trails the re-tuned rules on 4 of 6 validation scenarios. Gate not run. v12 (teacher on 8 episodes) stopped at step one: same teacher. No checkpoint committed.
+- Open owner decision: whether to spend `pilot_gate_v2` on the deterministic `always_block_principal_long` rule, which leads on validation.
+- Tests run locally: `tests/test_pilot_gate.py` (6), `tests/test_live_v6.py`. Full suites: CI.
+
 ### 2026-11-14 — Claude (agent, for Alan) — RL pilot gate run; readiness reports it
 
 - Owner decision (Alan): pilot-gate thresholds = `configs/live/promotion.yaml` + delegated success >= 0.85, rules as incumbent; a pass would report "ready for owner approval" only.

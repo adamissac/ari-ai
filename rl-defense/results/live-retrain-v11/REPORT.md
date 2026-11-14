@@ -33,12 +33,26 @@ Same 48 validation episodes for every policy ([`val_comparison.json`](val_compar
 | rules re-tuned on train_v11 | -8.59 | 0.360 | 0.926 |
 | v11 | -8.86 | 0.450 | 0.937 |
 
-- **The teacher was the wrong one.** The teacher is chosen by train return over 2 episodes
-  per scenario. That picked the re-tuned rules (-4.63 against -5.13 for
-  `always_block_principal_long`), but on validation the long block is better than the rules
-  on all six scenarios. v6's teacher was the long block. v11 learned from the weaker teacher
+- **The teacher was the weaker one on validation.** The teacher is chosen by train return.
+  That picked the re-tuned rules (-4.63 against -5.13 for `always_block_principal_long` on 2
+  episodes per scenario; -5.36 against -5.48 on 8, so the choice is not noise), but on
+  validation the long block is better than the rules on all six scenarios. The training
+  scenarios and the validation scenarios disagree about which rule is best. v6's teacher was the long block. v11 learned from the weaker teacher
   and its validation return barely moved from the pretrained network (-9.78 to -8.86).
 - **The fixed long block beats both learned policies on validation**, and on the first
   gate's saved episodes it satisfies all nine checks where v6 fails one. That second fact is
   post hoc on exposed data: it is a reason to test the rule, not a gate pass.
 - The availability-aware selection did what it was for: every snapshot met the floor.
+
+## Follow-up (v12) and where this leaves RL
+
+A v12 with the teacher scored on 8 episodes was pre-registered and stopped at its first step:
+the teacher did not change, so the run would have repeated v11
+(`results/pilot-gate-v2/PREREGISTRATION.md`, amendment 1). No further candidate is planned.
+
+Across v6 (teacher: long block) and v11 (teacher: rules), the learned policy ends close to
+its teacher and below it on validation: v6 -7.35 against the long block's -5.83; v11 -8.86
+against the rules' -8.59. Nothing measured here shows the DQfD learner improving on a rule.
+RL stays a shadow recommender. The open product question is whether the deterministic long
+principal block should be evaluated as the pilot control on the unexposed `pilot_gate_v2`
+scenarios; that would spend them on a non-RL candidate and is the owners' call.

@@ -77,3 +77,16 @@ baselines on the same episodes, so the report will say whether the learned polic
 than the rule that taught it.
 
 `val_v11` has now been used to select two candidates; it is a selection set, not evidence.
+
+## Amendment 1 outcome (2026-11-14): v12 stopped at its first step, gate not run
+
+Scored on 8 episodes per train scenario, the teacher is still the re-tuned rules (train
+return -5.36; `always_block_principal_long` -5.48; `always_block_top_principal_long` -5.73;
+`always_block_principal` -6.02). The fix assumed the 2-episode choice was noise. It was not:
+on the training scenarios the rules are narrowly the better teacher, and it is the validation
+scenarios that favour the long block. With the same teacher, seed and budget, v12 would have
+repeated v11, so the run was stopped before online training and no v12 checkpoint exists.
+
+`pilot_gate_v2` is still unexposed. No further candidate is pre-registered. What the evidence
+supports is in `results/live-retrain-v11/REPORT.md`: in this lab the learned policies track
+their teacher and do not exceed it, and the strongest policy on validation is a fixed rule.
