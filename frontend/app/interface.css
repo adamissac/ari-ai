@@ -1,6 +1,6 @@
 /* ARI interface system: precise grids, warm ink and restrained ember light.
    Keep the landing hero, scroll tracks and replay geometry owned by globals.css. */
-:root { --ui-radius: 10px; --ui-edge: rgb(255 247 242 / 12%); }
+:root { --ui-radius: 10px; --ui-edge: rgb(244 244 242 / 12%); }
 
 /* A quieter frame makes records and controls carry the visual hierarchy. */
 :root:not(:has(.hero-full)) .site-header { border-bottom: 1px solid var(--ui-edge); }
@@ -15,13 +15,13 @@
 :root:not(:has(.hero-full)) .glass {
   border-radius: var(--ui-radius);
   border-color: var(--ui-edge);
-  background: linear-gradient(145deg, rgb(255 247 242 / 2.5%), transparent 70%), #231916;
+  background: linear-gradient(145deg, rgb(244 244 242 / 2.5%), transparent 70%), #231916;
 }
 :root:not(:has(.hero-full)) .panel > header { min-height: 52px; padding: 16px 20px; }
 :root:not(:has(.hero-full)) .panel > header { border-bottom-color: transparent; }
 :root:not(:has(.hero-full)) .panel > header + div { padding-top: 4px; }
 :root:not(:has(.hero-full)) .panel > header h2 { font-family: var(--font-sans); font-size: 14px; color: var(--color-ink); }
-:root:not(:has(.hero-full)) .demo-card:is(:hover, :focus-visible) { border-color: rgb(255 247 242 / 20%); }
+:root:not(:has(.hero-full)) .demo-card:is(:hover, :focus-visible) { border-color: rgb(244 244 242 / 20%); }
 :root:not(:has(.hero-full)) .page-title { padding-bottom: 28px; margin-bottom: 28px; }
 :root:not(:has(.hero-full)) .page-title h1 { font-size: 30px; line-height: 36px; }
 .btn { min-height: 36px; padding-inline: 12px; border-radius: 8px; font-size: 13px; }
@@ -45,7 +45,7 @@
 .project-more-menu { position: absolute; z-index: 50; top: calc(100% + 8px); right: 0; display: flex; width: min(14rem, calc(100vw - 1.5rem)); flex-direction: column;
   border: 1px solid var(--color-line); border-radius: var(--ui-radius); background: #231916; padding: 4px; box-shadow: 0 16px 36px -24px #000; }
 .project-more-link { padding: 8px 12px; color: var(--color-muted); font-size: 13px; text-decoration: none; }
-.project-more-link:hover, .project-more-link.is-active { color: var(--color-ink); background: rgb(194 69 45 / 12%); }
+.project-more-link:hover, .project-more-link.is-active { color: var(--color-ink); background: rgb(167 168 172 / 12%); }
 /* Evidence mark: the shape states how far a claim is proven; colour only repeats it. */
 .status-mark { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; }
 .status-mark-pending { border: 1px solid currentColor; }
@@ -58,11 +58,11 @@
 .status-mark-paused::after { right: 1px; }
 .status-mark-failed { display: inline-flex; border-radius: 0; align-items: center; justify-content: center; font-family: var(--font-sans); font-size: 12px; line-height: 1; }
 .account-menu-item { display: flex; width: 100%; align-items: center; border: 0; border-radius: 6px; background: transparent; padding: 8px 12px; color: var(--color-ink); text-align: left; text-decoration: none; font-size: 12px; }
-.account-menu-item:hover { background: rgb(28 18 16 / 5%); }
+.account-menu-item:hover { background: rgb(12 12 13 / 5%); }
 .account-menu-item:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
 .account-menu-item:disabled { cursor: not-allowed; opacity: 0.5; }
 :root:not(:has(.hero-full)) .account-menu-item { color: var(--color-ink); }
-:root:not(:has(.hero-full)) .account-menu-item:hover { background: rgb(255 247 242 / 7%); }
+:root:not(:has(.hero-full)) .account-menu-item:hover { background: rgb(244 244 242 / 7%); }
 
 /* The project shell keeps full-bleed commit stages inside the page content. */
 .project-shell .commit-stage { margin-inline: 0; padding-inline: 28px; border-radius: 12px; }
@@ -76,10 +76,10 @@
 .amap { border-radius: var(--ui-radius); border: 1px solid var(--ui-edge); box-shadow: 0 20px 64px -40px #000; }
 .amap-head { padding: 16px 20px; background: rgb(16 11 9 / 35%); }
 .amap-agent { border-radius: 5px; border: 1px solid transparent; }
-.amap-agent[aria-pressed="true"] { border-color: rgb(255 138 117 / 28%); background: rgb(194 69 45 / 12%); box-shadow: inset 2px 0 #ff8a75; }
+.amap-agent[aria-pressed="true"] { border-color: rgb(244 244 242 / 28%); background: rgb(167 168 172 / 12%); box-shadow: inset 2px 0 #f4f4f2; }
 .amap-group-label { font-size: 12px; }
 .amap-inspect { background: rgb(16 11 9 / 20%); }
-.commit-recording-map { background-image: radial-gradient(rgb(255 247 242 / 12%) .7px, transparent .7px); background-size: 18px 18px; }
+.commit-recording-map { background-image: radial-gradient(rgb(244 244 242 / 12%) .7px, transparent .7px); background-size: 18px 18px; }
 .commit-recording-node { border-radius: 8px; background: #2a1d18; }
 .amap-transport { background: rgb(16 11 9 / 40%); }
 
@@ -105,13 +105,13 @@
 .story-card { border-radius: 8px; }
 .story-window { border-radius: 5px; box-shadow: 0 16px 36px -24px #0005; }
 .story-panel { border-radius: 10px; }
-.story-stat { border-radius: 0; border-top: 1px solid rgb(255 247 242 / 18%); }
-.hero-step { border: 1px solid rgb(255 247 242 / 9%); border-radius: 4px; }
+.story-stat { border-radius: 0; border-top: 1px solid rgb(244 244 242 / 18%); }
+.hero-step { border: 1px solid rgb(244 244 242 / 9%); border-radius: 4px; }
 .footer-ruler { height: 5px; background: repeating-linear-gradient(90deg, #d2b9ac55 0 1px, transparent 1px 7px); opacity: .8; }
 .footer-brand > span { font-size: 52px; }
 .footer-links a { transition: color 200ms, translate 200ms; }
 .footer-links a:hover { color: #ffb09b; translate: 4px 0; }
-.footer-horizon { background: radial-gradient(ellipse at 25% 140%, #c2452d44, transparent 65%); }
+.footer-horizon { background: radial-gradient(ellipse at 25% 140%, #f4f4f244, transparent 65%); }
 
 @media (max-width: 639px) {
   .site-header-inner { min-height: 68px; }

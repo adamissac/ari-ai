@@ -4,17 +4,22 @@
    delete those rules once this direction is approved. */
 
 :root:not(:has(.hero-full)), :root:has(.hero-full) {
-  --color-bg: #141415;
-  --color-panel: #19191b;
-  --color-panel-2: #232325;
+  --color-brand: #f4f4f2;
+  --color-brand-deep: #d6d6d3;
+  --color-on-brand: #121316;
+  --color-accent: #f4f4f2;
+  --color-ember: #f4f4f2;
+  --color-bg: #0b0b0c;
+  --color-panel: #131417;
+  --color-panel-2: #222327;
   --color-line: #2b2b2e;
   --color-control: #6f6f76;
-  --color-ink: #ededed;
+  --color-ink: #f4f4f2;
   --color-ink-2: #dededf;
-  --color-muted: #a1a1a6;
+  --color-muted: #a7a8ac;
   --color-faint: #85858b;
-  --color-night: #0f0f10;
-  --color-brand-soft: #2a1c19;
+  --color-night: #070708;
+  --color-brand-soft: #222327;
   --glass: rgb(255 255 255 / 3%);
   --glass-line: rgb(255 255 255 / 8%);
   --font-display: var(--font-sans);
@@ -23,10 +28,9 @@
 :root body, :root:has(.hero-full) body, :root:not(:has(.hero-full)) body { background: var(--color-bg); }
 
 /* Nothing drifts, glows or blurs behind the content. */
-.hero-orbs, .hero-glow, .hero-colony, .intro { display: none !important; }
-body * { text-transform: none !important; text-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
-.hero-headline .hero-line::before { display: none !important; }
-:root:has(.hero-full) .hero-ink, :root:not(:has(.hero-full)) .hero-ink { background: var(--color-bg); }
+.hero-colony { display: none !important; }
+body *:not(.hero-full, .hero-full *, .intro, .intro *) { text-transform: none !important; text-shadow: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+:root:not(:has(.hero-full)) .hero-ink { background: var(--color-bg); }
 :root:not(:has(.hero-full)) main .hero-ink { box-shadow: inset 0 0 0 1px var(--glass-line); background: var(--color-panel); }
 :root:not(:has(.hero-full)) main a:is(.rounded-xl, .rounded-2xl).border,
 :root:not(:has(.hero-full)) .demo-card,
@@ -34,7 +38,7 @@ body * { text-transform: none !important; text-shadow: none !important; backdrop
 :root:not(:has(.hero-full)) :is(input, select, textarea):not([type="checkbox"], [type="radio"], [type="range"]) { background-color: var(--color-night); }
 
 /* Type: one family, sentence case, weight carries less than size. */
-.label-mono, .kicker, .site-header nav a, .story-pill { letter-spacing: 0 !important; }
+:not(.hero-full *):is(.label-mono, .kicker), .site-header nav a, .story-pill { letter-spacing: 0 !important; }
 h1, h2, h3, .display { letter-spacing: -0.01em; }
 h1 { font-weight: 500; }
 .tabular-nums, table td, .font-mono { font-variant-numeric: tabular-nums; }
@@ -75,35 +79,10 @@ h1 { font-weight: 500; }
 }
 
 /* Landing hero: text beside a real product view. */
-.hero-split { display: grid; gap: 48px; align-items: center; text-align: left; }
-@media (min-width: 1024px) { .hero-split { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 64px; } }
-.hero-split h1 { font-size: clamp(2.25rem, 4.6vw, 4rem); line-height: 1.04; font-weight: 500; letter-spacing: -0.03em; color: var(--color-ink); }
-.hero-split .hero-sub { margin-top: 20px; max-width: 34rem; font-size: 18px; line-height: 28px; color: var(--color-muted); }
-.btn-primary, .btn-quiet { display: inline-flex; height: 44px; align-items: center; border-radius: 10px; padding: 0 18px; font-size: 15px; font-weight: 500; transition: background-color 150ms var(--ease-out); }
-.btn-primary { background: #ededed; color: #141415; box-shadow: inset 0 1px 0 rgb(255 255 255 / 40%); }
-.btn-primary:hover { background: #fff; }
-.btn-quiet { background: var(--color-panel-2); color: var(--color-ink); box-shadow: inset 0 0 0 1px var(--glass-line); }
-.btn-quiet:hover { background: #2b2b2e; }
 
-.pv { overflow: hidden; border-radius: 16px; background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--glass-line), 0 32px 64px -40px rgb(0 0 0 / 80%); font-size: 13px; color: var(--color-ink); }
-.pv-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--glass-line); color: var(--color-muted); }
-.pv-bar b { font-weight: 500; color: var(--color-ink); }
-.pv-steps { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 12px 16px; border-bottom: 1px solid var(--glass-line); color: var(--color-muted); }
-.pv-steps span::before { content: "✓"; margin-right: 6px; color: var(--color-ok); }
-.pv-body { padding: 16px; }
-.pv-title { font-size: 15px; line-height: 22px; font-weight: 500; }
-.pv-meta { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 12px; color: var(--color-muted); }
-.pv-meta .pv-high { color: var(--color-ember); }
-.pv-diff { margin-top: 14px; overflow-x: auto; border-radius: 8px; background: var(--color-night); box-shadow: inset 0 0 0 1px var(--glass-line); font-family: var(--font-mono); font-size: 12px; line-height: 20px; }
-.pv-diff div { padding: 0 12px; white-space: pre; }
-.pv-diff .pv-del { background: rgb(229 72 77 / 12%); color: #f1a5a7; }
-.pv-diff .pv-add { background: rgb(76 195 138 / 12%); color: #9fe0bf; }
-.pv-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--glass-line); }
-.pv-ok { color: var(--color-ok); font-weight: 500; }
 /* Signature: a claim carries the test that proved it. */
 .evidence-tag { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 2px 8px; background: var(--color-panel-2); box-shadow: inset 0 0 0 1px var(--glass-line); font-family: var(--font-mono); font-size: 12px; line-height: 18px; color: var(--color-muted); }
 .evidence-tag::before { content: "✓"; color: var(--color-ok); }
-.pv-note { margin-top: 12px; font-size: 12px; color: var(--color-faint); }
 
 /* Landing: the top bar sits on the page, not on a tinted band. */
 @media (min-width: 640px) { html[data-home-hero] .site-header { background: transparent; border-bottom: 0; } }
@@ -124,50 +103,33 @@ h1 { font-weight: 500; }
 .story-panel, .story-card, .story-stat { background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--glass-line); }
 
 /* Ember: static fades and trail lines. Colour sits at the edges and on lines, never under text blocks. */
-:root { --ember: 194 69 45; --ember-hi: 255 138 117; --trail: linear-gradient(90deg, rgb(var(--ember-hi) / 85%), rgb(var(--ember) / 35%) 28%, transparent 72%); }
+:root { --ember: 167 168 172; --ember-hi: 244 244 242; --trail: linear-gradient(90deg, rgb(var(--ember-hi) / 85%), rgb(var(--ember) / 35%) 28%, transparent 72%); }
 :root body, :root:has(.hero-full) body, :root:not(:has(.hero-full)) body {
   background:
-    radial-gradient(52% 44% at 88% -8%, rgb(var(--ember) / 32%), transparent 72%),
-    radial-gradient(40% 36% at -6% 104%, rgb(var(--ember) / 18%), transparent 70%),
+    radial-gradient(52% 44% at 88% -8%, rgb(var(--ember) / 10%), transparent 72%),
+    radial-gradient(40% 36% at -6% 104%, rgb(var(--ember) / 6%), transparent 70%),
     var(--color-bg);
   background-attachment: fixed;
 }
-/* Landing hero: light pools behind the product view and falls away toward the text. */
-:root:has(.hero-full) .hero-stage.hero-full {
-  background:
-    radial-gradient(46% 62% at 76% 48%, rgb(var(--ember) / 46%), transparent 70%),
-    radial-gradient(60% 40% at 50% 112%, rgb(var(--ember) / 24%), transparent 72%),
-    var(--color-bg) !important;
-}
-.pv { position: relative; }
-.pv::before, .panel::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 1px; background: var(--trail); pointer-events: none; }
+
 :root:not(:has(.hero-full)) .panel { position: relative; overflow: hidden; }
 :root:not(:has(.hero-full)) .panel::before { display: block; opacity: 0.55; }
 /* A trail under each page title and across the top bar. */
 .page-title { border-bottom: 0 !important; background: var(--trail) left bottom / 100% 1px no-repeat; }
 :root:not(:has(.hero-full)) .site-header, body:has(.project-shell) .site-header { border-bottom: 0; background: linear-gradient(90deg, transparent 30%, rgb(var(--ember) / 45%) 78%, rgb(var(--ember-hi) / 70%)) left bottom / 100% 1px no-repeat, var(--color-night); }
-.hero-split h1 br + * , .hero-split h1 { background: none; }
-.hero-split h1::after { content: ""; display: block; width: 180px; height: 2px; margin-top: 24px; border-radius: 2px; background: var(--trail); }
 @media (min-width: 1024px) {
   .project-shell { background:
     linear-gradient(180deg, rgb(var(--ember) / 9%), transparent 220px) left top / 247px 100% no-repeat,
     linear-gradient(90deg, var(--color-night) 0 247px, var(--glass-line) 247px 248px, transparent 248px); }
-  .project-tab[aria-current="page"] { background: linear-gradient(90deg, rgb(var(--ember) / 26%), rgb(var(--ember) / 6%) 60%, transparent), var(--color-panel-2); box-shadow: inset 2px 0 0 rgb(var(--ember-hi)); }
-  .project-shell > .project-body { background: radial-gradient(56% 360px at 100% 0, rgb(var(--ember) / 24%), transparent 100%); }
+  .project-tab[aria-current="page"] { background: linear-gradient(90deg, rgb(var(--ember) / 14%), rgb(var(--ember) / 4%) 60%, transparent), var(--color-panel-2); box-shadow: inset 2px 0 0 rgb(var(--ember-hi)); }
+  .project-shell > .project-body { background: radial-gradient(56% 360px at 100% 0, rgb(var(--ember) / 8%), transparent 100%); }
 }
-.btn-primary { background: rgb(var(--ember)); color: #fff; box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%); }
-.btn-primary:hover { background: #d0503a; }
 .evidence-tag { box-shadow: inset 0 0 0 1px rgb(var(--ember) / 30%); }
 tbody tr:hover, main :is(ol, ul).divide-y > li:hover { background: linear-gradient(90deg, rgb(var(--ember) / 9%), transparent 55%); }
 
 /* Trails across the hero: thin ember streaks that fade out, behind the content. */
 .hero-full { position: relative; }
-.hero-stage.hero-full::after { content: ""; display: block !important; opacity: 1 !important; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  background:
-    linear-gradient(90deg, transparent, rgb(var(--ember-hi) / 55%) 62%, transparent 96%) 0 31% / 100% 1px no-repeat,
-    linear-gradient(90deg, transparent 18%, rgb(var(--ember) / 60%) 70%, transparent) 0 58% / 100% 1px no-repeat,
-    linear-gradient(90deg, transparent 40%, rgb(var(--ember-hi) / 40%) 82%, transparent) 0 79% / 100% 1px no-repeat;
-  mask-image: linear-gradient(90deg, transparent, #000 45%); -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%); }
+
 .hero-full .hero-content { position: relative; z-index: 1; }
 /* With a banner above it (demo account), the landing top bar stays in flow instead of covering it. */
 body:has(.demo-banner) html[data-home-hero] .site-header, html[data-home-hero]:has(.demo-banner) .site-header { position: sticky; }
@@ -209,7 +171,7 @@ body:has(.demo-banner) html[data-home-hero] .site-header, html[data-home-hero]:h
 :where(a, button, [role="tab"], [role="switch"], summary, input, select, textarea) {
   transition: background-color var(--t-ui) var(--ease), color var(--t-ui) var(--ease), border-color var(--t-ui) var(--ease), box-shadow var(--t-ui) var(--ease), opacity var(--t-ui) var(--ease), transform var(--t-fast) var(--ease);
 }
-:where(button, [role="tab"], [role="switch"], .btn-primary, .btn-quiet):active:not(:disabled, [aria-disabled="true"]) { transform: scale(0.97); }
+:where(button, [role="tab"], [role="switch"]):active:not(:disabled, [aria-disabled="true"]) { transform: scale(0.97); }
 :where(button, a):disabled, :where(button, a)[aria-disabled="true"] { cursor: not-allowed; }
 /* Staging: the keyboard focus is always the most visible thing on the page. */
 :focus-visible { outline: 2px solid rgb(var(--ember-hi)); outline-offset: 2px; }
@@ -221,13 +183,13 @@ body:has(.demo-banner) html[data-home-hero] .site-header, html[data-home-hero]:h
 [data-live="true"] { animation: live-pulse 1.6s ease-in-out infinite; }
 /* Fitts: on touch screens every control is a full-size target. */
 @media (pointer: coarse) {
-  :where(button, [role="tab"], [role="switch"], select, input:not([type="checkbox"], [type="radio"]), .project-tab, .project-more-link, .btn-primary, .btn-quiet) { min-height: 44px; }
-  :where(a):not(.project-tab, .btn-primary, .btn-quiet) { padding-block: 4px; }
+  :where(button, [role="tab"], [role="switch"], select, input:not([type="checkbox"], [type="radio"]), .project-tab, .project-more-link) { min-height: 44px; }
+  :where(a):not(.project-tab) { padding-block: 4px; }
 }
 @media (prefers-reduced-motion: reduce) {
   :where(a, button, [role="tab"], [role="switch"], summary, input, select, textarea) { transition: none; }
   .project-body > *, .site-main > :not(.project-shell), [data-live="true"] { animation: none; }
-  :where(button, [role="tab"], [role="switch"], .btn-primary, .btn-quiet):active { transform: none; }
+  :where(button, [role="tab"], [role="switch"]):active { transform: none; }
 }
 
 .route-veil { transition-duration: 420ms; }
@@ -235,35 +197,16 @@ body:has(.demo-banner) html[data-home-hero] .site-header, html[data-home-hero]:h
 /* Corners: firm, not bubbly. */
 :root { --radius-sm: 3px; --radius-md: 4px; --radius-lg: 6px; --radius-xl: 6px; --radius-2xl: 8px; --radius-3xl: 8px; --ui-radius: 6px; }
 :where(a, button, input, select, textarea, [role="tab"], [role="switch"]).rounded-full { border-radius: 6px; }
-.panel, .pv, .auth-card, .story-stat, .story-card, .story-panel, .net-map, .lab-score-card, .lab-headline, .demo-card, .pricing-card-dark, .hero-ink { border-radius: 8px !important; }
-.btn-primary, .btn-quiet, .project-tab, .evidence-tag, .pv-diff, .route-veil-line { border-radius: 6px; }
+.panel, .auth-card, .story-stat, .story-card, .story-panel, .net-map, .lab-score-card, .lab-headline, .demo-card, .pricing-card-dark, :not(.hero-full).hero-ink { border-radius: 8px !important; }
+.project-tab, .route-veil-line { border-radius: 6px; }
 
-/* Hero: the commit stream is the picture. */
-.hero-split h1 { font-size: clamp(2.5rem, 5.4vw, 4.75rem); }
-.hero-split h1 .hero-accent { color: rgb(var(--ember-hi)); }
-.hero-split h1::after { display: none; }
-.hero-facts { margin-top: 40px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--glass-line); }
-.hero-facts > div { padding: 16px 16px 0 0; }
-.hero-facts > div + div { padding-left: 16px; border-left: 1px solid var(--glass-line); }
-.hero-facts dt { font-size: 12px; line-height: 16px; color: var(--color-faint); }
-.hero-facts dd { margin-top: 6px; font-size: 20px; line-height: 24px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--color-ink); }
-@media (max-width: 639px) { .hero-facts { grid-template-columns: 1fr; } .hero-facts > div + div { padding-left: 0; border-left: 0; border-top: 1px solid var(--glass-line); padding-top: 12px; } }
-.pv-live { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; }
-.pv-live i { width: 8px; height: 8px; border-radius: 50%; background: var(--color-ok); animation: live-pulse 1.6s ease-in-out infinite; }
-.pv-stream { margin: 0; padding: 4px 0; list-style: none; border-bottom: 1px solid var(--glass-line); }
-.pv-stream li { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 16px; }
-.pv-stream li[data-state="fixed"] { background: linear-gradient(90deg, rgb(var(--ember) / 16%), transparent 70%); box-shadow: inset 2px 0 0 rgb(var(--ember-hi)); }
-.pv-sha { font-size: 12px; color: var(--color-muted); }
-.pv-msg { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pv-msg small { display: block; margin-top: 2px; font-size: 12px; color: var(--color-faint); overflow: hidden; text-overflow: ellipsis; }
-.pv-state { font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 4px; background: var(--color-panel-2); color: var(--color-muted); }
-li[data-state="fixed"] .pv-state { color: #fff; background: rgb(var(--ember)); }
-li[data-state="clean"] .pv-state { color: var(--color-ok); }
-li[data-state="running"] .pv-state { color: rgb(var(--ember-hi)); animation: live-pulse 1.6s ease-in-out infinite; }
-.pv-rail { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 12px; font-size: 11px; color: var(--color-muted); }
-.pv-rail span { padding-top: 6px; border-top: 2px solid rgb(var(--ember-hi)); }
-@media (prefers-reduced-motion: reduce) { .pv-live i, li[data-state="running"] .pv-state { animation: none; } }
 
-/* The ant colony carrying work to the computer runs along the bottom of the hero. */
-.hero-full { padding-bottom: 160px; }
-[data-testid="hero-ants"] { opacity: 1 !important; bottom: 48px !important; color: rgb(255 247 242 / 0.8) !important; }
+
+/* Graphite + platinum: the landing glow is a cool platinum haze, not a white floodlight. */
+:root:has(.hero-full) .hero-ink {
+  background:
+    radial-gradient(75% 65% at 50% 108%, rgb(167 168 172 / 38%) 0%, rgb(167 168 172 / 14%) 35%, transparent 70%),
+    radial-gradient(60% 50% at 85% 0%, rgb(167 168 172 / 12%) 0%, transparent 70%),
+    #0b0b0c;
+}
+.hero-orb { opacity: 0.22; }
