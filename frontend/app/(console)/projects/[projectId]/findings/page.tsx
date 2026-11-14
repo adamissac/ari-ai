@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useProject } from '@/components/project';
 import { Async, Badge, Button, Empty, Mono, PageTitle, Panel, Time } from '@/components/ui';
 import { api } from '@/lib/api';
-import { findingBucket, OPEN_REASON } from '@/lib/findings';
+import { findingBucket, isOldSuspicion, OPEN_REASON, SUSPICION_DAYS } from '@/lib/findings';
 import { shortSha } from '@/lib/format';
 import { FINDING_STATUS, SEVERITY } from '@/lib/status';
 import { useResource } from '@/lib/use-resource';
@@ -41,7 +41,11 @@ export default function FindingsPage() {
   const waiting = approvals.status === 'ready' ? approvals.data.items.filter(a => a.subject_type === 'remediation' && a.status === 'pending').length : 0;
   const automatic = authority.status === 'ready' && authority.data.state === 'active';
   const [tab, setTab] = useState<Tab>('confirmed');
-  const counts = findings.status === 'ready' ? collapse(findings.data.items).reduce<Record<Tab, number>>((n, g) => { n[tabOf(g.status)]++; return n; }, { confirmed: 0, fixed: 0, unconfirmed: 0, dismissed: 0 }) : null;
+  const [showOld, setShowOld] = useState(false);
+  const all = findings.status === 'ready' ? findings.data.items : [];
+  const older = all.filter(f => isOldSuspicion(f)).length;
+  const current = showOld ? all : all.filter(f => !isOldSuspicion(f));
+  const counts = findings.status === 'ready' ? collapse(current).reduce<Record<Tab, number>>((n, g) => { n[tabOf(g.status)]++; return n; }, { confirmed: 0, fixed: 0, unconfirmed: 0, dismissed: 0 }) : null;
   return (
     <div className="flex min-w-0 flex-col gap-6">
       <PageTitle title="Findings" subtitle={selectedRepo?.full_name ?? 'No repository connected'} />
@@ -63,11 +67,12 @@ export default function FindingsPage() {
         ))}
       </div>
       <p className="mb-3 text-sm text-muted" data-testid="finding-group-note">{NOTE[tab]}</p>
-      {findings.status === 'ready' && <TabBreakdown tab={tab} items={collapse(findings.data.items)} pendingIds={pendingIds} />}
+      {findings.status === 'ready' && <TabBreakdown tab={tab} items={collapse(current)} pendingIds={pendingIds} />}
+      {tab === 'unconfirmed' && older > 0 && <p className="mb-3 text-sm text-muted" data-testid="old-suspicions">{showOld ? `Showing all, including ${older} older than ${SUSPICION_DAYS} days.` : `${older} older than ${SUSPICION_DAYS} days are hidden: they were about earlier commits and nothing proved them.`} <button type="button" className="text-brand hover:underline" onClick={() => setShowOld(!showOld)}>{showOld ? 'Hide them' : 'Show them'}</button></p>}
       <Async resource={findings} label="findings">
         {page => {
           const repoItems = page.items;
-          const items = collapse(repoItems).filter(f => tabOf(f.status) === tab);
+          const items = collapse(current).filter(f => tabOf(f.status) === tab);
           if (repoItems.length === 0 && assessments.status === 'ready' && assessments.data.items.length === 0) {
             return (
               <div data-testid="findings-no-review">

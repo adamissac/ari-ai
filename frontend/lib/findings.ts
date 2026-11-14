@@ -77,3 +77,11 @@ export const OPEN_REASON: Record<string, string> = {
   unresolved: 'Ari could not produce a fix in 4 attempts; needs a manual fix',
   needs_recheck: 'marked for a recheck',
 };
+
+/** An unproven suspicion is about one commit's code; a week on, that code has moved. */
+export const SUSPICION_DAYS = 7;
+
+export function isOldSuspicion(f: { status: string; updated_at: string }, now: number = Date.now()): boolean {
+  const bucket = findingBucket(f.status);
+  return (bucket === 'untested' || bucket === 'inconclusive') && now - Date.parse(f.updated_at) > SUSPICION_DAYS * 86_400_000;
+}

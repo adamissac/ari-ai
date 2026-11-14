@@ -7,6 +7,7 @@ import { PillarLoopSection, ProjectJourney } from '@/components/project-progress
 import { useProject } from '@/components/project';
 import { Async, Badge, Empty, ErrorState, Loading, PageTitle, Panel, Time } from '@/components/ui';
 import { api } from '@/lib/api';
+import { isOldSuspicion } from '@/lib/findings';
 import { shortSha } from '@/lib/format';
 import { projectOverview } from '@/lib/overview';
 import { repoAnalytics } from '@/lib/repo-analytics';
@@ -17,7 +18,7 @@ export default function ProjectOverview() {
   const { project, selectedRepo } = useProject();
   const repoId = selectedRepo?.id;
   const assessments = useResource(`asm:${project.id}:${repoId}`, signal => api().assessments(project.id, { signal, ...(repoId ? { repoId } : {}) }), 5000);
-  const findings = useResource(`fnd:${project.id}:${repoId}`, signal => api().findings(project.id, { signal, dedupe: true, ...(repoId ? { repoId } : {}) }), 10000);
+  const findings = useResource(`fnd:${project.id}:${repoId}`, signal => api().findings(project.id, { signal, dedupe: true, ...(repoId ? { repoId } : {}) }).then(page => ({ ...page, items: page.items.filter(f => !isOldSuspicion(f)) })), 10000);
   const scopes = useResource(`scopes:${project.id}`, signal => api().scopes(project.id, { signal }));
   const snapshots = useResource(
     selectedRepo ? `snapshots:${selectedRepo.id}` : null,

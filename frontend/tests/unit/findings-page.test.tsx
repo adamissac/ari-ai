@@ -67,3 +67,14 @@ it('lists a finding repeated across commits once and marks the one waiting for a
   expect(screen.getByTestId('finding-group-breakdown').textContent).toContain('1 waiting for your approval before Ari writes the fix');
   expect(screen.getAllByText('Waiting for your approval').length).toBeGreaterThan(0);
 });
+
+it('hides suspicions older than a week until asked', () => {
+  const f = (id: string, updated_at: string) => ({ id, assessment_id: 'asm-1', kind: 'security', status: 'hypothesis', title: id, commit_sha: 'a'.repeat(40), updated_at, severity: null });
+  state.items = [f('fresh one', new Date().toISOString()), f('stale one', '2020-01-01T00:00:00Z')];
+  render(<FindingsPage />);
+  fireEvent.click(screen.getByRole('tab', { name: /Not proven/ }));
+  expect(screen.getByRole('tab', { name: /Not proven/ }).textContent).toBe('Not proven1');
+  expect(screen.queryAllByText('stale one')).toHaveLength(0);
+  fireEvent.click(within(screen.getByTestId('old-suspicions')).getByRole('button', { name: 'Show them' }));
+  expect(screen.getAllByText('stale one').length).toBeGreaterThan(0);
+});

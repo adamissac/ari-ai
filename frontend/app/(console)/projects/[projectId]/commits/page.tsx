@@ -93,7 +93,7 @@ export default function CommitsPage() {
                           </button>
                         </li>
                       ))}
-                    </ul> : <Empty>{commits.length ? (filter === 'found' ? 'No reviewed commit has a proven problem.' : 'No reviewed commit is free of proven problems.') : 'No commits or assessments are available for this repository.'}</Empty>}
+                    </ul> : <Empty>{commits.length ? (filter === 'found' ? 'No reviewed commit has a proven problem.' : 'No reviewed commit is free of proven problems.') : 'No commits since Ari was connected to this repository.'}</Empty>}
                   </CommitAssessmentProvider>
                 </Panel>
                 <Panel title="Commit">

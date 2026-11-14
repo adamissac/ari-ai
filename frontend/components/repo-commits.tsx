@@ -13,7 +13,7 @@ export function RepoCommits({ repo, onPick }: { repo: Repository; onPick: (sha: 
   if (commits.status === 'error') return <ErrorState error={commits.error} onRetry={commits.reload} context="Could not read commits from GitHub" />;
   const { items, available, reason } = commits.data;
   if (!available) return <p className="text-xs text-faint" data-testid="repo-commits-unavailable">{reason}</p>;
-  if (items.length === 0) return <p className="text-xs text-faint">No commits on {repo.default_branch}.</p>;
+  if (items.length === 0) return <p className="text-xs text-faint">No commits on {repo.default_branch} since Ari was connected.</p>;
   return (
     <section aria-label={`Recent commits in ${repo.full_name}`} data-testid="repo-commits">
       <p className="label-mono mb-1.5 text-faint">Recent commits · {repo.default_branch}</p>
