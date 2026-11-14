@@ -1,6 +1,7 @@
 import { expect, test, type Locator } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 
+const steps = ['Understand', 'Review', 'Attack Safely', 'Diagnose', 'Repair', 'Verify', 'Monitor'];
 
 async function expectContrastAtLeastAA(locator: Locator, label: string) {
   const ratio = await locator.evaluate(element => {
@@ -52,9 +53,8 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     await expect(page.locator('meta[property="og:site_name"]')).toHaveAttribute('content', 'ARI');
     await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'ARI — Find the flaw. Prove the fix.');
     const heading = page.getByRole('heading', { level: 1 });
-    await expect(heading).toHaveText('Find the flaw. Prove the fix.');
-    await expect(page.locator('.hero-content .hero-sub')).toHaveCount(1);
-    await expect(page.getByRole('figure', { name: "Sample of Ari reviewing the commits on a repository's main branch" })).toBeVisible();
+    await expect(heading).toHaveText('FIND THE FLAW. PROVE THE FIX.');
+    await expect(page.locator('.hero-content p')).toHaveCount(2);
     await expectContrastAtLeastAA(page.getByRole('link', { name: 'Go to projects', exact: true }).first(), 'hero CTA');
     await expectContrastAtLeastAA(page.getByTestId('problem-count'), 'problem count');
     await expectContrastAtLeastAA(page.getByTestId('story-events-line'), 'events card line');
@@ -62,7 +62,8 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     // The demo account is not linked publicly; the call to action opens the console.
     await expect(page.getByRole('link', { name: 'Go to projects', exact: true }).first()).toHaveAttribute('href', '/projects');
     await expect(page.getByRole('link', { name: /demo/i })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: 'How it works', exact: true })).toHaveAttribute('href', '#how');
+    await expect(page.getByRole('link', { name: 'How It Works', exact: true })).toHaveAttribute('href', '#how');
+    await expect(page.locator('[aria-label="Assessment loop"] li .hero-step-name')).toHaveText(steps);
     const nav = page.getByRole('navigation', { name: 'Primary', exact: true });
     const secondary = nav.locator('.nav-secondary');
     await expect(secondary).toHaveAttribute('inert', '');
@@ -84,10 +85,14 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
       await expect(secondary).toHaveAttribute('inert', '');
     }
     await expect(page.getByRole('link', { name: 'ARI home', exact: true })).toBeVisible();
+    await expect.poll(() => page.locator('.hero-in').evaluateAll(els => els.every(el => Number(getComputedStyle(el).opacity) >= 0.99))).toBe(true);
     await expect(page.locator('header .hdr-logo')).toHaveCSS('color', 'rgb(255, 255, 255)');
-    // Nothing drifts or glows behind the hero.
-    await expect(page.locator('.hero-orb').first()).toBeHidden();
-    await expect(heading).toHaveCSS('text-shadow', 'none');
+    await expect(heading.locator('.hero-line').first()).toHaveCSS('color', 'rgb(255, 247, 242)');
+    await expect(page.locator('.hero-orb')).toHaveCount(5);
+    const orbDurations = await page.locator('.hero-orb').evaluateAll(elements => elements.slice(0, 5).map(el => getComputedStyle(el).animationDuration));
+    expect(orbDurations).toEqual(['26s', '31s', '34s', '23s', '37s']);
+    await expect(heading.locator('.hero-line').first()).toHaveAttribute('data-glow', 'FIND THE FLAW.');
+    await expect(heading.locator('.hero-line').first()).toHaveCSS('text-shadow', 'none'); // glow is isolated to an opacity-animated pseudo layer
     await expect.poll(() => page.evaluate(() => document.fonts.status)).toBe('loaded');
     const fonts = await page.evaluate(() => ({
       logo: getComputedStyle(document.querySelector('.ari-wordmark-text')!).fontFamily,
@@ -137,7 +142,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     await nav.getByRole('link', { name: 'Defense Lab', exact: true }).hover();
     await expect(nav.getByRole('link', { name: 'Defense Lab', exact: true })).toHaveCSS('background-color', 'rgba(255, 255, 255, 0.09)');
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.getByRole('link', { name: 'How it works', exact: true }).click();
+    await page.getByRole('link', { name: 'How It Works', exact: true }).click();
     await expect(page).toHaveURL(/#how$/);
     // The animated anchor can land a few pixels from its CSS scroll margin under CI's renderer.
     await expect.poll(
@@ -162,6 +167,9 @@ test('reduced motion keeps the hero, logo and menu visible', async ({ page }) =>
   await page.goto('/'); // public: no sign-in needed
   await expect(page.locator('.intro')).toHaveCount(0);
   await expect(page.locator('.hero-content')).toHaveCSS('opacity', '1');
+  await expect(page.locator('.hero-orb').first()).toHaveCSS('animation-name', 'none');
+  await expect(page.locator('.hero-line').first()).toHaveCSS('animation-name', 'none');
+  expect(await page.locator('.hero-line').first().evaluate(el => getComputedStyle(el, '::before').animationName)).toBe('none');
   await expect(page.locator('.nav-secondary')).toHaveCSS('transition-duration', '0s');
   await expect(page.locator('.nav-secondary')).toHaveAttribute('inert', '');
   await page.evaluate(() => window.scrollTo(0, 100));
@@ -260,9 +268,9 @@ test('every process card holds for several wheel notches before the chapter move
 
 test('motion accents respond to hover and respect reduced motion', async ({ page }) => {
   await page.goto('/');
-  const cta = page.locator('.hero-full a.btn-primary');
+  const cta = page.locator('.hero-full .hero-in > a').first();
   await cta.hover();
-  await expect(cta).toHaveCSS('translate', 'none'); // hover changes colour only
+  await expect(cta).toHaveCSS('translate', '0px -3px');
   const footer = page.getByTestId('landing-footer');
   await footer.scrollIntoViewIfNeeded();
   await expect(footer.locator('.footer-top')).toHaveAttribute('data-shown', 'true');

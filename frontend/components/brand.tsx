@@ -1,7 +1,7 @@
 /** Product identity. The mark is the owner-supplied ant, cut out of its paper square. */
 export const BRAND_NAME = 'ARI';
-export const BRAND_HEADLINE = 'Find the flaw.';
-export const BRAND_HEADLINE_REST = 'Prove the fix.';
+export const BRAND_HEADLINE = 'FIND THE FLAW.';
+export const BRAND_HEADLINE_REST = 'PROVE THE FIX.';
 export const BRAND_TAGLINE = 'A repair counts only when independent, executed tests agree.';
 
 /** Original owner-supplied PNG (kept byte-for-byte; also the favicon). */
