@@ -33,7 +33,7 @@ function tabOf(status: string): Tab {
 
 export default function FindingsPage() {
   const { project, selectedRepo } = useProject();
-  const findings = useResource(selectedRepo ? `findings:${project.id}:${selectedRepo.id}` : null, s => api().findings(project.id, { signal: s, repoId: selectedRepo!.id }));
+  const findings = useResource(selectedRepo ? `findings:${project.id}:${selectedRepo.id}` : null, s => api().findings(project.id, { signal: s, dedupe: true, repoId: selectedRepo!.id }));
   const assessments = useResource(selectedRepo ? `findings-assessments:${project.id}:${selectedRepo.id}` : null, s => api().assessments(project.id, { signal: s, repoId: selectedRepo!.id }));
   const approvals = useResource(selectedRepo ? `findings-approvals:${project.id}:${selectedRepo.id}` : null, s => api().approvals(project.id, { signal: s, repoId: selectedRepo!.id }), 15000);
   const authority = useResource(`delivery-authority:${project.id}`, s => api().deliveryAuthority(project.id, { signal: s }), 30000);

@@ -17,7 +17,7 @@ export default function ProjectOverview() {
   const { project, selectedRepo } = useProject();
   const repoId = selectedRepo?.id;
   const assessments = useResource(`asm:${project.id}:${repoId}`, signal => api().assessments(project.id, { signal, ...(repoId ? { repoId } : {}) }), 5000);
-  const findings = useResource(`fnd:${project.id}:${repoId}`, signal => api().findings(project.id, { signal, ...(repoId ? { repoId } : {}) }), 10000);
+  const findings = useResource(`fnd:${project.id}:${repoId}`, signal => api().findings(project.id, { signal, dedupe: true, ...(repoId ? { repoId } : {}) }), 10000);
   const scopes = useResource(`scopes:${project.id}`, signal => api().scopes(project.id, { signal }));
   const snapshots = useResource(
     selectedRepo ? `snapshots:${selectedRepo.id}` : null,

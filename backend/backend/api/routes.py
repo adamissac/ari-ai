@@ -1879,10 +1879,16 @@ def list_findings(
     status: FindingStatus | None = None,
     kind: str | None = None,
     repo_id: str | None = None,
+    dedupe: bool = False,
 ) -> dict[str, Any]:
+    """``dedupe``: every commit's review stores its own copy of a suspicion, so an unproven
+    one (hypothesis, inconclusive) is listed only from the newest review that raised it.
+    Proven, fixed and closed findings are never collapsed. Nothing is deleted or changed."""
     with transaction() as conn:
         require_project(conn, _user(conn, request), project_id)
-        q = sa.select(findings.c.doc).where(findings.c.project_id == project_id)
+        q = sa.select(findings.c.doc, findings.c.created_at).where(
+            findings.c.project_id == project_id
+        )
         if repo_id:
             # By the assessment's repository, or the repository snapshot the finding is pinned
             # to; never by which assessments a client happened to load.
@@ -1900,10 +1906,53 @@ def list_findings(
             q = q.where(findings.c.status == status.value)
         if kind:
             q = q.where(findings.c.kind == kind)
+        if dedupe:
+            q = _newest_review_of_each_suspicion(q)
         return {
-            "items": list(conn.execute(q.order_by(findings.c.created_at.desc())).scalars()),
+            "items": list(conn.execute(q.order_by(sa.text("created_at DESC"))).scalars()),
             "next_cursor": None,
         }
+
+
+def _newest_review_of_each_suspicion(q: Any) -> Any:
+    """Keep an unproven finding only if its assessment is the newest one that raised the same
+    suspicion in the same repository. Same suspicion = same kind and, when the finding has a
+    CWE and a cited file, that CWE and first file; otherwise the same title. All of one
+    review's findings stay together, so two suspicions in one file are not merged."""
+    cwe = findings.c.doc["standards"]["cwe"]["id"].astext
+    path = findings.c.paths[0].astext
+    repo = (
+        sa.select(assessments.c.repo_id)
+        .where(assessments.c.id == findings.c.assessment_id)
+        .scalar_subquery()
+    )
+    key = sa.case(
+        (
+            findings.c.status.in_(
+                [FindingStatus.hypothesis.value, FindingStatus.inconclusive.value]
+            ),
+            sa.func.concat_ws(
+                "\x1f",
+                findings.c.kind,
+                sa.func.coalesce(repo, ""),
+                sa.case(
+                    (
+                        sa.and_(cwe.is_not(None), path.is_not(None)),
+                        sa.func.concat_ws("\x1f", cwe, path),
+                    ),
+                    else_=findings.c.doc["title"].astext,
+                ),
+            ),
+        ),
+        else_=findings.c.id,
+    )
+    newest = sa.func.first_value(findings.c.assessment_id).over(
+        partition_by=key, order_by=findings.c.created_at.desc()
+    )
+    inner = q.add_columns(
+        findings.c.assessment_id.label("asm"), newest.label("newest_asm")
+    ).subquery()
+    return sa.select(inner.c.doc, inner.c.created_at).where(inner.c.asm == inner.c.newest_asm)
 
 
 def _finding_access(

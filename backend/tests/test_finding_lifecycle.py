@@ -143,3 +143,44 @@ def test_a_reviewer_concern_the_agents_already_cover_is_closed_as_a_duplicate(
     assert closed["status"] == "closed"
     assert closed["history"][-1]["reason"].startswith(f"duplicate of {fid}:")
     assert alice.get(f"/api/v1/findings/{fid}").json()["finding"]["status"] == "hypothesis"
+
+
+def test_dedupe_lists_an_unproven_suspicion_from_its_newest_review_only(client_factory) -> None:
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    made: dict[str, list[str]] = {}
+    for sha in ("b" * 40, "c" * 40):
+        asm = alice.post(
+            f"/api/v1/projects/{ids['project']}/assessments",
+            json={"scope_id": ids["scope"], "repo_id": ids["repo"], "commit_sha": sha},
+        ).json()["assessment"]
+        host = AssessmentHost(asm["id"])
+        for title in ("ownership check missing", f"only on {sha[0]}"):
+            now = utcnow()
+            finding = Finding(
+                id=new_id(IdPrefix.fnd),
+                assessment_id=asm["id"],
+                commit_sha=sha,
+                kind=FindingKind.security,
+                title=title,
+                status=FindingStatus.hypothesis,
+                confidence=0.6,
+                evidence=[EV.model_copy(update={"commit_sha": sha})],
+                created_at=now,
+                updated_at=now,
+            )
+            host.record_finding(finding, actor="agent:scout")
+            made.setdefault(sha, []).append(finding.id)
+    url = f"/api/v1/projects/{ids['project']}/findings?repo_id={ids['repo']}"
+    assert len(alice.get(url).json()["items"]) == 4
+    kept = {f["id"] for f in alice.get(url + "&dedupe=true").json()["items"]}
+    # the repeated title comes from the newer review; each one-off suspicion stays
+    assert kept == {*made["c" * 40], made["b" * 40][1]}
+    # a proven copy is never collapsed, however old
+    old = made["b" * 40][0]
+    old_host = AssessmentHost(
+        alice.get(f"/api/v1/findings/{old}").json()["finding"]["assessment_id"]
+    )
+    old_host.record(old, _validation(old, "confirmed"))
+    old_host.set_finding_status(old, "validated", actor="agent:orchestrator")
+    assert old in {f["id"] for f in alice.get(url + "&dedupe=true").json()["items"]}
