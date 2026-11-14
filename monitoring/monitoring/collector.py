@@ -22,10 +22,11 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import threading
 import time
 import urllib.request
-from collections.abc import Awaitable, Callable, MutableMapping
+from collections.abc import Awaitable, Callable, MutableMapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
@@ -46,12 +47,30 @@ def _iso(ts: float) -> str:
     return datetime.fromtimestamp(ts, UTC).isoformat()
 
 
-def route_template(scope: Scope) -> str:
-    """The framework's route template, never the raw path."""
+def compile_templates(templates: list[str]) -> list[tuple[str, re.Pattern[str]]]:
+    """Owner-listed path templates such as ``/payments/{id}``, for apps whose framework does
+    not expose its route (e.g. behind ``monitoring.proxy``). ``{name}`` matches one segment."""
+    out = []
+    for template in templates:
+        template = template.strip()
+        if not template.startswith("/") or any(c.isspace() for c in template):
+            raise ValueError(f"route template must start with / and have no spaces: {template!r}")
+        parts = re.split(r"(\{[^/{}]+\})", template)
+        body = "".join("[^/]+" if p.startswith("{") else re.escape(p) for p in parts)
+        out.append((template[:300], re.compile(body)))
+    return out
+
+
+def route_template(scope: Scope, templates: Sequence[tuple[str, re.Pattern[str]]] = ()) -> str:
+    """The framework's route template, else the first matching owner template. Never the raw path."""
     path = getattr(scope.get("route"), "path", None)
-    if not isinstance(path, str) or not path.startswith("/") or any(c.isspace() for c in path):
-        return UNMATCHED
-    return path[:300]
+    if isinstance(path, str) and path.startswith("/") and not any(c.isspace() for c in path):
+        return path[:300]
+    raw = str(scope.get("path", ""))
+    for template, pattern in templates:
+        if pattern.fullmatch(raw):
+            return template
+    return UNMATCHED
 
 
 class AriCollector:
@@ -66,8 +85,12 @@ class AriCollector:
         source: str = "owned_staging",
         send: Sender | None = None,
         clock: Callable[[], float] = time.time,
+        templates: list[str] | None = None,
+        skip_paths: tuple[str, ...] = (),
     ) -> None:
         self.app = app
+        self._templates = compile_templates(templates or [])
+        self._skip = frozenset(skip_paths)
         self.window_s = min(MAX_WINDOW_S, max(MIN_WINDOW_S, window_s))
         self.source = source
         self._url = f"{api_base.rstrip('/')}/api/v1/ingest/runtime/{project_id}"
@@ -79,7 +102,7 @@ class AriCollector:
         self._start = clock()
 
     async def __call__(self, scope: Scope, receive: Any, send: Any) -> None:
-        if scope.get("type") != "http":
+        if scope.get("type") != "http" or scope.get("path") in self._skip:
             await self.app(scope, receive, send)
             return
         status = 500  # an exception before the response starts is a server error
@@ -93,7 +116,9 @@ class AriCollector:
         try:
             await self.app(scope, receive, capture)
         finally:
-            self._record(str(scope.get("method", "")).upper(), route_template(scope), status)
+            self._record(
+                str(scope.get("method", "")).upper(), route_template(scope, self._templates), status
+            )
 
     def _record(self, method: str, template: str, status: int) -> None:
         if method not in METHODS:

@@ -42,5 +42,6 @@ the RL policy only recommends.
   or is rolled back.
 - Verification is weaker than on the fixture: it trusts the application's report.
 - The loopback-only rule moved from database checks to the gate and adapter (migration 0022).
-- Not done: non-Python control endpoints, key rotation for `CONTROL_SECRET_KEY`, and
+- Apps in any language: `monitoring.proxy` runs the endpoint and telemetry as a sidecar in front of the app.
+- Not done: shared control state across several proxy replicas, serverless platforms, key rotation for `CONTROL_SECRET_KEY`, and
   re-encrypting secrets written before the key was set.

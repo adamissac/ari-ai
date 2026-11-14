@@ -460,3 +460,111 @@ def test_channel_secret_is_encrypted_at_rest_when_a_key_is_set(prod, monkeypatch
     finally:
         monkeypatch.delenv("CONTROL_SECRET_KEY")
         get_settings.cache_clear()
+
+
+NODE_APP = (
+    "require('http').createServer((q, r) => r.end('ok ' + q.url))"
+    ".listen(Number(process.argv[1]), '127.0.0.1')"
+)
+
+
+def _free() -> int:
+    import socket
+
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def _wait_port(port: int) -> None:
+    import socket
+    import time
+
+    deadline = time.time() + 15
+    while time.time() < deadline:
+        with socket.socket() as sock:
+            if sock.connect_ex(("127.0.0.1", port)) == 0:
+                return
+        time.sleep(0.1)
+    raise RuntimeError(f"port {port} never opened")
+
+
+@pytest.mark.skipif(__import__("shutil").which("node") is None, reason="needs node")
+def test_ari_controls_a_node_app_through_the_sidecar_proxy(client_factory, monkeypatch) -> None:
+    """API + worker -> monitoring.proxy (separate process) -> a Node HTTP server."""
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    import httpx
+
+    alice, bob = client_factory("alice"), client_factory("bob")
+    ids = setup_project(alice, bob)
+    app_id = alice.post(
+        f"/api/v1/projects/{ids['project']}/applications",
+        json={"name": "node shop", "environment": "production"},
+    ).json()["id"]
+    monkeypatch.setattr(adapters, "_resolve", lambda _h, _p: [PUBLIC_IP])
+    secret = alice.post(f"/api/v1/applications/{app_id}/control-channel", json={"url": URL}).json()[
+        "hmac_secret"
+    ]
+    node_port, proxy_port = _free(), _free()
+    node = subprocess.Popen(["node", "-e", NODE_APP, str(node_port)])
+    proxy = subprocess.Popen(
+        [sys.executable, "-m", "monitoring.proxy", "--listen", f"127.0.0.1:{proxy_port}"],
+        env={
+            **os.environ,
+            "ARI_UPSTREAM": f"http://127.0.0.1:{node_port}",
+            "ARI_CONTROL_SECRET": secret,
+        },
+        cwd=Path(__file__).resolve().parents[2] / "monitoring",
+    )
+    try:
+        _wait_port(node_port)
+        _wait_port(proxy_port)
+        base = f"http://127.0.0.1:{proxy_port}"
+
+        def to_proxy(url, body, headers, timeout_s, sni):  # noqa: ANN001
+            assert sni == HOST
+            return httpx.post(f"{base}/live-defense/control", content=body, headers=headers)
+
+        monkeypatch.setattr(adapters, "_send", to_proxy)
+        assert (
+            alice.post(f"/api/v1/applications/{app_id}/control-channel/verify").status_code == 200
+        )
+        assert (
+            alice.post(
+                f"/api/v1/projects/{ids['project']}/control-grants",
+                json={
+                    "application_id": app_id,
+                    "allowed_kinds": ["rate_limit"],
+                    "max_duration_s": 300,
+                },
+            ).status_code
+            == 201
+        )
+        res = alice.post(
+            f"/api/v1/applications/{app_id}/control-authorizations",
+            json={
+                "kind": "rate_limit",
+                "target": {"type": "route", "value": "GET /cart/{id}"},
+                "duration_s": 120,
+                "max_requests": 1,
+            },
+        )
+        assert res.status_code == 201, res.text
+        _drain()
+        control = alice.get(f"/api/v1/live-controls/{res.json()['id']}").json()
+        assert control["status"] == "verified", control
+        assert httpx.get(f"{base}/cart/1").text == "ok /cart/1"
+        assert httpx.get(f"{base}/cart/2").status_code == 429
+        alice.post(f"/api/v1/live-controls/{control['id']}/rollback", json={"reason": "done"})
+        _drain()
+        assert alice.get(f"/api/v1/live-controls/{control['id']}").json()["status"] == "rolled_back"
+        assert httpx.get(f"{base}/cart/3").status_code == 200
+    finally:
+        proxy.terminate()
+        node.terminate()
+        proxy.wait(10)
+        node.wait(10)

@@ -564,8 +564,19 @@ dependencies = [
     { name = "hackatl-shared" },
 ]
 
+[package.optional-dependencies]
+proxy = [
+    { name = "httpx" },
+    { name = "uvicorn" },
+]
+
 [package.metadata]
-requires-dist = [{ name = "hackatl-shared", editable = "shared" }]
+requires-dist = [
+    { name = "hackatl-shared", editable = "shared" },
+    { name = "httpx", marker = "extra == 'proxy'", specifier = ">=0.27" },
+    { name = "uvicorn", marker = "extra == 'proxy'", specifier = ">=0.30" },
+]
+provides-extras = ["proxy"]
 
 [[package]]
 name = "hackatl-shared"

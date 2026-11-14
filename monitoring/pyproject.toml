@@ -5,9 +5,13 @@ build-backend = "hatchling.build"
 [project]
 name = "hackatl-monitoring"
 version = "0.1.0"
-description = "Event normalization, impact correlation and reassessment trigger policy (pure logic, no I/O)"
+description = "Event normalization, impact correlation, reassessment policy, and the Live Defense collector, control endpoint and sidecar proxy"
 requires-python = ">=3.12"
 dependencies = ["hackatl-shared"]
+
+[project.optional-dependencies]
+# monitoring.proxy: the Live Defense sidecar for apps in any language.
+proxy = ["httpx>=0.27", "uvicorn>=0.30"]
 
 [tool.uv.sources]
 hackatl-shared = { workspace = true }

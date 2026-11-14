@@ -3,6 +3,10 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-11-14 — Claude (agent, for Adam) — Live Defense for apps in any language
+- Did: `monitoring/monitoring/proxy.py` sidecar reverse proxy (httpx + uvicorn, `proxy` extra) wrapping `AriCollector` and `AriControls`; collector gained owner route templates and skip paths. Tests: `monitoring/tests/test_proxy.py` (proxy as a real process in front of a Node server) and `test_ari_controls_a_node_app_through_the_sidecar_proxy` (API + worker -> proxy -> Node).
+- Known gaps: controls are per proxy process (run one instance); WebSockets and serverless not covered; no published image or package for customers outside this repo.
+
 ### 2026-11-14 — Claude (agent, for Alan) — RL pilot gate run; readiness reports it
 
 - Owner decision (Alan): pilot-gate thresholds = `configs/live/promotion.yaml` + delegated success >= 0.85, rules as incumbent; a pass would report "ready for owner approval" only.
