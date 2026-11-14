@@ -30,6 +30,7 @@ import torch
 import yaml
 
 from rl_defense.agents.ddqn import DDQNAgent, DDQNConfig, NStepAccumulator, ReplayBuffer
+from rl_defense.baselines.policies import Policy
 from rl_defense.checkpoint import save_checkpoint
 from rl_defense.envs import DefenseSimEnv, default_config_paths, load_configs
 from rl_defense.envs.config import ENV_V0, ScenarioConfig
@@ -136,6 +137,9 @@ def train(
     checkpoint_every: int | None = None,
     resume: bool = False,
     time_limit_terminal: bool = False,
+    guide: Policy | None = None,
+    guide_steps: int = 0,
+    guide_prob: float = 0.7,
 ) -> dict:
     """Train one seed. ``select_every`` enables in-training checkpoint selection: every
     ``select_every`` steps after ``select_start`` the greedy policy is scored on the
@@ -150,7 +154,13 @@ def train(
     return over the fixed horizon, so the value after the last step is 0 by definition; the
     default bootstraps from Q(s_H), a state that never occurs as a transition's start state
     and is therefore never trained. The default stays False because protocol-v0/v1 were
-    produced with it and reproduce bit for bit (docs/rl-live-defense-audit-progress.md)."""
+    produced with it and reproduce bit for bit (docs/rl-live-defense-audit-progress.md).
+
+    ``guide`` is guided exploration: for the first ``guide_steps`` environment steps the
+    behaviour action is the guide policy's with probability ``guide_prob`` and a uniformly
+    random valid action otherwise. The guide sees only the observation and the mask. It
+    shapes what enters the replay buffer; the targets, the loss and the saved policy are
+    the ordinary Double DQN ones. Off by default."""
     if checkpoint_every is not None and checkpoint_every < 1:
         raise ValueError("checkpoint_every must be >= 1")
     if any(c.split != "train" for c in configs):
@@ -196,6 +206,9 @@ def train(
         "adversary_scale": list(adversary_scale) if adversary_scale else None,
         "select": [select_every, select_start, select_fd_penalty],
     }
+    if guide is not None and guide_steps > 0:
+        identity["guide"] = [guide.name, guide_steps, guide_prob]
+    guide_rng = np.random.default_rng([seed, 0x6D1DE])  # own stream: no effect when unused
     if time_limit_terminal:  # only when set, so states saved before the option still resume
         identity["time_limit_terminal"] = True
     episode, ep_return, ep_len = 0, 0.0, 0
@@ -244,7 +257,13 @@ def train(
             for group in agent.optimizer.param_groups:
                 group["lr"] = lr
         eps = agent.epsilon(step)
-        action = agent.act(obs, info["action_mask"], eps)
+        if guide is not None and step <= guide_steps:
+            if guide_rng.random() < guide_prob:
+                action = int(guide.act(obs, info["action_mask"]))
+            else:
+                action = int(guide_rng.choice(np.flatnonzero(info["action_mask"])))
+        else:
+            action = agent.act(obs, info["action_mask"], eps)
         next_obs, reward, terminated, truncated, info = env.step(action)
         # Default: bootstrap through truncation (time limit); only true termination stops
         # the target. With time_limit_terminal the horizon stops it too.
@@ -366,6 +385,11 @@ def train(
             "train_log": log_path.name,
             "resumed_from_steps": resumed_from,
             **({"time_limit_terminal": True} if time_limit_terminal else {}),
+            **(
+                {"guide": {"policy": guide.name, "steps": guide_steps, "prob": guide_prob}}
+                if guide is not None and guide_steps > 0
+                else {}
+            ),
             # The checkpoint's env_id names the observation/action space (shared by v0 and
             # v1). A policy trained under another reward version says so here.
             **(
