@@ -395,9 +395,16 @@ def test_recent_commits_reads_github_through_the_installation(client_factory, mo
                     "sha": "a" * 40,
                     "message": "feat: x",
                     "author": "alice",
-                    "committed_at": "2026-10-17T00:00:00Z",
+                    "committed_at": "2099-10-17T00:00:00Z",
                     "html_url": None,
-                }
+                },
+                {  # committed before the repository was connected: never listed
+                    "sha": "b" * 40,
+                    "message": "old",
+                    "author": "alice",
+                    "committed_at": "2020-01-01T00:00:00Z",
+                    "html_url": None,
+                },
             ]
 
     monkeypatch.setattr("backend.api.github_repos.GitHubApp", FakeApp)

@@ -2984,3 +2984,9 @@ Canonical main 9437e217d65aa1be22fa7b4f54f723200cd428c8; external pilot NO-GO. S
 - `GET /projects/{id}/findings?dedupe=true`: read-side only. An unproven finding (hypothesis, inconclusive) is returned only from the newest assessment that raised the same suspicion in the same repository (kind + CWE + first cited file, else kind + title). Nothing is deleted or re-statused; the default response is unchanged. The findings page and the analytics page pass it; the commits page does not, so each commit still shows its own suspicions.
 - Limit: a reworded suspicion with no CWE, or one whose first cited file differs, stays separate.
 - Railway production (names only, values redacted): no `JOB_MAX_RUNNING_PER_PROJECT` or `WORKER_PROCESSES`, so the defaults (12 and 12) apply.
+
+## 2026-11-14 — after-connect only, stale suspicions, flat sidebar (`feat/adam/after-connect-only`)
+- `GET /repositories/{id}/commits` drops commits committed before the repository's `created_at` (connect time), so no commit list shows history from before Ari was connected.
+- Production check (owner's console, read-only): no assessment predates its repository's connect time and all are `monitoring`-triggered. The large "Not proven" count is post-connect: `ari-ai` had 973 unproven findings with 959 different titles across 500 commits.
+- Findings and Analytics pages hide unproven suspicions not updated for 7 days (`SUSPICION_DAYS`); the Not proven tab has a Show them link. Nothing is deleted.
+- Project sidebar restyled flat (`frontend/app/platform.css`).

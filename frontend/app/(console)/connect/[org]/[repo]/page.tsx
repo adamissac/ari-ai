@@ -66,7 +66,7 @@ function Commits({ org, name, repo, onConnected }: { org: string; name: string; 
       {id && commits.status === 'loading' && <Loading label="Reading commits from GitHub" />}
       {id && commits.status === 'error' && <ErrorState error={commits.error} onRetry={commits.reload} context="Could not read commits from GitHub" />}
       {id && commits.status === 'ready' && (commits.data.items.length === 0
-        ? <Empty>{commits.data.available ? `No commits on ${repo.default_branch} yet.` : commits.data.reason}</Empty>
+        ? <Empty>{commits.data.available ? `No commits on ${repo.default_branch} since Ari was connected.` : commits.data.reason}</Empty>
         : (
           <CommitAssessmentProvider repoId={id}>
             <ol className="overflow-hidden rounded-2xl border border-line bg-panel" data-testid="real-commit-list">

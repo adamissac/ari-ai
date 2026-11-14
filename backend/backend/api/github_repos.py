@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import re
+from datetime import datetime
 from typing import Any
 
 import httpx
@@ -415,7 +416,17 @@ def recent_commits(repo_id: str, request: Request) -> dict[str, Any]:
         raise ApiError(
             ErrorCode.SUBSYSTEM_UNAVAILABLE, "GitHub did not return commits", 503
         ) from exc
+    # Ari reviews commits from the moment a repository is connected and never goes back over
+    # history, so earlier commits are not listed anywhere.
+    items = [c for c in items if not _before(c.get("committed_at"), repo.created_at)]
     return {"items": items, "next_cursor": None, "available": True, "reason": None}
+
+
+def _before(iso: str | None, moment: datetime) -> bool:
+    try:
+        return iso is not None and datetime.fromisoformat(iso) < moment
+    except ValueError:
+        return False
 
 
 _FULL_NAME = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
