@@ -76,7 +76,7 @@ by FastAPI is the source for frontend client generation.
 ### Findings & remediation
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/projects/{id}/findings?status=&kind=` | List |
+| GET | `/projects/{id}/findings?status=&kind=&repo_id=&dedupe=` | List. `dedupe=true` returns an unproven suspicion only from the newest review that raised it (same kind and CWE + first cited file, else same title); proven, fixed and closed findings are never collapsed |
 | GET | `/findings/{fnd_id}` | Detail incl. evidence chain |
 | GET | `/findings/{fnd_id}/patches` | PatchCandidates + VerificationResults |
 | GET | `/artifacts/{artifact_id}` | Download diff/log (authz-checked, redacted) |
