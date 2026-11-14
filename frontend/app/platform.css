@@ -4,17 +4,22 @@
    delete those rules once this direction is approved. */
 
 :root:not(:has(.hero-full)), :root:has(.hero-full) {
-  --color-bg: #141415;
-  --color-panel: #19191b;
-  --color-panel-2: #232325;
+  --color-brand: #f4f4f2;
+  --color-brand-deep: #d6d6d3;
+  --color-on-brand: #121316;
+  --color-accent: #f4f4f2;
+  --color-ember: #f4f4f2;
+  --color-bg: #0b0b0c;
+  --color-panel: #131417;
+  --color-panel-2: #222327;
   --color-line: #2b2b2e;
   --color-control: #6f6f76;
-  --color-ink: #ededed;
+  --color-ink: #f4f4f2;
   --color-ink-2: #dededf;
-  --color-muted: #a1a1a6;
+  --color-muted: #a7a8ac;
   --color-faint: #85858b;
-  --color-night: #0f0f10;
-  --color-brand-soft: #2a1c19;
+  --color-night: #070708;
+  --color-brand-soft: #222327;
   --glass: rgb(255 255 255 / 3%);
   --glass-line: rgb(255 255 255 / 8%);
   --font-display: var(--font-sans);
@@ -98,11 +103,11 @@ h1 { font-weight: 500; }
 .story-panel, .story-card, .story-stat { background: var(--color-panel); box-shadow: inset 0 0 0 1px var(--glass-line); }
 
 /* Ember: static fades and trail lines. Colour sits at the edges and on lines, never under text blocks. */
-:root { --ember: 194 69 45; --ember-hi: 255 138 117; --trail: linear-gradient(90deg, rgb(var(--ember-hi) / 85%), rgb(var(--ember) / 35%) 28%, transparent 72%); }
+:root { --ember: 167 168 172; --ember-hi: 244 244 242; --trail: linear-gradient(90deg, rgb(var(--ember-hi) / 85%), rgb(var(--ember) / 35%) 28%, transparent 72%); }
 :root body, :root:has(.hero-full) body, :root:not(:has(.hero-full)) body {
   background:
-    radial-gradient(52% 44% at 88% -8%, rgb(var(--ember) / 32%), transparent 72%),
-    radial-gradient(40% 36% at -6% 104%, rgb(var(--ember) / 18%), transparent 70%),
+    radial-gradient(52% 44% at 88% -8%, rgb(var(--ember) / 10%), transparent 72%),
+    radial-gradient(40% 36% at -6% 104%, rgb(var(--ember) / 6%), transparent 70%),
     var(--color-bg);
   background-attachment: fixed;
 }
@@ -116,8 +121,8 @@ h1 { font-weight: 500; }
   .project-shell { background:
     linear-gradient(180deg, rgb(var(--ember) / 9%), transparent 220px) left top / 247px 100% no-repeat,
     linear-gradient(90deg, var(--color-night) 0 247px, var(--glass-line) 247px 248px, transparent 248px); }
-  .project-tab[aria-current="page"] { background: linear-gradient(90deg, rgb(var(--ember) / 26%), rgb(var(--ember) / 6%) 60%, transparent), var(--color-panel-2); box-shadow: inset 2px 0 0 rgb(var(--ember-hi)); }
-  .project-shell > .project-body { background: radial-gradient(56% 360px at 100% 0, rgb(var(--ember) / 24%), transparent 100%); }
+  .project-tab[aria-current="page"] { background: linear-gradient(90deg, rgb(var(--ember) / 14%), rgb(var(--ember) / 4%) 60%, transparent), var(--color-panel-2); box-shadow: inset 2px 0 0 rgb(var(--ember-hi)); }
+  .project-shell > .project-body { background: radial-gradient(56% 360px at 100% 0, rgb(var(--ember) / 8%), transparent 100%); }
 }
 .evidence-tag { box-shadow: inset 0 0 0 1px rgb(var(--ember) / 30%); }
 tbody tr:hover, main :is(ol, ul).divide-y > li:hover { background: linear-gradient(90deg, rgb(var(--ember) / 9%), transparent 55%); }
@@ -196,3 +201,12 @@ body:has(.demo-banner) html[data-home-hero] .site-header, html[data-home-hero]:h
 .project-tab, .route-veil-line { border-radius: 6px; }
 
 
+
+/* Graphite + platinum: the landing glow is a cool platinum haze, not a white floodlight. */
+:root:has(.hero-full) .hero-ink {
+  background:
+    radial-gradient(75% 65% at 50% 108%, rgb(167 168 172 / 38%) 0%, rgb(167 168 172 / 14%) 35%, transparent 70%),
+    radial-gradient(60% 50% at 85% 0%, rgb(167 168 172 / 12%) 0%, transparent 70%),
+    #0b0b0c;
+}
+.hero-orb { opacity: 0.22; }

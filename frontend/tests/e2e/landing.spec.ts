@@ -87,7 +87,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 76
     await expect(page.getByRole('link', { name: 'ARI home', exact: true })).toBeVisible();
     await expect.poll(() => page.locator('.hero-in').evaluateAll(els => els.every(el => Number(getComputedStyle(el).opacity) >= 0.99))).toBe(true);
     await expect(page.locator('header .hdr-logo')).toHaveCSS('color', 'rgb(255, 255, 255)');
-    await expect(heading.locator('.hero-line').first()).toHaveCSS('color', 'rgb(255, 247, 242)');
+    await expect(heading.locator('.hero-line').first()).toHaveCSS('color', 'rgb(244, 244, 242)');
     await expect(page.locator('.hero-orb')).toHaveCount(5);
     const orbDurations = await page.locator('.hero-orb').evaluateAll(elements => elements.slice(0, 5).map(el => getComputedStyle(el).animationDuration));
     expect(orbDurations).toEqual(['26s', '31s', '34s', '23s', '37s']);

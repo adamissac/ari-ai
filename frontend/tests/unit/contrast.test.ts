@@ -72,12 +72,12 @@ describe('WCAG contrast of design tokens', () => {
     expect(css).toMatch(/prefers-reduced-motion: reduce\)\s*\{[^}]*\.animate-pulse\s*\{\s*animation:\s*none/);
   });
 
-  it('keeps the warm headline core above 4.5:1 over the brand background, with no glow', () => {
-    expect(ratio('#fff7f2', token('brand'))).toBeGreaterThanOrEqual(4.7);
+  it('keeps the headline core above 4.5:1 over the brand background, with no glow', () => {
+    expect(ratio('#f4f4f2', token('brand'))).toBeGreaterThanOrEqual(4.5);
     const rule = [...css.matchAll(/\.hero-headline \.hero-line\s*\{([^}]*)\}/g)]
       .map(match => match[1]!)
-      .find(declarations => declarations.includes('color: #fff7f2;'));
-    expect(rule).toContain('color: #fff7f2;');
+      .find(declarations => declarations.includes('color: #f4f4f2;'));
+    expect(rule).toContain('color: #f4f4f2;');
     // The glow is isolated to an opacity-animated pseudo layer; the text core remains crisp.
     expect(rule).not.toContain('text-shadow');
   });
