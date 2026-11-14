@@ -55,3 +55,25 @@ A pass does not promote anything. It makes v11 a candidate for the owner-approva
 stays shadow-only and recommendation-only, and serving v11 in the backend shadow path is a
 separate reviewed change. One training seed: a pass is evidence about this checkpoint, not
 about the method's seed variance.
+
+## Amendment 1 (2026-11-14, committed before any v12 run)
+
+v11's validation prediction failed (`results/live-retrain-v11/REPORT.md`), so the gate was
+not run and the `pilot_gate_v2` scenarios are still unexposed.
+
+**Evidence.** The teacher was chosen on 2 episodes per train scenario and that choice did
+not hold on validation: `always_block_principal_long` is better than the re-tuned rules on
+all six validation scenarios.
+
+**Fix (one change).** Candidate v12 = the v11 procedure with the teacher scored on 8 episodes
+per train scenario instead of 2 (`--expert-episodes 8`). Still train scenarios only. Rules
+tuning is reused unchanged from v11 (`results/live-retrain-v11/rules_tuning.json`; the tuning
+is deterministic). Seed 0, same budget, same availability-aware selection.
+
+**Prediction, unchanged:** validation availability >= 0.85 and no validation scenario below
+the re-tuned rules. If it fails, the gate is not run. If it holds, gate v2 runs once exactly
+as specified above with v12 as the candidate. `always_block_principal_long` is one of the
+baselines on the same episodes, so the report will say whether the learned policy is better
+than the rule that taught it.
+
+`val_v11` has now been used to select two candidates; it is a selection set, not evidence.
