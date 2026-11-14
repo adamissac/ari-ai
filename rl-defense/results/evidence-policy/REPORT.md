@@ -40,8 +40,34 @@ the saved greedy policy are ordinary Double DQN.
   dominates the deterministic rules; `exposed_guard` still has the lowest compromise.
 - No policy is promoted. The lab keeps its pinned protocol-v1 checkpoint.
 
+## Settled at the protocol budget (1M steps)
+
+`python -m rl_defense.evidence_policy_study --out <dir> --steps 1000000 --arms ddqn_guided ddqn_v0`
+at commit `8c4a6783`, 5 seeds, same held-out episodes. Tables: [`steps-1m/study.md`](steps-1m/study.md).
+
+| Policy | Return (v1 reward) | Return (v0 reward) | Compromise % [95% CI] | db lost % | False disruption % | Benign load | Uptime % |
+|---|---|---|---|---|---|---|---|
+| DDQN guided, v1 reward | -65.9 | -42.9 | 32.3 [26.3, 38.5] | 2.3 | 34.5 | 0.462 | 92.7 |
+| DDQN, v0 reward (original objective) | -74.1 | -35.4 | 10.5 [6.1, 13.8] | 0.9 | 72.4 | 0.776 | 93.5 |
+| monitor_isolate (rule) | -62.5 | -42.2 | 25.7 | 5.3 | 6.7 | 0.411 | 91.8 |
+| exposed_guard (rule) | -70.1 | -34.0 | 11.3 | 1.3 | 74.8 | 0.725 | 94.0 |
+
+- The compromise question is answered: the guided v1 policy is worse, 32.3% against 10.5%,
+  with intervals that do not overlap and little seed variance (22% to 43% against 2% to 15%).
+  The 300k-step overlap was noise.
+- The trade-off is a property of the simulator, not of the training method: with three times
+  the steps the v1 policy moved further toward low disruption (34.5%) and further from low
+  compromise. Each reward's policy is the best learned policy under its own reward and the
+  worse one under the other.
+- Each learned policy is matched by a rule on its own objective: `monitor_isolate` has the
+  better v1 return (-62.5 vs -65.9) and `exposed_guard` is within 1.4 points on v0 return
+  (-34.0 vs -35.4) with similar compromise. The DDQN adds no measurable benefit over a
+  ten-line rule in this environment.
+- Decision recorded: the protocol-v1 policy stays the lab policy; no v1-reward policy is
+  recommended. If low disruption is the priority, the `monitor_isolate` rule is the
+  recommended reference, not a learned policy.
+
 ## Limits
 
-300k steps, 5 seeds, one coefficient, one guide. Seed variance in compromise is the main
-uncertainty; more seeds or the 1M-step protocol would be needed to settle whether the guided
-policy matches the original on compromise.
+Five seeds per arm, one coefficient, one guide, one simulator. The unguided v1 arm was not
+rerun at 1M steps.

@@ -2,10 +2,10 @@
   "agent": "alan-rl-lab-audit",
   "human_owner": "Alan",
   "workstream": "RL lab audit: rl-defense inference/training/lab episode, backend /lab/simulation, frontend /lab simulation panel",
-  "state": "READY_FOR_REVIEW",
-  "task": "RL follow-up: policy quality study, fail-closed live gate, v6 shadow tests",
-  "branch": "feat/alan/rl-policy-quality",
-  "latest_sha": "92a712d3",
+  "state": "DONE",
+  "task": "RL lab audit and policy-quality follow-up delivered",
+  "branch": "main",
+  "latest_sha": "dd73a920",
   "prs": [
     929,
     930,
@@ -14,12 +14,13 @@
     935,
     938,
     939,
-    941
+    941,
+    945
   ],
   "claims": [],
   "depends_on": [],
   "blockers": [],
-  "last_update_utc": "2026-11-13T21:55:00Z",
+  "last_update_utc": "2026-11-14T02:00:00Z",
   "tests": "see docs/planning/SESSION_HANDOFF.md entry of 2026-11-13 (RL follow-up)",
-  "next_action": "merge #941 when CI is green; finding 8 trade-off is an owner decision"
+  "next_action": "none; protocol-v1 stays the lab policy, see docs/rl-live-defense-audit-progress.md"
 }

@@ -1,0 +1,114 @@
+{
+  "env_id": "DefenseSimEnv-v0",
+  "obs_dim": 48,
+  "n_actions": 22,
+  "seed": 3,
+  "steps": 1000000,
+  "train_configs": {
+    "train_aggressive": "127321eafd88be15",
+    "train_balanced": "535d99ff8777c11e",
+    "train_stealthy": "c9e32096ebd76da4"
+  },
+  "ddqn_config": {
+    "hidden_sizes": [
+      128,
+      128
+    ],
+    "gamma": 0.99,
+    "lr": 0.0003,
+    "lr_end": null,
+    "batch_size": 64,
+    "buffer_size": 100000,
+    "learning_starts": 1000,
+    "train_freq": 1,
+    "target_update": "hard",
+    "target_update_interval": 1000,
+    "tau": 0.005,
+    "eps_start": 1.0,
+    "eps_end": 0.05,
+    "eps_decay_steps": 333333,
+    "grad_clip": 10.0,
+    "double": true,
+    "dueling": false,
+    "n_step": 3,
+    "disruption_margin": 0.0,
+    "noop_margin": 0.0,
+    "eps_disruptive_weight": null,
+    "cql_alpha": 0.0,
+    "demo_lambda": 0.0,
+    "demo_margin": 0.8
+  },
+  "git_sha": "8c4a67831eb299985dfe1f4c0f1b5f57872f4168",
+  "created_at": "2026-11-14T04:24:41.265084+00:00",
+  "episodes": 5094,
+  "gradient_updates": 999000,
+  "checkpoint_selection": {
+    "every": 83333,
+    "start": 333333,
+    "episode_seeds": [
+      5000,
+      5029
+    ],
+    "factors": [
+      1.0,
+      2.0
+    ],
+    "fd_penalty": 0.0,
+    "selected_step": 999996,
+    "selected_score": -37.870148888888885,
+    "updates_at_selected_step": 998996,
+    "history": [
+      {
+        "step": 416665,
+        "score": -58.217403333333316
+      },
+      {
+        "step": 499998,
+        "score": -58.23789388888887
+      },
+      {
+        "step": 583331,
+        "score": -44.94897111111111
+      },
+      {
+        "step": 666664,
+        "score": -57.580835000000015
+      },
+      {
+        "step": 749997,
+        "score": -74.12488555555555
+      },
+      {
+        "step": 833330,
+        "score": -48.813438888888875
+      },
+      {
+        "step": 916663,
+        "score": -53.93729055555555
+      },
+      {
+        "step": 999996,
+        "score": -37.870148888888885
+      },
+      {
+        "step": 1000000,
+        "score": -38.115852222222216
+      }
+    ]
+  },
+  "param_abs_change": 8566.2744140625,
+  "wall_clock_s": 1333.4,
+  "train_log": "train_seed3.jsonl",
+  "resumed_from_steps": [],
+  "adversary_scale": [
+    0.5,
+    2.5
+  ],
+  "adversary_scale_sampled": {
+    "min": 0.5000759100489571,
+    "mean": 1.4975883662578044,
+    "max": 2.4999426643463556
+  },
+  "checkpoint_file": "ddqn_seed3.pt",
+  "checkpoint_sha256": "81772a2f63e35d880311e8a134dda5097c1d68c040ba40aa63f9d4f9d2c940e9"
+}

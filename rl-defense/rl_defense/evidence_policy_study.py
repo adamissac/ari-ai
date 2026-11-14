@@ -137,18 +137,25 @@ def verdict(held: dict[str, Any]) -> dict[str, Any]:
 
 
 def run_study(
-    out: Path, seeds: tuple[int, ...] = (0, 1, 2, 3, 4), steps: int = STEPS, workers: int = 9
+    out: Path,
+    seeds: tuple[int, ...] = (0, 1, 2, 3, 4),
+    steps: int = STEPS,
+    workers: int = 9,
+    arms: tuple[str, ...] = tuple(ARMS),
 ) -> dict[str, Any]:
+    """``arms`` must include ``ddqn_guided`` and ``ddqn_v0``: the verdict compares them."""
+    if not {"ddqn_guided", "ddqn_v0"} <= set(arms) or not set(arms) <= set(ARMS):
+        raise ValueError(f"arms must include ddqn_guided and ddqn_v0 and come from {list(ARMS)}")
     out.mkdir(parents=True, exist_ok=True)
     train_cfgs = cfgs_train()
     tuned = {
         "monitor_isolate": tune_monitor_isolate(train_cfgs)[0],
         "exposed_guard": tune_exposed_guard(train_cfgs)[0],
     }
-    jobs = [(arm, s, steps, str(out), tuned["monitor_isolate"]) for arm in ARMS for s in seeds]
+    jobs = [(arm, s, steps, str(out), tuned["monitor_isolate"]) for arm in arms for s in seeds]
     score_jobs: list[tuple[str, str, int | None, str, dict[str, Any]]] = []
     for split in ("validation", "held_out"):
-        for name in (*ARMS, "random"):
+        for name in (*arms, "random"):
             score_jobs += [(name, split, s, str(out), tuned) for s in seeds]
         for name in ("monitor_isolate", "exposed_guard", "threshold_rules", "noop"):
             score_jobs.append((name, split, None, str(out), tuned))
@@ -218,8 +225,11 @@ def main() -> None:
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     ap.add_argument("--steps", type=int, default=STEPS)
     ap.add_argument("--workers", type=int, default=9)
+    ap.add_argument("--arms", nargs="+", default=list(ARMS), choices=list(ARMS))
     args = ap.parse_args()
-    print(render(run_study(args.out, tuple(args.seeds), args.steps, args.workers)))
+    print(
+        render(run_study(args.out, tuple(args.seeds), args.steps, args.workers, tuple(args.arms)))
+    )
 
 
 if __name__ == "__main__":
