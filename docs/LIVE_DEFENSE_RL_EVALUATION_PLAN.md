@@ -7,6 +7,15 @@ pilot.
 Pass-by-total-reward is forbidden. Open PRs, unit tests, and research docs are
 not evaluation evidence.
 
+## 2026-11-14 update: thresholds approved, one run, candidate failed
+
+The RL owner (Alan, with Adam) approved the criteria in `rl-defense/configs/live/promotion.yaml`
+plus a 0.85 delegated-access floor, with the tuned rules as the incumbent. Frozen v6 was run
+once on four new frozen scenarios and **failed the per-scenario check**
+(`rl-defense/results/pilot-gate/REPORT.md`). The gate stays blocked. The tables below are the
+plan as originally specified; the shared contract still carries `threshold: null` because
+changing it is a contract change that was not made.
+
 ## Required dimensions
 
 | Dimension | Required | Threshold |
