@@ -161,6 +161,9 @@ deterministic rule (`monitor_isolate` -62.5 vs -65.9 on v1 return; `exposed_guar
 -35.4 on v0 return). The protocol-v1 policy stays; finding 8 is closed as "explained, not
 fixable by training in this environment".
 
+The lab's simulation panel offers `exposed_guard` and `monitor_isolate` as policies, so the
+same-episode comparison shows the rules next to the trained policy.
+
 ## Finding 7: analysis
 
 The scored objective is the return over a fixed 200-step horizon and the observation carries

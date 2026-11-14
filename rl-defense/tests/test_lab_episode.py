@@ -6,6 +6,8 @@ import numpy as np
 import pytest
 
 from rl_defense.baselines import (
+    ExposedGuardPolicy,
+    MonitorIsolatePolicy,
     NoopPolicy,
     RandomValidPolicy,
     ThresholdParams,
@@ -17,6 +19,8 @@ from rl_defense.envs.defense_sim import N_ACTIONS, OBS_DIM, REWARD_COMPONENTS
 from rl_defense.evaluate import DDQNPolicy, run_episode
 from rl_defense.inference import PolicyRunner
 from rl_defense.lab_episode import (
+    COMMITTED_EXPOSED_GUARD_THRESHOLD,
+    COMMITTED_MONITOR_ISOLATE_THRESHOLD,
     COMMITTED_THRESHOLD_PARAMS,
     DEFAULT_CHECKPOINT,
     EVAL_SUMMARY,
@@ -47,6 +51,15 @@ def test_rule_thresholds_are_the_ones_the_committed_evaluation_tuned():
     assert COMMITTED_THRESHOLD_PARAMS == ThresholdParams(**tuned)
 
 
+def test_audit_rule_thresholds_are_the_ones_tuned_on_the_training_configs():
+    from rl_defense.baselines import tune_exposed_guard, tune_monitor_isolate
+    from rl_defense.envs import default_config_paths, load_configs
+
+    train = load_configs(default_config_paths("train"))
+    assert tune_exposed_guard(train)[0] == COMMITTED_EXPOSED_GUARD_THRESHOLD
+    assert tune_monitor_isolate(train)[0] == COMMITTED_MONITOR_ISOLATE_THRESHOLD
+
+
 @pytest.mark.parametrize("kind", POLICY_KINDS)
 def test_episode_matches_the_evaluation_code_exactly(episodes, kind):
     reference = {
@@ -54,6 +67,8 @@ def test_episode_matches_the_evaluation_code_exactly(episodes, kind):
         "random": lambda: RandomValidPolicy(seed=0),
         "noop": NoopPolicy,
         "threshold_rules": lambda: ThresholdRulesPolicy(COMMITTED_THRESHOLD_PARAMS),
+        "exposed_guard": lambda: ExposedGuardPolicy(COMMITTED_EXPOSED_GUARD_THRESHOLD),
+        "monitor_isolate": lambda: MonitorIsolatePolicy(COMMITTED_MONITOR_ISOLATE_THRESHOLD),
     }.get(kind)
     ep = episodes[kind]
     assert ep.summary.total_return == pytest.approx(sum(s.reward for s in ep.steps))
@@ -124,7 +139,7 @@ def test_untrained_control_is_labelled_and_behaves_differently(episodes):
 
 
 def test_baselines_carry_no_q_values_or_checkpoint(episodes):
-    for kind in ("random", "noop", "threshold_rules"):
+    for kind in ("random", "noop", "threshold_rules", "exposed_guard", "monitor_isolate"):
         ep = episodes[kind]
         assert ep.policy.source == "scripted_baseline" and ep.policy.checkpoint_sha256 is None
         assert all(s.q_values is None for s in ep.steps)

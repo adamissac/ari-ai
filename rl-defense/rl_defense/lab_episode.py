@@ -15,6 +15,12 @@ Policies:
 - ``noop``           : never acts
 - ``threshold_rules``: the hand-written rules, with the thresholds tuned on the training
   configs in the committed evaluation (never re-tuned here)
+- ``exposed_guard``  : keep the internet-exposed nodes rate-limited, isolate on anomaly
+- ``monitor_isolate``: monitor the exposed nodes, isolate only on an anomaly signal
+
+The last two are deterministic rules added by the policy-quality audit
+(results/reward-v1, results/evidence-policy): on the held-out configs they match the trained
+policy on its own objective, and the lab shows them next to it for that reason.
 
 Everything runs in ``DefenseSimEnv``. No action reaches a real system.
 """
@@ -33,6 +39,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from rl_defense import ENV_ID
 from rl_defense.agents.ddqn import DDQNAgent, DDQNConfig
 from rl_defense.baselines import (
+    ExposedGuardPolicy,
+    MonitorIsolatePolicy,
     NoopPolicy,
     RandomValidPolicy,
     ThresholdParams,
@@ -62,6 +70,10 @@ EVAL_SUMMARY = RESULTS / "eval_summary.json"
 COMMITTED_THRESHOLD_PARAMS = ThresholdParams(
     isolate_anomaly=0.25, rate_limit_alerts=0.2, monitor_anomaly=0.1, criticality_min=0.6
 )
+# Isolation thresholds tuned on the training configs under the v0 reward
+# (tune_exposed_guard / tune_monitor_isolate; equality is asserted in tests).
+COMMITTED_EXPOSED_GUARD_THRESHOLD = 0.2
+COMMITTED_MONITOR_ISOLATE_THRESHOLD = 0.2
 STAGE_NAMES = ("none", "foothold", "escalated", "impact")
 FEATURE_NAMES: tuple[str, ...] = (
     *(f"{node}.{feat}" for node in NODE_NAMES for feat in NODE_FEATURES),
@@ -70,13 +82,23 @@ FEATURE_NAMES: tuple[str, ...] = (
 ACTION_LABELS: tuple[str, ...] = tuple(action_label(a) for a in range(N_ACTIONS))
 MAX_EPISODE_SEED = 2**31 - 1
 
-PolicyKind = Literal["ddqn_trained", "ddqn_untrained", "random", "noop", "threshold_rules"]
+PolicyKind = Literal[
+    "ddqn_trained",
+    "ddqn_untrained",
+    "random",
+    "noop",
+    "threshold_rules",
+    "exposed_guard",
+    "monitor_isolate",
+]
 POLICY_KINDS: tuple[PolicyKind, ...] = (
     "ddqn_trained",
     "ddqn_untrained",
     "random",
     "noop",
     "threshold_rules",
+    "exposed_guard",
+    "monitor_isolate",
 )
 PolicySource = Literal["learned_checkpoint", "untrained_network", "scripted_baseline"]
 
@@ -231,6 +253,16 @@ class _Policy:
         elif kind == "threshold_rules":
             self._scripted = ThresholdRulesPolicy(COMMITTED_THRESHOLD_PARAMS)
             description = "Hand-written threshold rules, tuned on the training configs"
+        elif kind == "exposed_guard":
+            self._scripted = ExposedGuardPolicy(COMMITTED_EXPOSED_GUARD_THRESHOLD)
+            description = (
+                "Rule: keep internet-exposed nodes rate-limited, isolate a node on anomaly"
+            )
+        elif kind == "monitor_isolate":
+            self._scripted = MonitorIsolatePolicy(COMMITTED_MONITOR_ISOLATE_THRESHOLD)
+            description = (
+                "Rule: monitor internet-exposed nodes, isolate a node only on an anomaly signal"
+            )
         else:
             raise ValueError(f"unknown policy kind: {kind}")
         self.info = LabEpisodePolicy(

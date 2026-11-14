@@ -7,12 +7,15 @@ import { ProtocolError } from './contracts.js';
  * inconsistent (a masked action taken, a reward that is not the sum of its components) is
  * rejected instead of drawn.
  */
-export const LAB_POLICY_KINDS = ['ddqn_trained', 'ddqn_untrained', 'random', 'noop', 'threshold_rules'] as const;
+export const LAB_POLICY_KINDS = [
+  'ddqn_trained', 'ddqn_untrained', 'random', 'noop', 'threshold_rules', 'exposed_guard', 'monitor_isolate',
+] as const;
 export type LabPolicyKind = (typeof LAB_POLICY_KINDS)[number];
 export type LabPolicySource = 'learned_checkpoint' | 'untrained_network' | 'scripted_baseline';
 const SOURCE_OF: Record<LabPolicyKind, LabPolicySource> = {
   ddqn_trained: 'learned_checkpoint', ddqn_untrained: 'untrained_network',
   random: 'scripted_baseline', noop: 'scripted_baseline', threshold_rules: 'scripted_baseline',
+  exposed_guard: 'scripted_baseline', monitor_isolate: 'scripted_baseline',
 };
 
 export interface LabSimulationScenario { name: string; split: 'train' | 'eval'; horizon: number }

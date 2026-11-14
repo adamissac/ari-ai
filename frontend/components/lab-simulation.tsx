@@ -20,6 +20,8 @@ const POLICY_LABEL: Record<LabPolicyKind, string> = {
   random: 'Random valid action',
   noop: 'No action',
   threshold_rules: 'Threshold rules',
+  exposed_guard: 'Rule: rate-limit exposed nodes, isolate on anomaly',
+  monitor_isolate: 'Rule: monitor exposed nodes, isolate on anomaly',
 };
 const SOURCE_LABEL = { learned_checkpoint: 'Learned checkpoint', untrained_network: 'Untrained network', scripted_baseline: 'Scripted baseline' } as const;
 const SOURCE_TONE = { learned_checkpoint: 'ok', untrained_network: 'warn', scripted_baseline: 'neutral' } as const;
