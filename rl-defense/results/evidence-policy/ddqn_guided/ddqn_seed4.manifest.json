@@ -1,0 +1,122 @@
+{
+  "env_id": "DefenseSimEnv-v0",
+  "obs_dim": 48,
+  "n_actions": 22,
+  "seed": 4,
+  "steps": 300000,
+  "train_configs": {
+    "train_aggressive": "0d0e2e005966cd6f",
+    "train_balanced": "7acd31e53ea99f1b",
+    "train_stealthy": "f86eeb2aec56ae2b"
+  },
+  "ddqn_config": {
+    "hidden_sizes": [
+      128,
+      128
+    ],
+    "gamma": 0.99,
+    "lr": 0.0003,
+    "lr_end": null,
+    "batch_size": 64,
+    "buffer_size": 100000,
+    "learning_starts": 1000,
+    "train_freq": 1,
+    "target_update": "hard",
+    "target_update_interval": 1000,
+    "tau": 0.005,
+    "eps_start": 1.0,
+    "eps_end": 0.05,
+    "eps_decay_steps": 100000,
+    "grad_clip": 10.0,
+    "double": true,
+    "dueling": false,
+    "n_step": 3,
+    "disruption_margin": 0.0,
+    "noop_margin": 0.0,
+    "eps_disruptive_weight": null,
+    "cql_alpha": 0.0,
+    "demo_lambda": 0.0,
+    "demo_margin": 0.8
+  },
+  "git_sha": "2618663aa870764b54c209e544ae529d1f1f8a8f",
+  "created_at": "2026-11-14T01:26:20.043518+00:00",
+  "episodes": 1576,
+  "gradient_updates": 299000,
+  "checkpoint_selection": {
+    "every": 25000,
+    "start": 100000,
+    "episode_seeds": [
+      5000,
+      5029
+    ],
+    "factors": [
+      1.0,
+      2.0
+    ],
+    "fd_penalty": 0.0,
+    "selected_step": 175000,
+    "selected_score": -71.51664555555554,
+    "updates_at_selected_step": 174000,
+    "history": [
+      {
+        "step": 100000,
+        "score": -160.77252555555555
+      },
+      {
+        "step": 125000,
+        "score": -172.11848166666667
+      },
+      {
+        "step": 150000,
+        "score": -146.7051383333333
+      },
+      {
+        "step": 175000,
+        "score": -71.51664555555554
+      },
+      {
+        "step": 200000,
+        "score": -137.42070611111112
+      },
+      {
+        "step": 225000,
+        "score": -98.30489388888891
+      },
+      {
+        "step": 250000,
+        "score": -128.53273666666666
+      },
+      {
+        "step": 275000,
+        "score": -83.74657555555561
+      },
+      {
+        "step": 300000,
+        "score": -72.40256888888891
+      }
+    ]
+  },
+  "param_abs_change": 3348.215087890625,
+  "wall_clock_s": 518.0,
+  "train_log": "train_seed4.jsonl",
+  "resumed_from_steps": [],
+  "guide": {
+    "policy": "monitor_isolate",
+    "steps": 100000,
+    "prob": 0.7
+  },
+  "reward_env_version": [
+    "DefenseSimEnv-v1"
+  ],
+  "adversary_scale": [
+    0.5,
+    2.5
+  ],
+  "adversary_scale_sampled": {
+    "min": 0.5011754494082035,
+    "mean": 1.509596513657479,
+    "max": 2.4983517881251336
+  },
+  "checkpoint_file": "ddqn_seed4.pt",
+  "checkpoint_sha256": "52cb434d46ad40c6df969900cfee23badb3c9a00d3abfedb843ab95e78a44cb7"
+}

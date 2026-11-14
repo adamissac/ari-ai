@@ -3,6 +3,12 @@
 Append-only. Newest entry at the top. Every development session (human or agent)
 adds an entry before ending.
 
+### 2026-11-13 — Claude (agent, for Alan) — RL evidence-policy study
+
+- Owner decision (Alan): v1 reward at `c_false_disrupt = 0.25`. Added `train(guide=...)`, `MonitorIsolatePolicy`, `rl_defense.evidence_policy_study`, results in `rl-defense/results/evidence-policy/`.
+- Result: guided DDQN improves return and disruption over the original objective but not compromise (22.6% vs 16.3%, overlapping CIs). Nothing promoted; lab checkpoint unchanged.
+- Tests run locally: `tests/test_evidence_policy.py`, `test_time_limit.py`, `test_train_resume.py` (17 passed). Full suite: CI.
+
 ### 2026-11-13 — Claude (agent, for Alan) — RL follow-up: policy quality, live gate, v6 shadow
 
 - PR #941. Details and numbers: `docs/rl-live-defense-audit-progress.md`, `rl-defense/results/reward-v1/REPORT.md`.
