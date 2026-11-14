@@ -114,8 +114,10 @@ export class ApiClient {
     return this.list(`/assessments/${segment(assessmentId)}/runs`, 'AgentRun', options);
   }
   /** All findings, or only one repository's when `repoId` is given (filtered on the server). */
-  findings(projectId: string, options?: RequestOptions & { repoId?: string }): Promise<Page<C.Finding>> {
-    const query = options?.repoId === undefined ? '' : `?repo_id=${segment(options.repoId)}`;
+  /** `dedupe`: an unproven suspicion repeated across commits comes back only from the newest review that raised it. */
+  findings(projectId: string, options?: RequestOptions & { repoId?: string; dedupe?: boolean }): Promise<Page<C.Finding>> {
+    const params = [...(options?.repoId === undefined ? [] : [`repo_id=${segment(options.repoId)}`]), ...(options?.dedupe ? ['dedupe=true'] : [])];
+    const query = params.length ? `?${params.join('&')}` : '';
     return this.list(`/projects/${segment(projectId)}/findings${query}`, 'Finding', options?.signal ? { signal: options.signal } : undefined);
   }
   /** All of the project's approvals, or one repository's (linked on the server by assessment or scope target). */
