@@ -66,18 +66,36 @@ def validation_screen(manifest: dict, rules_by_scenario: dict[str, float]) -> di
     }
 
 
-def run(out: Path, evidence_dir: Path, cfg: OnlineConfig, rules_episodes: int = 2) -> dict:
+def run(
+    out: Path,
+    evidence_dir: Path,
+    cfg: OnlineConfig,
+    rules_episodes: int = 2,
+    *,
+    name: str = NAME,
+    expert_episodes: int | None = None,
+    rules_tuning: Path | None = None,
+) -> dict:
+    """``rules_tuning`` reuses an earlier tuning on the same train scenarios instead of
+    repeating it (the tuning is deterministic). ``expert_episodes`` is how many episodes
+    per train scenario score each teacher candidate (v11 used ``rules_episodes`` = 2)."""
     out.mkdir(parents=True, exist_ok=True)
     evidence_dir.mkdir(parents=True, exist_ok=True)
     lo = dict(ev.V4_LOOP_OVERRIDES)
     tr = load_scenarios("train", subdir=TRAIN_DIR)
     va = load_scenarios("val", subdir=VAL_DIR)
-    rules_params, table = ev.tune_rules_v3(tr, live_app, episodes=rules_episodes, loop_overrides=lo)
-    (evidence_dir / "rules_tuning.json").write_text(
-        json.dumps({"selected": rules_params, "grid": table}, indent=1, sort_keys=True)
-    )
+    if rules_tuning is not None:
+        shutil.copy2(rules_tuning, evidence_dir / "rules_tuning.json")
+        rules_params = json.loads(rules_tuning.read_text())["selected"]
+    else:
+        rules_params, table = ev.tune_rules_v3(
+            tr, live_app, episodes=rules_episodes, loop_overrides=lo
+        )
+        (evidence_dir / "rules_tuning.json").write_text(
+            json.dumps({"selected": rules_params, "grid": table}, indent=1, sort_keys=True)
+        )
     expert_name, scores = choose_expert(
-        tr, live_app, rules_params, episodes=rules_episodes, loop_overrides=lo
+        tr, live_app, rules_params, episodes=expert_episodes or rules_episodes, loop_overrides=lo
     )
     print(f"expert: {expert_name} {scores}", flush=True)
     manifest = train_online(
@@ -89,7 +107,7 @@ def run(out: Path, evidence_dir: Path, cfg: OnlineConfig, rules_episodes: int = 
         cfg=cfg,
         loop_overrides=lo,
         expert_name=expert_name,
-        name=NAME,
+        name=name,
     )
     rules_rows = ev.run_policy(
         ev.rules_policy(rules_params),
@@ -105,9 +123,9 @@ def run(out: Path, evidence_dir: Path, cfg: OnlineConfig, rules_episodes: int = 
     (evidence_dir / "validation_screen.json").write_text(
         json.dumps(screen, indent=2, sort_keys=True)
     )
-    for name in (f"{NAME}.pt", f"{NAME}.manifest.json"):
-        shutil.copy2(out / name, evidence_dir / name)
-    screen["checkpoint_sha256"] = sha256_file(evidence_dir / f"{NAME}.pt")
+    for file in (f"{name}.pt", f"{name}.manifest.json"):
+        shutil.copy2(out / file, evidence_dir / file)
+    screen["checkpoint_sha256"] = sha256_file(evidence_dir / f"{name}.pt")
     print(json.dumps(screen, indent=2), flush=True)
     return screen
 
@@ -117,11 +135,17 @@ def main() -> None:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--evidence-dir", type=Path, required=True)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--name", default=NAME)
+    ap.add_argument("--expert-episodes", type=int)
+    ap.add_argument("--rules-tuning", type=Path)
     args = ap.parse_args()
     run(
         args.out,
         args.evidence_dir,
         OnlineConfig(seed=args.seed, min_val_availability=MIN_AVAILABILITY),
+        name=args.name,
+        expert_episodes=args.expert_episodes,
+        rules_tuning=args.rules_tuning,
     )
 
 
