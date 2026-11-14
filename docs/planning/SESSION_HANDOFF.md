@@ -2983,3 +2983,8 @@ Canonical main 9437e217d65aa1be22fa7b4f54f723200cd428c8; external pilot NO-GO. S
 - Patch retry: a Patch step that produces no usable candidate now retries up to `MAX_PATCH_ATTEMPTS` (was: `unresolved` on the first failure). Covered by `test_states.py` only; no replay test drives the orchestrator branch.
 - Unchanged, by design: remediation approval is skipped only while fix delivery is `active` (owner-authorized, not `PILOT_RECOMMENDATION_ONLY`). Review quota (10 starts/hour, 50/day, $50/day) still defers commits beyond it.
 - Gap: findings are still stored per commit with no cross-commit identity; counts in the API and analytics remain per copy.
+
+## 2026-11-14 — findings list dedupe (`fix/adam/finding-dedupe`)
+- `GET /projects/{id}/findings?dedupe=true`: read-side only. An unproven finding (hypothesis, inconclusive) is returned only from the newest assessment that raised the same suspicion in the same repository (kind + CWE + first cited file, else kind + title). Nothing is deleted or re-statused; the default response is unchanged. The findings page and the analytics page pass it; the commits page does not, so each commit still shows its own suspicions.
+- Limit: a reworded suspicion with no CWE, or one whose first cited file differs, stays separate.
+- Railway production (names only, values redacted): no `JOB_MAX_RUNNING_PER_PROJECT` or `WORKER_PROCESSES`, so the defaults (12 and 12) apply.
